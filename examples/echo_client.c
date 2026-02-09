@@ -43,14 +43,15 @@ void echo_response_callback(void* ctx, int status,
 int main(int argc, char** argv) {
     const char* server_addr = (argc > 1) ? argv[1] : "tcp://127.0.0.1:5555";
     const char* message = (argc > 2) ? argv[2] : "Hello, uvrpc!";
+    int zmq_type = (argc > 3) ? atoi(argv[3]) : ZMQ_REQ;
 
-    printf("Starting Echo Client connecting to %s\n", server_addr);
+    printf("Starting Echo Client connecting to %s (ZMQ type: %d)\n", server_addr, zmq_type);
 
     /* 创建 libuv 事件循环 */
     uv_loop_t* loop = uv_default_loop();
 
-    /* 创建 RPC 客户端 */
-    uvrpc_client_t* client = uvrpc_client_new(loop, server_addr);
+    /* 创建 RPC 客户端（支持多种 ZMQ 类型） */
+    uvrpc_client_t* client = uvrpc_client_new(loop, server_addr, zmq_type);
     if (!client) {
         fprintf(stderr, "Failed to create client\n");
         return 1;

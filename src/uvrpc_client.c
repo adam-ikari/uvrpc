@@ -56,10 +56,15 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
 }
 
 /* 创建客户端 */
-uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr) {
+uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, int zmq_type) {
     if (!server_addr) {
         UVRPC_LOG_ERROR("server_addr cannot be NULL");
         return NULL;
+    }
+
+    /* 默认使用 ZMQ_REQ */
+    if (zmq_type == 0) {
+        zmq_type = ZMQ_REQ;
     }
 
     uvrpc_client_t* client = (uvrpc_client_t*)UVRPC_CALLOC(1, sizeof(uvrpc_client_t));
@@ -70,6 +75,7 @@ uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr) {
 
     client->loop = loop;
     client->owns_loop = (loop == NULL);
+    client->zmq_type = zmq_type;
 
     /* 如果没有提供 loop，创建默认 loop */
     if (!client->loop) {
@@ -94,10 +100,10 @@ uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr) {
         return NULL;
     }
 
-    /* 创建 uvzmq socket (REQ type) */
-    client->socket = uvzmq_socket_new(client->loop, ZMQ_REQ);
+    /* 创建 uvzmq socket */
+    client->socket = uvzmq_socket_new(client->loop, zmq_type);
     if (!client->socket) {
-        UVRPC_LOG_ERROR("Failed to create uvzmq socket");
+        UVRPC_LOG_ERROR("Failed to create uvzmq socket (type: %d)", zmq_type);
         UVRPC_FREE(client->server_addr);
         if (client->owns_loop) {
             uv_loop_close(client->loop);
@@ -107,28 +113,33 @@ uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr) {
         return NULL;
     }
 
-    /* 设置消息回调 */
-    uvzmq_socket_set_recv_callback(client->socket, on_zmq_recv, client);
+    /* 设置消息回调（除了 PUSH 和 PUB 类型不需要接收） */
+    if (zmq_type != ZMQ_PUSH && zmq_type != ZMQ_PUB) {
+        uvzmq_socket_set_recv_callback(client->socket, on_zmq_recv, client);
+    }
 
-    /* 连接到服务器 */
-    int rc = uvzmq_socket_connect(client->socket, server_addr);
-    if (rc != 0) {
-        UVRPC_LOG_ERROR("Failed to connect to server: %s", server_addr);
-        uvzmq_socket_free(client->socket);
-        UVRPC_FREE(client->server_addr);
-        if (client->owns_loop) {
-            uv_loop_close(client->loop);
-            UVRPC_FREE(client->loop);
+    /* 连接到服务器（除了 PUB 和 PUSH 类型不需要连接） */
+    if (zmq_type != ZMQ_PUB && zmq_type != ZMQ_PUSH) {
+        int rc = uvzmq_socket_connect(client->socket, server_addr);
+        if (rc != 0) {
+            UVRPC_LOG_ERROR("Failed to connect to server: %s", server_addr);
+            uvzmq_socket_free(client->socket);
+            UVRPC_FREE(client->server_addr);
+            if (client->owns_loop) {
+                uv_loop_close(client->loop);
+                UVRPC_FREE(client->loop);
+            }
+            UVRPC_FREE(client);
+            return NULL;
         }
-        UVRPC_FREE(client);
-        return NULL;
     }
 
     client->pending_requests = NULL;
     client->next_request_id = 1;
     client->is_connected = 1;
 
-    UVRPC_LOG_INFO("Client created and connected to: %s", server_addr);
+    UVRPC_LOG_INFO("Client created and connected to: %s (ZMQ type: %d)", 
+                   server_addr, zmq_type);
 
     return client;
 }

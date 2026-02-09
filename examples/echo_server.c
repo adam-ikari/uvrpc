@@ -79,14 +79,15 @@ int echo_handler(void* ctx,
 
 int main(int argc, char** argv) {
     const char* bind_addr = (argc > 1) ? argv[1] : "tcp://*:5555";
+    int zmq_type = (argc > 2) ? atoi(argv[2]) : ZMQ_REP;
 
-    printf("Starting Echo Server on %s\n", bind_addr);
+    printf("Starting Echo Server on %s (ZMQ type: %d)\n", bind_addr, zmq_type);
 
     /* 创建 libuv 事件循环 */
     uv_loop_t* loop = uv_default_loop();
 
-    /* 创建 RPC 服务器 */
-    uvrpc_server_t* server = uvrpc_server_new(loop, bind_addr);
+    /* 创建 RPC 服务器（支持多种 ZMQ 类型） */
+    uvrpc_server_t* server = uvrpc_server_new(loop, bind_addr, zmq_type);
     if (!server) {
         fprintf(stderr, "Failed to create server\n");
         return 1;

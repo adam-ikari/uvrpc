@@ -22,7 +22,8 @@ typedef struct uvrpc_service_entry {
 struct uvrpc_server {
     uv_loop_t* loop;                    /* libuv 事件循环 */
     char* bind_addr;                    /* 绑定地址 */
-    uvzmq_socket_t* socket;             /* uvzmq socket (REP type) */
+    uvzmq_socket_t* socket;             /* uvzmq socket */
+    int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_service_entry_t* services;    /* 服务注册表 */
     int owns_loop;                      /* 是否拥有 loop 的所有权 */
     int is_running;                     /* 运行状态 */
@@ -39,7 +40,8 @@ typedef struct uvrpc_client_request {
 struct uvrpc_client {
     uv_loop_t* loop;                    /* libuv 事件循环 */
     char* server_addr;                  /* 服务器地址 */
-    uvzmq_socket_t* socket;             /* uvzmq socket (REQ type) */
+    uvzmq_socket_t* socket;             /* uvzmq socket */
+    int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_client_request_t* pending_requests; /* 待处理请求 */
     int owns_loop;                      /* 是否拥有 loop 的所有权 */
     uint32_t next_request_id;           /* 下一个请求 ID */

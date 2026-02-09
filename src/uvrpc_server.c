@@ -120,10 +120,15 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
 }
 
 /* 创建服务器 */
-uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr) {
+uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, int zmq_type) {
     if (!bind_addr) {
         UVRPC_LOG_ERROR("bind_addr cannot be NULL");
         return NULL;
+    }
+
+    /* 默认使用 ZMQ_REP */
+    if (zmq_type == 0) {
+        zmq_type = ZMQ_REP;
     }
 
     uvrpc_server_t* server = (uvrpc_server_t*)UVRPC_CALLOC(1, sizeof(uvrpc_server_t));
@@ -134,6 +139,7 @@ uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr) {
 
     server->loop = loop;
     server->owns_loop = (loop == NULL);
+    server->zmq_type = zmq_type;
 
     /* 如果没有提供 loop，创建默认 loop */
     if (!server->loop) {
@@ -158,10 +164,10 @@ uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr) {
         return NULL;
     }
 
-    /* 创建 uvzmq socket (REP type) */
-    server->socket = uvzmq_socket_new(server->loop, ZMQ_REP);
+    /* 创建 uvzmq socket */
+    server->socket = uvzmq_socket_new(server->loop, zmq_type);
     if (!server->socket) {
-        UVRPC_LOG_ERROR("Failed to create uvzmq socket");
+        UVRPC_LOG_ERROR("Failed to create uvzmq socket (type: %d)", zmq_type);
         UVRPC_FREE(server->bind_addr);
         if (server->owns_loop) {
             uv_loop_close(server->loop);
@@ -171,13 +177,16 @@ uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr) {
         return NULL;
     }
 
-    /* 设置消息回调 */
-    uvzmq_socket_set_recv_callback(server->socket, on_zmq_recv, server);
+    /* 设置消息回调（除了 PUB 和 PUSH 类型不需要接收） */
+    if (zmq_type != ZMQ_PUB && zmq_type != ZMQ_PUSH) {
+        uvzmq_socket_set_recv_callback(server->socket, on_zmq_recv, server);
+    }
 
     server->services = NULL;
     server->is_running = 0;
 
-    UVRPC_LOG_INFO("Server created with bind address: %s", bind_addr);
+    UVRPC_LOG_INFO("Server created with bind address: %s (ZMQ type: %d)", 
+                   bind_addr, zmq_type);
 
     return server;
 }

@@ -8,6 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <uv.h>
+#include <zmq.h>
 
 /* 错误码定义 */
 #define UVRPC_OK                0
@@ -52,9 +53,10 @@ typedef void (*uvrpc_response_callback_t)(void* ctx,
  * 创建 RPC 服务器
  * @param loop libuv 事件循环
  * @param bind_addr 绑定地址（如 "tcp://*:5555"）
+ * @param zmq_type ZMQ socket 类型（ZMQ_REP, ZMQ_ROUTER, ZMQ_PUB, ZMQ_PUSH 等）
  * @return 服务器实例，失败返回 NULL
  */
-uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr);
+uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, int zmq_type);
 
 /**
  * 注册服务处理器
@@ -94,9 +96,10 @@ void uvrpc_server_free(uvrpc_server_t* server);
  * 创建 RPC 客户端
  * @param loop libuv 事件循环
  * @param server_addr 服务器地址（如 "tcp://127.0.0.1:5555"）
+ * @param zmq_type ZMQ socket 类型（ZMQ_REQ, ZMQ_DEALER, ZMQ_SUB, ZMQ_PULL 等）
  * @return 客户端实例，失败返回 NULL
  */
-uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr);
+uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, int zmq_type);
 
 /**
  * 异步调用 RPC 服务
