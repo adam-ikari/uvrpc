@@ -7,3 +7,9 @@
 [submodule "flatbuffers"]
 	path = deps/flatbuffers
 	url = https://github.com/google/flatbuffers.git
+[submodule "libuv"]
+	path = deps/libuv
+	url = https://github.com/libuv/libuv.git
+[submodule "zeromq"]
+	path = deps/zeromq
+	url = https://github.com/zeromq/libzmq.git

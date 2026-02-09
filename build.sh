@@ -3,23 +3,10 @@ set -e
 
 echo "Building uvrpc..."
 
-# 检查系统依赖
-echo "Checking system dependencies..."
-
-if ! pkg-config --exists libuv; then
-    echo "Error: libuv not found. Install with: sudo apt-get install libuv-dev"
-    exit 1
-fi
-
-if ! pkg-config --exists libzmq; then
-    echo "Error: libzmq not found. Install with: sudo apt-get install libzmq3-dev"
-    exit 1
-fi
-
 # 检查并初始化 git submodules
 echo "Checking git submodules..."
 
-if [ ! -d "deps/uvzmq" ] || [ ! -d "deps/uthash" ] || [ ! -d "deps/flatbuffers" ]; then
+if [ ! -d "deps/libuv" ] || [ ! -d "deps/zeromq" ] || [ ! -d "deps/uvzmq" ] || [ ! -d "deps/uthash" ] || [ ! -d "deps/flatbuffers" ]; then
     echo "Initializing git submodules..."
     git submodule update --init --recursive
 fi

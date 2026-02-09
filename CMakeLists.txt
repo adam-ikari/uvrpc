@@ -4,17 +4,20 @@ project(uvrpc C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
-# 查找系统依赖
-find_package(PkgConfig REQUIRED)
-
-# libuv
-pkg_check_modules(LIBUV REQUIRED libuv)
-
-# ZeroMQ
-pkg_check_modules(ZMQ REQUIRED libzmq)
-
 # Git submodule 依赖路径
 set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/deps)
+
+# libuv (from git submodule)
+set(LIBUV_ROOT ${DEPS_ROOT}/libuv)
+if(NOT EXISTS ${LIBUV_ROOT}/include/uv.h)
+    message(FATAL_ERROR "libuv not found in deps. Run: git submodule update --init --recursive")
+endif()
+
+# ZeroMQ (from git submodule)
+set(ZMQ_ROOT ${DEPS_ROOT}/zeromq)
+if(NOT EXISTS ${ZMQ_ROOT}/include/zmq.h)
+    message(FATAL_ERROR "ZeroMQ not found in deps. Run: git submodule update --init --recursive")
+endif()
 
 # uvzmq (from git submodule)
 set(UVZMQ_INCLUDE_DIR ${DEPS_ROOT}/uvzmq/include)
@@ -35,7 +38,9 @@ if(NOT EXISTS ${FLATBUFFERS_INCLUDE_DIR}/flatbuffers/flatbuffers.h)
     message(FATAL_ERROR "flatbuffers not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# uvzmq 库
+# 构建依赖库
+add_subdirectory(${LIBUV_ROOT} ${CMAKE_BINARY_DIR}/libuv)
+add_subdirectory(${ZMQ_ROOT} ${CMAKE_BINARY_DIR}/zeromq)
 add_subdirectory(${DEPS_ROOT}/uvzmq ${CMAKE_BINARY_DIR}/uvzmq)
 
 # 库源文件
@@ -58,13 +63,13 @@ target_include_directories(uvrpc PUBLIC
     ${FLATBUFFERS_INCLUDE_DIR}
     ${UVZMQ_INCLUDE_DIR}
     ${UTHASH_INCLUDE_DIR}
-    ${LIBUV_INCLUDE_DIRS}
-    ${ZMQ_INCLUDE_DIRS}
+    ${LIBUV_ROOT}/include
+    ${ZMQ_ROOT}/include
 )
 
 target_link_libraries(uvrpc
-    ${LIBUV_LIBRARIES}
-    ${ZMQ_LIBRARIES}
+    uv
+    zmq
     uvzmq
 )
 
@@ -109,10 +114,10 @@ target_include_directories(echo_server PRIVATE
     ${FLATBUFFERS_INCLUDE_DIR}
     ${UVZMQ_INCLUDE_DIR}
     ${UTHASH_INCLUDE_DIR}
-    ${LIBUV_INCLUDE_DIRS}
-    ${ZMQ_INCLUDE_DIRS}
+    ${LIBUV_ROOT}/include
+    ${ZMQ_ROOT}/include
 )
-target_link_libraries(echo_server uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES} uvzmq)
+target_link_libraries(echo_server uvrpc uv zmq uvzmq)
 
 # Echo 客户端示例
 add_executable(echo_client examples/echo_client.c)
@@ -124,10 +129,10 @@ target_include_directories(echo_client PRIVATE
     ${FLATBUFFERS_INCLUDE_DIR}
     ${UVZMQ_INCLUDE_DIR}
     ${UTHASH_INCLUDE_DIR}
-    ${LIBUV_INCLUDE_DIRS}
-    ${ZMQ_INCLUDE_DIRS}
+    ${LIBUV_ROOT}/include
+    ${ZMQ_ROOT}/include
 )
-target_link_libraries(echo_client uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES} uvzmq)
+target_link_libraries(echo_client uvrpc uv zmq uvzmq)
 
 # 安装规则
 install(TARGETS uvrpc
@@ -140,10 +145,8 @@ install(FILES ${CMAKE_SOURCE_DIR}/include/uvrpc.h
 )
 
 # 打印配置信息
-message(STATUS "libuv include: ${LIBUV_INCLUDE_DIRS}")
-message(STATUS "libuv libraries: ${LIBUV_LIBRARIES}")
-message(STATUS "ZeroMQ include: ${ZMQ_INCLUDE_DIRS}")
-message(STATUS "ZeroMQ libraries: ${ZMQ_LIBRARIES}")
+message(STATUS "libuv root: ${LIBUV_ROOT}")
+message(STATUS "ZeroMQ root: ${ZMQ_ROOT}")
 message(STATUS "Flatbuffers include: ${FLATBUFFERS_INCLUDE_DIR}")
 message(STATUS "uvzmq include: ${UVZMQ_INCLUDE_DIR}")
 message(STATUS "uthash include: ${UTHASH_INCLUDE_DIR}")
