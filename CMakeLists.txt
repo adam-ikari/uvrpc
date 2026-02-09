@@ -26,7 +26,7 @@ if(NOT EXISTS ${UVZMQ_INCLUDE_DIR}/uvzmq.h)
 endif()
 
 # uthash (from git submodule)
-set(UTHASH_INCLUDE_DIR ${DEPS_ROOT}/uthash)
+set(UTHASH_INCLUDE_DIR ${DEPS_ROOT}/uthash/include)
 if(NOT EXISTS ${UTHASH_INCLUDE_DIR}/uthash.h)
     message(FATAL_ERROR "uthash not found in deps. Run: git submodule update --init --recursive")
 endif()
@@ -37,11 +37,6 @@ set(FLATBUFFERS_ROOT ${DEPS_ROOT}/flatbuffers)
 if(NOT EXISTS ${FLATBUFFERS_INCLUDE_DIR}/flatbuffers/flatbuffers.h)
     message(FATAL_ERROR "flatbuffers not found in deps. Run: git submodule update --init --recursive")
 endif()
-
-# 构建依赖库
-add_subdirectory(${LIBUV_ROOT} ${CMAKE_BINARY_DIR}/libuv)
-add_subdirectory(${ZMQ_ROOT} ${CMAKE_BINARY_DIR}/zeromq)
-add_subdirectory(${DEPS_ROOT}/uvzmq ${CMAKE_BINARY_DIR}/uvzmq)
 
 # 库源文件
 set(UVRPC_SOURCES
@@ -68,10 +63,13 @@ target_include_directories(uvrpc PUBLIC
 )
 
 target_link_libraries(uvrpc
-    uv
-    zmq
-    uvzmq
+    ${LIBUV_ROOT}/.libs/libuv.a
+    ${ZMQ_ROOT}/build/libzmq.a
+    ${DEPS_ROOT}/uvzmq/build/libuvzmq.a
 )
+
+# 添加链接选项
+target_link_options(uvrpc PRIVATE -pthread)
 
 # Flatbuffers 编译器（从 git submodule 构建）
 find_program(FLATC flatc HINTS ${FLATBUFFERS_ROOT})
@@ -117,7 +115,8 @@ target_include_directories(echo_server PRIVATE
     ${LIBUV_ROOT}/include
     ${ZMQ_ROOT}/include
 )
-target_link_libraries(echo_server uvrpc uv zmq uvzmq)
+target_link_libraries(echo_server uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_options(echo_server PRIVATE -pthread)
 
 # Echo 客户端示例
 add_executable(echo_client examples/echo_client.c)
@@ -132,7 +131,8 @@ target_include_directories(echo_client PRIVATE
     ${LIBUV_ROOT}/include
     ${ZMQ_ROOT}/include
 )
-target_link_libraries(echo_client uvrpc uv zmq uvzmq)
+target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_options(echo_client PRIVATE -pthread)
 
 # 安装规则
 install(TARGETS uvrpc

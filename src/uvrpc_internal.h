@@ -31,6 +31,7 @@ struct uvrpc_server {
 
 /* 客户端请求上下文 */
 typedef struct uvrpc_client_request {
+    uint32_t request_id;               /* 请求 ID */
     uvrpc_response_callback_t callback; /* 响应回调 */
     void* ctx;                          /* 用户上下文 */
     UT_hash_handle hh;                  /* uthash 句柄 */

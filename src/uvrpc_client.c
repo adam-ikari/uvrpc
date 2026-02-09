@@ -32,24 +32,29 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     }
     uvrpc_RpcResponse_init(&response, fb);
 
+    /* 获取请求 ID */
+    uint32_t request_id = uvrpc_RpcResponse_request_id(&response);
+
     /* 获取响应状态和数据 */
     int32_t status = uvrpc_RpcResponse_status(&response);
     flatbuffers_uint8_vec_t response_vec = uvrpc_RpcResponse_response_data(&response);
     const uint8_t* response_data = response_vec.data;
     size_t response_size = response_vec.len;
 
-    UVRPC_LOG_DEBUG("Received response with status: %d", status);
+    UVRPC_LOG_DEBUG("Received response with status: %d, request_id: %u", status, request_id);
 
-    /* 调用回调函数（这里简化处理，实际应该使用 request_id 匹配） */
-    /* TODO: 实现基于 request_id 的请求匹配 */
-    /* 暂时使用第一个 pending request */
-    uvrpc_client_request_t* req = client->pending_requests;
+    /* 查找对应的请求 */
+    uvrpc_client_request_t* req = NULL;
+    HASH_FIND_INT(client->pending_requests, &request_id, req);
+    
     if (req) {
         HASH_DEL(client->pending_requests, req);
         if (req->callback) {
             req->callback(req->ctx, status, response_data, response_size);
         }
         UVRPC_FREE(req);
+    } else {
+        UVRPC_LOG_ERROR("No matching request for request_id: %u", request_id);
     }
 
     flatbuffers_clear(fb);
@@ -192,12 +197,12 @@ int uvrpc_client_call(uvrpc_client_t* client,
         return UVRPC_ERROR_NO_MEMORY;
     }
 
+    req->request_id = client->next_request_id++;
     req->callback = callback;
     req->ctx = ctx;
 
     /* 添加到 pending_requests */
-    /* TODO: 使用 request_id 进行匹配 */
-    HASH_ADD_INT(client->pending_requests, /* request_id field */, req);
+    HASH_ADD_INT(client->pending_requests, request_id, req);
 
     /* 构造请求消息 */
     flatbuffers_builder_t* builder = flatbuffers_builder_init(1024);
@@ -219,6 +224,7 @@ int uvrpc_client_call(uvrpc_client_t* client,
 
     /* 创建 RpcRequest */
     uvrpc_RpcRequest_start(builder);
+    uvrpc_RpcRequest_request_id_add(builder, req->request_id);
     uvrpc_RpcRequest_service_id_add(builder, service_ref);
     if (request_vec_ref) {
         uvrpc_RpcRequest_request_data_add(builder, request_vec_ref);
@@ -254,7 +260,8 @@ int uvrpc_client_call(uvrpc_client_t* client,
     zmq_msg_close(&request_msg);
     flatbuffers_builder_clear(builder);
 
-    UVRPC_LOG_DEBUG("Sent request for service: %s (%zu bytes)", service_name, msg_size);
+    UVRPC_LOG_DEBUG("Sent request for service: %s (request_id: %u, %zu bytes)", 
+                    service_name, req->request_id, msg_size);
 
     return UVRPC_OK;
 }

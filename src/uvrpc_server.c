@@ -48,10 +48,50 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
 
     if (!entry) {
         UVRPC_LOG_ERROR("Service not found: %s", service_id);
-        /* 返回服务未找到错误 */
-        uint8_t* error_data = NULL;
-        size_t error_size = 0;
-        // TODO: 构造错误响应
+        
+        /* 发送服务未找到错误响应 */
+        flatbuffers_builder_t* builder = flatbuffers_builder_init(512);
+        if (!builder) {
+            UVRPC_LOG_ERROR("Failed to create flatbuffers builder for error response");
+            flatbuffers_clear(fb);
+            return;
+        }
+        
+        /* 获取请求 ID */
+        uint32_t request_id = uvrpc_RpcRequest_request_id(&request);
+        
+        /* 创建错误消息 */
+        flatbuffers_string_ref_t error_msg_ref = flatbuffers_string_create(builder, "Service not found");
+        
+        /* 创建 RpcResponse */
+        uvrpc_RpcResponse_start(builder);
+        uvrpc_RpcResponse_request_id_add(builder, request_id);
+        uvrpc_RpcResponse_status_add(builder, UVRPC_ERROR_SERVICE_NOT_FOUND);
+        uvrpc_RpcResponse_error_message_add(builder, error_msg_ref);
+        flatbuffers_uint8_vec_ref_t response_ref = uvrpc_RpcResponse_end(builder);
+        
+        /* 创建 RpcMessage union */
+        uvrpc_RpcMessage_start_as_RpcResponse(builder);
+        uvrpc_RpcMessage_RpcResponse_add(builder, response_ref);
+        flatbuffers_union_ref_t msg_ref = uvrpc_RpcMessage_end_as_RpcResponse(builder);
+        uvrpc_RpcMessage_create_as_root(builder, msg_ref);
+        
+        /* 获取序列化数据 */
+        size_t resp_size;
+        const uint8_t* resp_data = flatbuffers_builder_get_data(builder, &resp_size);
+        
+        /* 发送响应 */
+        zmq_msg_t response_msg;
+        zmq_msg_init_size(&response_msg, resp_size);
+        memcpy(zmq_msg_data(&response_msg), resp_data, resp_size);
+        
+        int rc = uvzmq_socket_send(server->socket, &response_msg);
+        if (rc != 0) {
+            UVRPC_LOG_ERROR("Failed to send error response");
+        }
+        
+        zmq_msg_close(&response_msg);
+        flatbuffers_builder_clear(builder);
         flatbuffers_clear(fb);
         return;
     }
@@ -76,6 +116,9 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
         return;
     }
 
+    /* 获取请求 ID */
+    uint32_t request_id = uvrpc_RpcRequest_request_id(&request);
+
     /* 创建 response_data 向量 */
     flatbuffers_uint8_vec_ref_t response_vec_ref = 0;
     if (response_data && response_size > 0) {
@@ -84,6 +127,7 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
 
     /* 创建 RpcResponse */
     uvrpc_RpcResponse_start(builder);
+    uvrpc_RpcResponse_request_id_add(builder, request_id);
     uvrpc_RpcResponse_status_add(builder, status);
     if (response_vec_ref) {
         uvrpc_RpcResponse_response_data_add(builder, response_vec_ref);
