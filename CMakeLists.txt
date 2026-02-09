@@ -134,6 +134,42 @@ target_include_directories(echo_client PRIVATE
 target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
 target_link_options(echo_client PRIVATE -pthread)
 
+# ==================== 测试目标 ====================
+
+# 基础测试
+add_executable(test_basic tests/test_basic.c)
+add_dependencies(test_basic ${RPC_GENERATED} ${ECHO_GENERATED})
+target_include_directories(test_basic PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/examples
+    ${CMAKE_SOURCE_DIR}/tests
+    ${FLATBUFFERS_INCLUDE_DIR}
+    ${UVZMQ_INCLUDE_DIR}
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${ZMQ_ROOT}/include
+)
+target_link_libraries(test_basic uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_options(test_basic PRIVATE -pthread)
+
+# ROUTER_DEALER 测试
+add_executable(test_router_dealer tests/test_router_dealer.c)
+add_dependencies(test_router_dealer ${RPC_GENERATED} ${ECHO_GENERATED})
+target_include_directories(test_router_dealer PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/examples
+    ${CMAKE_SOURCE_DIR}/tests
+    ${FLATBUFFERS_INCLUDE_DIR}
+    ${UVZMQ_INCLUDE_DIR}
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${ZMQ_ROOT}/include
+)
+target_link_libraries(test_router_dealer uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_options(test_router_dealer PRIVATE -pthread)
+
 # 安装规则
 install(TARGETS uvrpc
     ARCHIVE DESTINATION lib
