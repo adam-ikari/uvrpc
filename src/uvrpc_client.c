@@ -55,8 +55,33 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     flatbuffers_clear(fb);
 }
 
-/* 创建客户端 */
-uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, int zmq_type) {
+/* 创建客户端（使用模式枚举） */
+uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, uvrpc_mode_t mode) {
+    int zmq_type = ZMQ_REQ;  /* 默认 */
+    
+    switch (mode) {
+        case UVRPC_MODE_REQ_REP:
+            zmq_type = ZMQ_REQ;
+            break;
+        case UVRPC_MODE_ROUTER_DEALER:
+            zmq_type = ZMQ_DEALER;
+            break;
+        case UVRPC_MODE_PUB_SUB:
+            zmq_type = ZMQ_SUB;
+            break;
+        case UVRPC_MODE_PUSH_PULL:
+            zmq_type = ZMQ_PULL;
+            break;
+        default:
+            UVRPC_LOG_ERROR("Invalid RPC mode: %d", mode);
+            return NULL;
+    }
+    
+    return uvrpc_client_new_zmq(loop, server_addr, zmq_type);
+}
+
+/* 创建客户端（直接指定 ZMQ 类型） */
+uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, int zmq_type) {
     if (!server_addr) {
         UVRPC_LOG_ERROR("server_addr cannot be NULL");
         return NULL;

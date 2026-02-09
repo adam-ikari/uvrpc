@@ -18,6 +18,14 @@ extern "C" {
 #define UVRPC_ERROR_SERVICE_NOT_FOUND -4
 #define UVRPC_ERROR_TIMEOUT     -5
 
+/* RPC 模式枚举 */
+typedef enum {
+    UVRPC_MODE_REQ_REP = 0,        /* 请求-响应模式 (REQ/REP) - 简单 RPC */
+    UVRPC_MODE_ROUTER_DEALER = 1,  /* 路由-代理模式 (ROUTER/DEALER) - 多客户端异步 RPC */
+    UVRPC_MODE_PUB_SUB = 2,        /* 发布-订阅模式 (PUB/SUB) - 事件通知 */
+    UVRPC_MODE_PUSH_PULL = 3       /* 管道模式 (PUSH/PULL) - 任务分发 */
+} uvrpc_mode_t;
+
 /* 前向声明 */
 typedef struct uvrpc_server uvrpc_server_t;
 typedef struct uvrpc_client uvrpc_client_t;
@@ -50,13 +58,22 @@ typedef void (*uvrpc_response_callback_t)(void* ctx,
 /* ==================== 服务端 API ==================== */
 
 /**
- * 创建 RPC 服务器
+ * 创建 RPC 服务器（使用模式枚举）
+ * @param loop libuv 事件循环
+ * @param bind_addr 绑定地址（如 "tcp://*:5555"）
+ * @param mode RPC 模式（UVRPC_MODE_REQ_REP, UVRPC_MODE_ROUTER_DEALER 等）
+ * @return 服务器实例，失败返回 NULL
+ */
+uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, uvrpc_mode_t mode);
+
+/**
+ * 创建 RPC 服务器（直接指定 ZMQ 类型）
  * @param loop libuv 事件循环
  * @param bind_addr 绑定地址（如 "tcp://*:5555"）
  * @param zmq_type ZMQ socket 类型（ZMQ_REP, ZMQ_ROUTER, ZMQ_PUB, ZMQ_PUSH 等）
  * @return 服务器实例，失败返回 NULL
  */
-uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, int zmq_type);
+uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int zmq_type);
 
 /**
  * 注册服务处理器
@@ -93,13 +110,22 @@ void uvrpc_server_free(uvrpc_server_t* server);
 /* ==================== 客户端 API ==================== */
 
 /**
- * 创建 RPC 客户端
+ * 创建 RPC 客户端（使用模式枚举）
+ * @param loop libuv 事件循环
+ * @param server_addr 服务器地址（如 "tcp://127.0.0.1:5555"）
+ * @param mode RPC 模式（UVRPC_MODE_REQ_REP, UVRPC_MODE_ROUTER_DEALER 等）
+ * @return 客户端实例，失败返回 NULL
+ */
+uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, uvrpc_mode_t mode);
+
+/**
+ * 创建 RPC 客户端（直接指定 ZMQ 类型）
  * @param loop libuv 事件循环
  * @param server_addr 服务器地址（如 "tcp://127.0.0.1:5555"）
  * @param zmq_type ZMQ socket 类型（ZMQ_REQ, ZMQ_DEALER, ZMQ_SUB, ZMQ_PULL 等）
  * @return 客户端实例，失败返回 NULL
  */
-uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, int zmq_type);
+uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, int zmq_type);
 
 /**
  * 异步调用 RPC 服务
@@ -132,6 +158,13 @@ void uvrpc_client_free(uvrpc_client_t* client);
  * @return 错误描述字符串
  */
 const char* uvrpc_strerror(int error_code);
+
+/**
+ * 获取模式名称
+ * @param mode RPC 模式
+ * @return 模式名称字符串
+ */
+const char* uvrpc_mode_name(uvrpc_mode_t mode);
 
 #ifdef __cplusplus
 }

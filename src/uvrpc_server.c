@@ -119,8 +119,33 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     if (response_data) UVRPC_FREE(response_data);
 }
 
-/* 创建服务器 */
-uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, int zmq_type) {
+/* 创建服务器（使用模式枚举） */
+uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, uvrpc_mode_t mode) {
+    int zmq_type = ZMQ_REP;  /* 默认 */
+    
+    switch (mode) {
+        case UVRPC_MODE_REQ_REP:
+            zmq_type = ZMQ_REP;
+            break;
+        case UVRPC_MODE_ROUTER_DEALER:
+            zmq_type = ZMQ_ROUTER;
+            break;
+        case UVRPC_MODE_PUB_SUB:
+            zmq_type = ZMQ_PUB;
+            break;
+        case UVRPC_MODE_PUSH_PULL:
+            zmq_type = ZMQ_PUSH;
+            break;
+        default:
+            UVRPC_LOG_ERROR("Invalid RPC mode: %d", mode);
+            return NULL;
+    }
+    
+    return uvrpc_server_new_zmq(loop, bind_addr, zmq_type);
+}
+
+/* 创建服务器（直接指定 ZMQ 类型） */
+uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int zmq_type) {
     if (!bind_addr) {
         UVRPC_LOG_ERROR("bind_addr cannot be NULL");
         return NULL;
@@ -324,5 +349,21 @@ const char* uvrpc_strerror(int error_code) {
             return "Operation timeout";
         default:
             return "Unknown error";
+    }
+}
+
+/* 获取模式名称 */
+const char* uvrpc_mode_name(uvrpc_mode_t mode) {
+    switch (mode) {
+        case UVRPC_MODE_REQ_REP:
+            return "REQ_REP";
+        case UVRPC_MODE_ROUTER_DEALER:
+            return "ROUTER_DEALER";
+        case UVRPC_MODE_PUB_SUB:
+            return "PUB_SUB";
+        case UVRPC_MODE_PUSH_PULL:
+            return "PUSH_PULL";
+        default:
+            return "UNKNOWN";
     }
 }
