@@ -1,0 +1,23 @@
+namespace uvrpc;
+
+// RPC 请求消息格式
+table RpcRequest {
+    service_id: string;
+    method_id: string;
+    request_data: [ubyte];
+}
+
+// RPC 响应消息格式
+table RpcResponse {
+    status: int32;
+    response_data: [ubyte];
+    error_message: string;
+}
+
+// 根类型
+union RpcMessage {
+    RpcRequest,
+    RpcResponse
+}
+
+root_type RpcMessage;

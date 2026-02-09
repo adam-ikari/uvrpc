@@ -1,0 +1,6 @@
+[submodule "uvzmq"]
+	path = deps/uvzmq
+	url = https://github.com/adam-ikari/uvzmq.git
+[submodule "uthash"]
+	path = deps/uthash
+	url = https://github.com/troydhanson/uthash.git

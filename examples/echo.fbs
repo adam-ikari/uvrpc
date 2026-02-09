@@ -1,0 +1,18 @@
+namespace echo;
+
+// Echo 服务请求
+table EchoRequest {
+    message: string;
+    timestamp: int64;
+}
+
+// Echo 服务响应
+table EchoResponse {
+    reply: string;
+    processed_at: int64;
+}
+
+// Echo 服务定义
+rpc_service EchoService {
+    Echo(EchoRequest): EchoResponse;
+}

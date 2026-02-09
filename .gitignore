@@ -1,0 +1,23 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Generated files
+examples/*_generated.h
+
+# Object files
+*.o
+*.a
+*.so
+*.dylib
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
