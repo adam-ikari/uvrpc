@@ -4,7 +4,7 @@ project(uvrpc C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
-# 查找依赖
+# 查找系统依赖
 find_package(PkgConfig REQUIRED)
 
 # libuv
@@ -13,31 +13,30 @@ pkg_check_modules(LIBUV REQUIRED libuv)
 # ZeroMQ
 pkg_check_modules(ZMQ REQUIRED libzmq)
 
-# flatbuffers
-find_path(FLATBUFFERS_INCLUDE_DIR flatbuffers/flatbuffers.h
-    HINTS /usr/local/include /usr/include
-    PATH_SUFFIXES flatbuffers)
+# Git submodule 依赖路径
+set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/deps)
 
-if(NOT FLATBUFFERS_INCLUDE_DIR)
-    message(FATAL_ERROR "Flatbuffers not found")
+# uvzmq (from git submodule)
+set(UVZMQ_INCLUDE_DIR ${DEPS_ROOT}/uvzmq/include)
+if(NOT EXISTS ${UVZMQ_INCLUDE_DIR}/uvzmq.h)
+    message(FATAL_ERROR "uvzmq not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# uvzmq - 假设在同一目录下
-find_path(UVZMQ_INCLUDE_DIR uvzmq.h
-    HINTS ${CMAKE_SOURCE_DIR}/../uvzmq/include /usr/local/include /usr/include)
-
-if(NOT UVZMQ_INCLUDE_DIR)
-    message(WARNING "uvzmq include dir not found, using ../uvzmq/include")
-    set(UVZMQ_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../uvzmq/include)
+# uthash (from git submodule)
+set(UTHASH_INCLUDE_DIR ${DEPS_ROOT}/uthash)
+if(NOT EXISTS ${UTHASH_INCLUDE_DIR}/uthash.h)
+    message(FATAL_ERROR "uthash not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# uthash
-find_path(UTHASH_INCLUDE_DIR uthash.h
-    HINTS /usr/local/include /usr/include)
-
-if(NOT UTHASH_INCLUDE_DIR)
-    message(FATAL_ERROR "uthash not found")
+# flatbuffers (from git submodule)
+set(FLATBUFFERS_INCLUDE_DIR ${DEPS_ROOT}/flatbuffers/include)
+set(FLATBUFFERS_ROOT ${DEPS_ROOT}/flatbuffers)
+if(NOT EXISTS ${FLATBUFFERS_INCLUDE_DIR}/flatbuffers/flatbuffers.h)
+    message(FATAL_ERROR "flatbuffers not found in deps. Run: git submodule update --init --recursive")
 endif()
+
+# uvzmq 库
+add_subdirectory(${DEPS_ROOT}/uvzmq ${CMAKE_BINARY_DIR}/uvzmq)
 
 # 库源文件
 set(UVRPC_SOURCES
@@ -66,12 +65,16 @@ target_include_directories(uvrpc PUBLIC
 target_link_libraries(uvrpc
     ${LIBUV_LIBRARIES}
     ${ZMQ_LIBRARIES}
+    uvzmq
 )
 
-# Flatbuffers 生成器
-find_program(FLATC flatc)
+# Flatbuffers 编译器（从 git submodule 构建）
+find_program(FLATC flatc HINTS ${FLATBUFFERS_ROOT})
 if(NOT FLATC)
-    message(FATAL_ERROR "flatc compiler not found")
+    # 如果 flatc 不存在，构建它
+    message(STATUS "Building flatc compiler from submodule...")
+    add_subdirectory(${FLATBUFFERS_ROOT} ${CMAKE_BINARY_DIR}/flatbuffers)
+    set(FLATC flatc)
 endif()
 
 # 生成 rpc_generated.h
@@ -109,7 +112,7 @@ target_include_directories(echo_server PRIVATE
     ${LIBUV_INCLUDE_DIRS}
     ${ZMQ_INCLUDE_DIRS}
 )
-target_link_libraries(echo_server uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES})
+target_link_libraries(echo_server uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES} uvzmq)
 
 # Echo 客户端示例
 add_executable(echo_client examples/echo_client.c)
@@ -124,7 +127,7 @@ target_include_directories(echo_client PRIVATE
     ${LIBUV_INCLUDE_DIRS}
     ${ZMQ_INCLUDE_DIRS}
 )
-target_link_libraries(echo_client uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES})
+target_link_libraries(echo_client uvrpc ${LIBUV_LIBRARIES} ${ZMQ_LIBRARIES} uvzmq)
 
 # 安装规则
 install(TARGETS uvrpc

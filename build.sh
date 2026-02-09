@@ -3,8 +3,8 @@ set -e
 
 echo "Building uvrpc..."
 
-# 检查依赖
-echo "Checking dependencies..."
+# 检查系统依赖
+echo "Checking system dependencies..."
 
 if ! pkg-config --exists libuv; then
     echo "Error: libuv not found. Install with: sudo apt-get install libuv-dev"
@@ -16,9 +16,12 @@ if ! pkg-config --exists libzmq; then
     exit 1
 fi
 
-if ! command -v flatc &> /dev/null; then
-    echo "Error: flatc not found. Install FlatBuffers from https://github.com/google/flatbuffers"
-    exit 1
+# 检查并初始化 git submodules
+echo "Checking git submodules..."
+
+if [ ! -d "deps/uvzmq" ] || [ ! -d "deps/uthash" ] || [ ! -d "deps/flatbuffers" ]; then
+    echo "Initializing git submodules..."
+    git submodule update --init --recursive
 fi
 
 # 创建构建目录

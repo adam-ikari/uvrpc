@@ -4,3 +4,6 @@
 [submodule "uthash"]
 	path = deps/uthash
 	url = https://github.com/troydhanson/uthash.git
+[submodule "flatbuffers"]
+	path = deps/flatbuffers
+	url = https://github.com/google/flatbuffers.git
