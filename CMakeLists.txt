@@ -167,6 +167,20 @@ target_include_directories(await_example PRIVATE
 target_link_libraries(await_example uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(await_example PRIVATE -pthread)
 
+# 回调 vs Await 对比示例
+add_executable(callback_vs_await examples/callback_vs_await.c)
+target_include_directories(callback_vs_await PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(callback_vs_await uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(callback_vs_await PRIVATE -pthread)
+
 # ==================== 测试目标 ====================
 
 # 性能测试
