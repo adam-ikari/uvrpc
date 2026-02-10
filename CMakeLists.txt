@@ -153,6 +153,34 @@ target_include_directories(echo_client PRIVATE
 target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(echo_client PRIVATE -pthread)
 
+# 高性能服务器 (ROUTER 模式)
+add_executable(high_perf_server examples/high_perf_server.c)
+target_include_directories(high_perf_server PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(high_perf_server uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(high_perf_server PRIVATE -pthread)
+
+# 高性能客户端 (DEALER 模式)
+add_executable(high_perf_client examples/high_perf_client.c)
+target_include_directories(high_perf_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(high_perf_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(high_perf_client PRIVATE -pthread)
+
 # Await 风格示例
 add_executable(await_example examples/await_example.c)
 target_include_directories(await_example PRIVATE
@@ -210,6 +238,48 @@ target_include_directories(perf_test PRIVATE
 )
 target_link_libraries(perf_test uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(perf_test PRIVATE -pthread)
+
+# 原始数据基准测试
+add_executable(benchmark_raw tests/benchmark_raw.c)
+target_include_directories(benchmark_raw PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(benchmark_raw uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(benchmark_raw PRIVATE -pthread)
+
+# 流水线基准测试
+add_executable(benchmark_pipeline tests/benchmark_pipeline.c)
+target_include_directories(benchmark_pipeline PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(benchmark_pipeline uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(benchmark_pipeline PRIVATE -pthread)
+
+# 多客户端基准测试
+add_executable(benchmark_multi_client tests/benchmark_multi_client.c)
+target_include_directories(benchmark_multi_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(benchmark_multi_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(benchmark_multi_client PRIVATE -pthread)
 
 # 安装规则
 install(TARGETS uvrpc
