@@ -33,11 +33,30 @@ extern "C" {
  * ### 方案 1: 单线程（推荐用于简单场景）
  * - 整个应用使用一个 libuv 事件循环
  * - 所有 API 调用都在事件循环线程中
+ * - 适合：低流量、单连接场景
  * 
- * ### 方案 2: 多实例（推荐用于复杂场景）
- * - 每个连接/服务使用独立的 libuv 事件循环
+ * ### 方案 2: 多实例（推荐用于高并发场景）
+ * - **推荐模式**：每个连接使用独立的 server/client 实例
  * - 使用线程池管理多个事件循环
- * - 例如：4 个线程，每个线程运行 10 个 client 实例
+ * - 例如：N 个线程，每个线程运行 M 个 client 实例
+ * - 总并发能力 = N × M（每个实例处理数千连接）
+ * - 适合：高流量、多连接、生产环境
+ * 
+ * @code
+ * // 多实例示例：4 个线程，每个线程 10 个 client
+ * void worker_thread(void* arg) {
+ *     uv_loop_t loop;
+ *     uv_loop_init(&loop);
+ *     
+ *     // 创建 10 个 client 实例
+ *     for (int i = 0; i < 10; i++) {
+ *         uvrpc_client_t* client = uvrpc_client_new(&loop, "tcp://server:5555", UVRPC_MODE_REQ_REP);
+ *         // 使用 client...
+ *     }
+ *     
+ *     uv_run(&loop, UV_RUN_DEFAULT);
+ * }
+ * @endcode
  */
 
 /* 错误码定义 */
