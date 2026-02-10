@@ -262,10 +262,9 @@ typedef struct uvrpc_async_result {
 
 /* 异步调用上下文（内部使用） */
 typedef struct uvrpc_async {
-    volatile int state;         /* 状态: UVRPC_ASYNC_STATE_* */
-    uvrpc_async_result_t result;
-    uv_loop_t* loop;
-    uv_async_t async_handle;
+    volatile int state;                  /* IDLE, PENDING, DONE */
+    uvrpc_async_result_t result;         /* 结果 */
+    uv_loop_t* loop;                     /* 事件循环 */
 } uvrpc_async_t;
 
 /**
@@ -315,6 +314,14 @@ int uvrpc_client_call_async(uvrpc_client_t* client,
  * @return 结果指针
  */
 const uvrpc_async_result_t* uvrpc_await(uvrpc_async_t* async);
+
+/**
+ * 等待异步调用完成（带超时）
+ * @param async 异步上下文
+ * @param timeout_ms 超时时间（毫秒）
+ * @return 结果指针，超时返回状态为 UVRPC_ERROR_TIMEOUT
+ */
+const uvrpc_async_result_t* uvrpc_await_timeout(uvrpc_async_t* async, uint64_t timeout_ms);
 
 /** @} */
 

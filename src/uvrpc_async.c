@@ -1,44 +1,39 @@
 #include "uvrpc_internal.h"
 #include "../include/uvrpc.h"
 #include <string.h>
-#include <unistd.h>
+
+/* 异步状态常量 */
+#define UVRPC_ASYNC_IDLE     0
+#define UVRPC_ASYNC_PENDING  1
+#define UVRPC_ASYNC_DONE     2
 
 /* 异步回调函数 */
 static void async_callback(void* ctx, int status,
-                           const uint8_t* response_data,
-                           size_t response_size) {
+                            const uint8_t* response_data,
+                            size_t response_size) {
     uvrpc_async_t* async = (uvrpc_async_t*)ctx;
     
+    /* 单线程模型，无需锁保护 */
+    async->state = UVRPC_ASYNC_DONE;
     async->result.status = status;
     async->result.response_data = response_data;
     async->result.response_size = response_size;
-    async->state = UVRPC_ASYNC_DONE;
-    
-    /* 通知等待线程 */
-    uv_async_send(&async->async_handle);
-}
-
-/* uv_async 回调（用于唤醒事件循环） */
-static void async_wakeup(uv_async_t* handle) {
-    /* 空实现，仅用于唤醒事件循环 */
-    (void)handle;
 }
 
 /* 创建异步调用上下文 */
 uvrpc_async_t* uvrpc_async_new(uv_loop_t* loop) {
+    if (!loop) {
+        return NULL;
+    }
+    
     uvrpc_async_t* async = (uvrpc_async_t*)UVRPC_MALLOC(sizeof(uvrpc_async_t));
     if (!async) {
         return NULL;
     }
     
     memset(async, 0, sizeof(uvrpc_async_t));
-    async->state = UVRPC_ASYNC_PENDING;
     async->loop = loop;
-    
-    if (uv_async_init(loop, &async->async_handle, async_wakeup) != 0) {
-        UVRPC_FREE(async);
-        return NULL;
-    }
+    async->state = UVRPC_ASYNC_IDLE;
     
     return async;
 }
@@ -49,7 +44,6 @@ void uvrpc_async_free(uvrpc_async_t* async) {
         return;
     }
     
-    uv_close((uv_handle_t*)&async->async_handle, NULL);
     UVRPC_FREE(async);
 }
 
@@ -84,10 +78,38 @@ const uvrpc_async_result_t* uvrpc_await(uvrpc_async_t* async) {
         return &error_result;
     }
     
-    /* 使用 UV_RUN_NOWAIT 配合短睡眠来轮询状态 */
+    /* 运行事件循环直到完成 */
     while (async->state == UVRPC_ASYNC_PENDING) {
-        uv_run(async->loop, UV_RUN_NOWAIT);
-        usleep(1000); /* 1ms */
+        uv_run(async->loop, UV_RUN_ONCE);
+    }
+    
+    return &async->result;
+}
+
+/* 带超时的等待 */
+const uvrpc_async_result_t* uvrpc_await_timeout(uvrpc_async_t* async, uint64_t timeout_ms) {
+    if (!async) {
+        static uvrpc_async_result_t error_result = {
+            .status = UVRPC_ERROR_INVALID_PARAM,
+            .response_data = NULL,
+            .response_size = 0
+        };
+        return &error_result;
+    }
+    
+    uint64_t deadline = uv_now(async->loop) + timeout_ms;
+    
+    while (async->state == UVRPC_ASYNC_PENDING) {
+        if (uv_now(async->loop) >= deadline) {
+            static uvrpc_async_result_t timeout_result = {
+                .status = UVRPC_ERROR_TIMEOUT,
+                .response_data = NULL,
+                .response_size = 0
+            };
+            return &timeout_result;
+        }
+        
+        uv_run(async->loop, UV_RUN_ONCE);
     }
     
     return &async->result;
