@@ -4,7 +4,6 @@
 #include "uvrpc.h"
 #include <uvzmq.h>
 #include <uthash.h>
-#include <flatbuffers/flatbuffers.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +21,8 @@ typedef struct uvrpc_service_entry {
 struct uvrpc_server {
     uv_loop_t* loop;                    /* libuv 事件循环 */
     char* bind_addr;                    /* 绑定地址 */
+    void* zmq_ctx;                      /* ZMQ context */
+    void* zmq_sock;                     /* ZMQ socket */
     uvzmq_socket_t* socket;             /* uvzmq socket */
     int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_service_entry_t* services;    /* 服务注册表 */
@@ -41,6 +42,8 @@ typedef struct uvrpc_client_request {
 struct uvrpc_client {
     uv_loop_t* loop;                    /* libuv 事件循环 */
     char* server_addr;                  /* 服务器地址 */
+    void* zmq_ctx;                      /* ZMQ context */
+    void* zmq_sock;                     /* ZMQ socket */
     uvzmq_socket_t* socket;             /* uvzmq socket */
     int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_client_request_t* pending_requests; /* 待处理请求 */

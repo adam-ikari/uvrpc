@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(uvrpc C)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
 # Git submodule 依赖路径
@@ -13,16 +13,16 @@ if(NOT EXISTS ${LIBUV_ROOT}/include/uv.h)
     message(FATAL_ERROR "libuv not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# ZeroMQ (from git submodule)
-set(ZMQ_ROOT ${DEPS_ROOT}/zeromq)
-if(NOT EXISTS ${ZMQ_ROOT}/include/zmq.h)
-    message(FATAL_ERROR "ZeroMQ not found in deps. Run: git submodule update --init --recursive")
+# uvzmq (from git submodule)
+set(UVZMQ_ROOT ${DEPS_ROOT}/uvzmq)
+if(NOT EXISTS ${UVZMQ_ROOT}/include/uvzmq.h)
+    message(FATAL_ERROR "uvzmq not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# uvzmq (from git submodule)
-set(UVZMQ_INCLUDE_DIR ${DEPS_ROOT}/uvzmq/include)
-if(NOT EXISTS ${UVZMQ_INCLUDE_DIR}/uvzmq.h)
-    message(FATAL_ERROR "uvzmq not found in deps. Run: git submodule update --init --recursive")
+# libzmq (used by uvzmq)
+set(ZEROMQ_ROOT ${UVZMQ_ROOT}/third_party/zmq)
+if(NOT EXISTS ${ZEROMQ_ROOT}/include/zmq.h)
+    message(FATAL_ERROR "zeromq not found in uvzmq. Run: git submodule update --init --recursive")
 endif()
 
 # uthash (from git submodule)
@@ -31,22 +31,38 @@ if(NOT EXISTS ${UTHASH_INCLUDE_DIR}/uthash.h)
     message(FATAL_ERROR "uthash not found in deps. Run: git submodule update --init --recursive")
 endif()
 
-# flatbuffers (from git submodule)
-set(FLATBUFFERS_INCLUDE_DIR ${DEPS_ROOT}/flatbuffers/include)
-set(FLATBUFFERS_ROOT ${DEPS_ROOT}/flatbuffers)
-if(NOT EXISTS ${FLATBUFFERS_INCLUDE_DIR}/flatbuffers/flatbuffers.h)
-    message(FATAL_ERROR "flatbuffers not found in deps. Run: git submodule update --init --recursive")
+# msgpack-c (from git submodule - using mpack implementation)
+set(MSGPACK_ROOT ${DEPS_ROOT}/msgpack-c)
+if(NOT EXISTS ${MSGPACK_ROOT}/src/mpack/mpack.h)
+    message(FATAL_ERROR "msgpack-c not found in deps. Run: git submodule update --init --recursive")
 endif()
+
+# 编译 mpack 源文件
+set(MSGPACK_SOURCES
+    ${MSGPACK_ROOT}/src/mpack/mpack-common.c
+    ${MSGPACK_ROOT}/src/mpack/mpack-writer.c
+    ${MSGPACK_ROOT}/src/mpack/mpack-reader.c
+    ${MSGPACK_ROOT}/src/mpack/mpack-node.c
+    ${MSGPACK_ROOT}/src/mpack/mpack-expect.c
+    ${MSGPACK_ROOT}/src/mpack/mpack-platform.c
+)
+
+add_library(msgpackc STATIC ${MSGPACK_SOURCES})
+target_include_directories(msgpackc PUBLIC ${MSGPACK_ROOT}/src/mpack)
 
 # 库源文件
 set(UVRPC_SOURCES
     src/uvrpc_server.c
     src/uvrpc_client.c
+    src/uvrpc_utils.c
+    src/msgpack_wrapper.c
+    src/uvzmq_impl.c
 )
 
 set(UVRPC_HEADERS
     include/uvrpc.h
     src/uvrpc_internal.h
+    src/msgpack_wrapper.h
 )
 
 # 创建 uvrpc 静态库
@@ -55,120 +71,67 @@ add_library(uvrpc STATIC ${UVRPC_SOURCES})
 target_include_directories(uvrpc PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
-    ${FLATBUFFERS_INCLUDE_DIR}
-    ${UVZMQ_INCLUDE_DIR}
+    ${MSGPACK_ROOT}/src/mpack
     ${UTHASH_INCLUDE_DIR}
     ${LIBUV_ROOT}/include
-    ${ZMQ_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
 )
 
 target_link_libraries(uvrpc
-    ${LIBUV_ROOT}/.libs/libuv.a
-    ${ZMQ_ROOT}/build/libzmq.a
-    ${DEPS_ROOT}/uvzmq/build/libuvzmq.a
+    ${LIBUV_ROOT}/build/libuv.a
+    ${ZEROMQ_ROOT}/build/lib/libzmq.a
+    msgpackc
+    -lstdc++
+    -ldl -lrt -lpthread
 )
 
 # 添加链接选项
 target_link_options(uvrpc PRIVATE -pthread)
 
-# Flatbuffers 编译器（从 git submodule 构建）
-find_program(FLATC flatc HINTS ${FLATBUFFERS_ROOT})
-if(NOT FLATC)
-    # 如果 flatc 不存在，构建它
-    message(STATUS "Building flatc compiler from submodule...")
-    add_subdirectory(${FLATBUFFERS_ROOT} ${CMAKE_BINARY_DIR}/flatbuffers)
-    set(FLATC flatc)
-endif()
-
-# 生成 rpc_generated.h
-set(RPC_FBS ${CMAKE_SOURCE_DIR}/examples/rpc.fbs)
-set(RPC_GENERATED ${CMAKE_SOURCE_DIR}/examples/rpc_generated.h)
-
-add_custom_command(
-    OUTPUT ${RPC_GENERATED}
-    COMMAND ${FLATC} -c -o ${CMAKE_SOURCE_DIR}/examples ${RPC_FBS}
-    DEPENDS ${RPC_FBS}
-    COMMENT "Generating rpc_generated.h from rpc.fbs"
-)
-
-# 生成 echo_generated.h
-set(ECHO_FBS ${CMAKE_SOURCE_DIR}/examples/echo.fbs)
-set(ECHO_GENERATED ${CMAKE_SOURCE_DIR}/examples/echo_generated.h)
-
-add_custom_command(
-    OUTPUT ${ECHO_GENERATED}
-    COMMAND ${FLATC} -c -o ${CMAKE_SOURCE_DIR}/examples ${ECHO_FBS}
-    DEPENDS ${ECHO_FBS}
-    COMMENT "Generating echo_generated.h from echo.fbs"
-)
-
 # Echo 服务器示例
 add_executable(echo_server examples/echo_server.c)
-add_dependencies(echo_server ${RPC_GENERATED} ${ECHO_GENERATED})
 target_include_directories(echo_server PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/examples
-    ${FLATBUFFERS_INCLUDE_DIR}
-    ${UVZMQ_INCLUDE_DIR}
+    ${MSGPACK_ROOT}/src/mpack
     ${UTHASH_INCLUDE_DIR}
     ${LIBUV_ROOT}/include
-    ${ZMQ_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
 )
-target_link_libraries(echo_server uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_libraries(echo_server uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(echo_server PRIVATE -pthread)
 
 # Echo 客户端示例
 add_executable(echo_client examples/echo_client.c)
-add_dependencies(echo_client ${RPC_GENERATED} ${ECHO_GENERATED})
 target_include_directories(echo_client PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/examples
-    ${FLATBUFFERS_INCLUDE_DIR}
-    ${UVZMQ_INCLUDE_DIR}
+    ${MSGPACK_ROOT}/src/mpack
     ${UTHASH_INCLUDE_DIR}
     ${LIBUV_ROOT}/include
-    ${ZMQ_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
 )
-target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
+target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(echo_client PRIVATE -pthread)
 
 # ==================== 测试目标 ====================
 
-# 基础测试
-add_executable(test_basic tests/test_basic.c)
-add_dependencies(test_basic ${RPC_GENERATED} ${ECHO_GENERATED})
-target_include_directories(test_basic PRIVATE
+# 性能测试
+add_executable(perf_test tests/perf_test.c)
+target_include_directories(perf_test PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/examples
-    ${CMAKE_SOURCE_DIR}/tests
-    ${FLATBUFFERS_INCLUDE_DIR}
-    ${UVZMQ_INCLUDE_DIR}
+    ${MSGPACK_ROOT}/src/mpack
     ${UTHASH_INCLUDE_DIR}
     ${LIBUV_ROOT}/include
-    ${ZMQ_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
 )
-target_link_libraries(test_basic uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
-target_link_options(test_basic PRIVATE -pthread)
-
-# ROUTER_DEALER 测试
-add_executable(test_router_dealer tests/test_router_dealer.c)
-add_dependencies(test_router_dealer ${RPC_GENERATED} ${ECHO_GENERATED})
-target_include_directories(test_router_dealer PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/examples
-    ${CMAKE_SOURCE_DIR}/tests
-    ${FLATBUFFERS_INCLUDE_DIR}
-    ${UVZMQ_INCLUDE_DIR}
-    ${UTHASH_INCLUDE_DIR}
-    ${LIBUV_ROOT}/include
-    ${ZMQ_ROOT}/include
-)
-target_link_libraries(test_router_dealer uvrpc ${LIBUV_ROOT}/.libs/libuv.a ${ZMQ_ROOT}/build/libzmq.a ${DEPS_ROOT}/uvzmq/build/libuvzmq.a)
-target_link_options(test_router_dealer PRIVATE -pthread)
+target_link_libraries(perf_test uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(perf_test PRIVATE -pthread)
 
 # 安装规则
 install(TARGETS uvrpc
@@ -182,7 +145,7 @@ install(FILES ${CMAKE_SOURCE_DIR}/include/uvrpc.h
 
 # 打印配置信息
 message(STATUS "libuv root: ${LIBUV_ROOT}")
-message(STATUS "ZeroMQ root: ${ZMQ_ROOT}")
-message(STATUS "Flatbuffers include: ${FLATBUFFERS_INCLUDE_DIR}")
-message(STATUS "uvzmq include: ${UVZMQ_INCLUDE_DIR}")
+message(STATUS "uvzmq root: ${UVZMQ_ROOT}")
+message(STATUS "zeromq root: ${ZEROMQ_ROOT}")
+message(STATUS "msgpack-c include: ${MSGPACK_ROOT}/include")
 message(STATUS "uthash include: ${UTHASH_INCLUDE_DIR}")

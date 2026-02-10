@@ -1,8 +1,9 @@
 #include "../include/uvrpc.h"
-#include "echo_generated.h"
+#include "../src/uvrpc_internal.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <mpack.h>
 
 /* Echo 服务处理器 */
 int echo_handler(void* ctx,
@@ -12,65 +13,83 @@ int echo_handler(void* ctx,
                  size_t* response_size) {
     (void)ctx;  /* 未使用 */
 
-    /* 解析请求 */
-    flatbuffers_t* fb = flatbuffers_init(request_data, request_size);
-    if (!fb) {
-        fprintf(stderr, "Failed to init flatbuffers\n");
+    /* 解析请求 (使用 mpack) */
+    mpack_reader_t reader;
+    mpack_reader_init_data(&reader, (const char*)request_data, request_size);
+
+    uint32_t count = mpack_expect_map_max(&reader, 10);
+
+    char message[1024] = {0};
+    int64_t timestamp = 0;
+
+    for (uint32_t i = count; i > 0 && mpack_reader_error(&reader) == mpack_ok; --i) {
+        char key[128];
+        mpack_expect_cstr(&reader, key, sizeof(key));
+
+        if (strcmp(key, "message") == 0) {
+            uint32_t len = mpack_expect_str(&reader);
+            if (mpack_reader_error(&reader) == mpack_ok && len > 0 && len < sizeof(message)) {
+                const char* str = mpack_read_bytes_inplace(&reader, len);
+                if (mpack_reader_error(&reader) == mpack_ok && str) {
+                    memcpy(message, str, len);
+                    message[len] = '\0';
+                }
+                mpack_done_str(&reader);
+            } else {
+                mpack_discard(&reader);
+            }
+        } else if (strcmp(key, "timestamp") == 0) {
+            timestamp = (int64_t)mpack_expect_int(&reader);
+        } else {
+            mpack_discard(&reader);
+        }
+    }
+
+    mpack_done_map(&reader);
+
+    if (mpack_reader_error(&reader) != mpack_ok) {
+        mpack_reader_destroy(&reader);
+        fprintf(stderr, "Failed to parse EchoRequest\n");
         return UVRPC_ERROR;
     }
 
-    echo_EchoRequest_table_t request;
-    if (!echo_EchoRequest_as_root(fb)) {
-        fprintf(stderr, "Invalid EchoRequest message\n");
-        flatbuffers_clear(fb);
-        return UVRPC_ERROR;
-    }
-    echo_EchoRequest_init(&request, fb);
-
-    /* 获取消息 */
-    const char* message = echo_EchoRequest_message(&request);
-    int64_t timestamp = echo_EchoRequest_timestamp(&request);
+    mpack_reader_destroy(&reader);
 
     printf("[Echo Server] Received: %s (timestamp: %ld)\n", message, (long)timestamp);
 
-    /* 构造响应 */
-    flatbuffers_builder_t* builder = flatbuffers_builder_init(1024);
-    if (!builder) {
-        fprintf(stderr, "Failed to create flatbuffers builder\n");
-        flatbuffers_clear(fb);
+    /* 构造响应 (使用 mpack) */
+    char buffer[4096];
+    mpack_writer_t writer;
+    mpack_writer_init(&writer, buffer, sizeof(buffer));
+
+    mpack_start_map(&writer, 2);
+
+    /* reply 字段 */
+    mpack_write_cstr(&writer, "reply");
+    char reply[2048];
+    snprintf(reply, sizeof(reply), "Echo: %s", message);
+    mpack_write_cstr(&writer, reply);
+
+    /* processed_at 字段 */
+    mpack_write_cstr(&writer, "processed_at");
+    mpack_write_int(&writer, (int64_t)time(NULL));
+
+    mpack_finish_map(&writer);
+
+    if (mpack_writer_error(&writer) != mpack_ok) {
+        fprintf(stderr, "Failed to build EchoResponse\n");
         return UVRPC_ERROR;
     }
 
-    /* 创建 reply 字符串 */
-    char reply[256];
-    snprintf(reply, sizeof(reply), "Echo: %s", message);
-    flatbuffers_string_ref_t reply_ref = flatbuffers_string_create(builder, reply);
-
-    /* 获取当前时间戳 */
-    int64_t processed_at = time(NULL);
-
-    /* 创建 EchoResponse */
-    echo_EchoResponse_start(builder);
-    echo_EchoResponse_reply_add(builder, reply_ref);
-    echo_EchoResponse_processed_at_add(builder, processed_at);
-    flatbuffers_uint8_vec_ref_t response_ref = echo_EchoResponse_end(builder);
-
-    echo_EchoResponse_create_as_root(builder, response_ref);
-
-    /* 获取序列化数据 */
-    const uint8_t* data = flatbuffers_builder_get_data(builder, response_size);
-    *response_data = (uint8_t*)UVRPC_MALLOC(*response_size);
+    size_t size = mpack_writer_buffer_used(&writer);
+    *response_data = (uint8_t*)UVRPC_MALLOC(size);
     if (!*response_data) {
         fprintf(stderr, "Failed to allocate response data\n");
-        flatbuffers_builder_clear(builder);
-        flatbuffers_clear(fb);
         return UVRPC_ERROR_NO_MEMORY;
     }
 
-    memcpy(*response_data, data, *response_size);
-
-    flatbuffers_builder_clear(builder);
-    flatbuffers_clear(fb);
+    memcpy(*response_data, buffer, size);
+    *response_size = size;
 
     printf("[Echo Server] Sent: %s\n", reply);
 

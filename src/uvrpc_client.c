@@ -1,13 +1,18 @@
 #include "uvrpc_internal.h"
-#include "uvrpc_generated.h"  /* flatbuffers 生成的头文件 */
+#include "msgpack_wrapper.h"
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+/* 前向声明 */
+uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, int zmq_type);
 
 /* uvzmq 接收回调 */
 static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
+    (void)socket;  /* 未使用参数 */
     uvrpc_client_t* client = (uvrpc_client_t*)arg;
 
-    if (!client) {
+    if (!client || !client->is_connected) {
         return;
     }
 
@@ -17,53 +22,40 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
 
     UVRPC_LOG_DEBUG("Client received %zu bytes", size);
 
-    /* 解析 flatbuffers 响应 */
-    flatbuffers_t* fb = flatbuffers_init(data, size);
-    if (!fb) {
-        UVRPC_LOG_ERROR("Failed to init flatbuffers");
+    /* 解析 msgpack 响应 */
+    uvrpc_response_t response;
+    if (uvrpc_deserialize_response_msgpack(data, size, &response) != 0) {
+        UVRPC_LOG_ERROR("Failed to deserialize response");
         return;
     }
 
-    uvrpc_RpcResponse_table_t response;
-    if (!uvrpc_RpcResponse_as_root(fb)) {
-        UVRPC_LOG_ERROR("Invalid RpcResponse message");
-        flatbuffers_clear(fb);
+    /* 查找待处理请求 */
+    uvrpc_client_request_t* entry = NULL;
+    HASH_FIND_INT(client->pending_requests, &response.request_id, entry);
+
+    if (!entry) {
+        UVRPC_LOG_ERROR("No pending request found for request_id: %u", response.request_id);
+        uvrpc_free_response(&response);
         return;
     }
-    uvrpc_RpcResponse_init(&response, fb);
 
-    /* 获取请求 ID */
-    uint32_t request_id = uvrpc_RpcResponse_request_id(&response);
-
-    /* 获取响应状态和数据 */
-    int32_t status = uvrpc_RpcResponse_status(&response);
-    flatbuffers_uint8_vec_t response_vec = uvrpc_RpcResponse_response_data(&response);
-    const uint8_t* response_data = response_vec.data;
-    size_t response_size = response_vec.len;
-
-    UVRPC_LOG_DEBUG("Received response with status: %d, request_id: %u", status, request_id);
-
-    /* 查找对应的请求 */
-    uvrpc_client_request_t* req = NULL;
-    HASH_FIND_INT(client->pending_requests, &request_id, req);
-    
-    if (req) {
-        HASH_DEL(client->pending_requests, req);
-        if (req->callback) {
-            req->callback(req->ctx, status, response_data, response_size);
-        }
-        UVRPC_FREE(req);
-    } else {
-        UVRPC_LOG_ERROR("No matching request for request_id: %u", request_id);
+    /* 调用回调 */
+    if (entry->callback) {
+        entry->callback(entry->ctx, response.status, response.response_data, response.response_data_size);
     }
 
-    flatbuffers_clear(fb);
+    /* 从待处理列表中移除 */
+    HASH_DEL(client->pending_requests, entry);
+    UVRPC_FREE(entry);
+
+    /* 释放响应 */
+    uvrpc_free_response(&response);
 }
 
 /* 创建客户端（使用模式枚举） */
 uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, uvrpc_mode_t mode) {
     int zmq_type = ZMQ_REQ;  /* 默认 */
-    
+
     switch (mode) {
         case UVRPC_MODE_REQ_REP:
             zmq_type = ZMQ_REQ;
@@ -81,7 +73,7 @@ uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, uvrpc
             UVRPC_LOG_ERROR("Invalid RPC mode: %d", mode);
             return NULL;
     }
-    
+
     return uvrpc_client_new_zmq(loop, server_addr, zmq_type);
 }
 
@@ -97,18 +89,18 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
         zmq_type = ZMQ_REQ;
     }
 
+    /* 分配客户端结构 */
     uvrpc_client_t* client = (uvrpc_client_t*)UVRPC_CALLOC(1, sizeof(uvrpc_client_t));
     if (!client) {
         UVRPC_LOG_ERROR("Failed to allocate client");
         return NULL;
     }
 
-    client->loop = loop;
-    client->owns_loop = (loop == NULL);
-    client->zmq_type = zmq_type;
-
-    /* 如果没有提供 loop，创建默认 loop */
-    if (!client->loop) {
+    /* 设置或创建 loop */
+    if (loop) {
+        client->loop = loop;
+        client->owns_loop = 0;
+    } else {
         client->loop = (uv_loop_t*)UVRPC_MALLOC(sizeof(uv_loop_t));
         if (!client->loop) {
             UVRPC_LOG_ERROR("Failed to allocate loop");
@@ -116,12 +108,13 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
             return NULL;
         }
         uv_loop_init(client->loop);
+        client->owns_loop = 1;
     }
 
     /* 复制服务器地址 */
-    client->server_addr = strdup(server_addr);
+    client->server_addr = UVRPC_MALLOC(strlen(server_addr) + 1);
     if (!client->server_addr) {
-        UVRPC_LOG_ERROR("Failed to duplicate server_addr");
+        UVRPC_LOG_ERROR("Failed to allocate server_addr");
         if (client->owns_loop) {
             uv_loop_close(client->loop);
             UVRPC_FREE(client->loop);
@@ -129,11 +122,15 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
         UVRPC_FREE(client);
         return NULL;
     }
+    strcpy(client->server_addr, server_addr);
 
-    /* 创建 uvzmq socket */
-    client->socket = uvzmq_socket_new(client->loop, zmq_type);
-    if (!client->socket) {
-        UVRPC_LOG_ERROR("Failed to create uvzmq socket (type: %d)", zmq_type);
+    client->zmq_type = zmq_type;
+    client->next_request_id = 1;
+
+    /* 创建 ZMQ context */
+    client->zmq_ctx = zmq_ctx_new();
+    if (!client->zmq_ctx) {
+        UVRPC_LOG_ERROR("Failed to create ZMQ context");
         UVRPC_FREE(client->server_addr);
         if (client->owns_loop) {
             uv_loop_close(client->loop);
@@ -143,18 +140,31 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
         return NULL;
     }
 
-    /* 设置消息回调（除了 PUSH 和 PUB 类型不需要接收） */
-    if (zmq_type != ZMQ_PUSH && zmq_type != ZMQ_PUB) {
-        uvzmq_socket_set_recv_callback(client->socket, on_zmq_recv, client);
+    /* 创建 ZMQ socket */
+    client->zmq_sock = zmq_socket(client->zmq_ctx, zmq_type);
+    if (!client->zmq_sock) {
+        UVRPC_LOG_ERROR("Failed to create ZMQ socket (type: %d)", zmq_type);
+        UVRPC_FREE(client->server_addr);
+        zmq_ctx_term(client->zmq_ctx);
+        if (client->owns_loop) {
+            uv_loop_close(client->loop);
+            UVRPC_FREE(client->loop);
+        }
+        UVRPC_FREE(client);
+        return NULL;
     }
 
-    /* 连接到服务器（除了 PUB 和 PUSH 类型不需要连接） */
+    /* 设置 socket 选项 */
+    int linger = 0;
+    zmq_setsockopt(client->zmq_sock, ZMQ_LINGER, &linger, sizeof(linger));
+
+    /* 创建 uvzmq socket（除了 PUB 和 PUSH 类型不需要接收） */
     if (zmq_type != ZMQ_PUB && zmq_type != ZMQ_PUSH) {
-        int rc = uvzmq_socket_connect(client->socket, server_addr);
-        if (rc != 0) {
-            UVRPC_LOG_ERROR("Failed to connect to server: %s", server_addr);
-            uvzmq_socket_free(client->socket);
+        if (uvzmq_socket_new(client->loop, client->zmq_sock, on_zmq_recv, client, &client->socket) != 0) {
+            UVRPC_LOG_ERROR("Failed to create uvzmq socket (type: %d)", zmq_type);
             UVRPC_FREE(client->server_addr);
+            zmq_close(client->zmq_sock);
+            zmq_ctx_term(client->zmq_ctx);
             if (client->owns_loop) {
                 uv_loop_close(client->loop);
                 UVRPC_FREE(client->loop);
@@ -165,23 +175,57 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
     }
 
     client->pending_requests = NULL;
-    client->next_request_id = 1;
-    client->is_connected = 1;
+    client->is_connected = 0;
 
-    UVRPC_LOG_INFO("Client created and connected to: %s (ZMQ type: %d)", 
+    UVRPC_LOG_INFO("Client created with server address: %s (ZMQ type: %d)",
                    server_addr, zmq_type);
 
     return client;
 }
 
-/* 调用 RPC 服务 */
+/* 连接到服务器 */
+int uvrpc_client_connect(uvrpc_client_t* client) {
+    if (!client) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    if (client->is_connected) {
+        UVRPC_LOG_ERROR("Client is already connected");
+        return UVRPC_ERROR;
+    }
+
+    /* 连接 socket */
+    int rc = zmq_connect(client->zmq_sock, client->server_addr);
+    if (rc != 0) {
+        UVRPC_LOG_ERROR("Failed to connect to server: %s (errno: %d)", client->server_addr, zmq_errno());
+        return UVRPC_ERROR;
+    }
+
+    client->is_connected = 1;
+    UVRPC_LOG_INFO("Client connected to: %s", client->server_addr);
+
+    return UVRPC_OK;
+}
+
+/* 断开连接 */
+void uvrpc_client_disconnect(uvrpc_client_t* client) {
+    if (!client || !client->is_connected) {
+        return;
+    }
+
+    client->is_connected = 0;
+    UVRPC_LOG_INFO("Client disconnected");
+}
+
+/* 发送 RPC 请求（异步） */
 int uvrpc_client_call(uvrpc_client_t* client,
-                       const char* service_name,
+                       const char* service_id,
+                       const char* method_id,
                        const uint8_t* request_data,
                        size_t request_size,
                        uvrpc_response_callback_t callback,
                        void* ctx) {
-    if (!client || !service_name || !callback) {
+    if (!client || !service_id || !method_id) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
 
@@ -191,77 +235,58 @@ int uvrpc_client_call(uvrpc_client_t* client,
     }
 
     /* 创建请求条目 */
-    uvrpc_client_request_t* req = (uvrpc_client_request_t*)UVRPC_CALLOC(1, sizeof(uvrpc_client_request_t));
-    if (!req) {
-        UVRPC_LOG_ERROR("Failed to allocate request");
+    uvrpc_client_request_t* entry = (uvrpc_client_request_t*)UVRPC_MALLOC(sizeof(uvrpc_client_request_t));
+    if (!entry) {
+        UVRPC_LOG_ERROR("Failed to allocate request entry");
         return UVRPC_ERROR_NO_MEMORY;
     }
 
-    req->request_id = client->next_request_id++;
-    req->callback = callback;
-    req->ctx = ctx;
+    entry->request_id = client->next_request_id++;
+    entry->callback = callback;
+    entry->ctx = ctx;
 
-    /* 添加到 pending_requests */
-    HASH_ADD_INT(client->pending_requests, request_id, req);
+    /* 添加到待处理列表 */
+    HASH_ADD_INT(client->pending_requests, request_id, entry);
 
-    /* 构造请求消息 */
-    flatbuffers_builder_t* builder = flatbuffers_builder_init(1024);
-    if (!builder) {
-        UVRPC_LOG_ERROR("Failed to create flatbuffers builder");
-        HASH_DEL(client->pending_requests, req);
-        UVRPC_FREE(req);
-        return UVRPC_ERROR_NO_MEMORY;
-    }
+    /* 创建请求 */
+    uvrpc_request_t request;
+    request.request_id = entry->request_id;
+    request.service_id = (char*)service_id;
+    request.method_id = (char*)method_id;
+    request.request_data = (uint8_t*)request_data;
+    request.request_data_size = request_size;
 
-    /* 创建 service_id 字符串 */
-    flatbuffers_string_ref_t service_ref = flatbuffers_string_create(builder, service_name);
-
-    /* 创建 request_data 向量 */
-    flatbuffers_uint8_vec_ref_t request_vec_ref = 0;
-    if (request_data && request_size > 0) {
-        request_vec_ref = flatbuffers_uint8_vec_create(builder, request_data, request_size);
-    }
-
-    /* 创建 RpcRequest */
-    uvrpc_RpcRequest_start(builder);
-    uvrpc_RpcRequest_request_id_add(builder, req->request_id);
-    uvrpc_RpcRequest_service_id_add(builder, service_ref);
-    if (request_vec_ref) {
-        uvrpc_RpcRequest_request_data_add(builder, request_vec_ref);
-    }
-    flatbuffers_uint8_vec_ref_t request_ref = uvrpc_RpcRequest_end(builder);
-
-    /* 创建 RpcMessage union */
-    uvrpc_RpcMessage_start_as_RpcRequest(builder);
-    uvrpc_RpcMessage_RpcRequest_add(builder, request_ref);
-    flatbuffers_union_ref_t msg_ref = uvrpc_RpcMessage_end_as_RpcRequest(builder);
-
-    uvrpc_RpcMessage_create_as_root(builder, msg_ref);
-
-    /* 获取序列化数据 */
-    size_t msg_size;
-    const uint8_t* msg_data = flatbuffers_builder_get_data(builder, &msg_size);
-
-    /* 发送请求 */
-    zmq_msg_t request_msg;
-    zmq_msg_init_size(&request_msg, msg_size);
-    memcpy(zmq_msg_data(&request_msg), msg_data, msg_size);
-
-    int rc = uvzmq_socket_send(client->socket, &request_msg);
-    if (rc != 0) {
-        UVRPC_LOG_ERROR("Failed to send request");
-        zmq_msg_close(&request_msg);
-        flatbuffers_builder_clear(builder);
-        HASH_DEL(client->pending_requests, req);
-        UVRPC_FREE(req);
+    /* 序列化请求 */
+    uint8_t* serialized_data = NULL;
+    size_t serialized_size = 0;
+    if (uvrpc_serialize_request_msgpack(&request, &serialized_data, &serialized_size) != 0) {
+        UVRPC_LOG_ERROR("Failed to serialize request");
+        HASH_DEL(client->pending_requests, entry);
+        UVRPC_FREE(entry);
         return UVRPC_ERROR;
     }
 
-    zmq_msg_close(&request_msg);
-    flatbuffers_builder_clear(builder);
+    /* 发送请求 */
+    zmq_msg_t request_msg;
+    zmq_msg_init_size(&request_msg, serialized_size);
+    memcpy(zmq_msg_data(&request_msg), serialized_data, serialized_size);
 
-    UVRPC_LOG_DEBUG("Sent request for service: %s (request_id: %u, %zu bytes)", 
-                    service_name, req->request_id, msg_size);
+    int rc = zmq_msg_send(&request_msg, client->zmq_sock, 0);
+    if (rc < 0) {
+        UVRPC_LOG_ERROR("Failed to send request");
+        zmq_msg_close(&request_msg);
+        uvrpc_free_serialized_data(serialized_data);
+        HASH_DEL(client->pending_requests, entry);
+        UVRPC_FREE(entry);
+        return UVRPC_ERROR;
+    }
+
+    /* 清理 */
+    zmq_msg_close(&request_msg);
+    uvrpc_free_serialized_data(serialized_data);
+
+    UVRPC_LOG_DEBUG("Sent request (id: %u, service: %s, method: %s)",
+                    entry->request_id, service_id, method_id);
 
     return UVRPC_OK;
 }
@@ -272,20 +297,32 @@ void uvrpc_client_free(uvrpc_client_t* client) {
         return;
     }
 
+    /* 断开连接 */
+    uvrpc_client_disconnect(client);
+
     /* 释放所有待处理请求 */
-    uvrpc_client_request_t* req, *tmp;
-    HASH_ITER(hh, client->pending_requests, req, tmp) {
-        HASH_DEL(client->pending_requests, req);
-        UVRPC_FREE(req);
+    uvrpc_client_request_t* entry, *tmp;
+    HASH_ITER(hh, client->pending_requests, entry, tmp) {
+        HASH_DEL(client->pending_requests, entry);
+        UVRPC_FREE(entry);
     }
 
-    /* 释放 socket */
+    /* 释放 uvzmq socket */
     if (client->socket) {
-        uvzmq_socket_close(client->socket);
         uvzmq_socket_free(client->socket);
     }
 
-    /* 释放地址字符串 */
+    /* 关闭 ZMQ socket */
+    if (client->zmq_sock) {
+        zmq_close(client->zmq_sock);
+    }
+
+    /* 终止 ZMQ context */
+    if (client->zmq_ctx) {
+        zmq_ctx_term(client->zmq_ctx);
+    }
+
+    /* 释放服务器地址 */
     if (client->server_addr) {
         UVRPC_FREE(client->server_addr);
     }

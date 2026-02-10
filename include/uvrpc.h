@@ -17,6 +17,7 @@ extern "C" {
 #define UVRPC_ERROR_NO_MEMORY   -3
 #define UVRPC_ERROR_SERVICE_NOT_FOUND -4
 #define UVRPC_ERROR_TIMEOUT     -5
+#define UVRPC_ERROR_NOT_FOUND   -6
 
 /* RPC 模式枚举 */
 typedef enum {
@@ -60,20 +61,20 @@ typedef void (*uvrpc_response_callback_t)(void* ctx,
 /**
  * 创建 RPC 服务器（使用模式枚举）
  * @param loop libuv 事件循环
- * @param bind_addr 绑定地址（如 "tcp://*:5555"）
+ * @param bind_addr 绑定地址（如 "tcp://0.0.0.0:5555"）
  * @param mode RPC 模式（UVRPC_MODE_REQ_REP, UVRPC_MODE_ROUTER_DEALER 等）
  * @return 服务器实例，失败返回 NULL
  */
 uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, uvrpc_mode_t mode);
 
 /**
- * 创建 RPC 服务器（直接指定 ZMQ 类型）
+ * 创建 RPC 服务器（直接指定 Nanomq 类型）
  * @param loop libuv 事件循环
- * @param bind_addr 绑定地址（如 "tcp://*:5555"）
- * @param zmq_type ZMQ socket 类型（ZMQ_REP, ZMQ_ROUTER, ZMQ_PUB, ZMQ_PUSH 等）
+ * @param bind_addr 绑定地址（如 "tcp://0.0.0.0:5555"）
+ * @param nm_type Nanomq socket 类型（NN_REP, NN_REQ, NN_PUB, NN_SUB, NN_PUSH, NN_PULL 等）
  * @return 服务器实例，失败返回 NULL
  */
-uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int zmq_type);
+uvrpc_server_t* uvrpc_server_new_nanomq(uv_loop_t* loop, const char* bind_addr, int nm_type);
 
 /**
  * 注册服务处理器
@@ -119,13 +120,13 @@ void uvrpc_server_free(uvrpc_server_t* server);
 uvrpc_client_t* uvrpc_client_new(uv_loop_t* loop, const char* server_addr, uvrpc_mode_t mode);
 
 /**
- * 创建 RPC 客户端（直接指定 ZMQ 类型）
+ * 创建 RPC 客户端（直接指定 Nanomq 类型）
  * @param loop libuv 事件循环
  * @param server_addr 服务器地址（如 "tcp://127.0.0.1:5555"）
- * @param zmq_type ZMQ socket 类型（ZMQ_REQ, ZMQ_DEALER, ZMQ_SUB, ZMQ_PULL 等）
+ * @param nm_type Nanomq socket 类型（NN_REQ, NN_REP, NN_PUB, NN_SUB, NN_PUSH, NN_PULL 等）
  * @return 客户端实例，失败返回 NULL
  */
-uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, int zmq_type);
+uvrpc_client_t* uvrpc_client_new_nanomq(uv_loop_t* loop, const char* server_addr, int nm_type);
 
 /**
  * 异步调用 RPC 服务
@@ -139,10 +140,24 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
  */
 int uvrpc_client_call(uvrpc_client_t* client,
                        const char* service_name,
+                       const char* method_name,
                        const uint8_t* request_data,
                        size_t request_size,
                        uvrpc_response_callback_t callback,
                        void* ctx);
+
+/**
+ * 连接到服务器
+ * @param client 客户端实例
+ * @return UVRPC_OK 成功，其他值为错误码
+ */
+int uvrpc_client_connect(uvrpc_client_t* client);
+
+/**
+ * 断开连接
+ * @param client 客户端实例
+ */
+void uvrpc_client_disconnect(uvrpc_client_t* client);
 
 /**
  * 释放客户端资源

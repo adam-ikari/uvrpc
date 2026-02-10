@@ -1,8 +1,8 @@
 #include "../include/uvrpc.h"
-#include "echo_generated.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <mpack.h>
 
 /* 响应回调函数 */
 void echo_response_callback(void* ctx, int status,
@@ -15,29 +15,51 @@ void echo_response_callback(void* ctx, int status,
         return;
     }
 
-    /* 解析响应 */
-    flatbuffers_t* fb = flatbuffers_init(response_data, response_size);
-    if (!fb) {
-        fprintf(stderr, "Failed to init flatbuffers\n");
+    /* 解析响应 (使用 mpack) */
+    mpack_reader_t reader;
+    mpack_reader_init_data(&reader, (const char*)response_data, response_size);
+
+    uint32_t count = mpack_expect_map_max(&reader, 10);
+
+    char reply[1024] = {0};
+    int64_t processed_at = 0;
+
+    for (uint32_t i = count; i > 0 && mpack_reader_error(&reader) == mpack_ok; --i) {
+        char key[128];
+        mpack_expect_cstr(&reader, key, sizeof(key));
+
+        if (strcmp(key, "reply") == 0) {
+            uint32_t len = mpack_expect_str(&reader);
+            if (mpack_reader_error(&reader) == mpack_ok && len > 0 && len < sizeof(reply)) {
+                const char* str = mpack_read_bytes_inplace(&reader, len);
+                if (mpack_reader_error(&reader) == mpack_ok && str) {
+                    memcpy(reply, str, len);
+                    reply[len] = '\0';
+                }
+                mpack_done_str(&reader);
+            } else {
+                mpack_discard(&reader);
+            }
+        } else if (strcmp(key, "processed_at") == 0) {
+            processed_at = (int64_t)mpack_expect_int(&reader);
+        } else {
+            mpack_discard(&reader);
+        }
+    }
+
+    mpack_done_map(&reader);
+
+    if (mpack_reader_error(&reader) != mpack_ok) {
+        mpack_reader_destroy(&reader);
+        fprintf(stderr, "Failed to parse EchoResponse\n");
         return;
     }
 
-    echo_EchoResponse_table_t response;
-    if (!echo_EchoResponse_as_root(fb)) {
-        fprintf(stderr, "Invalid EchoResponse message\n");
-        flatbuffers_clear(fb);
-        return;
-    }
-    echo_EchoResponse_init(&response, fb);
-
-    /* 获取响应数据 */
-    const char* reply = echo_EchoResponse_reply(&response);
-    int64_t processed_at = echo_EchoResponse_processed_at(&response);
+    mpack_reader_destroy(&reader);
 
     printf("[Echo Client] Request: %s\n", request_message);
     printf("[Echo Client] Response: %s (processed at: %ld)\n", reply, (long)processed_at);
-
-    flatbuffers_clear(fb);
+    fflush(stdout);
 }
 
 int main(int argc, char** argv) {
@@ -47,6 +69,7 @@ int main(int argc, char** argv) {
     uvrpc_mode_t mode = (uvrpc_mode_t)mode_arg;
 
     printf("Starting Echo Client connecting to %s (mode: %s)\n", server_addr, uvrpc_mode_name(mode));
+    fflush(stdout);
 
     /* 创建 libuv 事件循环 */
     uv_loop_t* loop = uv_default_loop();
@@ -58,47 +81,53 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printf("Echo Client connected to server\n");
-
-    /* 构造请求 */
-    flatbuffers_builder_t* builder = flatbuffers_builder_init(1024);
-    if (!builder) {
-        fprintf(stderr, "Failed to create flatbuffers builder\n");
+    /* 连接到服务器 */
+    if (uvrpc_client_connect(client) != UVRPC_OK) {
+        fprintf(stderr, "Failed to connect to server\n");
         uvrpc_client_free(client);
         return 1;
     }
 
-    /* 创建 message 字符串 */
-    flatbuffers_string_ref_t message_ref = flatbuffers_string_create(builder, message);
+    printf("Echo Client connected to server\n");
+    fflush(stdout);
 
-    /* 获取当前时间戳 */
-    int64_t timestamp = time(NULL);
+    /* 构造请求 (使用 mpack) */
+    char buffer[4096];
+    mpack_writer_t writer;
+    mpack_writer_init(&writer, buffer, sizeof(buffer));
 
-    /* 创建 EchoRequest */
-    echo_EchoRequest_start(builder);
-    echo_EchoRequest_message_add(builder, message_ref);
-    echo_EchoRequest_timestamp_add(builder, timestamp);
-    flatbuffers_uint8_vec_ref_t request_ref = echo_EchoRequest_end(builder);
+    mpack_start_map(&writer, 2);
 
-    echo_EchoRequest_create_as_root(builder, request_ref);
+    /* message 字段 */
+    mpack_write_cstr(&writer, "message");
+    mpack_write_cstr(&writer, message);
 
-    /* 获取序列化数据 */
-    size_t request_size;
-    const uint8_t* request_data = flatbuffers_builder_get_data(builder, &request_size);
+    /* timestamp 字段 */
+    mpack_write_cstr(&writer, "timestamp");
+    mpack_write_int(&writer, (int64_t)time(NULL));
+
+    mpack_finish_map(&writer);
+
+    if (mpack_writer_error(&writer) != mpack_ok) {
+        fprintf(stderr, "Failed to build EchoRequest\n");
+        uvrpc_client_free(client);
+        return 1;
+    }
+
+    size_t request_size = mpack_writer_buffer_used(&writer);
 
     /* 调用 Echo 服务 */
-    int rc = uvrpc_client_call(client, "echo.EchoService", request_data, request_size,
+    int rc = uvrpc_client_call(client, "echo.EchoService", "Echo",
+                               (const uint8_t*)buffer, request_size,
                                echo_response_callback, (void*)message);
     if (rc != UVRPC_OK) {
         fprintf(stderr, "Failed to call echo service: %s\n", uvrpc_strerror(rc));
-        flatbuffers_builder_clear(builder);
         uvrpc_client_free(client);
         return 1;
     }
 
-    flatbuffers_builder_clear(builder);
-
     printf("Echo Client sent request, waiting for response...\n");
+    fflush(stdout);
 
     /* 运行事件循环（处理响应） */
     uv_run(loop, UV_RUN_DEFAULT);

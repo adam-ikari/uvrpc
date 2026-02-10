@@ -13,3 +13,6 @@
 [submodule "zeromq"]
 	path = deps/zeromq
 	url = https://github.com/zeromq/libzmq.git
+[submodule "msgpack-c"]
+	path = deps/msgpack-c
+	url = https://github.com/ludocode/mpack.git
