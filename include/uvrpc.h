@@ -68,13 +68,13 @@ typedef void (*uvrpc_response_callback_t)(void* ctx,
 uvrpc_server_t* uvrpc_server_new(uv_loop_t* loop, const char* bind_addr, uvrpc_mode_t mode);
 
 /**
- * 创建 RPC 服务器（直接指定 Nanomq 类型）
+ * 创建 RPC 服务器（直接指定 ZMQ socket 类型）
  * @param loop libuv 事件循环
  * @param bind_addr 绑定地址（如 "tcp://0.0.0.0:5555"）
- * @param nm_type Nanomq socket 类型（NN_REP, NN_REQ, NN_PUB, NN_SUB, NN_PUSH, NN_PULL 等）
+ * @param zmq_type ZMQ socket 类型（ZMQ_REP, ZMQ_REQ, ZMQ_PUB, ZMQ_SUB, ZMQ_PUSH, ZMQ_PULL 等）
  * @return 服务器实例，失败返回 NULL
  */
-uvrpc_server_t* uvrpc_server_new_nanomq(uv_loop_t* loop, const char* bind_addr, int nm_type);
+uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int zmq_type);
 
 /**
  * 注册服务处理器
@@ -132,7 +132,8 @@ uvrpc_client_t* uvrpc_client_new_nanomq(uv_loop_t* loop, const char* server_addr
  * 异步调用 RPC 服务
  * @param client 客户端实例
  * @param service_name 服务名称
- * @param request_data flatbuffers 序列化的请求数据
+ * @param method_name 方法名称
+ * @param request_data msgpack 序列化的请求数据
  * @param request_size 请求数据大小
  * @param callback 响应回调函数
  * @param ctx 用户自定义上下文（传递给 callback）

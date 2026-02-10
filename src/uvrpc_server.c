@@ -11,7 +11,7 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     (void)socket;  /* 未使用参数 */
     uvrpc_server_t* server = (uvrpc_server_t*)arg;
 
-    if (!server || !server->is_running) {
+    if (!server || !server->is_running || !server->zmq_sock) {
         return;
     }
 
@@ -107,7 +107,9 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     /* 清理 */
     zmq_msg_close(&response_msg);
     uvrpc_free_serialized_data(serialized_data);
-    UVRPC_FREE(resp_data);
+    if (resp_data) {
+        UVRPC_FREE(resp_data);
+    }
     uvrpc_free_request(&request);
 }
 
@@ -246,7 +248,7 @@ int uvrpc_server_register_service(uvrpc_server_t* server,
                                    const char* service_name,
                                    uvrpc_service_handler_t handler,
                                    void* ctx) {
-    if (!server || !service_name || !handler) {
+    if (!server || !service_name || !*service_name || !handler) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
 

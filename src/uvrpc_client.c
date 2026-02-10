@@ -225,7 +225,7 @@ int uvrpc_client_call(uvrpc_client_t* client,
                        size_t request_size,
                        uvrpc_response_callback_t callback,
                        void* ctx) {
-    if (!client || !service_id || !method_id) {
+    if (!client || !service_id || !*service_id || !method_id || !*method_id) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
 
