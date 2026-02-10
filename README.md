@@ -1,37 +1,36 @@
-# uvrpc - 基于 FlatBuffers 和 uvzmq 的 RPC 框架
+# uvrpc - 基于 msgpack 和 Nanomsg 的 RPC 框架
 
-一个极简、高性能的 RPC 框架，基于 FlatBuffers 服务定义 DSL 和 uvzmq（libuv + ZeroMQ）。
+一个极简、高性能的 RPC 框架，基于 msgpack 二进制序列化和 Nanomsg（纯 C 实现）。
 
 ## 特性
 
 - **极简设计**：单头文件 API，仅 4-5 个核心函数
 - **高性能**：零拷贝，基于 libuv 事件循环
-- **类型安全**：使用 FlatBuffers 强类型服务定义
+- **纯 C 实现**：使用 Nanomsg 替代 ZeroMQ，无需 C++ 依赖
+- **二进制序列化**：使用 msgpack 高效序列化
 - **异步非阻塞**：完全基于事件循环模型
 - **透明度高**：结构体公开，无隐藏魔法
 
 ## 依赖
 
 - libuv (>= 1.0)
-- ZeroMQ (>= 4.0)
-- FlatBuffers
+- Nanomsg (>= 1.0) - 纯 C 实现
+- msgpack (mpack 实现)
 - uthash
-- uvzmq (同项目下的 libuv + ZeroMQ 绑定)
 
 ## 编译
 
 ```bash
-# 安装依赖
-sudo apt-get install libuv-dev libzmq3-dev libflatbuffers-dev
+# 克隆项目（包含所有子模块）
+git clone --recursive https://github.com/your-org/uvrpc.git
+cd uvrpc
 
 # 编译
-mkdir build && cd build
-cmake ..
-make
+./build.sh
 
 # 运行示例
-./echo_server
-./echo_client
+./build/echo_server
+./build/echo_client "Hello, uvrpc!"
 ```
 
 ## API 使用
@@ -110,44 +109,45 @@ int main() {
 }
 ```
 
-## FlatBuffers 服务定义
+## 消息格式
 
-```flatbuffers
-namespace echo;
+RPC 消息使用 msgpack 二进制格式：
 
-// 请求
-table EchoRequest {
-    message: string;
-    timestamp: int64;
-}
-
-// 响应
-table EchoResponse {
-    reply: string;
-    processed_at: int64;
-}
-
-// 服务定义
-rpc_service EchoService {
-    Echo(EchoRequest): EchoResponse;
+### 请求格式 (map)
+```json
+{
+    "request_id": uint32,
+    "service_id": string,
+    "method_id": string,
+    "request_data": binary
 }
 ```
 
-## 消息格式
-
-RPC 消息使用 FlatBuffers 定义：
-
-```flatbuffers
-table RpcRequest {
-    service_id: string;
-    method_id: string;
-    request_data: [ubyte];
+### 响应格式 (map)
+```json
+{
+    "request_id": uint32,
+    "status": int32,
+    "error_message": string,
+    "response_data": binary
 }
+```
 
-table RpcResponse {
-    status: int32;
-    response_data: [ubyte];
-    error_message: string;
+### Echo 服务示例
+
+**EchoRequest (map)**
+```json
+{
+    "message": string,
+    "timestamp": int64
+}
+```
+
+**EchoResponse (map)**
+```json
+{
+    "reply": string,
+    "processed_at": int64
 }
 ```
 
@@ -164,17 +164,27 @@ table RpcResponse {
 
 ```
 uvrpc/
-├── include/uvrpc.h          # 公共头文件
+├── include/uvrpc.h                 # 公共头文件
 ├── src/
-│   ├── uvrpc_internal.h     # 内部头文件
-│   ├── uvrpc_server.c       # 服务端实现
-│   └── uvrpc_client.c       # 客户端实现
+│   ├── uvrpc_internal.h            # 内部头文件
+│   ├── uvrpc_server.c              # 服务端实现
+│   ├── uvrpc_client.c              # 客户端实现
+│   ├── msgpack_wrapper.h           # msgpack 序列化接口
+│   └── msgpack_wrapper.c           # msgpack 序列化实现
 ├── examples/
-│   ├── rpc.fbs              # RPC 消息定义
-│   ├── echo.fbs             # Echo 服务定义
-│   ├── echo_server.c        # 示例服务端
-│   └── echo_client.c        # 示例客户端
+│   ├── echo_service.yaml           # Echo 服务定义 (YAML DSL)
+│   ├── echo_server.c               # 示例服务端
+│   └── echo_client.c               # 示例客户端
+├── docs/
+│   └── YAML_RPC_DSL.md             # YAML DSL 文档
+├── deps/                           # 依赖（git submodules）
+│   ├── libuv/
+│   ├── zeromq/
+│   ├── msgpack-c/                  # mpack 实现
+│   ├── uvzmq/
+│   └── uthash/
 ├── CMakeLists.txt
+├── build.sh
 └── README.md
 ```
 

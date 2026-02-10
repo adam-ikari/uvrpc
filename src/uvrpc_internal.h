@@ -28,6 +28,12 @@ struct uvrpc_server {
     uvrpc_service_entry_t* services;    /* 服务注册表 */
     int owns_loop;                      /* 是否拥有 loop 的所有权 */
     int is_running;                     /* 运行状态 */
+    
+    /* ROUTER 模式多部分消息状态 */
+    uint8_t routing_id[256];            /* 存储客户端路由标识 */
+    size_t routing_id_size;             /* 路由标识大小 */
+    int has_routing_id;                 /* 是否已接收到路由帧 */
+    int router_state;                   /* ROUTER 状态：0=等待空帧, 1=等待数据帧 */
 };
 
 /* 客户端请求上下文 */
@@ -55,48 +61,48 @@ struct uvrpc_client {
 /* 内存分配器配置
  * 
  * 通过编译宏选择内存分配器：
- * - 默认：mimalloc（高性能、低碎片）
- * - UVRPC_ALLOCATOR_SYSTEM：使用系统 malloc/free
- * - UVRPC_ALLOCATOR_CUSTOM：使用自定义分配器（需定义 UVRPC_CUSTOM_MALLOC/FREE）
+ * - 默认：系统 malloc/free
+ * - UVRPC_USE_MIMALLOC：使用 mimalloc（高性能、低碎片）
+ * - UVRPC_USE_CUSTOM_ALLOCATOR：使用自定义分配器（需定义 UVRPC_CUSTOM_MALLOC/FREE）
  */
-#ifndef UVRPC_ALLOCATOR_SYSTEM
-#ifndef UVRPC_ALLOCATOR_CUSTOM
-/* 默认使用 mimalloc */
-#include <mimalloc.h>
-#define UVRPC_MALLOC(size)      mi_malloc(size)
-#define UVRPC_CALLOC(n, size)   mi_calloc(n, size)
-#define UVRPC_REALLOC(ptr, size) mi_realloc(ptr, size)
-#define UVRPC_FREE(ptr)         do { if (ptr) { mi_free(ptr); ptr = NULL; } } while(0)
-#else
-/* 自定义分配器 */
-#ifdef UVRPC_CUSTOM_MALLOC
-#define UVRPC_MALLOC(size)      UVRPC_CUSTOM_MALLOC(size)
-#else
-#error "UVRPC_ALLOCATOR_CUSTOM defined but UVRPC_CUSTOM_MALLOC not defined"
-#endif
-#ifdef UVRPC_CUSTOM_CALLOC
-#define UVRPC_CALLOC(n, size)   UVRPC_CUSTOM_CALLOC(n, size)
-#else
-#error "UVRPC_ALLOCATOR_CUSTOM defined but UVRPC_CUSTOM_CALLOC not defined"
-#endif
-#ifdef UVRPC_CUSTOM_REALLOC
-#define UVRPC_REALLOC(ptr, size) UVRPC_CUSTOM_REALLOC(ptr, size)
-#else
-#error "UVRPC_ALLOCATOR_CUSTOM defined but UVRPC_CUSTOM_REALLOC not defined"
-#endif
-#ifdef UVRPC_CUSTOM_FREE
-#define UVRPC_FREE(ptr)         do { if (ptr) { UVRPC_CUSTOM_FREE(ptr); ptr = NULL; } } while(0)
-#else
-#error "UVRPC_ALLOCATOR_CUSTOM defined but UVRPC_CUSTOM_FREE not defined"
-#endif
-#endif
-#else
-/* 使用系统分配器 */
+#ifndef UVRPC_USE_MIMALLOC
+#ifndef UVRPC_USE_CUSTOM_ALLOCATOR
+/* 默认使用系统分配器 */
 #include <stdlib.h>
 #define UVRPC_MALLOC(size)      malloc(size)
 #define UVRPC_CALLOC(n, size)   calloc(n, size)
 #define UVRPC_REALLOC(ptr, size) realloc(ptr, size)
 #define UVRPC_FREE(ptr)         do { if (ptr) { free(ptr); ptr = NULL; } } while(0)
+#else
+/* 自定义分配器 */
+#ifdef UVRPC_CUSTOM_MALLOC
+#define UVRPC_MALLOC(size)      UVRPC_CUSTOM_MALLOC(size)
+#else
+#error "UVRPC_USE_CUSTOM_ALLOCATOR defined but UVRPC_CUSTOM_MALLOC not defined"
+#endif
+#ifdef UVRPC_CUSTOM_CALLOC
+#define UVRPC_CALLOC(n, size)   UVRPC_CUSTOM_CALLOC(n, size)
+#else
+#error "UVRPC_USE_CUSTOM_ALLOCATOR defined but UVRPC_CUSTOM_CALLOC not defined"
+#endif
+#ifdef UVRPC_CUSTOM_REALLOC
+#define UVRPC_REALLOC(ptr, size) UVRPC_CUSTOM_REALLOC(ptr, size)
+#else
+#error "UVRPC_USE_CUSTOM_ALLOCATOR defined but UVRPC_CUSTOM_REALLOC not defined"
+#endif
+#ifdef UVRPC_CUSTOM_FREE
+#define UVRPC_FREE(ptr)         do { if (ptr) { UVRPC_CUSTOM_FREE(ptr); ptr = NULL; } } while(0)
+#else
+#error "UVRPC_USE_CUSTOM_ALLOCATOR defined but UVRPC_CUSTOM_FREE not defined"
+#endif
+#endif
+#else
+/* 使用 mimalloc */
+#include <mimalloc.h>
+#define UVRPC_MALLOC(size)      mi_malloc(size)
+#define UVRPC_CALLOC(n, size)   mi_calloc(n, size)
+#define UVRPC_REALLOC(ptr, size) mi_realloc(ptr, size)
+#define UVRPC_FREE(ptr)         do { if (ptr) { mi_free(ptr); ptr = NULL; } } while(0)
 #endif
 
 /* 日志宏 */

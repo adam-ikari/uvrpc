@@ -17,8 +17,15 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     }
 
     /* 获取消息数据 */
-    void* data = zmq_msg_data(msg);
     size_t size = zmq_msg_size(msg);
+    void* data = zmq_msg_data(msg);
+    
+    /* DEALER 模式：跳过空帧（ZMQ 应该自动剥离，但保险起见检查） */
+    if (client->zmq_type == ZMQ_DEALER && size == 0) {
+        return;
+    }
+
+    UVRPC_LOG_DEBUG("Client received %zu bytes", size);
 
     UVRPC_LOG_DEBUG("Client received %zu bytes", size);
 
@@ -157,6 +164,17 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
     /* 设置 socket 选项 */
     int linger = 0;
     zmq_setsockopt(client->zmq_sock, ZMQ_LINGER, &linger, sizeof(linger));
+    
+    /* ROUTER/DEALER 模式：设置客户端标识 */
+    if (zmq_type == ZMQ_DEALER) {
+        char identity[32];
+        snprintf(identity, sizeof(identity), "client-%p", (void*)client);
+        zmq_setsockopt(client->zmq_sock, ZMQ_IDENTITY, identity, strlen(identity));
+        
+        /* 禁用路由器探测（DEALER 默认不需要） */
+        int probe_router = 0;
+        zmq_setsockopt(client->zmq_sock, ZMQ_PROBE_ROUTER, &probe_router, sizeof(probe_router));
+    }
 
     /* 创建 uvzmq socket（除了 PUB 和 PUSH 类型不需要接收） */
     if (zmq_type != ZMQ_PUB && zmq_type != ZMQ_PUSH) {
@@ -256,7 +274,7 @@ int uvrpc_client_call(uvrpc_client_t* client,
     request.request_data = (uint8_t*)request_data;
     request.request_data_size = request_size;
 
-    /* 序列化请求 */
+/* 序列化请求 */
     uint8_t* serialized_data = NULL;
     size_t serialized_size = 0;
     if (uvrpc_serialize_request_msgpack(&request, &serialized_data, &serialized_size) != 0) {
@@ -266,23 +284,26 @@ int uvrpc_client_call(uvrpc_client_t* client,
         return UVRPC_ERROR;
     }
 
-    /* 发送请求 */
-    zmq_msg_t request_msg;
-    zmq_msg_init_size(&request_msg, serialized_size);
-    memcpy(zmq_msg_data(&request_msg), serialized_data, serialized_size);
-
-    int rc = zmq_msg_send(&request_msg, client->zmq_sock, 0);
+/* DEALER 模式：发送空帧 + 数据帧 */
+    int rc = 0;
+    if (client->zmq_type == ZMQ_DEALER) {
+        /* 发送空帧 */
+        zmq_send(client->zmq_sock, NULL, 0, ZMQ_SNDMORE);
+    }
+    
+    /* 发送数据帧 */
+    rc = zmq_send(client->zmq_sock, serialized_data, serialized_size, 0);
     if (rc < 0) {
-        UVRPC_LOG_ERROR("Failed to send request");
-        zmq_msg_close(&request_msg);
+        UVRPC_LOG_ERROR("Failed to send request (errno: %d, msg: %s)", zmq_errno(), zmq_strerror(zmq_errno()));
         uvrpc_free_serialized_data(serialized_data);
         HASH_DEL(client->pending_requests, entry);
         UVRPC_FREE(entry);
         return UVRPC_ERROR;
     }
 
+    fprintf(stderr, "[CLIENT] Sent request (id: %u, size: %zu)\n", entry->request_id, serialized_size);
+
     /* 清理 */
-    zmq_msg_close(&request_msg);
     uvrpc_free_serialized_data(serialized_data);
 
     UVRPC_LOG_DEBUG("Sent request (id: %u, service: %s, method: %s)",
@@ -336,4 +357,11 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     UVRPC_FREE(client);
 
     UVRPC_LOG_INFO("Client freed");
+}
+
+void* uvrpc_client_get_zmq_socket(uvrpc_client_t* client) {
+    if (!client) {
+        return NULL;
+    }
+    return client->zmq_sock;
 }

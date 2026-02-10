@@ -239,6 +239,16 @@ void uvrpc_client_disconnect(uvrpc_client_t* client);
  */
 void uvrpc_client_free(uvrpc_client_t* client);
 
+/**
+ * 获取客户端的底层 ZMQ socket（高级用法）
+ * 
+ * @warning 此函数仅用于高级用例（如性能测试）。直接操作 ZMQ socket 可能导致意外行为。
+ * 
+ * @param client 客户端实例
+ * @return ZMQ socket 指针，如果 client 无效则返回 NULL
+ */
+void* uvrpc_client_get_zmq_socket(uvrpc_client_t* client);
+
 /* ==================== 异步调用 API (类似 JS await) ==================== */
 
 /**

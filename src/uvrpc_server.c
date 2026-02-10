@@ -3,8 +3,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* 前向声明 */
-uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int zmq_type);
+/* ZMQ 消息释放回调 */
+static void zmq_free_wrapper(void* data, void* hint) {
+    (void)hint;  /* 未使用 */
+    free(data);
+}
 
 /* uvzmq 接收回调 */
 static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
@@ -15,6 +18,148 @@ static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
         return;
     }
 
+    /* ROUTER 模式：接收多部分消息（路由帧 + 空帧 + 数据帧） */
+    if (server->zmq_type == ZMQ_ROUTER) {
+        size_t frame_size = zmq_msg_size(msg);
+        void* frame_data = zmq_msg_data(msg);
+        
+if (!server->has_routing_id) {
+            /* 第一帧：路由帧 */
+            memcpy(server->routing_id, frame_data, frame_size);
+            server->routing_id_size = frame_size;
+            server->has_routing_id = 1;
+            return;
+        } else if (server->router_state == 0) {
+            /* 第二帧：空帧（DEALER 添加的分隔符） */
+            if (frame_size != 0) {
+                UVRPC_LOG_ERROR("ROUTER: Expected empty frame, got %zu bytes", frame_size);
+                server->router_state = 0;
+                server->has_routing_id = 0;
+                return;
+            }
+            server->router_state = 1;
+            return;
+        } else {
+            /* 第三帧：数据帧 */
+            fprintf(stderr, "[SERVER] Processing data frame (size: %zu)\n", frame_size);
+            
+            /* 解析 msgpack 请求 */
+            uvrpc_request_t request;
+            if (uvrpc_deserialize_request_msgpack(frame_data, frame_size, &request) != 0) {
+                UVRPC_LOG_ERROR("Failed to deserialize request");
+                server->has_routing_id = 0;
+                server->router_state = 0;
+                return;
+            }
+        
+            UVRPC_LOG_DEBUG("ROUTER: Received request (routing_id_size=%zu), service: %s, method: %s", 
+                           server->routing_id_size, request.service_id, request.method_id);
+            fprintf(stderr, "[SERVER] Request: service=%s, method=%s\n", request.service_id, request.method_id);
+            
+            /* 查找服务处理器 */
+            uvrpc_service_entry_t* entry = NULL;
+            HASH_FIND_STR(server->services, request.service_id, entry);
+            
+            if (!entry) {
+                /* 发送服务未找到错误响应 */
+                uvrpc_response_t response;
+                response.request_id = request.request_id;
+                response.status = UVRPC_ERROR_SERVICE_NOT_FOUND;
+                response.error_message = (char*)"Service not found";
+                response.response_data = NULL;
+                response.response_data_size = 0;
+                
+                uint8_t* serialized_data = NULL;
+                size_t serialized_size = 0;
+                if (uvrpc_serialize_response_msgpack(&response, &serialized_data, &serialized_size) != 0) {
+                    UVRPC_LOG_ERROR("Failed to serialize error response");
+                    uvrpc_free_request(&request);
+                    server->has_routing_id = 0;
+                    server->router_state = 0;
+                    return;
+                }
+                
+                /* ROUTER 模式：发送路由帧 + 空帧 + 数据帧 */
+                zmq_msg_t routing_msg;
+                zmq_msg_init_data(&routing_msg, server->routing_id, server->routing_id_size, NULL, NULL);
+                zmq_msg_send(&routing_msg, server->zmq_sock, ZMQ_SNDMORE);
+                
+                zmq_msg_t empty_msg;
+                zmq_msg_init(&empty_msg);
+                zmq_msg_send(&empty_msg, server->zmq_sock, ZMQ_SNDMORE);
+                zmq_msg_close(&empty_msg);
+                
+                zmq_msg_t response_msg;
+                zmq_msg_init_data(&response_msg, serialized_data, serialized_size, 
+                                 zmq_free_wrapper, NULL);
+                zmq_msg_send(&response_msg, server->zmq_sock, 0);
+                
+                uvrpc_free_request(&request);
+                server->has_routing_id = 0;
+                server->router_state = 0;
+                return;
+            }
+            
+            /* 调用服务处理器 */
+            uint8_t* resp_data = NULL;
+            size_t resp_size = 0;
+            int status = entry->handler(entry->ctx,
+                                        request.request_data,
+                                        request.request_data_size,
+                                        &resp_data,
+                                        &resp_size);
+            
+            /* 创建响应 */
+            uvrpc_response_t response;
+            response.request_id = request.request_id;
+            response.status = status;
+            response.error_message = (status == 0) ? NULL : (char*)"Service handler error";
+            response.response_data = resp_data;
+            response.response_data_size = resp_size;
+            
+            /* 序列化响应 */
+            uint8_t* serialized_data = NULL;
+            size_t serialized_size = 0;
+            if (uvrpc_serialize_response_msgpack(&response, &serialized_data, &serialized_size) != 0) {
+                UVRPC_LOG_ERROR("Failed to serialize response");
+                
+                if (resp_data) free(resp_data);
+                uvrpc_free_request(&request);
+                server->has_routing_id = 0;
+                server->router_state = 0;
+                return;
+            }
+            
+            /* ROUTER 模式：发送路由帧 + 空帧 + 数据帧 */
+            zmq_msg_t routing_msg;
+            zmq_msg_init_data(&routing_msg, server->routing_id, server->routing_id_size, NULL, NULL);
+            zmq_msg_send(&routing_msg, server->zmq_sock, ZMQ_SNDMORE);
+            
+            zmq_msg_t empty_msg;
+            zmq_msg_init(&empty_msg);
+            zmq_msg_send(&empty_msg, server->zmq_sock, ZMQ_SNDMORE);
+            zmq_msg_close(&empty_msg);
+            
+            zmq_msg_t response_msg;
+            zmq_msg_init_data(&response_msg, serialized_data, serialized_size, 
+                             zmq_free_wrapper, NULL);
+            zmq_msg_send(&response_msg, server->zmq_sock, 0);
+            
+            /* 清理 */
+            uvrpc_free_request(&request);
+            server->has_routing_id = 0;
+            server->router_state = 0;
+            
+            /* 释放响应数据 */
+            if (resp_data) {
+                free(resp_data);
+            }
+            
+            return;
+        }
+    }
+    
+    /* 非 ROUTER 模式（REQ/REP 等）：直接处理消息 */
     /* 获取消息数据 */
     void* data = zmq_msg_data(msg);
     size_t size = zmq_msg_size(msg);
@@ -217,6 +362,13 @@ uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int
     /* 设置 socket 选项 */
     int linger = 0;
     zmq_setsockopt(server->zmq_sock, ZMQ_LINGER, &linger, sizeof(linger));
+    
+    /* ROUTER 模式特定选项 */
+    if (zmq_type == ZMQ_ROUTER) {
+        /* 设置路由器手动模式（避免自动连接） */
+        int router_mandatory = 0;
+        zmq_setsockopt(server->zmq_sock, ZMQ_ROUTER_MANDATORY, &router_mandatory, sizeof(router_mandatory));
+    }
 
     /* 创建 uvzmq socket（除了 PUB 和 PUSH 类型不需要接收） */
     if (zmq_type != ZMQ_PUB && zmq_type != ZMQ_PUSH) {
@@ -236,6 +388,12 @@ uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int
 
     server->services = NULL;
     server->is_running = 0;
+    
+    /* 初始化 ROUTER 模式状态 */
+    server->has_routing_id = 0;
+    server->router_state = 0;
+    server->routing_id_size = 0;
+    memset(server->routing_id, 0, sizeof(server->routing_id));
 
     UVRPC_LOG_INFO("Server created with bind address: %s (ZMQ type: %d)",
                    bind_addr, zmq_type);
