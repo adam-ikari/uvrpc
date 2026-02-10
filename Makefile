@@ -1,12 +1,30 @@
 .PHONY: all build clean test install deps help run-server run-client e2e e2e-quick
 
+# 内存分配器选择
+ifndef UVRPC_ALLOCATOR
+UVRPC_ALLOCATOR=mimalloc
+endif
+
+ifeq ($(UVRPC_ALLOCATOR),mimalloc)
+	CMAKE_FLAGS += -DUVRPC_USE_MIMALLOC=ON
+	ALLOCATOR_MSG="mimalloc (高性能)"
+else ifeq ($(UVRPC_ALLOCATOR),system)
+	CMAKE_FLAGS += -DUVRPC_USE_SYSTEM_ALLOCATOR=ON
+	ALLOCATOR_MSG="系统 malloc/free"
+else
+	CMAKE_FLAGS += -DUVRPC_USE_CUSTOM_ALLOCATOR=ON
+	ALLOCATOR_MSG="自定义"
+endif
+
 # 默认目标
 all: build
+	@echo "✓ 使用分配器: $(ALLOCATOR_MSG)"
 
 # 构建项目
 build:
-	@echo "Building uvrpc..."
-	./build.sh
+	@echo "Building uvrpc with $(ALLOCATOR_MSG)..."
+	@mkdir -p build
+	@cd build && cmake .. $(CMAKE_FLAGS) && make -j$$(nproc)
 
 # 清理构建产物
 clean:
@@ -120,9 +138,16 @@ help:
 	@echo "  make docs         - 生成文档"
 	@echo "  make help         - 显示此帮助信息"
 	@echo ""
+	@echo "内存分配器选项:"
+	@echo "  UVRPC_ALLOCATOR=mimalloc  - 使用 mimalloc（默认）"
+	@echo "  UVRPC_ALLOCATOR=system    - 使用系统 malloc/free"
+	@echo "  UVRPC_ALLOCATOR=custom    - 使用自定义分配器"
+	@echo ""
 	@echo "示例:"
-	@echo "  make              # 构建项目"
-	@echo "  make e2e          # 运行完整 E2E 测试"
-	@echo "  make e2e-quick    # 运行快速 E2E 测试"
-	@echo "  make run-server   # 启动服务器"
-	@echo "  make run-client   # 启动客户端"
+	@echo "  make                      # 使用 mimalloc 构建"
+	@echo "  make UVRPC_ALLOCATOR=system # 使用系统分配器"
+	@echo "  make UVRPC_ALLOCATOR=custom # 使用自定义分配器"
+	@echo "  make e2e                   # 运行完整 E2E 测试"
+	@echo "  make e2e-quick             # 运行快速 E2E 测试"
+	@echo "  make run-server            # 启动服务器"
+	@echo "  make run-client            # 启动客户端"

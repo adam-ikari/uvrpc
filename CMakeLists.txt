@@ -4,6 +4,22 @@ project(uvrpc C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
+# 内存分配器选择
+option(UVRPC_USE_SYSTEM_ALLOCATOR "Use system malloc/free instead of mimalloc" OFF)
+option(UVRPC_USE_CUSTOM_ALLOCATOR "Use custom allocator (define UVRPC_CUSTOM_MALLOC/FREE)" OFF)
+
+if(NOT UVRPC_USE_SYSTEM_ALLOCATOR AND NOT UVRPC_USE_CUSTOM_ALLOCATOR)
+    # 默认使用 mimalloc
+    message(STATUS "Using mimalloc allocator (default)")
+    add_definitions(-DMIMALLOC_DISABLE_OVERFLOW_CHECKS)
+elseif(UVRPC_USE_SYSTEM_ALLOCATOR)
+    message(STATUS "Using system allocator (malloc/free)")
+    add_definitions(-DUVRPC_ALLOCATOR_SYSTEM)
+elseif(UVRPC_USE_CUSTOM_ALLOCATOR)
+    message(STATUS "Using custom allocator (define UVRPC_CUSTOM_MALLOC/FREE)")
+    add_definitions(-DUVRPC_ALLOCATOR_CUSTOM)
+endif()
+
 # Git submodule 依赖路径
 set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/deps)
 
