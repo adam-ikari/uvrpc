@@ -2,18 +2,18 @@
 
 # 内存分配器选择
 ifndef UVRPC_ALLOCATOR
-UVRPC_ALLOCATOR=mimalloc
+UVRPC_ALLOCATOR=system
 endif
 
 ifeq ($(UVRPC_ALLOCATOR),mimalloc)
 	CMAKE_FLAGS += -DUVRPC_USE_MIMALLOC=ON
-	ALLOCATOR_MSG="mimalloc (高性能)"
-else ifeq ($(UVRPC_ALLOCATOR),system)
-	CMAKE_FLAGS += -DUVRPC_USE_SYSTEM_ALLOCATOR=ON
-	ALLOCATOR_MSG="系统 malloc/free"
-else
+	ALLOCATOR_MSG="mimalloc（高性能）"
+else ifeq ($(UVRPC_ALLOCATOR),custom)
 	CMAKE_FLAGS += -DUVRPC_USE_CUSTOM_ALLOCATOR=ON
 	ALLOCATOR_MSG="自定义"
+else
+	CMAKE_FLAGS +=
+	ALLOCATOR_MSG="系统 malloc/free（默认）"
 endif
 
 # 默认目标
@@ -45,7 +45,8 @@ deps-build:
 	@./build/deps/build_deps.sh || (echo "Building deps manually..." && \
 		cd deps/libuv && if [ ! -d "build" ]; then mkdir build; fi && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && make -j$$(nproc) && \
 		cd ../../uvzmq && if [ ! -d "build" ]; then mkdir build; fi && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DUVZMQ_BUILD_TESTS=OFF -DUVZMQ_BUILD_BENCHMARKS=OFF -DUVZMQ_BUILD_EXAMPLES=OFF && make -j$$(nproc) && \
-		cd ../third_party/zmq && if [ ! -d "build" ]; then mkdir build; fi && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CURVE=OFF -DENABLE_DRAFTS=OFF -DWITH_PERF_TOOL=OFF -DBUILD_SHARED_LIBS=OFF -DZMQ_BUILD_TESTS=OFF && make -j$$(nproc))
+		cd ../third_party/zmq && if [ ! -d "build" ]; then mkdir build; fi && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CURVE=OFF -DENABLE_DRAFTS=OFF -DWITH_PERF_TOOL=OFF -DBUILD_SHARED_LIBS=OFF -DZMQ_BUILD_TESTS=OFF && make -j$$(nproc) && \
+		cd ../../mimalloc && mkdir -p build && cd build && cmake .. -DMI_BUILD_SHARED=OFF -DMI_BUILD_TESTS=OFF -DMI_BUILD_OBJECT=OFF && make -j$$(nproc))
 
 # 运行测试
 test:
@@ -139,15 +140,15 @@ help:
 	@echo "  make help         - 显示此帮助信息"
 	@echo ""
 	@echo "内存分配器选项:"
-	@echo "  UVRPC_ALLOCATOR=mimalloc  - 使用 mimalloc（默认）"
-	@echo "  UVRPC_ALLOCATOR=system    - 使用系统 malloc/free"
-	@echo "  UVRPC_ALLOCATOR=custom    - 使用自定义分配器"
+	@echo "  UVRPC_ALLOCATOR=system   - 使用系统 malloc/free（默认）"
+	@echo "  UVRPC_ALLOCATOR=mimalloc - 使用 mimalloc（高性能）"
+	@echo "  UVRPC_ALLOCATOR=custom   - 使用自定义分配器"
 	@echo ""
 	@echo "示例:"
-	@echo "  make                      # 使用 mimalloc 构建"
-	@echo "  make UVRPC_ALLOCATOR=system # 使用系统分配器"
-	@echo "  make UVRPC_ALLOCATOR=custom # 使用自定义分配器"
-	@echo "  make e2e                   # 运行完整 E2E 测试"
-	@echo "  make e2e-quick             # 运行快速 E2E 测试"
-	@echo "  make run-server            # 启动服务器"
-	@echo "  make run-client            # 启动客户端"
+	@echo "  make                       # 使用系统分配器构建"
+	@echo "  make UVRPC_ALLOCATOR=mimalloc # 使用 mimalloc"
+	@echo "  make UVRPC_ALLOCATOR=custom   # 使用自定义分配器"
+	@echo "  make e2e                    # 运行完整 E2E 测试"
+	@echo "  make e2e-quick               # 运行快速 E2E 测试"
+	@echo "  make run-server             # 启动服务器"
+	@echo "  make run-client             # 启动客户端"

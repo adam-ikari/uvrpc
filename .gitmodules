@@ -16,3 +16,6 @@
 [submodule "msgpack-c"]
 	path = deps/msgpack-c
 	url = https://github.com/ludocode/mpack.git
+[submodule "mimalloc"]
+	path = deps/mimalloc
+	url = https://github.com/microsoft/mimalloc.git

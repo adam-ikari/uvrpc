@@ -5,23 +5,35 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
 # 内存分配器选择
-option(UVRPC_USE_SYSTEM_ALLOCATOR "Use system malloc/free instead of mimalloc" OFF)
+set(UVRPC_ALLOCATOR "system" CACHE STRING "Memory allocator: system, mimalloc, custom")
+
+option(UVRPC_USE_MIMALLOC "Use mimalloc allocator (high performance)" OFF)
 option(UVRPC_USE_CUSTOM_ALLOCATOR "Use custom allocator (define UVRPC_CUSTOM_MALLOC/FREE)" OFF)
 
-if(NOT UVRPC_USE_SYSTEM_ALLOCATOR AND NOT UVRPC_USE_CUSTOM_ALLOCATOR)
-    # 默认使用 mimalloc
-    message(STATUS "Using mimalloc allocator (default)")
-    add_definitions(-DMIMALLOC_DISABLE_OVERFLOW_CHECKS)
-elseif(UVRPC_USE_SYSTEM_ALLOCATOR)
-    message(STATUS "Using system allocator (malloc/free)")
-    add_definitions(-DUVRPC_ALLOCATOR_SYSTEM)
+if(UVRPC_ALLOCATOR STREQUAL "mimalloc")
+    set(UVRPC_USE_MIMALLOC ON CACHE BOOL "Auto-set by UVRPC_ALLOCATOR" FORCE)
+elseif(UVRPC_ALLOCATOR STREQUAL "custom")
+    set(UVRPC_USE_CUSTOM_ALLOCATOR ON CACHE BOOL "Auto-set by UVRPC_ALLOCATOR" FORCE)
+endif()
+
+if(UVRPC_USE_MIMALLOC)
+    message(STATUS "Using mimalloc allocator")
+    add_definitions(-DUVRPC_USE_MIMALLOC)
 elseif(UVRPC_USE_CUSTOM_ALLOCATOR)
     message(STATUS "Using custom allocator (define UVRPC_CUSTOM_MALLOC/FREE)")
-    add_definitions(-DUVRPC_ALLOCATOR_CUSTOM)
+    add_definitions(-DUVRPC_USE_CUSTOM_ALLOCATOR)
+else()
+    message(STATUS "Using system allocator (malloc/free)")
 endif()
 
 # Git submodule 依赖路径
 set(DEPS_ROOT ${CMAKE_SOURCE_DIR}/deps)
+
+# mimalloc (from git submodule)
+set(MIMALLOC_ROOT ${DEPS_ROOT}/mimalloc)
+if(NOT EXISTS ${MIMALLOC_ROOT}/include/mimalloc.h)
+    message(FATAL_ERROR "mimalloc not found in deps. Run: git submodule update --init --recursive")
+endif()
 
 # libuv (from git submodule)
 set(LIBUV_ROOT ${DEPS_ROOT}/libuv)
@@ -101,6 +113,13 @@ target_link_libraries(uvrpc
     -lstdc++
     -ldl -lrt -lpthread
 )
+
+# 如果使用 mimalloc，链接 mimalloc 库
+if(UVRPC_USE_MIMALLOC)
+    add_subdirectory(${MIMALLOC_ROOT} ${CMAKE_BINARY_DIR}/mimalloc EXCLUDE_FROM_ALL)
+    target_link_libraries(uvrpc mimalloc)
+    message(STATUS "Linking with mimalloc library")
+endif()
 
 # 添加链接选项
 target_link_options(uvrpc PRIVATE -pthread)

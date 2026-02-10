@@ -70,6 +70,17 @@ extern "C" {
  * - 使用统一的分配器宏（UVRPC_MALLOC/UVRPC_FREE）
  * - 支持自定义内存分配器（如 mimalloc）
  * - 调用者负责释放 API 返回的内存
+ * 
+ * ## 分配器选择
+ * 
+ * - **默认**：系统 malloc/free（无需额外依赖）
+ * - **推荐**：mimalloc（高性能、低碎片）
+ * - **自定义**：支持自定义分配器
+ * 
+ * 编译选项：
+ * - CMake: `-DUVRPC_USE_MIMALLOC=ON` 启用 mimalloc
+ * - Makefile: `UVRPC_ALLOCATOR=mimalloc` 启用 mimalloc
+ * - 自定义：定义 `UVRPC_USE_CUSTOM_ALLOCATOR` 并实现 `UVRPC_CUSTOM_MALLOC/FREE`
  */
 
 /* 错误码定义 */
