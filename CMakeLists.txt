@@ -85,6 +85,7 @@ set(UVRPC_SOURCES
     src/uvrpc_utils.c
     src/msgpack_wrapper.c
     src/uvzmq_impl.c
+    src/uvrpc_async.c
 )
 
 set(UVRPC_HEADERS
@@ -151,6 +152,20 @@ target_include_directories(echo_client PRIVATE
 )
 target_link_libraries(echo_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(echo_client PRIVATE -pthread)
+
+# Await 风格示例
+add_executable(await_example examples/await_example.c)
+target_include_directories(await_example PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(await_example uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(await_example PRIVATE -pthread)
 
 # ==================== 测试目标 ====================
 

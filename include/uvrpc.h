@@ -239,6 +239,161 @@ void uvrpc_client_disconnect(uvrpc_client_t* client);
  */
 void uvrpc_client_free(uvrpc_client_t* client);
 
+/* ==================== 异步调用 API (类似 JS await) ==================== */
+
+/**
+ * @defgroup uvrpc_async 异步调用 API
+ * @{
+ */
+
+/* 异步调用状态 */
+typedef enum {
+    UVRPC_ASYNC_PENDING = 0,    /* 等待中 */
+    UVRPC_ASYNC_DONE,           /* 已完成 */
+    UVRPC_ASYNC_ERROR           /* 出错 */
+} uvrpc_async_state_t;
+
+/* 异步调用结果 */
+typedef struct uvrpc_async_result {
+    int status;                 /* 状态码: UVRPC_OK 或错误码 */
+    const uint8_t* response_data; /* 响应数据（零拷贝，不要释放） */
+    size_t response_size;       /* 响应数据大小 */
+} uvrpc_async_result_t;
+
+/* 异步调用上下文（内部使用） */
+typedef struct uvrpc_async {
+    volatile int state;         /* 状态: UVRPC_ASYNC_STATE_* */
+    uvrpc_async_result_t result;
+    uv_loop_t* loop;
+    uv_async_t async_handle;
+} uvrpc_async_t;
+
+/**
+ * 创建异步调用上下文
+ * @param loop libuv 事件循环
+ * @return 异步上下文，失败返回 NULL
+ */
+uvrpc_async_t* uvrpc_async_new(uv_loop_t* loop);
+
+/**
+ * 释放异步调用上下文
+ * @param async 异步上下文
+ */
+void uvrpc_async_free(uvrpc_async_t* async);
+
+/**
+ * 异步调用 RPC 服务（await 风格）
+ * 
+ * @note 这个 API 使用宏 UVRPC_AWAIT 来简化使用
+ * 
+ * @code
+ * // C99 兼容的 await 风格使用
+ * UVRPC_AWAIT(result, async, client, "service.Method", req_data, req_size);
+ * if (result.status == UVRPC_OK) {
+ *     // 处理 result.response_data
+ * }
+ * @endcode
+ * 
+ * @param client 客户端实例
+ * @param service_name 服务名称
+ * @param method_name 方法名称
+ * @param request_data 请求数据
+ * @param request_size 请求数据大小
+ * @param async 异步上下文（用于 UVRPC_AWAIT）
+ * @return UVRPC_OK 成功发起调用，其他值为错误码
+ */
+int uvrpc_client_call_async(uvrpc_client_t* client,
+                             const char* service_name,
+                             const char* method_name,
+                             const uint8_t* request_data,
+                             size_t request_size,
+                             uvrpc_async_t* async);
+
+/**
+ * 等待异步调用完成（内部使用）
+ * @param async 异步上下文
+ * @return 结果指针
+ */
+const uvrpc_async_result_t* uvrpc_await(uvrpc_async_t* async);
+
+/** @} */
+
+/* ==================== Await 宏定义 (C99 兼容) ==================== */
+
+/**
+ * @defgroup uvrpc_await Await 宏
+ * @{
+ */
+
+/**
+ * Await 宏 - 等待异步调用完成
+ * 
+ * 使用示例：
+ * @code
+ * uvrpc_async_t* async = uvrpc_async_new(loop);
+ * 
+ * // 第一次调用
+ * UVRPC_AWAIT(result1, async, client, "service.Method1", req1, req1_size);
+ * if (result1.status == UVRPC_OK) {
+ *     // 处理结果1
+ * }
+ * 
+ * // 第二次调用（使用同一个 async 上下文）
+ * UVRPC_AWAIT(result2, async, client, "service.Method2", req2, req2_size);
+ * if (result2.status == UVRPC_OK) {
+ *     // 处理结果2
+ * }
+ * 
+ * uvrpc_async_free(async);
+ * @endcode
+ */
+#define UVRPC_AWAIT(result_var, async, client, service, method, req_data, req_size) \
+    do { \
+        int _await_ret = uvrpc_client_call_async((client), (service), (method), \
+                                                  (req_data), (req_size), (async)); \
+        if (_await_ret != UVRPC_OK) { \
+            (result_var).status = _await_ret; \
+            (result_var).response_data = NULL; \
+            (result_var).response_size = 0; \
+            break; \
+        } \
+        const uvrpc_async_result_t* _await_result = uvrpc_await((async)); \
+        (result_var) = *_await_result; \
+    } while(0)
+
+/**
+ * 链式调用宏 - 支持类似 JS Promise 的链式调用
+ * 
+ * 使用示例：
+ * @code
+ * UVRPC_CHAIN(async, client)
+ *     .THEN("service.Method1", req1, req1_size) {
+ *         // 处理 result1
+ *         if (result->status == UVRPC_OK) {
+ *             // 准备第二次请求
+ *         }
+ *     }
+ *     .THEN("service.Method2", req2, req2_size) {
+ *         // 处理 result2
+ *     }
+ *     .ELSE {
+ *         // 处理错误
+ *     }
+ *     .DONE();
+ * @endcode
+ */
+#define UVRPC_CHAIN(async, client) \
+    uvrpc_chain_t _chain = { (async), (client) }
+
+/* 链式调用结构（内部使用） */
+typedef struct {
+    uvrpc_async_t* async;
+    uvrpc_client_t* client;
+    const char* last_error;
+} uvrpc_chain_t;
+
+/** @} */
+
 /* ==================== 工具函数 ==================== */
 
 /**
