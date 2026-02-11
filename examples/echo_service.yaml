@@ -1,0 +1,63 @@
+# Echo 服务定义
+service: "EchoService"
+version: "1.0.0"
+description: "简单的回显服务"
+author: "uvrpc"
+
+methods:
+  - name: "echo"
+    description: "回显输入的消息"
+    request:
+      type: "map"
+      fields:
+        - name: "message"
+          type: "string"
+          required: true
+          description: "要回显的消息"
+    response:
+      type: "map"
+      fields:
+        - name: "echo"
+          type: "string"
+          description: "回显的消息"
+        - name: "timestamp"
+          type: "int"
+          description: "时间戳（毫秒）"
+
+  - name: "add"
+    description: "计算两个数字的和"
+    request:
+      type: "map"
+      fields:
+        - name: "a"
+          type: "float"
+          required: true
+          description: "第一个数字"
+        - name: "b"
+          type: "float"
+          required: true
+          description: "第二个数字"
+    response:
+      type: "map"
+      fields:
+        - name: "result"
+          type: "float"
+          description: "计算结果"
+
+  - name: "get_info"
+    description: "获取服务信息"
+    request:
+      type: "map"
+      fields: []
+    response:
+      type: "map"
+      fields:
+        - name: "service"
+          type: "string"
+          description: "服务名称"
+        - name: "version"
+          type: "string"
+          description: "版本号"
+        - name: "uptime"
+          type: "int"
+          description: "运行时间（秒）"

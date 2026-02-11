@@ -196,18 +196,18 @@ if (!server->has_routing_id) {
             return;
         }
 
-        /* 发送响应 */
+        /* 发送响应 - 使用零拷贝优化 */
         zmq_msg_t response_msg;
-        zmq_msg_init_size(&response_msg, resp_size);
-        memcpy(zmq_msg_data(&response_msg), resp_data, resp_size);
+        zmq_msg_init_data(&response_msg, resp_data, resp_size, zmq_free_wrapper, NULL);
 
         int rc = zmq_msg_send(&response_msg, server->zmq_sock, 0);
         if (rc < 0) {
             UVRPC_LOG_ERROR("Failed to send error response");
+            /* 发送失败时手动释放 */
+            uvrpc_free_serialized_data(resp_data);
         }
 
         zmq_msg_close(&response_msg);
-        uvrpc_free_serialized_data(resp_data);
         uvrpc_free_request(&request);
         return;
     }
@@ -239,19 +239,20 @@ if (!server->has_routing_id) {
         return;
     }
 
-    /* 发送响应 */
+    /* 发送响应 - 使用零拷贝优化 */
     zmq_msg_t response_msg;
-    zmq_msg_init_size(&response_msg, serialized_size);
-    memcpy(zmq_msg_data(&response_msg), serialized_data, serialized_size);
+    zmq_msg_init_data(&response_msg, serialized_data, serialized_size, zmq_free_wrapper, NULL);
 
     int rc = zmq_msg_send(&response_msg, server->zmq_sock, 0);
     if (rc < 0) {
         UVRPC_LOG_ERROR("Failed to send response (errno: %d)", zmq_errno());
+        /* 发送失败时手动释放 */
+        uvrpc_free_serialized_data(serialized_data);
     }
 
-    /* 清理 */
     zmq_msg_close(&response_msg);
-    uvrpc_free_serialized_data(serialized_data);
+    
+    /* 释放服务处理器返回的数据 */
     if (resp_data) {
         UVRPC_FREE(resp_data);
     }
@@ -345,6 +346,11 @@ uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int
         return NULL;
     }
 
+    /* 性能优化：I/O 线程数设置 */
+    /* 单线程服务器使用 2 个 I/O 线程以平衡性能和兼容性 */
+    int io_threads = 2;
+    zmq_ctx_set(server->zmq_ctx, ZMQ_IO_THREADS, io_threads);
+
     /* 创建 ZMQ socket */
     server->zmq_sock = zmq_socket(server->zmq_ctx, zmq_type);
     if (!server->zmq_sock) {
@@ -362,6 +368,12 @@ uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int
     /* 设置 socket 选项 */
     int linger = 0;
     zmq_setsockopt(server->zmq_sock, ZMQ_LINGER, &linger, sizeof(linger));
+    
+    /* 性能优化：增加高水位标记以支持更高的吞吐量 */
+    int sndhwm = 10000;  /* 发送队列高水位标记 */
+    int rcvhwm = 10000;  /* 接收队列高水位标记 */
+    zmq_setsockopt(server->zmq_sock, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
+    zmq_setsockopt(server->zmq_sock, ZMQ_RCVHWM, &rcvhwm, sizeof(rcvhwm));
     
     /* ROUTER 模式特定选项 */
     if (zmq_type == ZMQ_ROUTER) {

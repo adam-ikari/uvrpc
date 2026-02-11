@@ -7,6 +7,14 @@
 /* 前向声明 */
 uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, int zmq_type);
 
+/* 零拷贝释放回调 - 用于 DEALER 模式 */
+static void uvrpc_free_serialized_data_wrapper(void* data, void* hint) {
+    (void)hint;  /* 未使用参数 */
+    if (data) {
+        uvrpc_free_serialized_data(data);
+    }
+}
+
 /* uvzmq 接收回调 */
 static void on_zmq_recv(uvzmq_socket_t* socket, zmq_msg_t* msg, void* arg) {
     (void)socket;  /* 未使用参数 */
@@ -147,6 +155,12 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
         return NULL;
     }
 
+    /* 性能优化：I/O 线程数设置 */
+    /* 注意：客户端通常只需要 1 个 I/O 线程 */
+    /* 服务器可以设置多个 I/O 线程来处理多个并发连接 */
+    int io_threads = 1;
+    zmq_ctx_set(client->zmq_ctx, ZMQ_IO_THREADS, io_threads);
+
     /* 创建 ZMQ socket */
     client->zmq_sock = zmq_socket(client->zmq_ctx, zmq_type);
     if (!client->zmq_sock) {
@@ -164,6 +178,16 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
     /* 设置 socket 选项 */
     int linger = 0;
     zmq_setsockopt(client->zmq_sock, ZMQ_LINGER, &linger, sizeof(linger));
+    
+    /* 性能优化：增加高水位标记以支持更高的吞吐量 */
+    int sndhwm = 10000;  /* 发送队列高水位标记 */
+    int rcvhwm = 10000;  /* 接收队列高水位标记 */
+    zmq_setsockopt(client->zmq_sock, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
+    zmq_setsockopt(client->zmq_sock, ZMQ_RCVHWM, &rcvhwm, sizeof(rcvhwm));
+    
+    /* 性能优化：设置立即连接，减少连接延迟 */
+    int immediate = 1;
+    zmq_setsockopt(client->zmq_sock, ZMQ_IMMEDIATE, &immediate, sizeof(immediate));
     
     /* ROUTER/DEALER 模式：设置客户端标识 */
     if (zmq_type == ZMQ_DEALER) {
@@ -284,27 +308,39 @@ int uvrpc_client_call(uvrpc_client_t* client,
         return UVRPC_ERROR;
     }
 
-/* DEALER 模式：发送空帧 + 数据帧 */
+/* DEALER 模式：发送空帧 + 数据帧 - 优化为单次批量发送 */
     int rc = 0;
     if (client->zmq_type == ZMQ_DEALER) {
-        /* 发送空帧 */
-        zmq_send(client->zmq_sock, NULL, 0, ZMQ_SNDMORE);
+        /* DEALER 模式：使用 zmq_msg 批量发送空帧 + 数据帧 */
+        zmq_msg_t parts[2];
+        
+        /* 第一帧：空帧 */
+        zmq_msg_init(&parts[0]);
+        
+        /* 第二帧：数据帧 - 使用零拷贝 */
+        zmq_msg_init_data(&parts[1], serialized_data, serialized_size, uvrpc_free_serialized_data_wrapper, NULL);
+        
+        /* 批量发送 - 减少系统调用开销 */
+        rc = zmq_msg_send(&parts[0], client->zmq_sock, ZMQ_SNDMORE);
+        if (rc >= 0) {
+            rc = zmq_msg_send(&parts[1], client->zmq_sock, 0);
+        }
+        
+        zmq_msg_close(&parts[0]);
+        zmq_msg_close(&parts[1]);
+    } else {
+        /* 非 DEALER 模式：直接发送数据帧 */
+        rc = zmq_send(client->zmq_sock, serialized_data, serialized_size, 0);
+        /* 释放序列化数据 */
+        uvrpc_free_serialized_data(serialized_data);
     }
     
-    /* 发送数据帧 */
-    rc = zmq_send(client->zmq_sock, serialized_data, serialized_size, 0);
     if (rc < 0) {
         UVRPC_LOG_ERROR("Failed to send request (errno: %d, msg: %s)", zmq_errno(), zmq_strerror(zmq_errno()));
-        uvrpc_free_serialized_data(serialized_data);
         HASH_DEL(client->pending_requests, entry);
         UVRPC_FREE(entry);
         return UVRPC_ERROR;
     }
-
-    fprintf(stderr, "[CLIENT] Sent request (id: %u, size: %zu)\n", entry->request_id, serialized_size);
-
-    /* 清理 */
-    uvrpc_free_serialized_data(serialized_data);
 
     UVRPC_LOG_DEBUG("Sent request (id: %u, service: %s, method: %s)",
                     entry->request_id, service_id, method_id);

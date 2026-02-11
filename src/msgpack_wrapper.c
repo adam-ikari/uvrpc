@@ -31,38 +31,35 @@ int uvrpc_serialize_request_msgpack(const uvrpc_request_t* request,
     mpack_writer_t writer;
     mpack_writer_init(&writer, buffer, UVRPC_DEFAULT_BUFFER_SIZE);
 
-    /* 创建 map: request_id, service_id, method_id, request_data */
-    mpack_start_map(&writer, 4);
+    /* 使用数组格式代替 map 格式以减少开销 */
+    /* 数组格式: [request_id, service_id, method_id, request_data] */
+    mpack_start_array(&writer, 4);
 
-    /* request_id */
-    mpack_write_cstr(&writer, "request_id");
+    /* 0: request_id */
     mpack_write_uint(&writer, request->request_id);
 
-    /* service_id */
-    mpack_write_cstr(&writer, "service_id");
+    /* 1: service_id */
     if (request->service_id) {
         mpack_write_cstr(&writer, request->service_id);
     } else {
         mpack_write_nil(&writer);
     }
 
-    /* method_id */
-    mpack_write_cstr(&writer, "method_id");
+    /* 2: method_id */
     if (request->method_id) {
         mpack_write_cstr(&writer, request->method_id);
     } else {
         mpack_write_nil(&writer);
     }
 
-    /* request_data */
-    mpack_write_cstr(&writer, "request_data");
+    /* 3: request_data */
     if (request->request_data && request->request_data_size > 0) {
         mpack_write_bin(&writer, (const char*)request->request_data, request->request_data_size);
     } else {
         mpack_write_nil(&writer);
     }
 
-    mpack_finish_map(&writer);
+    mpack_finish_array(&writer);
 
     /* 检查错误 */
     if (mpack_writer_error(&writer) != mpack_ok) {
@@ -99,74 +96,79 @@ int uvrpc_deserialize_request_msgpack(const uint8_t* data, size_t size,
     mpack_reader_t reader;
     mpack_reader_init_data(&reader, (const char*)data, size);
 
-    /* 读取 map */
-    uint32_t count = mpack_expect_map_max(&reader, UVRPC_MAX_MAP_FIELDS);
+    /* 读取数组格式: [request_id, service_id, method_id, request_data] */
+    uint32_t count = mpack_expect_array(&reader);
+    if (count < 4) {
+        UVRPC_LOG_ERROR("Invalid array format: expected 4 elements, got %u", count);
+        mpack_reader_destroy(&reader);
+        return UVRPC_ERROR;
+    }
 
-    /* 逐个读取字段 */
-    for (uint32_t i = count; i > 0 && mpack_reader_error(&reader) == mpack_ok; --i) {
-        char key[UVRPC_MAX_KEY_LENGTH + 1];
-        mpack_expect_cstr(&reader, key, sizeof(key));
-        if (strcmp(key, "request_id") == 0) {
-            request->request_id = (uint32_t)mpack_expect_uint(&reader);
-        } else if (strcmp(key, "service_id") == 0) {
-            if (mpack_reader_error(&reader) == mpack_ok) {
-                uint32_t len = mpack_expect_str(&reader);
-                if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
-                    const char* str = mpack_read_bytes_inplace(&reader, len);
-                    if (mpack_reader_error(&reader) == mpack_ok && str) {
-                        request->service_id = strndup(str, len);
-                    }
-                    mpack_done_str(&reader);
-                } else {
-                    mpack_discard(&reader);
-                }
-            } else {
-                mpack_discard(&reader);
+    /* 0: request_id */
+    request->request_id = (uint32_t)mpack_expect_uint(&reader);
+
+    /* 1: service_id */
+    if (mpack_peek_tag(&reader).type == mpack_type_nil) {
+        mpack_discard(&reader);  /* 跳过 nil 值 */
+    } else {
+        uint32_t len = mpack_expect_str(&reader);
+        if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
+            const char* str = mpack_read_bytes_inplace(&reader, len);
+            if (mpack_reader_error(&reader) == mpack_ok && str) {
+                request->service_id = strndup(str, len);
             }
-        } else if (strcmp(key, "method_id") == 0) {
-            if (mpack_reader_error(&reader) == mpack_ok) {
-                uint32_t len = mpack_expect_str(&reader);
-                if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
-                    const char* str = mpack_read_bytes_inplace(&reader, len);
-                    if (mpack_reader_error(&reader) == mpack_ok && str) {
-                        request->method_id = strndup(str, len);
-                    }
-                    mpack_done_str(&reader);
-                } else {
-                    mpack_discard(&reader);
-                }
-            } else {
-                mpack_discard(&reader);
-            }
-        } else if (strcmp(key, "request_data") == 0) {
-            if (mpack_reader_error(&reader) == mpack_ok) {
-                uint32_t bin_size = mpack_expect_bin(&reader);
-                if (mpack_reader_error(&reader) == mpack_ok && bin_size > 0) {
-                    const char* bin_data = mpack_read_bytes_inplace(&reader, bin_size);
-                    if (mpack_reader_error(&reader) == mpack_ok && bin_data) {
-                        request->request_data_size = bin_size;
-                        request->request_data = (uint8_t*)UVRPC_MALLOC(bin_size);
-                        if (!request->request_data) {
-                            UVRPC_LOG_ERROR("Failed to allocate request_data: %u bytes", bin_size);
-                            mpack_reader_destroy(&reader);
-                            uvrpc_free_request(request);
-                            return UVRPC_ERROR_NO_MEMORY;
-                        }
-                        memcpy(request->request_data, bin_data, bin_size);
-                    }
-                    mpack_done_bin(&reader);
-                } else {
-                    mpack_discard(&reader);
-                }
-            } else {
-                mpack_discard(&reader);
-            }
+            mpack_done_str(&reader);
         } else {
             mpack_discard(&reader);
         }
     }
 
-    mpack_done_map(&reader);
+    /* 2: method_id */
+    if (mpack_peek_tag(&reader).type == mpack_type_nil) {
+        mpack_discard(&reader);  /* 跳过 nil 值 */
+    } else {
+        uint32_t len = mpack_expect_str(&reader);
+        if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
+            const char* str = mpack_read_bytes_inplace(&reader, len);
+            if (mpack_reader_error(&reader) == mpack_ok && str) {
+                request->method_id = strndup(str, len);
+            }
+            mpack_done_str(&reader);
+        } else {
+            mpack_discard(&reader);
+        }
+    }
+
+    /* 3: request_data */
+    if (mpack_peek_tag(&reader).type == mpack_type_nil) {
+        mpack_discard(&reader);  /* 跳过 nil 值 */
+    } else {
+        uint32_t bin_size = mpack_expect_bin(&reader);
+        if (mpack_reader_error(&reader) == mpack_ok && bin_size > 0) {
+            const char* bin_data = mpack_read_bytes_inplace(&reader, bin_size);
+            if (mpack_reader_error(&reader) == mpack_ok && bin_data) {
+                request->request_data_size = bin_size;
+                request->request_data = (uint8_t*)UVRPC_MALLOC(bin_size);
+                if (!request->request_data) {
+                    UVRPC_LOG_ERROR("Failed to allocate request_data: %u bytes", bin_size);
+                    mpack_reader_destroy(&reader);
+                    uvrpc_free_request(request);
+                    return UVRPC_ERROR_NO_MEMORY;
+                }
+                memcpy(request->request_data, bin_data, bin_size);
+            }
+            mpack_done_bin(&reader);
+        } else {
+            mpack_discard(&reader);
+        }
+    }
+
+    /* 丢弃剩余元素（如果有） */
+    while (count-- > 4) {
+        mpack_discard(&reader);
+    }
+
+    mpack_done_array(&reader);
 
     if (mpack_reader_error(&reader) != mpack_ok) {
         uvrpc_free_request(request);
@@ -195,34 +197,31 @@ int uvrpc_serialize_response_msgpack(const uvrpc_response_t* response,
     mpack_writer_t writer;
     mpack_writer_init(&writer, buffer, UVRPC_DEFAULT_BUFFER_SIZE);
 
-    /* 创建 map: request_id, status, error_message, response_data */
-    mpack_start_map(&writer, 4);
+    /* 使用数组格式代替 map 格式以减少开销 */
+    /* 数组格式: [request_id, status, error_message, response_data] */
+    mpack_start_array(&writer, 4);
 
-    /* request_id */
-    mpack_write_cstr(&writer, "request_id");
+    /* 0: request_id */
     mpack_write_uint(&writer, response->request_id);
 
-    /* status */
-    mpack_write_cstr(&writer, "status");
+    /* 1: status */
     mpack_write_int(&writer, response->status);
 
-    /* error_message */
-    mpack_write_cstr(&writer, "error_message");
+    /* 2: error_message */
     if (response->error_message) {
         mpack_write_cstr(&writer, response->error_message);
     } else {
         mpack_write_nil(&writer);
     }
 
-    /* response_data */
-    mpack_write_cstr(&writer, "response_data");
+    /* 3: response_data */
     if (response->response_data && response->response_data_size > 0) {
         mpack_write_bin(&writer, (const char*)response->response_data, response->response_data_size);
     } else {
         mpack_write_nil(&writer);
     }
 
-    mpack_finish_map(&writer);
+    mpack_finish_array(&writer);
 
     /* 检查错误 */
     if (mpack_writer_error(&writer) != mpack_ok) {
@@ -259,62 +258,66 @@ int uvrpc_deserialize_response_msgpack(const uint8_t* data, size_t size,
     mpack_reader_t reader;
     mpack_reader_init_data(&reader, (const char*)data, size);
 
-    /* 读取 map */
-    uint32_t count = mpack_expect_map(&reader);
+    /* 读取数组格式: [request_id, status, error_message, response_data] */
+    uint32_t count = mpack_expect_array(&reader);
+    if (count < 4) {
+        fprintf(stderr, "[RESPONSE_DESERIALIZE] Invalid array format: expected 4 elements, got %u\n", count);
+        mpack_reader_destroy(&reader);
+        return UVRPC_ERROR;
+    }
 
-    /* 逐个读取字段 */
-    for (uint32_t i = count; i > 0 && mpack_reader_error(&reader) == mpack_ok; --i) {
-        char key[UVRPC_MAX_KEY_LENGTH + 1];
-        mpack_expect_cstr(&reader, key, sizeof(key));
+    /* 0: request_id */
+    response->request_id = (uint32_t)mpack_expect_uint(&reader);
 
-        if (strcmp(key, "request_id") == 0) {
-            response->request_id = (uint32_t)mpack_expect_uint(&reader);
-        } else if (strcmp(key, "status") == 0) {
-            response->status = (int32_t)mpack_expect_int(&reader);
-        } else if (strcmp(key, "error_message") == 0) {
-            if (mpack_peek_tag(&reader).type == mpack_type_nil) {
-                mpack_discard(&reader);  /* 跳过 nil 值 */
-            } else {
-                uint32_t len = mpack_expect_str(&reader);
-                if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
-                    const char* str = mpack_read_bytes_inplace(&reader, len);
-                    if (str) {
-                        response->error_message = strndup(str, len);
-                    }
-                    mpack_done_str(&reader);
-                } else {
-                    mpack_discard(&reader);
-                }
+    /* 1: status */
+    response->status = (int32_t)mpack_expect_int(&reader);
+
+    /* 2: error_message */
+    if (mpack_peek_tag(&reader).type == mpack_type_nil) {
+        mpack_discard(&reader);  /* 跳过 nil 值 */
+    } else {
+        uint32_t len = mpack_expect_str(&reader);
+        if (mpack_reader_error(&reader) == mpack_ok && len > 0) {
+            const char* str = mpack_read_bytes_inplace(&reader, len);
+            if (str) {
+                response->error_message = strndup(str, len);
             }
-        } else if (strcmp(key, "response_data") == 0) {
-            if (mpack_peek_tag(&reader).type == mpack_type_nil) {
-                mpack_discard(&reader);  /* 跳过 nil 值 */
-            } else {
-                uint32_t bin_size = mpack_expect_bin(&reader);
-                if (mpack_reader_error(&reader) == mpack_ok && bin_size > 0) {
-                    const char* bin_data = mpack_read_bytes_inplace(&reader, bin_size);
-                    if (bin_data) {
-                        response->response_data_size = bin_size;
-                        response->response_data = (uint8_t*)UVRPC_MALLOC(bin_size);
-                        if (!response->response_data) {
-                            UVRPC_LOG_ERROR("Failed to allocate response_data: %u bytes", bin_size);
-                            mpack_reader_destroy(&reader);
-                            uvrpc_free_response(response);
-                            return UVRPC_ERROR_NO_MEMORY;
-                        }
-                        memcpy(response->response_data, bin_data, bin_size);
-                    }
-                    mpack_done_bin(&reader);
-                } else {
-                    mpack_discard(&reader);
-                }
-            }
+            mpack_done_str(&reader);
         } else {
             mpack_discard(&reader);
         }
     }
 
-    mpack_done_map(&reader);
+    /* 3: response_data */
+    if (mpack_peek_tag(&reader).type == mpack_type_nil) {
+        mpack_discard(&reader);  /* 跳过 nil 值 */
+    } else {
+        uint32_t bin_size = mpack_expect_bin(&reader);
+        if (mpack_reader_error(&reader) == mpack_ok && bin_size > 0) {
+            const char* bin_data = mpack_read_bytes_inplace(&reader, bin_size);
+            if (bin_data) {
+                response->response_data_size = bin_size;
+                response->response_data = (uint8_t*)UVRPC_MALLOC(bin_size);
+                if (!response->response_data) {
+                    UVRPC_LOG_ERROR("Failed to allocate response_data: %u bytes", bin_size);
+                    mpack_reader_destroy(&reader);
+                    uvrpc_free_response(response);
+                    return UVRPC_ERROR_NO_MEMORY;
+                }
+                memcpy(response->response_data, bin_data, bin_size);
+            }
+            mpack_done_bin(&reader);
+        } else {
+            mpack_discard(&reader);
+        }
+    }
+
+    /* 丢弃剩余元素（如果有） */
+    while (count-- > 4) {
+        mpack_discard(&reader);
+    }
+
+    mpack_done_array(&reader);
 
     if (mpack_reader_error(&reader) != mpack_ok) {
         fprintf(stderr, "[RESPONSE_DESERIALIZE] Failed, error=%d\n", mpack_reader_error(&reader));

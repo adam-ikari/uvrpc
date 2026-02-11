@@ -427,6 +427,32 @@ const char* uvrpc_strerror(int error_code);
  */
 const char* uvrpc_mode_name(uvrpc_mode_t mode);
 
+/**
+ * 自适应事件循环运行 - 平衡性能和功耗
+ * 
+ * 这个函数实现了一个智能的事件循环调度策略：
+ * - 高负载时：使用 UV_RUN_ONCE 模式，快速处理事件，保持高性能
+ * - 低负载时：使用 UV_RUN_NOWAIT + 短暂休眠，降低 CPU 占用，节省功耗
+ * - 自动监测负载状态，动态调整运行模式
+ * 
+ * @param loop libuv 事件循环
+ * @param timeout_ms 超时时间（毫秒），0 表示无限期运行
+ * @param check_fn 可选的检查函数，返回非 0 时退出循环
+ * @param user_ctx 传递给检查函数的用户上下文
+ * @return 0 表示正常退出，-1 表示超时
+ * 
+ * @code
+ * // 示例：运行事件循环，直到所有请求完成
+ * int should_stop(void* ctx) {
+ *     return (completed_requests == total_requests) ? 1 : 0;
+ * }
+ * 
+ * uvrpc_loop_run_adaptive(&loop, 0, should_stop, NULL);
+ * @endcode
+ */
+int uvrpc_loop_run_adaptive(uv_loop_t* loop, int timeout_ms, 
+                             int (*check_fn)(void*), void* user_ctx);
+
 #ifdef __cplusplus
 }
 #endif

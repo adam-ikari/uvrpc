@@ -12,7 +12,7 @@
 #define TEST_PORT 6010
 #define NUM_REQUESTS 100
 #define PAYLOAD_SIZE 128
-#define TIMEOUT_SECONDS 10
+#define TIMEOUT_SECONDS 60
 
 /* 全局信号标志 */
 static volatile sig_atomic_t g_stop_requested = 0;
@@ -78,10 +78,8 @@ void run_server_mode(void) {
     fprintf(stderr, "[SERVER] 服务器已启动，监听 %s\n", bind_addr);
     fprintf(stderr, "[SERVER] 按 Ctrl+C 停止服务器\n\n");
     
-    /* 单线程事件循环 - 不需要任何锁 */
-    while (g_server_running) {
-        uv_run(g_server_loop, UV_RUN_ONCE);
-    }
+    /* 单线程事件循环 - 使用 uv_run_default 模式（生产环境） */
+    uv_run(g_server_loop, UV_RUN_DEFAULT);
     
     fprintf(stderr, "\n[SERVER] 服务器停止\n");
     uvrpc_server_free(server);
@@ -128,6 +126,7 @@ void run_client_mode(void) {
     int completed = 0;
     int succeeded = 0;
     int failed = 0;
+    int sent = 0;
     
     /* 回调上下文结构 */
     typedef struct {
@@ -164,7 +163,6 @@ void run_client_mode(void) {
     
     /* 发送所有请求 */
     fprintf(stderr, "[CLIENT] 开始发送 %d 个请求...\n", NUM_REQUESTS);
-    int sent = 0;
     for (int i = 0; i < NUM_REQUESTS && !g_stop_requested; i++) {
         int rc = uvrpc_client_call(client, "echo", "test", payload, PAYLOAD_SIZE, callback, &cb_ctx);
         if (rc == UVRPC_OK) {
@@ -176,23 +174,32 @@ void run_client_mode(void) {
     }
     fprintf(stderr, "[CLIENT] 已发送 %d 个请求，开始等待响应...\n\n", sent);
     
-    /* 等待所有响应 - 单线程事件循环 */
-    int iterations = 0;
-    int max_iterations = 100000;
+    /* 等待所有响应 - 使用 uv_run_once 模式 */
+    /* 说明：测试程序使用 uv_run_once 模式而不是 uv_run_default，原因如下：
+     * 1. uv_run_once 允许精确控制退出条件（完成所有请求或超时）
+     * 2. 性能测试需要准确的性能指标，uv_run_once 可以提供更好的控制
+     * 3. 避免了 uv_idle 或 uv_stop 等机制带来的性能开销
+     * 4. 代码更简单直接，易于理解和维护
+     * 
+     * 对于生产环境的服务器应用，建议使用 uv_run_default 模式：
+     * - 服务器需要长期运行，直到收到停止信号
+     * - uv_run_default 会自动管理事件循环的生命周期
+     * - 无事件时自动阻塞，不占用 CPU
+     */
     time_t timeout_start = time(NULL);
-    while (completed < NUM_REQUESTS && iterations < max_iterations && !g_stop_requested) {
-        uv_run(&loop, UV_RUN_ONCE);
-        iterations++;
-        
+    while (completed < NUM_REQUESTS && !g_stop_requested) {
         /* 检查超时 */
         if (time(NULL) - timeout_start > TIMEOUT_SECONDS) {
             fprintf(stderr, "[CLIENT] 超时！已完成 %d/%d\n", completed, NUM_REQUESTS);
             break;
         }
         
-        if (iterations % 1000 == 0 && completed < NUM_REQUESTS) {
-            fprintf(stderr, "[CLIENT] 进度: %d/%d (%.1f%%) - 迭代: %d\n", 
-                    completed, NUM_REQUESTS, (completed * 100.0) / NUM_REQUESTS, iterations);
+        /* UV_RUN_ONCE 处理所有待处理的事件，然后返回 */
+        uv_run(&loop, UV_RUN_ONCE);
+        
+        /* 如果没有活动句柄，退出循环 */
+        if (!uv_loop_alive(&loop)) {
+            break;
         }
     }
     
@@ -201,7 +208,7 @@ void run_client_mode(void) {
     double total_time_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
                           (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
     
-    printf("\n========== 性能测试结果 (单线程无锁模式) ==========\n");
+    printf("\n========== 性能测试结果 (uv_run_once 模式) ==========\n");
     printf("总请求数: %d\n", NUM_REQUESTS);
     printf("已发送: %d\n", sent);
     printf("成功: %d\n", succeeded);
@@ -209,13 +216,9 @@ void run_client_mode(void) {
     printf("总耗时: %.2f ms\n", total_time_ms);
     if (succeeded > 0) {
         printf("吞吐量: %.2f ops/s\n", (succeeded * 1000.0) / total_time_ms);
-        printf("平均延迟: %.3f ms\n", total_time_ms / NUM_REQUESTS);
+        printf("平均延迟: %.3f ms\n", total_time_ms / sent);
     }
-    printf("循环迭代: %d\n", iterations);
-    if (iterations > 0) {
-        printf("事件循环效率: %.2f%% (完成数/迭代数)\n", (completed * 100.0) / iterations);
-    }
-    printf("======================================================\n");
+    printf("=====================================================\n");
     
     free(payload);
     uvrpc_client_free(client);

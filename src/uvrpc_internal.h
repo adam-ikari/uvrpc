@@ -115,6 +115,11 @@ struct uvrpc_client {
 #define UVRPC_LOG_ERROR(fmt, ...) fprintf(stderr, "[UVRPC ERROR] " fmt "\n", ##__VA_ARGS__)
 #define UVRPC_LOG_INFO(fmt, ...)  fprintf(stderr, "[UVRPC INFO] " fmt "\n", ##__VA_ARGS__)
 
+/* 自适应事件循环调度配置 */
+#define UVRPC_ADAPTIVE_SLEEP_US       1000   /* 低负载时休眠时间（微秒） */
+#define UVRPC_ADAPTIVE_IDLE_THRESHOLD 3      /* 连续空闲迭代阈值 */
+#define UVRPC_ADAPTIVE_BUSY_THRESHOLD 5      /* 连续忙碌迭代阈值 */
+
 #ifdef __cplusplus
 }
 #endif
