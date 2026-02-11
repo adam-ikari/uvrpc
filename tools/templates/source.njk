@@ -9,11 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define UVRPC_UNUSED __attribute__((unused))
+
 {% for method in methods %}
 
 /* ==================== {{ method.name }} Request ==================== */
 
-int {{ functionName(serviceName, method.name, 'SerializeRequest') }}(
+UVRPC_UNUSED int {{ functionName(serviceName, method.name, 'SerializeRequest') }}(
     const {{ structName(serviceName, method.name, 'Request') }}_t* request,
     uint8_t** output,
     size_t* output_size
@@ -82,7 +84,7 @@ int {{ functionName(serviceName, method.name, 'SerializeRequest') }}(
     return 0;
 }
 
-int {{ functionName(serviceName, method.name, 'DeserializeRequest') }}(
+UVRPC_UNUSED int {{ functionName(serviceName, method.name, 'DeserializeRequest') }}(
     const uint8_t* data,
     size_t size,
     {{ structName(serviceName, method.name, 'Request') }}_t* request
@@ -153,11 +155,8 @@ int {{ functionName(serviceName, method.name, 'DeserializeRequest') }}(
 {% else %}
             mpack_discard(&reader);
 {% endif %}
-{% else %}
-        } else {
-            mpack_discard(&reader);
-{% endfor %}
         }
+{% endfor %}
     }
 
     mpack_done_map(&reader);
@@ -172,13 +171,14 @@ int {{ functionName(serviceName, method.name, 'DeserializeRequest') }}(
     return 0;
 }
 
-void {{ functionName(serviceName, method.name, 'FreeRequest') }}(
+UVRPC_UNUSED void {{ functionName(serviceName, method.name, 'FreeRequest') }}(
     {{ structName(serviceName, method.name, 'Request') }}_t* request
 ) {
     if (!request) {
         return;
     }
 
+{% if method.request.fields | length > 0 %}
 {% for field in method.request.fields %}
 {% if field.type == 'string' %}
     if (request->{{ field.name }}) {
@@ -194,11 +194,14 @@ void {{ functionName(serviceName, method.name, 'FreeRequest') }}(
     }
 {% endif %}
 {% endfor %}
+{% else %}
+    (void)request;  /* Avoid unused variable warning when no fields need freeing */
+{% endif %}
 }
 
 /* ==================== {{ method.name }} Response ==================== */
 
-int {{ functionName(serviceName, method.name, 'SerializeResponse') }}(
+UVRPC_UNUSED int {{ functionName(serviceName, method.name, 'SerializeResponse') }}(
     const {{ structName(serviceName, method.name, 'Response') }}_t* response,
     uint8_t** output,
     size_t* output_size
@@ -267,7 +270,7 @@ int {{ functionName(serviceName, method.name, 'SerializeResponse') }}(
     return 0;
 }
 
-int {{ functionName(serviceName, method.name, 'DeserializeResponse') }}(
+UVRPC_UNUSED int {{ functionName(serviceName, method.name, 'DeserializeResponse') }}(
     const uint8_t* data,
     size_t size,
     {{ structName(serviceName, method.name, 'Response') }}_t* response
@@ -338,11 +341,8 @@ int {{ functionName(serviceName, method.name, 'DeserializeResponse') }}(
 {% else %}
             mpack_discard(&reader);
 {% endif %}
-{% else %}
-        } else {
-            mpack_discard(&reader);
-{% endfor %}
         }
+{% endfor %}
     }
 
     mpack_done_map(&reader);
@@ -357,13 +357,14 @@ int {{ functionName(serviceName, method.name, 'DeserializeResponse') }}(
     return 0;
 }
 
-void {{ functionName(serviceName, method.name, 'FreeResponse') }}(
+UVRPC_UNUSED void {{ functionName(serviceName, method.name, 'FreeResponse') }}(
     {{ structName(serviceName, method.name, 'Response') }}_t* response
 ) {
     if (!response) {
         return;
     }
 
+{% if method.response.fields | length > 0 %}
 {% for field in method.response.fields %}
 {% if field.type == 'string' %}
     if (response->{{ field.name }}) {
@@ -379,6 +380,8 @@ void {{ functionName(serviceName, method.name, 'FreeResponse') }}(
     }
 {% endif %}
 {% endfor %}
+{% else %}
+    (void)response;  /* Avoid unused variable warning when no fields need freeing */
+{% endif %}
 }
-
 {% endfor %}

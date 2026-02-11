@@ -38,11 +38,20 @@ class CodeGenerator {
     // 生成源文件
     this.generateSource();
 
+    // 生成客户端头文件
+    this.generateClientHeader();
+
+    // 生成客户端源文件
+    this.generateClientSource();
+
     // 生成示例服务器
     this.generateExampleServer();
 
     // 生成示例客户端
     this.generateExampleClient();
+
+    // 生成异步客户端示例
+    this.generateAsyncClientExample();
 
     console.log(`Code generated successfully in ${this.outputDir}`);
   }
@@ -94,6 +103,55 @@ class CodeGenerator {
     const content = this.nunjucks.render('source.njk', context);
     fs.writeFileSync(outputPath, content);
     console.log(`Generated source: ${outputPath}`);
+  }
+
+  generateClientHeader() {
+    const serviceName = this.parser.getServiceName();
+    const headerName = `${serviceName.toLowerCase()}_gen_client.h`;
+    const outputPath = path.join(this.outputDir, headerName);
+
+    const context = {
+      serviceName: serviceName,
+      version: this.parser.getServiceVersion(),
+      description: this.parser.getServiceDescription(),
+      methods: this.parser.getMethods(),
+      yamlPath: this.parser.yamlPath,
+      headerGuard: `${serviceName.toUpperCase()}_GEN_CLIENT_H`,
+      headerFile: `${serviceName.toLowerCase()}_gen.h`,
+      structName: (serviceName, methodName, suffix) =>
+        this.parser.toStructName(serviceName, methodName, suffix),
+      functionName: (serviceName, methodName, suffix) =>
+        this.parser.toFunctionName(serviceName, methodName, suffix),
+      cType: (type) => this.parser.getCType(type)
+    };
+
+    const content = this.nunjucks.render('client_header.njk', context);
+    fs.writeFileSync(outputPath, content);
+    console.log(`Generated client header: ${outputPath}`);
+  }
+
+  generateClientSource() {
+    const serviceName = this.parser.getServiceName();
+    const sourceName = `${serviceName.toLowerCase()}_gen_client.c`;
+    const outputPath = path.join(this.outputDir, sourceName);
+
+    const context = {
+      serviceName: serviceName,
+      version: this.parser.getServiceVersion(),
+      description: this.parser.getServiceDescription(),
+      methods: this.parser.getMethods(),
+      yamlPath: this.parser.yamlPath,
+      headerFile: `${serviceName.toLowerCase()}_gen.h`,
+      structName: (serviceName, methodName, suffix) =>
+        this.parser.toStructName(serviceName, methodName, suffix),
+      functionName: (serviceName, methodName, suffix) =>
+        this.parser.toFunctionName(serviceName, methodName, suffix),
+      cType: (type) => this.parser.getCType(type)
+    };
+
+    const content = this.nunjucks.render('client_source.njk', context);
+    fs.writeFileSync(outputPath, content);
+    console.log(`Generated client source: ${outputPath}`);
   }
 
   generateExampleServer() {
@@ -190,28 +248,47 @@ int ${funcName}(void* ctx,
 
     // 生成主函数
     content += `int main(int argc, char** argv) {
-    const char* bind_addr = (argc > 1) ? argv[1] : "tcp://*:5555";
+    const char* bind_addr = (argc > 1) ? argv[1] : "tcp://127.0.0.1:5555";
 
     printf("Starting ${serviceName} Server on %s\\n", bind_addr);
 
     /* Create libuv event loop */
     uv_loop_t* loop = uv_default_loop();
 
+    /* Create ZMQ context */
+    void* zmq_ctx = zmq_ctx_new();
+
+    /* Create RPC server config */
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, loop);
+    uvrpc_config_set_address(config, bind_addr);
+    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_mode(config, UVRPC_SERVER_CLIENT);
+    uvrpc_config_set_zmq_ctx(config, zmq_ctx);
+    uvrpc_config_set_hwm(config, 10000, 10000);
+
     /* Create RPC server */
-    uvrpc_server_t* server = uvrpc_server_new(loop, bind_addr, UVRPC_MODE_REQ_REP);
+    uvrpc_server_t* server = uvrpc_server_create(config);
     if (!server) {
         fprintf(stderr, "Failed to create server\\n");
+        uvrpc_config_free(config);
+        zmq_ctx_term(zmq_ctx);
         return 1;
     }
 
-    /* Register services */
+/* Register services */
+    /* Register methods directly with full qualified names to avoid dispatcher overhead */
 `;
 
+    // 为每个方法生成注册代码
     methods.forEach(method => {
       const funcName = this.parser.toFunctionName(serviceName, method.name, 'Handler');
-      content += `    if (uvrpc_server_register_service(server, "${serviceName}.${method.name}", ${funcName}, NULL) != UVRPC_OK) {
-        fprintf(stderr, "Failed to register ${method.name} service\\n");
+      const qualifiedName = `${serviceName}.${method.name}`;
+      content += `    if (uvrpc_server_register_service(server, "${qualifiedName}", ${funcName}, NULL) != UVRPC_OK) {
+        fprintf(stderr, "Failed to register ${qualifiedName} service\\n");
         uvrpc_server_free(server);
+        uvrpc_config_free(config);
+        zmq_ctx_term(zmq_ctx);
         return 1;
     }
 `;
@@ -219,11 +296,6 @@ int ${funcName}(void* ctx,
 
     content += `
     /* Start server */
-    if (uvrpc_server_start(server) != UVRPC_OK) {
-        fprintf(stderr, "Failed to start server\\n");
-        uvrpc_server_free(server);
-        return 1;
-    }
 
     printf("${serviceName} Server is running...\\n");
     printf("Press Ctrl+C to stop\\n");
@@ -233,6 +305,8 @@ int ${funcName}(void* ctx,
 
     /* Cleanup */
     uvrpc_server_free(server);
+    uvrpc_config_free(config);
+    zmq_ctx_term(zmq_ctx);
     uv_loop_close(loop);
 
     printf("${serviceName} Server stopped\\n");
@@ -367,10 +441,27 @@ void ${funcName}(void* ctx, int status,
     /* Create libuv event loop */
     uv_loop_t* loop = uv_default_loop();
 
+    /* Create RPC config */
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, loop);
+    uvrpc_config_set_address(config, server_addr);
+    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_mode(config, UVRPC_SERVER_CLIENT);
+    uvrpc_config_set_hwm(config, 10000, 10000);
+
     /* Create RPC client */
-    uvrpc_client_t* client = uvrpc_client_new(loop, server_addr, UVRPC_MODE_REQ_REP);
+    uvrpc_client_t* client = uvrpc_client_create(config);
     if (!client) {
         fprintf(stderr, "Failed to create client\\n");
+        uvrpc_config_free(config);
+        return 1;
+    }
+
+    /* Connect to server */
+    if (uvrpc_client_connect(client) != UVRPC_OK) {
+        fprintf(stderr, "Failed to connect to server\\n");
+        uvrpc_client_free(client);
+        uvrpc_config_free(config);
         return 1;
     }
 
@@ -392,6 +483,7 @@ void ${funcName}(void* ctx, int status,
 
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_config_free(config);
     uv_loop_close(loop);
 
     printf("${serviceName} Client stopped\\n");
@@ -401,6 +493,29 @@ void ${funcName}(void* ctx, int status,
 `;
 
     return content;
+  }
+
+  generateAsyncClientExample() {
+    const serviceName = this.parser.getServiceName();
+    const exampleName = `${serviceName.toLowerCase()}_async_client_example.c`;
+    const outputPath = path.join(this.outputDir, exampleName);
+
+    const context = {
+      serviceName: serviceName,
+      version: this.parser.getServiceVersion(),
+      description: this.parser.getServiceDescription(),
+      methods: this.parser.getMethods(),
+      yamlPath: this.parser.yamlPath,
+      structName: (serviceName, methodName, suffix) =>
+        this.parser.toStructName(serviceName, methodName, suffix),
+      functionName: (serviceName, methodName, suffix) =>
+        this.parser.toFunctionName(serviceName, methodName, suffix),
+      cType: (type) => this.parser.getCType(type)
+    };
+
+    const content = this.nunjucks.render('client_example.njk', context);
+    fs.writeFileSync(outputPath, content);
+    console.log(`Generated async client example: ${outputPath}`);
   }
 }
 

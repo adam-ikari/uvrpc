@@ -1,7 +1,9 @@
 #ifndef UVRPC_INTERNAL_H
 #define UVRPC_INTERNAL_H
 
+#ifndef UVRPC_USE_NEW_API
 #include "uvrpc.h"
+#endif
 #include <uvzmq.h>
 #include <uthash.h>
 
@@ -27,6 +29,7 @@ struct uvrpc_server {
     int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_service_entry_t* services;    /* 服务注册表 */
     int owns_loop;                      /* 是否拥有 loop 的所有权 */
+    int owns_zmq_ctx;                   /* 是否拥有 ZMQ context 的所有权 */
     int is_running;                     /* 运行状态 */
     
     /* ROUTER 模式多部分消息状态 */
@@ -54,8 +57,10 @@ struct uvrpc_client {
     int zmq_type;                       /* ZMQ socket 类型 */
     uvrpc_client_request_t* pending_requests; /* 待处理请求 */
     int owns_loop;                      /* 是否拥有 loop 的所有权 */
+    int owns_zmq_ctx;                   /* 是否拥有 ZMQ context 的所有权 */
     uint32_t next_request_id;           /* 下一个请求 ID */
     int is_connected;                   /* 连接状态 */
+    int batch_size;                     /* 批量发送大小（每批TCP包的请求数） */
 };
 
 /* 内存分配器配置

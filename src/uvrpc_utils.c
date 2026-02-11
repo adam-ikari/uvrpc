@@ -21,8 +21,6 @@ const char* uvrpc_strerror(int error_code) {
             return "Service not found";
         case UVRPC_ERROR_TIMEOUT:
             return "Operation timeout";
-        case UVRPC_ERROR_NOT_FOUND:
-            return "Not found";
         default:
             return "Unknown error";
     }
@@ -35,14 +33,10 @@ const char* uvrpc_strerror(int error_code) {
  */
 const char* uvrpc_mode_name(uvrpc_mode_t mode) {
     switch (mode) {
-        case UVRPC_MODE_REQ_REP:
-            return "REQ_REP";
-        case UVRPC_MODE_ROUTER_DEALER:
-            return "ROUTER_DEALER";
-        case UVRPC_MODE_PUB_SUB:
-            return "PUB_SUB";
-        case UVRPC_MODE_PUSH_PULL:
-            return "PUSH_PULL";
+        case UVRPC_SERVER_CLIENT:
+            return "SERVER_CLIENT (ROUTER/DEALER)";
+        case UVRPC_BROADCAST:
+            return "BROADCAST (PUB/SUB)";
         default:
             return "UNKNOWN";
     }

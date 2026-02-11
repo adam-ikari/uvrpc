@@ -35,6 +35,9 @@ typedef struct uvrpc_response {
     char* error_message;
     uint8_t* response_data;
     size_t response_data_size;
+    /* 零拷贝支持：保存原始数据指针 */
+    const uint8_t* raw_data;          /* 原始 msgpack 数据 */
+    size_t raw_data_size;             /* 原始数据大小 */
 } uvrpc_response_t;
 
 /**

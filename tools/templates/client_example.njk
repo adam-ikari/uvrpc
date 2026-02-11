@@ -1,0 +1,150 @@
+/**
+ * Auto-generated async client example for {{ serviceName }}
+ * Generated from {{ yamlPath }}
+ *
+ * This example demonstrates how to use the generated async API
+ */
+
+#include "uvrpc.h"
+#include "{{ serviceName | lower }}_gen.h"
+#include "{{ serviceName | lower }}_gen_client.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
+
+int main(int argc, char** argv) {
+    const char* server_addr = (argc > 1) ? argv[1] : "tcp://127.0.0.1:5555";
+
+    printf("========================================\n");
+    printf("{{ serviceName }} Async Client Example\n");
+    printf("========================================\n");
+    printf("Connecting to: %s\n\n", server_addr);
+
+    /* Create libuv event loop */
+    uv_loop_t* loop = uv_default_loop();
+
+    /* Create RPC config */
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, loop);
+    uvrpc_config_set_address(config, server_addr);
+    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_mode(config, UVRPC_SERVER_CLIENT);
+    uvrpc_config_set_hwm(config, 10000, 10000);
+
+    /* Create RPC client */
+    uvrpc_client_t* client = uvrpc_client_create(config);
+    if (!client) {
+        fprintf(stderr, "Failed to create client\n");
+        uvrpc_config_free(config);
+        return 1;
+    }
+
+    /* Connect to server */
+    if (uvrpc_client_connect(client) != UVRPC_OK) {
+        fprintf(stderr, "Failed to connect to server\n");
+        uvrpc_client_free(client);
+        uvrpc_config_free(config);
+        return 1;
+    }
+
+    printf("Connected to server\n\n");
+
+    /* Run event loop to let connection establish */
+    for (int i = 0; i < 10; i++) {
+        uv_run(loop, UV_RUN_NOWAIT);
+    }
+
+    /* Result variable for RPC calls */
+    int rc = UVRPC_OK;
+
+    /* Async context for explicit async/await calls */
+    uvrpc_async_t* async = NULL;
+
+{% for method in methods %}
+    /* ============================================
+     * {{ method.name }} - Async Call Example
+     * ============================================ */
+    printf("Testing {{ method.name }}...\n");
+
+    /* Prepare request */
+{% if method.request.fields and method.request.fields.length > 0 %}
+    {{ structName(serviceName, method.name, 'Request') }}_t {{ method.name | lower }}_request = {0};
+{% for field in method.request.fields %}
+{% if field.type == 'string' %}
+    {{ method.name | lower }}_request.{{ field.name }} = "{{ field.name }}";
+{% elif field.type == 'int' %}
+    {{ method.name | lower }}_request.{{ field.name }} = {{ loop.index0 + 1 }};
+{% elif field.type == 'float' %}
+    {{ method.name | lower }}_request.{{ field.name }} = {{ loop.index0 + 1 }}.5;
+{% elif field.type == 'bool' %}
+    {{ method.name | lower }}_request.{{ field.name }} = {{ loop.index0 % 2 == 0 }};
+{% endif %}
+{% endfor %}
+{% else %}
+    {{ structName(serviceName, method.name, 'Request') }}_t {{ method.name | lower }}_request;
+{% endif %}
+
+    /* Call async - Method 1: Simple CallAsync (one-shot) */
+{% if method.response.fields and method.response.fields.length > 0 %}
+    {{ structName(serviceName, method.name, 'Response') }}_t {{ method.name | lower }}_response = {0};
+{% else %}
+    {{ structName(serviceName, method.name, 'Response') }}_t {{ method.name | lower }}_response;
+{% endif %}
+    rc = {{ functionName(serviceName, method.name, 'CallAsync') }}(client{% if method.request.fields %}, &{{ method.name | lower }}_request{% endif %}{% if method.response.fields %}, &{{ method.name | lower }}_response{% endif %}, loop);
+    if (rc == UVRPC_OK) {
+        printf("  {{ method.name }} succeeded!\n");
+{% for field in method.response.fields %}
+{% if field.type == 'string' %}
+        printf("  Response {{ field.name }}: %s\n", {{ method.name | lower }}_response.{{ field.name }});
+{% elif field.type == 'int' %}
+        printf("  Response {{ field.name }}: %" PRId64 "\n", {{ method.name | lower }}_response.{{ field.name }});
+{% elif field.type == 'float' %}
+        printf("  Response {{ field.name }}: %.2f\n", {{ method.name | lower }}_response.{{ field.name }});
+{% elif field.type == 'bool' %}
+        printf("  Response {{ field.name }}: %s\n", {{ method.name | lower }}_response.{{ field.name }} ? "true" : "false");
+{% endif %}
+{% endfor %}
+    } else {
+        printf("  {{ method.name }} failed with error: %d (this is expected if the server is not running)\n", rc);
+    }
+
+    /* Run event loop to process pending events */
+    for (int i = 0; i < 10; i++) {
+        uv_run(loop, UV_RUN_NOWAIT);
+    }
+
+{% if method.response.fields %}
+    /* Free response */
+    {{ functionName(serviceName, method.name, 'FreeResponse') }}(&{{ method.name | lower }}_response);
+{% endif %}
+
+    /* Call async - Method 2: Explicit Async/Await (more control) */
+    async = uvrpc_async_create(loop);
+    if (async) {
+        rc = {{ functionName(serviceName, method.name, 'Async') }}(client{% if method.request.fields %}, &{{ method.name | lower }}_request{% endif %}, async);
+        if (rc == UVRPC_OK) {
+            const uvrpc_async_result_t* result = uvrpc_async_await(async);
+            if (result && result->status == UVRPC_OK) {
+                printf("  {{ method.name }} (explicit) succeeded!\n");
+{% if method.response.fields %}
+                {{ structName(serviceName, method.name, 'Response') }}_t response2 = {0};
+                {{ functionName(serviceName, method.name, 'Await') }}(result, &response2);
+                {{ functionName(serviceName, method.name, 'FreeResponse') }}(&response2);
+{% endif %}
+            }
+        }
+        uvrpc_async_free(async);
+        async = NULL;
+    }
+
+{% endfor %}
+    printf("\n========================================\n");
+    printf("All tests completed!\n");
+    printf("========================================\n");
+
+    /* Cleanup */
+    uvrpc_client_free(client);
+    uvrpc_config_free(config);
+
+    return 0;
+}

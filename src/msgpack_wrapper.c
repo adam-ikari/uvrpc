@@ -253,6 +253,10 @@ int uvrpc_deserialize_response_msgpack(const uint8_t* data, size_t size,
     }
 
     memset(response, 0, sizeof(uvrpc_response_t));
+    
+    /* 保存原始数据指针用于零拷贝 */
+    response->raw_data = data;
+    response->raw_data_size = size;
 
     /* 解析 mpack */
     mpack_reader_t reader;
@@ -296,15 +300,14 @@ int uvrpc_deserialize_response_msgpack(const uint8_t* data, size_t size,
         if (mpack_reader_error(&reader) == mpack_ok && bin_size > 0) {
             const char* bin_data = mpack_read_bytes_inplace(&reader, bin_size);
             if (bin_data) {
+                /* 拷贝数据以确保生命周期安全 */
                 response->response_data_size = bin_size;
-                response->response_data = (uint8_t*)UVRPC_MALLOC(bin_size);
-                if (!response->response_data) {
-                    UVRPC_LOG_ERROR("Failed to allocate response_data: %u bytes", bin_size);
-                    mpack_reader_destroy(&reader);
-                    uvrpc_free_response(response);
-                    return UVRPC_ERROR_NO_MEMORY;
+                response->response_data = malloc(bin_size);
+                if (response->response_data) {
+                    memcpy(response->response_data, bin_data, bin_size);
+                } else {
+                    response->response_data_size = 0;
                 }
-                memcpy(response->response_data, bin_data, bin_size);
             }
             mpack_done_bin(&reader);
         } else {
@@ -351,6 +354,9 @@ void uvrpc_free_response(uvrpc_response_t* response) {
     if (response) {
         if (response->error_message) free(response->error_message);
         if (response->response_data) free(response->response_data);
-        memset(response, 0, sizeof(uvrpc_response_t));
+        response->response_data = NULL;
+        response->response_data_size = 0;
+        response->raw_data = NULL;
+        response->raw_data_size = 0;
     }
 }
