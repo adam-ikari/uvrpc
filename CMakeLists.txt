@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(uvrpc C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -O2")
 
 # 内存分配器选择
 set(UVRPC_ALLOCATOR "mimalloc" CACHE STRING "Memory allocator: system, mimalloc, custom")

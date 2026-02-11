@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <uv.h>
 #include <zmq.h>
 
@@ -283,88 +284,493 @@ const uvrpc_async_result_t* uvrpc_async_await(uvrpc_async_t* async);
 const uvrpc_async_result_t* uvrpc_async_await_timeout(uvrpc_async_t* async, uint64_t timeout_ms);
 
 /**
+
  * Await 等待所有完成
+
  */
+
 int uvrpc_async_await_all(uvrpc_async_t** asyncs, int count);
 
+
+
 /**
+
  * Await 等待任意一个完成
+
  */
+
 int uvrpc_async_await_any(uvrpc_async_t** asyncs, int count);
 
-/* ==================== 通用客户端调用 API ==================== */
 
-/**
- * 序列化函数类型
- * 用于生成的代码的通用调用框架
- */
-typedef int (*uvrpc_serialize_func_t)(const void* request, uint8_t** data, size_t* size);
-
-/**
- * 反序列化函数类型
- */
-typedef int (*uvrpc_deserialize_func_t)(const uint8_t* data, size_t size, void* response);
-
-/**
- * 释放函数类型
- */
-typedef void (*uvrpc_free_func_t)(void* obj);
-
-/**
- * 通用客户端调用（同步等待）
- * 
- * @param client 客户端对象
- * @param service_name 服务名称
- * @param method_name 方法名称
- * @param request 请求对象
- * @param serialize_func 序列化函数
- * @param response 响应对象
- * @param deserialize_func 反序列化函数
- * @param loop 事件循环
- * @return UVRPC_OK 成功，其他值表示错误
- */
-int uvrpc_client_call_sync(
-    uvrpc_client_t* client,
-    const char* service_name,
-    const char* method_name,
-    const void* request,
-    uvrpc_serialize_func_t serialize_func,
-    void* response,
-    uvrpc_deserialize_func_t deserialize_func,
-    uv_loop_t* loop
-);
-
-/**
- * 通用客户端异步调用（带超时）
- * 
- * @param client 客户端对象
- * @param service_name 服务名称
- * @param method_name 方法名称
- * @param request 请求对象
- * @param serialize_func 序列化函数
- * @param async 异步上下文
- * @return UVRPC_OK 成功，其他值表示错误
- */
-int uvrpc_client_call_async_generic(
-    uvrpc_client_t* client,
-    const char* service_name,
-    const char* method_name,
-    const void* request,
-    uvrpc_serialize_func_t serialize_func,
-    uvrpc_async_t* async
-);
 
 /* ==================== 错误码 ==================== */
 
+
+
 #define UVRPC_OK                0
+
 #define UVRPC_ERROR             -1
+
 #define UVRPC_ERROR_INVALID_PARAM -2
+
 #define UVRPC_ERROR_NO_MEMORY   -3
+
 #define UVRPC_ERROR_SERVICE_NOT_FOUND -4
+
 #define UVRPC_ERROR_TIMEOUT     -5
 
-#ifdef __cplusplus
+
+
+/* ==================== 通用客户端调用 API ==================== */
+
+
+
+/**
+
+ * 序列化函数类型
+
+ */
+
+typedef int (*uvrpc_serialize_func_t)(const void* request, uint8_t** data, size_t* size);
+
+
+
+/**
+
+ * 反序列化函数类型
+
+ */
+
+typedef int (*uvrpc_deserialize_func_t)(const uint8_t* data, size_t size, void* response);
+
+
+
+/**
+
+
+
+ * 通用客户端调用（同步等待）
+
+
+
+ * 内联优化，减少函数调用开销
+
+
+
+ */
+
+
+
+static inline int uvrpc_client_call_sync(
+
+
+
+    uvrpc_client_t* client,
+
+
+
+    const char* service_name,
+
+
+
+    const char* method_name,
+
+
+
+    const void* request,
+
+
+
+    uvrpc_serialize_func_t serialize_func,
+
+
+
+    void* response,
+
+
+
+    uvrpc_deserialize_func_t deserialize_func,
+
+
+
+    uv_loop_t* loop
+
+
+
+) {
+
+
+
+    /* 创建异步上下文 */
+
+
+
+    uvrpc_async_t* async = uvrpc_async_create(loop);
+
+
+
+    if (!async) {
+
+
+
+        return UVRPC_ERROR_NO_MEMORY;
+
+
+
+    }
+
+
+
+
+
+
+
+    /* 序列化请求 */
+
+
+
+    uint8_t* serialized = NULL;
+
+
+
+    size_t serialized_size = 0;
+
+
+
+    if (serialize_func(request, &serialized, &serialized_size) != 0) {
+
+
+
+        uvrpc_async_free(async);
+
+
+
+        return UVRPC_ERROR;
+
+
+
+    }
+
+
+
+
+
+
+
+    /* 发送异步调用 */
+
+
+
+    int rc = uvrpc_client_call_async(client, service_name, method_name,
+
+
+
+                                      serialized, serialized_size, async);
+
+
+
+
+
+
+
+    /* 释放序列化数据（失败时） */
+
+
+
+    if (rc != UVRPC_OK) {
+
+
+
+        free(serialized);
+
+
+
+        uvrpc_async_free(async);
+
+
+
+        return rc;
+
+
+
+    }
+
+
+
+
+
+
+
+    /* 等待响应 */
+
+
+
+    const uvrpc_async_result_t* result = uvrpc_async_await(async);
+
+
+
+    
+
+
+
+    if (result && result->status == UVRPC_OK) {
+
+
+
+        rc = deserialize_func(result->response_data, result->response_size, response);
+
+
+
+    } else if (result) {
+
+
+
+        rc = result->status;
+
+
+
+    } else {
+
+
+
+        rc = UVRPC_ERROR;
+
+
+
+    }
+
+
+
+
+
+
+
+    /* 释放异步上下文 */
+
+
+
+    uvrpc_async_free(async);
+
+
+
+
+
+
+
+    return rc;
+
+
+
 }
+
+
+
+/**
+
+ * 通用客户端异步调用
+
+ * 内联优化，减少函数调用开销
+
+ */
+
+static inline int uvrpc_client_call_async_generic(
+
+    uvrpc_client_t* client,
+
+    const char* service_name,
+
+    const char* method_name,
+
+    const void* request,
+
+    uvrpc_serialize_func_t serialize_func,
+
+    uvrpc_async_t* async
+
+) {
+
+    /* 序列化请求 */
+
+    uint8_t* serialized = NULL;
+
+    size_t serialized_size = 0;
+
+    if (serialize_func(request, &serialized, &serialized_size) != 0) {
+
+        return UVRPC_ERROR;
+
+    }
+
+
+
+    /* 发送异步调用 */
+
+    int rc = uvrpc_client_call_async(client, service_name, method_name,
+
+                                      serialized, serialized_size, async);
+
+
+
+    /* 释放序列化数据（失败时） */
+
+    if (rc != UVRPC_OK) {
+
+        free(serialized);
+
+    }
+
+
+
+    return rc;
+
+}
+
+
+
+/* ==================== 内联优化 API ==================== */
+
+
+
+/**
+
+ * 内联优化的异步调用（性能关键路径）
+
+ */
+
+static inline int uvrpc_client_call_async_optimized(
+
+    uvrpc_client_t* client,
+
+    const char* service_name,
+
+    const char* method_name,
+
+    const void* request,
+
+    uvrpc_serialize_func_t serialize_func,
+
+    uvrpc_async_t* async
+
+) {
+
+    uint8_t* serialized = NULL;
+
+    size_t serialized_size = 0;
+
+    if (serialize_func(request, &serialized, &serialized_size) != 0) {
+
+        return UVRPC_ERROR;
+
+    }
+
+
+
+    int rc = uvrpc_client_call_async(client, service_name, method_name,
+
+                                      serialized, serialized_size, async);
+
+
+
+    if (rc != UVRPC_OK) {
+
+        free(serialized);
+
+    }
+
+
+
+    return rc;
+
+}
+
+
+
+/**
+
+ * 内联优化的同步调用（性能关键路径）
+
+ */
+
+static inline int uvrpc_client_call_sync_optimized(
+
+    uvrpc_client_t* client,
+
+    const char* service_name,
+
+    const char* method_name,
+
+    const void* request,
+
+    uvrpc_serialize_func_t serialize_func,
+
+    void* response,
+
+    uvrpc_deserialize_func_t deserialize_func,
+
+    uv_loop_t* loop
+
+) {
+
+    uvrpc_async_t* async = uvrpc_async_create(loop);
+
+    if (!async) {
+
+        return UVRPC_ERROR_NO_MEMORY;
+
+    }
+
+
+
+    int rc = uvrpc_client_call_async_optimized(client, service_name, method_name,
+
+                                                   request, serialize_func, async);
+
+    if (rc != UVRPC_OK) {
+
+        uvrpc_async_free(async);
+
+        return rc;
+
+    }
+
+
+
+    const uvrpc_async_result_t* result = uvrpc_async_await(async);
+
+    
+
+    if (result && result->status == UVRPC_OK) {
+
+        rc = deserialize_func(result->response_data, result->response_size, response);
+
+    } else if (result) {
+
+        rc = result->status;
+
+    } else {
+
+        rc = UVRPC_ERROR;
+
+    }
+
+
+
+    uvrpc_async_free(async);
+
+
+
+    return rc;
+
+}
+
+
+
+#ifdef __cplusplus
+
+}
+
 #endif
+
+
 
 #endif /* UVRPC_H */

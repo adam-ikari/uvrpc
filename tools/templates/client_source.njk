@@ -19,7 +19,7 @@ int {{ functionName(serviceName, method.name, 'CallAsync') }}(
     {{ structName(serviceName, method.name, 'Response') }}_t* response,
     uv_loop_t* loop
 ) {
-    return uvrpc_client_call_sync(
+    return uvrpc_client_call_sync_optimized(
         client,
         "{{ serviceName }}.{{ method.name }}",
         "{{ method.name }}",
@@ -36,7 +36,7 @@ int {{ functionName(serviceName, method.name, 'Async') }}(
     const {{ structName(serviceName, method.name, 'Request') }}_t* request,
     uvrpc_async_t* async
 ) {
-    return uvrpc_client_call_async_generic(
+    return uvrpc_client_call_async_optimized(
         client,
         "{{ serviceName }}.{{ method.name }}",
         "{{ method.name }}",

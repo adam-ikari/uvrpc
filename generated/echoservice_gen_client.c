@@ -18,7 +18,7 @@ int EchoService_echo_CallAsync(
     EchoService_echo_Response_t* response,
     uv_loop_t* loop
 ) {
-    return uvrpc_client_call_sync(
+    return uvrpc_client_call_sync_optimized(
         client,
         "EchoService.echo",
         "echo",
@@ -35,7 +35,7 @@ int EchoService_echo_Async(
     const EchoService_echo_Request_t* request,
     uvrpc_async_t* async
 ) {
-    return uvrpc_client_call_async_generic(
+    return uvrpc_client_call_async_optimized(
         client,
         "EchoService.echo",
         "echo",
@@ -85,7 +85,7 @@ int EchoService_add_CallAsync(
     EchoService_add_Response_t* response,
     uv_loop_t* loop
 ) {
-    return uvrpc_client_call_sync(
+    return uvrpc_client_call_sync_optimized(
         client,
         "EchoService.add",
         "add",
@@ -102,7 +102,7 @@ int EchoService_add_Async(
     const EchoService_add_Request_t* request,
     uvrpc_async_t* async
 ) {
-    return uvrpc_client_call_async_generic(
+    return uvrpc_client_call_async_optimized(
         client,
         "EchoService.add",
         "add",
@@ -152,7 +152,7 @@ int EchoService_getInfo_CallAsync(
     EchoService_getInfo_Response_t* response,
     uv_loop_t* loop
 ) {
-    return uvrpc_client_call_sync(
+    return uvrpc_client_call_sync_optimized(
         client,
         "EchoService.get_info",
         "get_info",
@@ -169,7 +169,7 @@ int EchoService_getInfo_Async(
     const EchoService_getInfo_Request_t* request,
     uvrpc_async_t* async
 ) {
-    return uvrpc_client_call_async_generic(
+    return uvrpc_client_call_async_optimized(
         client,
         "EchoService.get_info",
         "get_info",
