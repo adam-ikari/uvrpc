@@ -375,6 +375,12 @@ uvrpc_server_t* uvrpc_server_new_zmq(uv_loop_t* loop, const char* bind_addr, int
     zmq_setsockopt(server->zmq_sock, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
     zmq_setsockopt(server->zmq_sock, ZMQ_RCVHWM, &rcvhwm, sizeof(rcvhwm));
     
+    /* 性能优化：增加 TCP 缓冲区大小 */
+    int tcp_sndbuf = 256 * 1024;  /* 256KB 发送缓冲区 */
+    int tcp_rcvbuf = 256 * 1024;  /* 256KB 接收缓冲区 */
+    zmq_setsockopt(server->zmq_sock, ZMQ_SNDBUF, &tcp_sndbuf, sizeof(tcp_sndbuf));
+    zmq_setsockopt(server->zmq_sock, ZMQ_RCVBUF, &tcp_rcvbuf, sizeof(tcp_rcvbuf));
+    
     /* ROUTER 模式特定选项 */
     if (zmq_type == ZMQ_ROUTER) {
         /* 设置路由器手动模式（避免自动连接） */
@@ -489,7 +495,7 @@ void uvrpc_server_stop(uvrpc_server_t* server) {
     UVRPC_LOG_INFO("Server stopped");
 }
 
-/* 释放服务器 */
+/* 释放服务器资源 */
 void uvrpc_server_free(uvrpc_server_t* server) {
     if (!server) {
         return;
@@ -498,17 +504,23 @@ void uvrpc_server_free(uvrpc_server_t* server) {
     /* 停止服务器 */
     uvrpc_server_stop(server);
 
-    /* 释放所有服务条目 */
+    /* 释放所有服务注册表 */
     uvrpc_service_entry_t* entry, *tmp;
     HASH_ITER(hh, server->services, entry, tmp) {
         HASH_DEL(server->services, entry);
-        UVRPC_FREE(entry->name);
+        if (entry->name) {
+            UVRPC_FREE(entry->name);
+        }
         UVRPC_FREE(entry);
     }
 
-    /* 释放 uvzmq socket */
+    /* 释放 uvzmq socket (异步释放，需要运行事件循环来完成清理) */
     if (server->socket) {
         uvzmq_socket_free(server->socket);
+        /* 运行事件循环以确保异步清理完成 */
+        if (server->loop) {
+            uv_run(server->loop, UV_RUN_NOWAIT);
+        }
     }
 
     /* 关闭 ZMQ socket */
@@ -528,6 +540,12 @@ void uvrpc_server_free(uvrpc_server_t* server) {
 
     /* 关闭并释放 loop（如果拥有） */
     if (server->owns_loop && server->loop) {
+        /* 运行事件循环直到没有活动句柄 */
+        int has_active_handles = 1;
+        while (has_active_handles) {
+            uv_run(server->loop, UV_RUN_ONCE);
+            has_active_handles = uv_loop_alive(server->loop);
+        }
         uv_loop_close(server->loop);
         UVRPC_FREE(server->loop);
     }

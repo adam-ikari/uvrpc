@@ -260,7 +260,8 @@ void* uvrpc_client_get_zmq_socket(uvrpc_client_t* client);
 typedef enum {
     UVRPC_ASYNC_PENDING = 0,    /* 等待中 */
     UVRPC_ASYNC_DONE,           /* 已完成 */
-    UVRPC_ASYNC_ERROR           /* 出错 */
+    UVRPC_ASYNC_ERROR,          /* 出错 */
+    UVRPC_ASYNC_CHECKED         /* 已检查（内部使用） */
 } uvrpc_async_state_t;
 
 /* 异步调用结果 */
@@ -332,6 +333,54 @@ const uvrpc_async_result_t* uvrpc_await(uvrpc_async_t* async);
  * @return 结果指针，超时返回状态为 UVRPC_ERROR_TIMEOUT
  */
 const uvrpc_async_result_t* uvrpc_await_timeout(uvrpc_async_t* async, uint64_t timeout_ms);
+
+/**
+ * 等待多个异步调用完成（并发 await）
+ * 
+ * 此函数允许同时等待多个异步请求，支持真正的并发调用。
+ * 
+ * 使用示例：
+ * @code
+ * // 创建多个 async 上下文
+ * uvrpc_async_t* async1 = uvrpc_async_new(&loop);
+ * uvrpc_async_t* async2 = uvrpc_async_new(&loop);
+ * uvrpc_async_t* async3 = uvrpc_async_new(&loop);
+ * 
+ * // 发起所有请求（并发）
+ * uvrpc_client_call_async(client, "service.Method1", req1, req1_size, async1);
+ * uvrpc_client_call_async(client, "service.Method2", req2, req2_size, async2);
+ * uvrpc_client_call_async(client, "service.Method3", req3, req3_size, async3);
+ * 
+ * // 等待所有请求完成
+ * uvrpc_async_t* asyncs[] = {async1, async2, async3};
+ * int completed = uvrpc_await_all(asyncs, 3);
+ * 
+ * // 处理结果
+ * if (async1->result.status == UVRPC_OK) { ... }
+ * if (async2->result.status == UVRPC_OK) { ... }
+ * if (async3->result.status == UVRPC_OK) { ... }
+ * 
+ * uvrpc_async_free(async1);
+ * uvrpc_async_free(async2);
+ * uvrpc_async_free(async3);
+ * @endcode
+ * 
+ * @param asyncs 异步上下文数组
+ * @param count 异步上下文数量
+ * @return 完成的请求数量
+ */
+int uvrpc_await_all(uvrpc_async_t** asyncs, int count);
+
+/**
+ * 等待任意一个异步调用完成（并发 await）
+ * 
+ * 此函数等待任意一个请求完成，适合"第一个响应获胜"的场景。
+ * 
+ * @param asyncs 异步上下文数组
+ * @param count 异步上下文数量
+ * @return 已完成的异步上下文索引，超时返回 -1
+ */
+int uvrpc_await_any(uvrpc_async_t** asyncs, int count);
 
 /** @} */
 
@@ -408,6 +457,60 @@ typedef struct {
     uvrpc_client_t* client;
     const char* last_error;
 } uvrpc_chain_t;
+
+/**
+ * 并发发起多个请求，然后等待所有响应
+ * 
+ * 使用示例：
+ * @code
+ * // 定义请求数组
+ * const char* services[] = {"service.Method1", "service.Method2", "service.Method3"};
+ * const uint8_t* req_data[] = {data1, data2, data3};
+ * size_t req_size[] = {size1, size2, size3};
+ * 
+ * uvrpc_async_result_t results[3];
+ * 
+ * // 并发发起请求并等待所有响应
+ * UVRPC_AWAIT_ALL(results, asyncs, 3, client, services, req_data, req_size);
+ * 
+ * // 处理结果
+ * for (int i = 0; i < 3; i++) {
+ *     if (results[i].status == UVRPC_OK) {
+ *         // 处理响应
+ *     }
+ * }
+ * 
+ * // 释放 async 上下文
+ * for (int i = 0; i < 3; i++) {
+ *     uvrpc_async_free(asyncs[i]);
+ * }
+ * @endcode
+ */
+#define UVRPC_AWAIT_ALL(results, asyncs, count, client, services, methods, req_data, req_size) \
+    do { \
+        for (int i = 0; i < (count); i++) { \
+            (asyncs)[i] = uvrpc_async_new((client)->loop); \
+            if (!(asyncs)[i]) { \
+                (results)[i].status = UVRPC_ERROR_NO_MEMORY; \
+                (results)[i].response_data = NULL; \
+                (results)[i].response_size = 0; \
+                continue; \
+            } \
+            int _ret = uvrpc_client_call_async((client), (services)[i], (methods)[i], \
+                                                 (req_data)[i], (req_size)[i], (asyncs)[i]); \
+            if (_ret != UVRPC_OK) { \
+                (results)[i].status = _ret; \
+                (results)[i].response_data = NULL; \
+                (results)[i].response_size = 0; \
+            } \
+        } \
+        uvrpc_await_all((asyncs), (count)); \
+        for (int i = 0; i < (count); i++) { \
+            if ((asyncs)[i]) { \
+                (results)[i] = (asyncs)[i]->result; \
+            } \
+        } \
+    } while(0)
 
 /** @} */
 

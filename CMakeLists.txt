@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
 
 # 内存分配器选择
-set(UVRPC_ALLOCATOR "system" CACHE STRING "Memory allocator: system, mimalloc, custom")
+set(UVRPC_ALLOCATOR "mimalloc" CACHE STRING "Memory allocator: system, mimalloc, custom")
 
 option(UVRPC_USE_MIMALLOC "Use mimalloc allocator (high performance)" OFF)
 option(UVRPC_USE_CUSTOM_ALLOCATOR "Use custom allocator (define UVRPC_CUSTOM_MALLOC/FREE)" OFF)
@@ -320,6 +320,61 @@ target_include_directories(test_performance PRIVATE
 )
 target_link_libraries(test_performance uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
 target_link_options(test_performance PRIVATE -pthread)
+
+# Await 数据有效性测试
+add_executable(test_await_data_validity tests/test_await_data_validity.c)
+target_include_directories(test_await_data_validity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(test_await_data_validity uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(test_await_data_validity PRIVATE -pthread)
+
+# 并发 Await 测试
+add_executable(test_concurrent_await tests/test_concurrent_await.c)
+target_include_directories(test_concurrent_await PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(test_concurrent_await uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(test_concurrent_await PRIVATE -pthread)
+
+# 性能基准测试
+add_executable(benchmark_server benchmark/benchmark_server.c)
+target_include_directories(benchmark_server PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(benchmark_server uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(benchmark_server PRIVATE -pthread)
+
+add_executable(benchmark_client benchmark/benchmark_client.c)
+target_include_directories(benchmark_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${MSGPACK_ROOT}/src/mpack
+    ${UTHASH_INCLUDE_DIR}
+    ${LIBUV_ROOT}/include
+    ${UVZMQ_ROOT}/include
+    ${ZEROMQ_ROOT}/include
+)
+target_link_libraries(benchmark_client uvrpc ${LIBUV_ROOT}/build/libuv.a ${ZEROMQ_ROOT}/build/lib/libzmq.a -ldl -lrt -lpthread)
+target_link_options(benchmark_client PRIVATE -pthread)
 
 # 安装规则
 install(TARGETS uvrpc

@@ -1,2 +1,2 @@
 #define UVZMQ_IMPLEMENTATION
-#include <uvzmq.h>
+#include "../deps/uvzmq/include/uvzmq.h"

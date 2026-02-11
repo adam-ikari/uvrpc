@@ -185,6 +185,12 @@ uvrpc_client_t* uvrpc_client_new_zmq(uv_loop_t* loop, const char* server_addr, i
     zmq_setsockopt(client->zmq_sock, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
     zmq_setsockopt(client->zmq_sock, ZMQ_RCVHWM, &rcvhwm, sizeof(rcvhwm));
     
+    /* 性能优化：增加 TCP 缓冲区大小 */
+    int tcp_sndbuf = 256 * 1024;  /* 256KB 发送缓冲区 */
+    int tcp_rcvbuf = 256 * 1024;  /* 256KB 接收缓冲区 */
+    zmq_setsockopt(client->zmq_sock, ZMQ_SNDBUF, &tcp_sndbuf, sizeof(tcp_sndbuf));
+    zmq_setsockopt(client->zmq_sock, ZMQ_RCVBUF, &tcp_rcvbuf, sizeof(tcp_rcvbuf));
+    
     /* 性能优化：设置立即连接，减少连接延迟 */
     int immediate = 1;
     zmq_setsockopt(client->zmq_sock, ZMQ_IMMEDIATE, &immediate, sizeof(immediate));
@@ -364,9 +370,13 @@ void uvrpc_client_free(uvrpc_client_t* client) {
         UVRPC_FREE(entry);
     }
 
-    /* 释放 uvzmq socket */
+    /* 释放 uvzmq socket (异步释放，需要运行事件循环来完成清理) */
     if (client->socket) {
         uvzmq_socket_free(client->socket);
+        /* 运行事件循环以确保异步清理完成 */
+        if (client->loop) {
+            uv_run(client->loop, UV_RUN_NOWAIT);
+        }
     }
 
     /* 关闭 ZMQ socket */
