@@ -12,32 +12,37 @@
 
 /* ==================== echo Client API ==================== */
 
+int EchoService_echo_CallAsync(
+    uvrpc_client_t* client,
+    const EchoService_echo_Request_t* request,
+    EchoService_echo_Response_t* response,
+    uv_loop_t* loop
+) {
+    return uvrpc_client_call_sync(
+        client,
+        "EchoService.echo",
+        "echo",
+        request,
+        (uvrpc_serialize_func_t)EchoService_echo_SerializeRequest,
+        response,
+        (uvrpc_deserialize_func_t)EchoService_echo_DeserializeResponse,
+        loop
+    );
+}
+
 int EchoService_echo_Async(
     uvrpc_client_t* client,
     const EchoService_echo_Request_t* request,
     uvrpc_async_t* async
 ) {
-    if (!client || !request || !async) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Serialize request */
-    uint8_t* serialized = NULL;
-    size_t serialized_size = 0;
-    if (EchoService_echo_SerializeRequest(request, &serialized, &serialized_size) != 0) {
-        return UVRPC_ERROR;
-    }
-
-    /* Send async call */
-    int rc = uvrpc_client_call_async(client, "EchoService.echo", "echo",
-                                      serialized, serialized_size, async);
-    
-    /* Free serialized data (uvrpc_client_call_async takes ownership) */
-    if (rc != UVRPC_OK) {
-        free(serialized);
-    }
-
-    return rc;
+    return uvrpc_client_call_async_generic(
+        client,
+        "EchoService.echo",
+        "echo",
+        request,
+        (uvrpc_serialize_func_t)EchoService_echo_SerializeRequest,
+        async
+    );
 }
 
 int EchoService_echo_AsyncTimeout(
@@ -71,68 +76,40 @@ int EchoService_echo_Await(
     return UVRPC_OK;
 }
 
-int EchoService_echo_CallAsync(
-    uvrpc_client_t* client,
-    const EchoService_echo_Request_t* request,
-    EchoService_echo_Response_t* response,
-    uv_loop_t* loop
-) {
-    if (!client || !request || !response || !loop) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Create async context */
-    uvrpc_async_t* async = uvrpc_async_create(loop);
-    if (!async) {
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-
-    /* Send async call */
-    int rc = EchoService_echo_Async(client, request, async);
-    if (rc != UVRPC_OK) {
-        uvrpc_async_free(async);
-        return rc;
-    }
-
-    /* Await response */
-    const uvrpc_async_result_t* result = uvrpc_async_await(async);
-    rc = EchoService_echo_Await(result, response);
-
-    /* Free async context */
-    uvrpc_async_free(async);
-
-    return rc;
-}
-
 
 /* ==================== add Client API ==================== */
+
+int EchoService_add_CallAsync(
+    uvrpc_client_t* client,
+    const EchoService_add_Request_t* request,
+    EchoService_add_Response_t* response,
+    uv_loop_t* loop
+) {
+    return uvrpc_client_call_sync(
+        client,
+        "EchoService.add",
+        "add",
+        request,
+        (uvrpc_serialize_func_t)EchoService_add_SerializeRequest,
+        response,
+        (uvrpc_deserialize_func_t)EchoService_add_DeserializeResponse,
+        loop
+    );
+}
 
 int EchoService_add_Async(
     uvrpc_client_t* client,
     const EchoService_add_Request_t* request,
     uvrpc_async_t* async
 ) {
-    if (!client || !request || !async) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Serialize request */
-    uint8_t* serialized = NULL;
-    size_t serialized_size = 0;
-    if (EchoService_add_SerializeRequest(request, &serialized, &serialized_size) != 0) {
-        return UVRPC_ERROR;
-    }
-
-    /* Send async call */
-    int rc = uvrpc_client_call_async(client, "EchoService.add", "add",
-                                      serialized, serialized_size, async);
-    
-    /* Free serialized data (uvrpc_client_call_async takes ownership) */
-    if (rc != UVRPC_OK) {
-        free(serialized);
-    }
-
-    return rc;
+    return uvrpc_client_call_async_generic(
+        client,
+        "EchoService.add",
+        "add",
+        request,
+        (uvrpc_serialize_func_t)EchoService_add_SerializeRequest,
+        async
+    );
 }
 
 int EchoService_add_AsyncTimeout(
@@ -166,68 +143,40 @@ int EchoService_add_Await(
     return UVRPC_OK;
 }
 
-int EchoService_add_CallAsync(
-    uvrpc_client_t* client,
-    const EchoService_add_Request_t* request,
-    EchoService_add_Response_t* response,
-    uv_loop_t* loop
-) {
-    if (!client || !request || !response || !loop) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Create async context */
-    uvrpc_async_t* async = uvrpc_async_create(loop);
-    if (!async) {
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-
-    /* Send async call */
-    int rc = EchoService_add_Async(client, request, async);
-    if (rc != UVRPC_OK) {
-        uvrpc_async_free(async);
-        return rc;
-    }
-
-    /* Await response */
-    const uvrpc_async_result_t* result = uvrpc_async_await(async);
-    rc = EchoService_add_Await(result, response);
-
-    /* Free async context */
-    uvrpc_async_free(async);
-
-    return rc;
-}
-
 
 /* ==================== get_info Client API ==================== */
+
+int EchoService_getInfo_CallAsync(
+    uvrpc_client_t* client,
+    const EchoService_getInfo_Request_t* request,
+    EchoService_getInfo_Response_t* response,
+    uv_loop_t* loop
+) {
+    return uvrpc_client_call_sync(
+        client,
+        "EchoService.get_info",
+        "get_info",
+        request,
+        (uvrpc_serialize_func_t)EchoService_getInfo_SerializeRequest,
+        response,
+        (uvrpc_deserialize_func_t)EchoService_getInfo_DeserializeResponse,
+        loop
+    );
+}
 
 int EchoService_getInfo_Async(
     uvrpc_client_t* client,
     const EchoService_getInfo_Request_t* request,
     uvrpc_async_t* async
 ) {
-    if (!client || !request || !async) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Serialize request */
-    uint8_t* serialized = NULL;
-    size_t serialized_size = 0;
-    if (EchoService_getInfo_SerializeRequest(request, &serialized, &serialized_size) != 0) {
-        return UVRPC_ERROR;
-    }
-
-    /* Send async call */
-    int rc = uvrpc_client_call_async(client, "EchoService.get_info", "get_info",
-                                      serialized, serialized_size, async);
-    
-    /* Free serialized data (uvrpc_client_call_async takes ownership) */
-    if (rc != UVRPC_OK) {
-        free(serialized);
-    }
-
-    return rc;
+    return uvrpc_client_call_async_generic(
+        client,
+        "EchoService.get_info",
+        "get_info",
+        request,
+        (uvrpc_serialize_func_t)EchoService_getInfo_SerializeRequest,
+        async
+    );
 }
 
 int EchoService_getInfo_AsyncTimeout(
@@ -259,38 +208,5 @@ int EchoService_getInfo_Await(
     }
 
     return UVRPC_OK;
-}
-
-int EchoService_getInfo_CallAsync(
-    uvrpc_client_t* client,
-    const EchoService_getInfo_Request_t* request,
-    EchoService_getInfo_Response_t* response,
-    uv_loop_t* loop
-) {
-    if (!client || !request || !response || !loop) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Create async context */
-    uvrpc_async_t* async = uvrpc_async_create(loop);
-    if (!async) {
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-
-    /* Send async call */
-    int rc = EchoService_getInfo_Async(client, request, async);
-    if (rc != UVRPC_OK) {
-        uvrpc_async_free(async);
-        return rc;
-    }
-
-    /* Await response */
-    const uvrpc_async_result_t* result = uvrpc_async_await(async);
-    rc = EchoService_getInfo_Await(result, response);
-
-    /* Free async context */
-    uvrpc_async_free(async);
-
-    return rc;
 }
 

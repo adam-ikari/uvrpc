@@ -13,32 +13,37 @@
 
 /* ==================== {{ method.name }} Client API ==================== */
 
+int {{ functionName(serviceName, method.name, 'CallAsync') }}(
+    uvrpc_client_t* client,
+    const {{ structName(serviceName, method.name, 'Request') }}_t* request,
+    {{ structName(serviceName, method.name, 'Response') }}_t* response,
+    uv_loop_t* loop
+) {
+    return uvrpc_client_call_sync(
+        client,
+        "{{ serviceName }}.{{ method.name }}",
+        "{{ method.name }}",
+        request,
+        (uvrpc_serialize_func_t){{ functionName(serviceName, method.name, 'SerializeRequest') }},
+        response,
+        (uvrpc_deserialize_func_t){{ functionName(serviceName, method.name, 'DeserializeResponse') }},
+        loop
+    );
+}
+
 int {{ functionName(serviceName, method.name, 'Async') }}(
     uvrpc_client_t* client,
     const {{ structName(serviceName, method.name, 'Request') }}_t* request,
     uvrpc_async_t* async
 ) {
-    if (!client || !request || !async) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Serialize request */
-    uint8_t* serialized = NULL;
-    size_t serialized_size = 0;
-    if ({{ functionName(serviceName, method.name, 'SerializeRequest') }}(request, &serialized, &serialized_size) != 0) {
-        return UVRPC_ERROR;
-    }
-
-    /* Send async call */
-    int rc = uvrpc_client_call_async(client, "{{ serviceName }}.{{ method.name }}", "{{ method.name }}",
-                                      serialized, serialized_size, async);
-    
-    /* Free serialized data (uvrpc_client_call_async takes ownership) */
-    if (rc != UVRPC_OK) {
-        free(serialized);
-    }
-
-    return rc;
+    return uvrpc_client_call_async_generic(
+        client,
+        "{{ serviceName }}.{{ method.name }}",
+        "{{ method.name }}",
+        request,
+        (uvrpc_serialize_func_t){{ functionName(serviceName, method.name, 'SerializeRequest') }},
+        async
+    );
 }
 
 int {{ functionName(serviceName, method.name, 'AsyncTimeout') }}(
@@ -70,39 +75,6 @@ int {{ functionName(serviceName, method.name, 'Await') }}(
     }
 
     return UVRPC_OK;
-}
-
-int {{ functionName(serviceName, method.name, 'CallAsync') }}(
-    uvrpc_client_t* client,
-    const {{ structName(serviceName, method.name, 'Request') }}_t* request,
-    {{ structName(serviceName, method.name, 'Response') }}_t* response,
-    uv_loop_t* loop
-) {
-    if (!client || !request || !response || !loop) {
-        return UVRPC_ERROR_INVALID_PARAM;
-    }
-
-    /* Create async context */
-    uvrpc_async_t* async = uvrpc_async_create(loop);
-    if (!async) {
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-
-    /* Send async call */
-    int rc = {{ functionName(serviceName, method.name, 'Async') }}(client, request, async);
-    if (rc != UVRPC_OK) {
-        uvrpc_async_free(async);
-        return rc;
-    }
-
-    /* Await response */
-    const uvrpc_async_result_t* result = uvrpc_async_await(async);
-    rc = {{ functionName(serviceName, method.name, 'Await') }}(result, response);
-
-    /* Free async context */
-    uvrpc_async_free(async);
-
-    return rc;
 }
 
 {% endfor %}

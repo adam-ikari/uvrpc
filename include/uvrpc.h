@@ -292,6 +292,68 @@ int uvrpc_async_await_all(uvrpc_async_t** asyncs, int count);
  */
 int uvrpc_async_await_any(uvrpc_async_t** asyncs, int count);
 
+/* ==================== 通用客户端调用 API ==================== */
+
+/**
+ * 序列化函数类型
+ * 用于生成的代码的通用调用框架
+ */
+typedef int (*uvrpc_serialize_func_t)(const void* request, uint8_t** data, size_t* size);
+
+/**
+ * 反序列化函数类型
+ */
+typedef int (*uvrpc_deserialize_func_t)(const uint8_t* data, size_t size, void* response);
+
+/**
+ * 释放函数类型
+ */
+typedef void (*uvrpc_free_func_t)(void* obj);
+
+/**
+ * 通用客户端调用（同步等待）
+ * 
+ * @param client 客户端对象
+ * @param service_name 服务名称
+ * @param method_name 方法名称
+ * @param request 请求对象
+ * @param serialize_func 序列化函数
+ * @param response 响应对象
+ * @param deserialize_func 反序列化函数
+ * @param loop 事件循环
+ * @return UVRPC_OK 成功，其他值表示错误
+ */
+int uvrpc_client_call_sync(
+    uvrpc_client_t* client,
+    const char* service_name,
+    const char* method_name,
+    const void* request,
+    uvrpc_serialize_func_t serialize_func,
+    void* response,
+    uvrpc_deserialize_func_t deserialize_func,
+    uv_loop_t* loop
+);
+
+/**
+ * 通用客户端异步调用（带超时）
+ * 
+ * @param client 客户端对象
+ * @param service_name 服务名称
+ * @param method_name 方法名称
+ * @param request 请求对象
+ * @param serialize_func 序列化函数
+ * @param async 异步上下文
+ * @return UVRPC_OK 成功，其他值表示错误
+ */
+int uvrpc_client_call_async_generic(
+    uvrpc_client_t* client,
+    const char* service_name,
+    const char* method_name,
+    const void* request,
+    uvrpc_serialize_func_t serialize_func,
+    uvrpc_async_t* async
+);
+
 /* ==================== 错误码 ==================== */
 
 #define UVRPC_OK                0

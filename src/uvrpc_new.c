@@ -951,3 +951,89 @@ int uvrpc_async_await_any(uvrpc_async_t** asyncs, int count) {
 
     return UVRPC_ERROR;
 }
+
+/* ==================== 通用客户端调用 API ==================== */
+
+int uvrpc_client_call_async_generic(
+    uvrpc_client_t* client,
+    const char* service_name,
+    const char* method_name,
+    const void* request,
+    uvrpc_serialize_func_t serialize_func,
+    uvrpc_async_t* async
+) {
+    if (!client || !service_name || !method_name || !request || !async || !serialize_func) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    if (!client->is_connected) {
+        return UVRPC_ERROR;
+    }
+
+    /* 序列化请求 */
+    uint8_t* serialized = NULL;
+    size_t serialized_size = 0;
+    if (serialize_func(request, &serialized, &serialized_size) != 0) {
+        return UVRPC_ERROR;
+    }
+
+    /* 发送异步调用 */
+    int rc = uvrpc_client_call_async(client, service_name, method_name,
+                                      serialized, serialized_size, async);
+
+    /* 释放序列化数据（uvrpc_client_call_async 接管所有权） */
+    if (rc != UVRPC_OK) {
+        free(serialized);
+    }
+
+    return rc;
+}
+
+int uvrpc_client_call_sync(
+    uvrpc_client_t* client,
+    const char* service_name,
+    const char* method_name,
+    const void* request,
+    uvrpc_serialize_func_t serialize_func,
+    void* response,
+    uvrpc_deserialize_func_t deserialize_func,
+    uv_loop_t* loop
+) {
+    if (!client || !service_name || !method_name || !request || !response || !loop) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    if (!serialize_func || !deserialize_func) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    /* 创建异步上下文 */
+    uvrpc_async_t* async = uvrpc_async_create(loop);
+    if (!async) {
+        return UVRPC_ERROR_NO_MEMORY;
+    }
+
+    /* 发送异步调用 */
+    int rc = uvrpc_client_call_async_generic(client, service_name, method_name,
+                                              request, serialize_func, async);
+    if (rc != UVRPC_OK) {
+        uvrpc_async_free(async);
+        return rc;
+    }
+
+    /* 等待响应 */
+    const uvrpc_async_result_t* result = uvrpc_async_await(async);
+    
+    if (result && result->status == UVRPC_OK) {
+        rc = deserialize_func(result->response_data, result->response_size, response);
+    } else if (result) {
+        rc = result->status;
+    } else {
+        rc = UVRPC_ERROR;
+    }
+
+    /* 释放异步上下文 */
+    uvrpc_async_free(async);
+
+    return rc;
+}
