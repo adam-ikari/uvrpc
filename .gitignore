@@ -2,14 +2,26 @@
 build/
 cmake-build-*/
 
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
 # Generated files
 examples/*_generated.h
+generated/
+gen_benchmark
 
 # Object files
 *.o
 *.a
 *.so
 *.dylib
+libmsgpackc.a
+libuvrpc.a
 
 # Editor files
 .vscode/
@@ -18,6 +30,14 @@ examples/*_generated.h
 *.swo
 *~
 
+# Backup files
+*.bak
+*.orig
+
 # OS files
 .DS_Store
 Thumbs.db
+
+# Dependency build directories (submodules)
+mimalloc/
+deps/*/build/
