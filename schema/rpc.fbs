@@ -1,0 +1,14 @@
+namespace uvrpc;
+
+table Request {
+    service: string;
+    method: string;
+    data: [ubyte];
+}
+
+table Response {
+    status: int;
+    data: [ubyte];
+}
+
+root_type Request;

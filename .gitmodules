@@ -22,3 +22,6 @@
 [submodule "deps/nng"]
 	path = deps/nng
 	url = https://github.com/nanomsg/nng
+[submodule "deps/flatcc"]
+	path = deps/flatcc
+	url = https://github.com/dvidelabs/flatcc.git

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 /* Response callback */
 void response_callback(int status, const uint8_t* data, size_t size, void* ctx) {
@@ -43,12 +44,19 @@ int main(int argc, char** argv) {
     }
     
     /* Connect */
+    printf("Connecting to server...\n");
     if (uvrpc_client_connect(client) != 0) {
         fprintf(stderr, "Failed to connect\n");
         uvrpc_client_free(client);
         uvrpc_config_free(config);
         return 1;
     }
+    
+    /* Wait for connection to establish */
+    printf("Waiting for connection...\n");
+    uv_run(&loop, UV_RUN_ONCE);
+    usleep(100000); /* 100ms delay */
+    uv_run(&loop, UV_RUN_ONCE);
     
     printf("Connected to server\n\n");
     

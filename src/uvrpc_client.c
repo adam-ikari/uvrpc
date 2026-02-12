@@ -1,12 +1,11 @@
 /**
  * UVRPC Client - Complete Implementation
- * libuv + NNG + msgpack
+ * libuv + NNG + FlatCC
  */
 
 #include "../include/uvrpc.h"
 #include <nng/nng.h>
 #include "uvrpc_msgpack.h"
-#include <mpack.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
