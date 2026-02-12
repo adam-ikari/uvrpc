@@ -1,14 +1,28 @@
 namespace uvrpc;
 
+/* RPC Request message */
 table Request {
     service: string;
     method: string;
     data: [ubyte];
 }
 
+/* RPC Response message */
 table Response {
     status: int;
     data: [ubyte];
+}
+
+/* Service metadata for code generation */
+table Service {
+    name: string;
+    methods: [Method];
+}
+
+table Method {
+    name: string;
+    request_type: string;
+    response_type: string;
 }
 
 root_type Request;
