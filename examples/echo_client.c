@@ -1,5 +1,5 @@
 /**
- * Improved UVRPC Test Client
+ * UVRPC Test Client - Performance Test
  */
 
 #include "../include/uvrpc.h"
@@ -7,15 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
+#include <signal.h>
 
-/* Response callback */
+static volatile int g_received = 0;
+static volatile int g_completed = 0;
+
 void response_callback(int status, const uint8_t* data, size_t size, void* ctx) {
     (void)status;
     (void)data;
     (void)size;
     (void)ctx;
-    /* Process response */
+    g_received++;
 }
 
 int main(int argc, char** argv) {
@@ -53,10 +55,9 @@ int main(int argc, char** argv) {
     }
     
     /* Wait for connection to establish */
-    printf("Waiting for connection...\n");
-    uv_run(&loop, UV_RUN_ONCE);
-    uv_run(&loop, UV_RUN_ONCE);
-    uv_run(&loop, UV_RUN_ONCE);
+    for (int i = 0; i < 10; i++) {
+        uv_run(&loop, UV_RUN_ONCE);
+    }
     
     printf("Connected to server\n\n");
     
@@ -68,8 +69,19 @@ int main(int argc, char** argv) {
     printf("Warming up...\n");
     for (int i = 0; i < 100; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_NOWAIT);
     }
+    
+    /* Wait for warmup responses */
+    int count = 0;
+    while (count < 100) {
+        uv_run(&loop, UV_RUN_ONCE);
+        int new_received = g_received;
+        count = new_received;
+    }
+    
+    g_received = 0;
+    g_completed = 0;
     
     printf("Starting benchmark...\n");
     
@@ -79,6 +91,16 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < num_requests; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
+        uv_run(&loop, UV_RUN_NOWAIT);
+        
+        /* Process events periodically */
+        if (i % 100 == 0) {
+            uv_run(&loop, UV_RUN_ONCE);
+        }
+    }
+    
+    /* Wait for all responses */
+    while (g_received < num_requests) {
         uv_run(&loop, UV_RUN_ONCE);
     }
     
@@ -90,6 +112,7 @@ int main(int argc, char** argv) {
     
     printf("\n========== Results ==========\n");
     printf("Total time: %.2f ms\n", elapsed);
+    printf("Received: %d\n", g_received);
     printf("Throughput: %.0f ops/s\n", throughput);
     printf("Avg latency: %.3f ms\n", elapsed / num_requests);
     printf("=============================\n");

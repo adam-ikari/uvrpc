@@ -130,9 +130,11 @@ int uvrpc_server_start(uvrpc_server_t* server) {
     int fd = -1;
     rv = nng_socket_get_recv_poll_fd(server->sock, &fd);
     if (rv != 0 || fd < 0) {
-        fprintf(stderr, "Failed to get socket fd: %d\n", rv);
+        fprintf(stderr, "Failed to get socket fd: rv=%d fd=%d\n", rv, fd);
         return -4;
     }
+    
+    printf("Got socket fd: %d\n", fd);
     
     server->poll_handle.data = server;
     if (uv_poll_init_socket(server->loop, &server->poll_handle, fd) != 0) {
@@ -144,7 +146,7 @@ int uvrpc_server_start(uvrpc_server_t* server) {
     }
     
     server->has_poll = 1;
-    printf("Server started on %s\n", server->address);
+    printf("Server started on %s (fd=%d)\n", server->address, fd);
     return 0;
 }
 
