@@ -69,9 +69,19 @@ add_dependencies(uvrpc generate_flatcc)
 if(UVRPC_BUILD_EXAMPLES)
     add_executable(echo_server examples/echo_server.c ${UVRPC_SOURCES})
     add_executable(echo_client examples/echo_client.c ${UVRPC_SOURCES})
+    add_executable(pipeline_server examples/pipeline_server.c)
+    add_executable(pipeline_client examples/pipeline_client.c)
+add_executable(inproc_test examples/inproc_test.c)
+    add_executable(multi_client examples/multi_client.c)
+    add_executable(simple_server examples/simple_server.c)
+    add_executable(simple_multi_client examples/simple_multi_client.c)
+    add_executable(async_server examples/async_server.c)
+    add_executable(async_client examples/async_client.c)
+    add_executable(async_server_uv examples/async_server_uv.c)
+    add_executable(async_client_uv examples/async_client_uv.c)
 
     if(UVRPC_STATIC_LINKING)
-        target_link_libraries(echo_server 
+        target_link_libraries(echo_server
             ${DEPS_DIR}/nng/build/libnng.a
             ${DEPS_DIR}/libuv/build/libuv.a
             ${DEPS_DIR}/flatcc/lib/libflatcc.a
@@ -86,6 +96,72 @@ if(UVRPC_BUILD_EXAMPLES)
             Threads::Threads m rt
         )
         target_link_options(echo_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(pipeline_server
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(pipeline_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(pipeline_client
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(pipeline_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(inproc_test
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(inproc_test PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(multi_client
+            ${DEPS_DIR}/nng/build/libnng.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        target_link_options(multi_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        add_dependencies(multi_client generate_flatcc)
+        
+        target_link_libraries(simple_server
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(simple_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(simple_multi_client
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(simple_multi_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(async_server
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(async_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(async_client
+            ${DEPS_DIR}/nng/build/libnng.a
+            Threads::Threads m rt
+        )
+        target_link_options(async_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(async_server_uv
+            ${DEPS_DIR}/nng/build/libnng.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            Threads::Threads m rt
+        )
+        target_link_options(async_server_uv PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(async_client_uv
+            ${DEPS_DIR}/nng/build/libnng.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            Threads::Threads m rt
+        )
+        target_link_options(async_client_uv PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
     endif()
 
     add_dependencies(echo_server generate_flatcc)

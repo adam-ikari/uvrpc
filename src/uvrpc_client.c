@@ -13,70 +13,14 @@
 /* NNG initialization */
 static int g_nng_initialized = 0;
 
-/* Pending response context */
-typedef struct pending_response {
-    uvrpc_callback_t callback;
-    void* ctx;
-    struct pending_response* next;
-} pending_response_t;
-
-static pending_response_t* g_pending_list = NULL;
-
-/* AIO context */
-typedef struct aio_ctx {
-    uvrpc_client_t* client;
-    nng_aio* aio;
-} aio_ctx_t;
-
-/* AIO callback for receive */
-void aio_recv_callback(void* arg) {
-    aio_ctx_t* ctx = (aio_ctx_t*)arg;
-    
-    int rv = nng_aio_result(ctx->aio);
-    if (rv == 0) {
-        nng_msg* reply = nng_aio_get_msg(ctx->aio);
-        if (reply) {
-            /* Unpack response */
-            int resp_status = 0;
-            const uint8_t* resp_data = NULL;
-            size_t resp_size = 0;
-            
-            size_t reply_size = nng_msg_len(reply);
-            const char* reply_buf = (const char*)nng_msg_body(reply);
-            
-            if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
-                /* Find matching pending response */
-                pending_response_t** p = &g_pending_list;
-                while (*p) {
-                    if ((*p)->callback) {
-                        (*p)->callback(resp_status, resp_data, resp_size, (*p)->ctx);
-                        break;
-                    }
-                    p = &(*p)->next;
-                }
-            }
-            
-            nng_msg_free(reply);
-        }
-    }
-}
-
-/* AIO callback for send */
-void aio_send_callback(void* arg) {
-    aio_ctx_t* ctx = (aio_ctx_t*)arg;
-    
-    /* Start receive after send */
-    nng_recv_aio(ctx->client->sock, ctx->aio);
-}
-
 static int init_nng(void) {
     if (g_nng_initialized) return 0;
     
     nng_init_params params;
     memset(&params, 0, sizeof(params));
-    /* Enable task threads for AIO */
-    params.num_task_threads = 2;
-    params.max_task_threads = 2;
+    /* No task threads for sync mode */
+    params.num_task_threads = 0;
+    params.max_task_threads = 0;
     
     if (nng_init(&params) != 0) return -1;
     
@@ -161,23 +105,6 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* m
     char* buffer = uvrpc_pack_request(service, method, data, size, &buf_size);
     if (!buffer) return -2;
     
-    /* Add to pending list */
-    pending_response_t* pending = (pending_response_t*)calloc(1, sizeof(pending_response_t));
-    pending->callback = callback;
-    pending->ctx = ctx;
-    pending->next = g_pending_list;
-    g_pending_list = pending;
-    
-    /* Create AIO context */
-    aio_ctx_t* aio_ctx = (aio_ctx_t*)calloc(1, sizeof(aio_ctx_t));
-    aio_ctx->client = client;
-    
-    if (nng_aio_alloc(&aio_ctx->aio, aio_send_callback, aio_ctx) != 0) {
-        free(pending);
-        free(buffer);
-        return -3;
-    }
-    
     /* Prepare message */
     nng_msg* msg = NULL;
     nng_msg_alloc(&msg, buf_size);
@@ -185,8 +112,33 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* m
     free(buffer);
     
     /* Send message */
-    nng_aio_set_msg(aio_ctx->aio, msg);
-    nng_send_aio(client->sock, aio_ctx->aio);
+    if (nng_sendmsg(client->sock, msg, 0) != 0) {
+        nng_msg_free(msg);
+        return -3;
+    }
+    
+    /* Receive response (blocking but fast in this pattern) */
+    nng_msg* reply = NULL;
+    int rv = nng_recvmsg(client->sock, &reply, 0);
+    if (rv != 0) {
+        return -4;
+    }
+    
+    /* Unpack response */
+    int resp_status = 0;
+    const uint8_t* resp_data = NULL;
+    size_t resp_size = 0;
+    
+    size_t reply_size = nng_msg_len(reply);
+    const char* reply_buf = (const char*)nng_msg_body(reply);
+    
+    if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
+        if (callback) {
+            callback(resp_status, resp_data, resp_size, ctx);
+        }
+    }
+    
+    nng_msg_free(reply);
     
     return 0;
 }
@@ -195,6 +147,5 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* m
 void uvrpc_client_process(uvrpc_client_t* client) {
     if (!client) return;
     
-    /* Just run event loop to process callbacks */
     (void)client;
 }

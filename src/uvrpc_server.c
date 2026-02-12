@@ -134,42 +134,58 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* name, uvrpc_handle
 void uvrpc_server_process(uvrpc_server_t* server) {
     if (!server || !server->has_listener) return;
     
+    /* Use non-blocking to avoid blocking the event loop */
     nng_msg* msg = NULL;
-    while (nng_recvmsg(server->sock, &msg, NNG_FLAG_NONBLOCK) == 0) {
-        /* Process request */
-        size_t msg_size = nng_msg_len(msg);
-        const char* msg_buf = (const char*)nng_msg_body(msg);
-        
-        char* service = NULL;
-        char* method = NULL;
-        const uint8_t* data = NULL;
-        size_t data_size = 0;
-        
-        if (uvrpc_unpack_request(msg_buf, msg_size, &service, &method, &data, &data_size) == 0) {
-            /* Find handler */
-            service_entry_t* entry = NULL;
-            service_entry_t* serv = (service_entry_t*)server->services;
-            HASH_FIND_STR(serv, service, entry);
+    int processed = 0;
+    
+    while (processed < 1000) {  /* Limit to avoid starvation */
+        if (nng_recvmsg(server->sock, &msg, NNG_FLAG_NONBLOCK) == 0) {
+            processed++;
             
-            if (entry && entry->handler) {
-                entry->handler(server, service, method, data, data_size, entry->ctx);
-                
-                /* Send response */
-                size_t resp_size = 0;
-                char* resp_buf = uvrpc_pack_response(0, data, data_size, &resp_size);
-                if (resp_buf) {
-                    nng_msg* reply = NULL;
-                    nng_msg_alloc(&reply, resp_size);
-                    memcpy(nng_msg_body(reply), resp_buf, resp_size);
-                    nng_sendmsg(server->sock, reply, 0);
-                    free(resp_buf);
-                }
+            /* Process request */
+            size_t msg_size = nng_msg_len(msg);
+            const char* msg_buf = (const char*)nng_msg_body(msg);
+            
+            /* Validate message size */
+            if (msg_size < 8) {
+                /* Invalid message, skip */
+                nng_msg_free(msg);
+                continue;
             }
             
-            if (service) free(service);
-            if (method) free(method);
+            char* service = NULL;
+            char* method = NULL;
+            const uint8_t* data = NULL;
+            size_t data_size = 0;
+            
+            if (uvrpc_unpack_request(msg_buf, msg_size, &service, &method, &data, &data_size) == 0) {
+                /* Find handler */
+                service_entry_t* entry = NULL;
+                service_entry_t* serv = (service_entry_t*)server->services;
+                HASH_FIND_STR(serv, service, entry);
+                
+                if (entry && entry->handler) {
+                    entry->handler(server, service, method, data, data_size, entry->ctx);
+                    
+                    /* Send response */
+                    size_t resp_size = 0;
+                    char* resp_buf = uvrpc_pack_response(0, data, data_size, &resp_size);
+                    if (resp_buf) {
+                        nng_msg* reply = NULL;
+                        nng_msg_alloc(&reply, resp_size);
+                        memcpy(nng_msg_body(reply), resp_buf, resp_size);
+                        nng_sendmsg(server->sock, reply, 0);
+                        free(resp_buf);
+                    }
+                }
+                
+                if (service) free(service);
+                if (method) free(method);
+            }
+            
+            nng_msg_free(msg);
+        } else {
+            break;
         }
-        
-        nng_msg_free(msg);
     }
 }
