@@ -58,6 +58,7 @@ int uvrpc_server_start(uvrpc_server_t* server);
 void uvrpc_server_stop(uvrpc_server_t* server);
 void uvrpc_server_free(uvrpc_server_t* server);
 int uvrpc_server_register(uvrpc_server_t* server, const char* name, uvrpc_handler_t handler, void* ctx);
+void uvrpc_server_process(uvrpc_server_t* server);
 
 /* Client */
 struct uvrpc_client {
@@ -80,6 +81,7 @@ void uvrpc_client_disconnect(uvrpc_client_t* client);
 void uvrpc_client_free(uvrpc_client_t* client);
 int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* method,
                        const uint8_t* data, size_t size, uvrpc_callback_t callback, void* ctx);
+void uvrpc_client_process(uvrpc_client_t* client);
 
 #ifdef __cplusplus
 }

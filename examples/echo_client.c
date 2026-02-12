@@ -10,7 +10,6 @@
 #include <signal.h>
 
 static volatile int g_received = 0;
-static volatile int g_completed = 0;
 
 void response_callback(int status, const uint8_t* data, size_t size, void* ctx) {
     (void)status;
@@ -67,21 +66,15 @@ int main(int argc, char** argv) {
     
     /* Warmup */
     printf("Warming up...\n");
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
-        uv_run(&loop, UV_RUN_NOWAIT);
-    }
-    
-    /* Wait for warmup responses */
-    int count = 0;
-    while (count < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
-        int new_received = g_received;
-        count = new_received;
+        for (int j = 0; j < 100; j++) {
+            uvrpc_client_process(client);
+            uv_run(&loop, UV_RUN_NOWAIT);
+        }
     }
     
     g_received = 0;
-    g_completed = 0;
     
     printf("Starting benchmark...\n");
     
@@ -91,17 +84,20 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < num_requests; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
-        uv_run(&loop, UV_RUN_NOWAIT);
         
-        /* Process events periodically */
-        if (i % 100 == 0) {
-            uv_run(&loop, UV_RUN_ONCE);
+        /* Process events after each send */
+        for (int j = 0; j < 10; j++) {
+            uvrpc_client_process(client);
+            uv_run(&loop, UV_RUN_NOWAIT);
         }
     }
     
     /* Wait for all responses */
-    while (g_received < num_requests) {
+    int drain_iter = 0;
+    while (g_received < num_requests && drain_iter < 100000) {
+        uvrpc_client_process(client);
         uv_run(&loop, UV_RUN_ONCE);
+        drain_iter++;
     }
     
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -112,7 +108,7 @@ int main(int argc, char** argv) {
     
     printf("\n========== Results ==========\n");
     printf("Total time: %.2f ms\n", elapsed);
-    printf("Received: %d\n", g_received);
+    printf("Received: %d / %d\n", g_received, num_requests);
     printf("Throughput: %.0f ops/s\n", throughput);
     printf("Avg latency: %.3f ms\n", elapsed / num_requests);
     printf("=============================\n");

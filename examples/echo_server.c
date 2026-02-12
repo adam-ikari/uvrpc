@@ -23,8 +23,6 @@ void echo_handler(uvrpc_server_t* server, const char* service, const char* metho
     (void)service;
     (void)method;
     (void)ctx;
-    
-    printf("Echo: %zu bytes\n", size);
 }
 
 int main(int argc, char** argv) {
@@ -66,6 +64,7 @@ int main(int argc, char** argv) {
     
     /* Run server */
     while (g_running) {
+        uvrpc_server_process(server);
         uv_run(&loop, UV_RUN_ONCE);
     }
     

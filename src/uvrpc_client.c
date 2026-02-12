@@ -13,36 +13,6 @@
 /* NNG initialization */
 static int g_nng_initialized = 0;
 
-/* Poll callback */
-void client_poll_callback(uv_poll_t* handle, int status, int events) {
-    uvrpc_client_t* client = (uvrpc_client_t*)handle->data;
-    
-    if (status < 0) return;
-    
-    if (events & UV_READABLE) {
-        nng_msg* reply = NULL;
-        if (nng_recvmsg(client->sock, &reply, NNG_FLAG_NONBLOCK) == 0) {
-            /* Unpack response */
-            int resp_status = 0;
-            const uint8_t* resp_data = NULL;
-            size_t resp_size = 0;
-            
-            size_t reply_size = nng_msg_len(reply);
-            const char* reply_buf = (const char*)nng_msg_body(reply);
-            
-            if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
-                if (client->pending_callback) {
-                    client->pending_callback(resp_status, resp_data, resp_size, client->pending_ctx);
-                    client->pending_callback = NULL;
-                    client->pending_ctx = NULL;
-                }
-            }
-            
-            nng_msg_free(reply);
-        }
-    }
-}
-
 static int init_nng(void) {
     if (g_nng_initialized) return 0;
     
@@ -95,23 +65,6 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
     }
     
     client->has_dialer = 1;
-    
-    /* Setup libuv poll */
-    int fd = -1;
-    int rv = nng_socket_get_recv_poll_fd(client->sock, &fd);
-    if (rv != 0 || fd < 0) {
-        return -4;
-    }
-    
-    client->poll_handle.data = client;
-    if (uv_poll_init_socket(client->loop, &client->poll_handle, fd) != 0) {
-        return -5;
-    }
-    
-    if (uv_poll_start(&client->poll_handle, UV_READABLE, client_poll_callback) != 0) {
-        return -6;
-    }
-    
     client->has_poll = 1;
     return 0;
 }
@@ -119,16 +72,12 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
 void uvrpc_client_disconnect(uvrpc_client_t* client) {
     if (!client) return;
     
-    if (client->has_poll) {
-        uv_poll_stop(&client->poll_handle);
-        uv_close((uv_handle_t*)&client->poll_handle, NULL);
-        client->has_poll = 0;
-    }
-    
     if (client->has_dialer) {
         nng_dialer_close(client->dialer);
         client->has_dialer = 0;
     }
+    
+    client->has_poll = 0;
 }
 
 void uvrpc_client_free(uvrpc_client_t* client) {
@@ -174,4 +123,30 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* m
     }
     
     return 0;
+}
+
+/* Process incoming responses (called from event loop) */
+void uvrpc_client_process(uvrpc_client_t* client) {
+    if (!client || !client->has_dialer) return;
+    
+    nng_msg* reply = NULL;
+    while (nng_recvmsg(client->sock, &reply, NNG_FLAG_NONBLOCK) == 0) {
+        /* Unpack response */
+        int resp_status = 0;
+        const uint8_t* resp_data = NULL;
+        size_t resp_size = 0;
+        
+        size_t reply_size = nng_msg_len(reply);
+        const char* reply_buf = (const char*)nng_msg_body(reply);
+        
+        if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
+            if (client->pending_callback) {
+                client->pending_callback(resp_status, resp_data, resp_size, client->pending_ctx);
+                client->pending_callback = NULL;
+                client->pending_ctx = NULL;
+            }
+        }
+        
+        nng_msg_free(reply);
+    }
 }

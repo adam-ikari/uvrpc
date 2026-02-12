@@ -22,56 +22,6 @@ typedef struct service_entry {
     UT_hash_handle hh;
 } service_entry_t;
 
-/* Poll callback */
-void poll_callback(uv_poll_t* handle, int status, int events) {
-    uvrpc_server_t* server = (uvrpc_server_t*)handle->data;
-    
-    if (status < 0) {
-        return;
-    }
-    
-    if (events & UV_READABLE) {
-        nng_msg* msg = NULL;
-        if (nng_recvmsg(server->sock, &msg, NNG_FLAG_NONBLOCK) == 0) {
-            /* Process request */
-            size_t msg_size = nng_msg_len(msg);
-            const char* msg_buf = (const char*)nng_msg_body(msg);
-            
-            char* service = NULL;
-            char* method = NULL;
-            const uint8_t* data = NULL;
-            size_t data_size = 0;
-            
-            if (uvrpc_unpack_request(msg_buf, msg_size, &service, &method, &data, &data_size) == 0) {
-                /* Find handler */
-                service_entry_t* entry = NULL;
-                service_entry_t* serv = (service_entry_t*)server->services;
-                HASH_FIND_STR(serv, service, entry);
-                
-                if (entry && entry->handler) {
-                    entry->handler(server, service, method, data, data_size, entry->ctx);
-                    
-                    /* Send response */
-                    size_t resp_size = 0;
-                    char* resp_buf = uvrpc_pack_response(0, data, data_size, &resp_size);
-                    if (resp_buf) {
-                        nng_msg* reply = NULL;
-                        nng_msg_alloc(&reply, resp_size);
-                        memcpy(nng_msg_body(reply), resp_buf, resp_size);
-                        nng_sendmsg(server->sock, reply, NNG_FLAG_NONBLOCK);
-                        free(resp_buf);
-                    }
-                }
-                
-                if (service) free(service);
-                if (method) free(method);
-            }
-            
-            nng_msg_free(msg);
-        }
-    }
-}
-
 static int init_nng(void) {
     if (g_nng_initialized) return 0;
     
@@ -125,39 +75,12 @@ int uvrpc_server_start(uvrpc_server_t* server) {
     }
     
     server->has_listener = 1;
-    
-    /* Setup libuv poll */
-    int fd = -1;
-    rv = nng_socket_get_recv_poll_fd(server->sock, &fd);
-    if (rv != 0 || fd < 0) {
-        fprintf(stderr, "Failed to get socket fd: rv=%d fd=%d\n", rv, fd);
-        return -4;
-    }
-    
-    printf("Got socket fd: %d\n", fd);
-    
-    server->poll_handle.data = server;
-    if (uv_poll_init_socket(server->loop, &server->poll_handle, fd) != 0) {
-        return -5;
-    }
-    
-    if (uv_poll_start(&server->poll_handle, UV_READABLE, poll_callback) != 0) {
-        return -6;
-    }
-    
-    server->has_poll = 1;
-    printf("Server started on %s (fd=%d)\n", server->address, fd);
+    printf("Server started on %s\n", server->address);
     return 0;
 }
 
 void uvrpc_server_stop(uvrpc_server_t* server) {
     if (!server) return;
-    
-    if (server->has_poll) {
-        uv_poll_stop(&server->poll_handle);
-        uv_close((uv_handle_t*)&server->poll_handle, NULL);
-        server->has_poll = 0;
-    }
     
     if (server->has_listener) {
         nng_listener_close(server->listener);
@@ -205,4 +128,48 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* name, uvrpc_handle
     HASH_ADD_STR(serv, name, entry); server->services = serv;
     
     return 0;
+}
+
+/* Process incoming messages (called from event loop) */
+void uvrpc_server_process(uvrpc_server_t* server) {
+    if (!server || !server->has_listener) return;
+    
+    nng_msg* msg = NULL;
+    while (nng_recvmsg(server->sock, &msg, NNG_FLAG_NONBLOCK) == 0) {
+        /* Process request */
+        size_t msg_size = nng_msg_len(msg);
+        const char* msg_buf = (const char*)nng_msg_body(msg);
+        
+        char* service = NULL;
+        char* method = NULL;
+        const uint8_t* data = NULL;
+        size_t data_size = 0;
+        
+        if (uvrpc_unpack_request(msg_buf, msg_size, &service, &method, &data, &data_size) == 0) {
+            /* Find handler */
+            service_entry_t* entry = NULL;
+            service_entry_t* serv = (service_entry_t*)server->services;
+            HASH_FIND_STR(serv, service, entry);
+            
+            if (entry && entry->handler) {
+                entry->handler(server, service, method, data, data_size, entry->ctx);
+                
+                /* Send response */
+                size_t resp_size = 0;
+                char* resp_buf = uvrpc_pack_response(0, data, data_size, &resp_size);
+                if (resp_buf) {
+                    nng_msg* reply = NULL;
+                    nng_msg_alloc(&reply, resp_size);
+                    memcpy(nng_msg_body(reply), resp_buf, resp_size);
+                    nng_sendmsg(server->sock, reply, NNG_FLAG_NONBLOCK);
+                    free(resp_buf);
+                }
+            }
+            
+            if (service) free(service);
+            if (method) free(method);
+        }
+        
+        nng_msg_free(msg);
+    }
 }
