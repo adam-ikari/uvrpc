@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     /* Wait for connection to establish */
     printf("Waiting for connection...\n");
     uv_run(&loop, UV_RUN_ONCE);
-    usleep(100000); /* 100ms delay */
+    uv_run(&loop, UV_RUN_ONCE);
     uv_run(&loop, UV_RUN_ONCE);
     
     printf("Connected to server\n\n");

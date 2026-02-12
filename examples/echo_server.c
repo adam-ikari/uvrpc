@@ -67,7 +67,6 @@ int main(int argc, char** argv) {
     /* Run server */
     while (g_running) {
         uv_run(&loop, UV_RUN_ONCE);
-        usleep(1000);
     }
     
     /* Cleanup */
