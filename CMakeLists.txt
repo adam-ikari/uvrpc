@@ -55,11 +55,13 @@ set(UVRPC_SOURCES
     src/uvrpc_publisher.c
     src/uvrpc_subscriber.c
     src/uvrpc_allocator.c
+    src/uvrpc_async.c
 )
 
 # Headers
 set(UVRPC_HEADERS
     include/uvrpc.h
+    include/uvrpc_async.h
     src/uvrpc_msgpack.h
     src/uvrpc_service.h
 )
@@ -105,6 +107,8 @@ if(UVRPC_BUILD_EXAMPLES)
     add_executable(loop_injection_example examples/loop_injection_example.c)
     add_executable(broadcast_publisher examples/broadcast_publisher.c)
     add_executable(broadcast_subscriber examples/broadcast_subscriber.c)
+    add_executable(async_await_demo examples/async_await_demo.c)
+    add_executable(async_chain_demo examples/async_chain_demo.c)
 
     if(UVRPC_STATIC_LINKING)
         target_link_libraries(simple_server
@@ -177,6 +181,20 @@ if(UVRPC_BUILD_EXAMPLES)
             Threads::Threads m rt
         )
         
+        target_link_libraries(async_await_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(async_chain_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
         # Add Mimalloc with whole-archive if needed
         if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
             target_link_options(simple_server PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
@@ -189,6 +207,8 @@ if(UVRPC_BUILD_EXAMPLES)
             target_link_options(loop_injection_example PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
             target_link_options(broadcast_publisher PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
             target_link_options(broadcast_subscriber PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(async_await_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(async_chain_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
         endif()
         
         add_dependencies(simple_server generate_flatcc)
@@ -201,6 +221,8 @@ if(UVRPC_BUILD_EXAMPLES)
         add_dependencies(loop_injection_example generate_flatcc)
         add_dependencies(broadcast_publisher generate_flatcc)
         add_dependencies(broadcast_subscriber generate_flatcc)
+        add_dependencies(async_await_demo generate_flatcc)
+        add_dependencies(async_chain_demo generate_flatcc)
     else()
         target_link_libraries(simple_server uvrpc)
         target_link_libraries(simple_client uvrpc)
@@ -212,6 +234,8 @@ if(UVRPC_BUILD_EXAMPLES)
         target_link_libraries(loop_injection_example uvrpc)
         target_link_libraries(broadcast_publisher uvrpc)
         target_link_libraries(broadcast_subscriber uvrpc)
+        target_link_libraries(async_await_demo uvrpc)
+        target_link_libraries(async_chain_demo uvrpc)
         
         add_dependencies(simple_server generate_flatcc)
         add_dependencies(simple_client generate_flatcc)
@@ -223,6 +247,8 @@ if(UVRPC_BUILD_EXAMPLES)
         add_dependencies(loop_injection_example generate_flatcc)
         add_dependencies(broadcast_publisher generate_flatcc)
         add_dependencies(broadcast_subscriber generate_flatcc)
+        add_dependencies(async_await_demo generate_flatcc)
+        add_dependencies(async_chain_demo generate_flatcc)
     endif()
 endif()
 
