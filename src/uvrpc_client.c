@@ -1,50 +1,120 @@
 /**
- * UVRPC Client - Complete Implementation
- * libuv + NNG + FlatCC
+ * UVRPC Async Client
+ * Zero threads, Zero locks, Zero global variables
+ * All I/O managed by libuv event loop
  */
 
 #include "../include/uvrpc.h"
-#include <nng/nng.h>
-#include "uvrpc_msgpack.h"
-#include <stdio.h>
+#include "uvrpc_frame.h"
+#include "uvrpc_transport.h"
+#include "uvrpc_msgid.h"
+#include <uthash.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-/* NNG initialization */
-static int g_nng_initialized = 0;
+/* Pending callback */
+typedef struct pending_callback {
+    uint64_t msgid;
+    uvrpc_callback_t callback;
+    void* ctx;
+    struct pending_callback* next;
+} pending_callback_t;
 
-static int init_nng(void) {
-    if (g_nng_initialized) return 0;
+/* Client structure */
+struct uvrpc_client {
+    uv_loop_t* loop;
+    char* address;
+    uvrpc_transport_t* transport;
+    int is_connected;
+    uvrpc_msgid_ctx_t* msgid_ctx;  /* 消息ID生成器 */
     
-    nng_init_params params;
-    memset(&params, 0, sizeof(params));
-    /* No task threads for sync mode */
-    params.num_task_threads = 0;
-    params.max_task_threads = 0;
+    /* Pending callbacks list */
+    pending_callback_t* pending_callbacks;
+};
+
+/* Transport connect callback */
+static void client_connect_callback(int status, void* ctx) {
+    uvrpc_client_t* client = (uvrpc_client_t*)ctx;
+    client->is_connected = (status == 0);
     
-    if (nng_init(&params) != 0) return -1;
-    
-    g_nng_initialized = 1;
-    return 0;
+    if (status != 0) {
+        fprintf(stderr, "Client connection failed: %d\n", status);
+    }
 }
 
+/* Transport receive callback */
+static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
+    uvrpc_client_t* client = (uvrpc_client_t*)ctx;
+    
+    /* Decode response */
+    uint32_t msgid;
+    int32_t error_code = 0;
+    const uint8_t* result = NULL;
+    size_t result_size = 0;
+    
+    if (uvrpc_decode_response(data, size, &msgid, &error_code, &result, &result_size) != UVRPC_OK) {
+        free(data);
+        return;
+    }
+    
+    /* Find pending callback */
+    pending_callback_t* pending = client->pending_callbacks;
+    pending_callback_t* prev = NULL;
+    
+    while (pending) {
+        if (pending->msgid == msgid) {
+            /* Create response structure */
+            uvrpc_response_t resp;
+            resp.status = (error_code != 0) ? UVRPC_ERROR : UVRPC_OK;
+            resp.msgid = msgid;
+            resp.error_code = error_code;
+            resp.result = (uint8_t*)result;
+            resp.result_size = result_size;
+            resp.user_data = NULL;
+            
+            /* Call callback */
+            if (pending->callback) {
+                pending->callback(&resp, pending->ctx);
+            }
+            
+            /* Remove from list */
+            if (prev) {
+                prev->next = pending->next;
+            } else {
+                client->pending_callbacks = pending->next;
+            }
+            
+            free(pending);
+            break;
+        }
+        
+        prev = pending;
+        pending = pending->next;
+    }
+    
+    free(data);
+}
+
+/* Create client */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
     
-    if (init_nng() != 0) return NULL;
-    
-    uvrpc_client_t* client = (uvrpc_client_t*)calloc(1, sizeof(uvrpc_client_t));
+    uvrpc_client_t* client = calloc(1, sizeof(uvrpc_client_t));
     if (!client) return NULL;
     
     client->loop = config->loop;
     client->address = strdup(config->address);
-    client->has_dialer = 0;
-    client->has_poll = 0;
-    client->owns_loop = 0;
-    client->pending_callback = NULL;
-    client->pending_ctx = NULL;
+    client->is_connected = 0;
+    client->pending_callbacks = NULL;
     
-    if (nng_req0_open(&client->sock) != 0) {
+    /* Create message ID generator */
+    client->msgid_ctx = uvrpc_msgid_ctx_new();
+    
+    /* Create transport with specified type */
+    client->transport = uvrpc_transport_client_new(config->loop, config->transport);
+    if (!client->transport) {
+        uvrpc_msgid_ctx_free(client->msgid_ctx);
         free(client->address);
         free(client);
         return NULL;
@@ -53,99 +123,105 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     return client;
 }
 
+/* Connect to server */
 int uvrpc_client_connect(uvrpc_client_t* client) {
-    if (!client || !client->address) return -1;
+    if (!client || !client->transport) return UVRPC_ERROR_INVALID_PARAM;
     
-    if (nng_dialer_create(&client->dialer, client->sock, client->address) != 0) {
-        return -2;
-    }
+    if (client->is_connected) return UVRPC_OK;
     
-    if (nng_dialer_start(client->dialer, 0) != 0) {
-        nng_dialer_close(client->dialer);
-        return -3;
-    }
-    
-    client->has_dialer = 1;
-    client->has_poll = 1;
-    return 0;
+    return uvrpc_transport_connect(client->transport, client->address,
+                                    client_connect_callback,
+                                    client_recv_callback, client);
 }
 
+/* Disconnect from server */
 void uvrpc_client_disconnect(uvrpc_client_t* client) {
     if (!client) return;
     
-    if (client->has_dialer) {
-        nng_dialer_close(client->dialer);
-        client->has_dialer = 0;
+    if (client->transport) {
+        uvrpc_transport_disconnect(client->transport);
     }
     
-    client->has_poll = 0;
+    client->is_connected = 0;
 }
 
+/* Free client */
 void uvrpc_client_free(uvrpc_client_t* client) {
     if (!client) return;
     
     uvrpc_client_disconnect(client);
-    nng_socket_close(client->sock);
     
-    if (client->owns_loop) {
-        uv_loop_close(client->loop);
-        free(client->loop);
+    /* Free transport */
+    if (client->transport) {
+        uvrpc_transport_free(client->transport);
+    }
+    
+    /* Free message ID context */
+    if (client->msgid_ctx) {
+        uvrpc_msgid_ctx_free(client->msgid_ctx);
+    }
+    
+    /* Free pending callbacks */
+    pending_callback_t* pending = client->pending_callbacks;
+    while (pending) {
+        pending_callback_t* next = pending->next;
+        free(pending);
+        pending = next;
     }
     
     free(client->address);
     free(client);
 }
 
-int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* method,
-                       const uint8_t* data, size_t size, uvrpc_callback_t callback, void* ctx) {
-    if (!client || !service || !method) return -1;
+/* Call remote method */
+int uvrpc_client_call(uvrpc_client_t* client, const char* method,
+                       const uint8_t* params, size_t params_size,
+                       uvrpc_callback_t callback, void* ctx) {
+    if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
     
-    /* Pack request */
-    size_t buf_size = 0;
-    char* buffer = uvrpc_pack_request(service, method, data, size, &buf_size);
-    if (!buffer) return -2;
-    
-    /* Prepare message */
-    nng_msg* msg = NULL;
-    nng_msg_alloc(&msg, buf_size);
-    memcpy(nng_msg_body(msg), buffer, buf_size);
-    free(buffer);
-    
-    /* Send message */
-    if (nng_sendmsg(client->sock, msg, 0) != 0) {
-        nng_msg_free(msg);
-        return -3;
+    if (!client->is_connected) {
+        return UVRPC_ERROR_NOT_CONNECTED;
     }
     
-    /* Receive response (blocking but fast in this pattern) */
-    nng_msg* reply = NULL;
-    int rv = nng_recvmsg(client->sock, &reply, 0);
-    if (rv != 0) {
-        return -4;
+    /* Generate message ID using context */
+    uint64_t msgid = uvrpc_msgid_next(client->msgid_ctx);
+    
+    /* Encode request */
+    uint8_t* req_data = NULL;
+    size_t req_size = 0;
+    
+    if (uvrpc_encode_request(msgid, method, params, params_size,
+                              &req_data, &req_size) != UVRPC_OK) {
+        return UVRPC_ERROR;
     }
     
-    /* Unpack response */
-    int resp_status = 0;
-    const uint8_t* resp_data = NULL;
-    size_t resp_size = 0;
-    
-    size_t reply_size = nng_msg_len(reply);
-    const char* reply_buf = (const char*)nng_msg_body(reply);
-    
-    if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
-        if (callback) {
-            callback(resp_status, resp_data, resp_size, ctx);
+    /* Register callback */
+    if (callback) {
+        pending_callback_t* pending = calloc(1, sizeof(pending_callback_t));
+        if (!pending) {
+            free(req_data);
+            return UVRPC_ERROR_NO_MEMORY;
         }
+        
+        pending->msgid = msgid;
+        pending->callback = callback;
+        pending->ctx = ctx;
+        pending->next = client->pending_callbacks;
+        client->pending_callbacks = pending;
     }
     
-    nng_msg_free(reply);
+    /* Send request */
+    if (client->transport) {
+        uvrpc_transport_send(client->transport, req_data, req_size);
+    }
     
-    return 0;
+    free(req_data);
+    
+    return UVRPC_OK;
 }
 
-/* Process pending responses (called from event loop) */
-void uvrpc_client_process(uvrpc_client_t* client) {
-    if (!client) return;
-    
-    (void)client;
+/* Free response */
+void uvrpc_response_free(uvrpc_response_t* resp) {
+    if (!resp) return;
+    /* Note: error and result point to frame data, don't free them here */
 }

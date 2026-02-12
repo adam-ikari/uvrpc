@@ -1,28 +1,31 @@
 namespace uvrpc;
 
-/* RPC Request message */
-table Request {
-    service: string;
+/* Message types */
+enum FrameType : byte {
+    REQUEST = 0,
+    RESPONSE = 1,
+    NOTIFICATION = 2,
+    ERROR = 3
+}
+
+/* Error codes */
+enum ErrorCode : int32 {
+    OK = 0,
+    INVALID_PARAM = 1,
+    NO_MEMORY = 2,
+    NOT_CONNECTED = 3,
+    TIMEOUT = 4,
+    TRANSPORT_ERROR = 5,
+    METHOD_NOT_FOUND = 6,
+    INTERNAL_ERROR = 7
+}
+
+/* Unified RPC Frame: [type, msgid, method, params] */
+table RpcFrame {
+    type: FrameType;
+    msgid: uint32;
     method: string;
-    data: [ubyte];
+    params: [ubyte];
 }
 
-/* RPC Response message */
-table Response {
-    status: int;
-    data: [ubyte];
-}
-
-/* Service metadata for code generation */
-table Service {
-    name: string;
-    methods: [Method];
-}
-
-table Method {
-    name: string;
-    request_type: string;
-    response_type: string;
-}
-
-root_type Request;
+root_type RpcFrame;
