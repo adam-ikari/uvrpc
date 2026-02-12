@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     int num_requests = (argc > 2) ? atoi(argv[2]) : 10000;
     int payload_size = (argc > 3) ? atoi(argv[3]) : 64;
     
-    printf("UVRPC Test Client\n");
+    printf("UVRPC Test Client (Async I/O)\n");
     printf("Address: %s\n", addr);
     printf("Requests: %d\n", num_requests);
     printf("Payload: %d bytes\n\n", payload_size);
@@ -53,6 +53,11 @@ int main(int argc, char** argv) {
         return 1;
     }
     
+    /* Wait for connection to establish */
+    for (int i = 0; i < 10; i++) {
+        uv_run(&loop, UV_RUN_ONCE);
+    }
+    
     printf("Connected to server\n\n");
     
     /* Prepare test data */
@@ -61,8 +66,15 @@ int main(int argc, char** argv) {
     
     /* Warmup */
     printf("Warming up...\n");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 100; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
+    }
+    
+    /* Wait for warmup responses */
+    int warmup_iter = 0;
+    while (g_received < 100 && warmup_iter < 1000) {
+        uv_run(&loop, UV_RUN_ONCE);
+        warmup_iter++;
     }
     
     g_received = 0;
@@ -73,8 +85,16 @@ int main(int argc, char** argv) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     
+    /* Send all requests asynchronously */
     for (int i = 0; i < num_requests; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
+    }
+    
+    /* Wait for all responses */
+    int drain_iter = 0;
+    while (g_received < num_requests && drain_iter < 100000) {
+        uv_run(&loop, UV_RUN_ONCE);
+        drain_iter++;
     }
     
     clock_gettime(CLOCK_MONOTONIC, &end);
