@@ -19,3 +19,6 @@
 [submodule "mimalloc"]
 	path = deps/mimalloc
 	url = https://github.com/microsoft/mimalloc.git
+[submodule "deps/nng"]
+	path = deps/nng
+	url = https://github.com/nanomsg/nng
