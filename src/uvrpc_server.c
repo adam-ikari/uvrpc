@@ -94,8 +94,8 @@ void uvrpc_server_free(uvrpc_server_t* server) {
     
     /* Free services */
     service_entry_t* entry, *tmp;
-    HASH_ITER(hh, server->services, entry, tmp) {
-        HASH_DEL(server->services, entry);
+    HASH_ITER(hh, (service_entry_t*)server->services, entry, tmp) {
+        service_entry_t* serv = (service_entry_t*)server->services; HASH_DEL(serv, entry); server->services = serv;;
         free(entry->name);
         free(entry);
     }
@@ -108,7 +108,7 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* name, uvrpc_handle
     if (!server || !name || !handler) return -1;
     
     service_entry_t* entry = NULL;
-    HASH_FIND_STR(server->services, name, entry);
+    service_entry_t* serv = (service_entry_t*)server->services; HASH_FIND_STR(serv, name, entry);
     if (entry) return -2;
     
     entry = (service_entry_t*)calloc(1, sizeof(service_entry_t));
@@ -118,7 +118,7 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* name, uvrpc_handle
     entry->handler = handler;
     entry->ctx = ctx;
     
-    HASH_ADD_STR(server->services, name, entry);
+    HASH_ADD_STR(serv, name, entry); server->services = serv;;
     return 0;
 }
 

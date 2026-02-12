@@ -3,6 +3,7 @@
  * Simple wrapper around mpack
  */
 
+#include "uvrpc_msgpack.h"
 #include <mpack.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,7 +113,9 @@ int uvrpc_unpack_request(const char* buffer, size_t size,
     /* Read data */
     key = mpack_expect_str(&reader);
     if (strcmp(key, "data") == 0) {
-        const char* val = mpack_expect_bin(&reader, data_size);
+        uint32_t bin_size = 0;
+        const char* val = mpack_expect_bin(&reader);
+        *data_size = (size_t)bin_size;
         if (val && *data_size > 0) {
             *data = (const uint8_t*)val;
         }
@@ -161,7 +164,9 @@ int uvrpc_unpack_response(const char* buffer, size_t size,
     /* Read data */
     key = mpack_expect_str(&reader);
     if (strcmp(key, "data") == 0) {
-        const char* val = mpack_expect_bin(&reader, data_size);
+        uint32_t bin_size = 0;
+        const char* val = mpack_expect_bin(&reader);
+        *data_size = (size_t)bin_size;
         if (val && *data_size > 0) {
             *data = (const uint8_t*)val;
         }
