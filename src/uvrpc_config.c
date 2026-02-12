@@ -6,10 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct uvrpc_config {
-    uv_loop_t* loop;
-    char* address;
-};
 
 uvrpc_config_t* uvrpc_config_new(void) {
     uvrpc_config_t* config = (uvrpc_config_t*)calloc(1, sizeof(uvrpc_config_t));
