@@ -281,7 +281,7 @@ static test_result_t test_generated_api(uvrpc_client_t* client, uv_loop_t* loop,
 
         /* 运行事件循环处理异步响应 - INPROC模式下可以批量处理 */
         int loops = 0;
-        while (loops < 1000) {  /* 平衡处理速度和性能 */
+        while (loops < 500) {  /* 优化：减少循环次数，让await_all处理 */
             uv_run(loop, UV_RUN_NOWAIT);
             loops++;
         }
@@ -289,9 +289,12 @@ static test_result_t test_generated_api(uvrpc_client_t* client, uv_loop_t* loop,
         printf("[测试] Waiting for batch %d responses...\n", batch + 1);
         fflush(stdout);
 
-        /* 等待所有async完成 */
+        /* 等待所有async完成 - 使用 await_all 批量等待，减少循环次数 */
+        uvrpc_async_await_all(asyncs, current_batch_size);
+        
+        /* 收集结果 */
         for (int i = 0; i < current_batch_size; i++) {
-            const uvrpc_async_result_t* result = uvrpc_async_await_timeout(asyncs[i], 2000);
+            const uvrpc_async_result_t* result = uvrpc_async_await(asyncs[i]);
             if (result && result->status == UVRPC_OK) {
                 succeeded++;
 
