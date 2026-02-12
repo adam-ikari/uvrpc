@@ -161,7 +161,7 @@ void uvrpc_server_process(uvrpc_server_t* server) {
                     nng_msg* reply = NULL;
                     nng_msg_alloc(&reply, resp_size);
                     memcpy(nng_msg_body(reply), resp_buf, resp_size);
-                    nng_sendmsg(server->sock, reply, NNG_FLAG_NONBLOCK);
+                    nng_sendmsg(server->sock, reply, 0);
                     free(resp_buf);
                 }
             }

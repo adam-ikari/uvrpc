@@ -104,49 +104,39 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* service, const char* m
     char* buffer = uvrpc_pack_request(service, method, data, size, &buf_size);
     if (!buffer) return -2;
     
-    /* Store callback for response */
-    client->pending_callback = callback;
-    client->pending_ctx = ctx;
-    
     /* Send request */
     nng_msg* msg = NULL;
     nng_msg_alloc(&msg, buf_size);
     memcpy(nng_msg_body(msg), buffer, buf_size);
     free(buffer);
     
-    int rv = nng_sendmsg(client->sock, msg, NNG_FLAG_NONBLOCK);
+    int rv = nng_sendmsg(client->sock, msg, 0);
     if (rv != 0) {
         nng_msg_free(msg);
-        client->pending_callback = NULL;
-        client->pending_ctx = NULL;
         return -3;
     }
     
-    return 0;
-}
-
-/* Process incoming responses (called from event loop) */
-void uvrpc_client_process(uvrpc_client_t* client) {
-    if (!client || !client->has_dialer) return;
-    
+    /* Receive response synchronously */
     nng_msg* reply = NULL;
-    while (nng_recvmsg(client->sock, &reply, NNG_FLAG_NONBLOCK) == 0) {
-        /* Unpack response */
-        int resp_status = 0;
-        const uint8_t* resp_data = NULL;
-        size_t resp_size = 0;
-        
-        size_t reply_size = nng_msg_len(reply);
-        const char* reply_buf = (const char*)nng_msg_body(reply);
-        
-        if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
-            if (client->pending_callback) {
-                client->pending_callback(resp_status, resp_data, resp_size, client->pending_ctx);
-                client->pending_callback = NULL;
-                client->pending_ctx = NULL;
-            }
-        }
-        
-        nng_msg_free(reply);
+    rv = nng_recvmsg(client->sock, &reply, 0);
+    if (rv != 0) {
+        return -4;
     }
+    
+    /* Unpack response */
+    int resp_status = 0;
+    const uint8_t* resp_data = NULL;
+    size_t resp_size = 0;
+    
+    size_t reply_size = nng_msg_len(reply);
+    const char* reply_buf = (const char*)nng_msg_body(reply);
+    
+    if (uvrpc_unpack_response(reply_buf, reply_size, &resp_status, &resp_data, &resp_size) == 0) {
+        if (callback) {
+            callback(resp_status, resp_data, resp_size, ctx);
+        }
+    }
+    
+    nng_msg_free(reply);
+    return 0;
 }

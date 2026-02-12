@@ -53,11 +53,6 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    /* Wait for connection to establish */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
-    }
-    
     printf("Connected to server\n\n");
     
     /* Prepare test data */
@@ -68,10 +63,6 @@ int main(int argc, char** argv) {
     printf("Warming up...\n");
     for (int i = 0; i < 10; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
-        for (int j = 0; j < 100; j++) {
-            uvrpc_client_process(client);
-            uv_run(&loop, UV_RUN_NOWAIT);
-        }
     }
     
     g_received = 0;
@@ -84,20 +75,6 @@ int main(int argc, char** argv) {
     
     for (int i = 0; i < num_requests; i++) {
         uvrpc_client_call(client, "echo", "echo", test_data, payload_size, response_callback, NULL);
-        
-        /* Process events after each send */
-        for (int j = 0; j < 10; j++) {
-            uvrpc_client_process(client);
-            uv_run(&loop, UV_RUN_NOWAIT);
-        }
-    }
-    
-    /* Wait for all responses */
-    int drain_iter = 0;
-    while (g_received < num_requests && drain_iter < 100000) {
-        uvrpc_client_process(client);
-        uv_run(&loop, UV_RUN_ONCE);
-        drain_iter++;
     }
     
     clock_gettime(CLOCK_MONOTONIC, &end);
