@@ -1,23 +1,24 @@
 /**
  * UVRPC Serialization Module using FlatCC
+ * Uses unified RpcFrame format: type, msgid, method, params
  */
 
 #include "uvrpc_msgpack.h"
 #include "rpc_builder.h"
 #include "rpc_reader.h"
 #include "flatcc/flatcc_builder.h"
+#include "../include/uvrpc.h"
 #include <stdlib.h>
 #include <string.h>
 
 /* Pack RPC request using FlatCC */
-char* uvrpc_pack_request(const char* service, const char* method, 
+char* uvrpc_pack_request(uint32_t msgid, const char* method, 
                           const uint8_t* data, size_t data_size, size_t* out_size) {
-    if (!service || !method || !out_size) return NULL;
+    if (!method || !out_size) return NULL;
     
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
     
-    flatbuffers_string_ref_t service_ref = flatbuffers_string_create_str(&builder, service);
     flatbuffers_string_ref_t method_ref = flatbuffers_string_create_str(&builder, method);
     flatbuffers_uint8_vec_ref_t data_ref = 0;
     
@@ -25,24 +26,20 @@ char* uvrpc_pack_request(const char* service, const char* method,
         data_ref = flatbuffers_uint8_vec_create(&builder, data, data_size);
     }
     
-    uvrpc_Request_create_as_root(&builder, service_ref, method_ref, data_ref);
+    uvrpc_RpcFrame_start_as_root(&builder);
+    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_REQUEST);
+    uvrpc_RpcFrame_msgid_add(&builder, msgid);
+    uvrpc_RpcFrame_method_add(&builder, method_ref);
+    uvrpc_RpcFrame_params_add(&builder, data_ref);
+    uvrpc_RpcFrame_end_as_root(&builder);
     
-    size_t size = flatcc_builder_get_buffer_size(&builder);
-    *out_size = size;
-    char* buffer = (char*)malloc(size);
-    if (buffer) {
-        void* buf = flatcc_builder_get_direct_buffer(&builder, &size);
-        if (buf) {
-            memcpy(buffer, buf, size);
-        }
-    }
-    
+    void* buf = flatcc_builder_finalize_buffer(&builder, out_size);
     flatcc_builder_reset(&builder);
-    return buffer;
+    return (char*)buf;
 }
 
 /* Pack RPC response using FlatCC */
-char* uvrpc_pack_response(int status, const uint8_t* data, size_t data_size, size_t* out_size) {
+char* uvrpc_pack_response(uint32_t msgid, int32_t error_code, const uint8_t* data, size_t data_size, size_t* out_size) {
     if (!out_size) return NULL;
     
     flatcc_builder_t builder;
@@ -53,73 +50,80 @@ char* uvrpc_pack_response(int status, const uint8_t* data, size_t data_size, siz
         data_ref = flatbuffers_uint8_vec_create(&builder, data, data_size);
     }
     
-    uvrpc_Response_create_as_root(&builder, status, data_ref);
+    uvrpc_RpcFrame_start_as_root(&builder);
+    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_RESPONSE);
+    uvrpc_RpcFrame_msgid_add(&builder, msgid);
+    uvrpc_RpcFrame_error_code_add(&builder, error_code);
+    uvrpc_RpcFrame_params_add(&builder, data_ref);
+    uvrpc_RpcFrame_end_as_root(&builder);
     
-    size_t size = flatcc_builder_get_buffer_size(&builder);
-    *out_size = size;
-    char* buffer = (char*)malloc(size);
-    if (buffer) {
-        void* buf = flatcc_builder_get_direct_buffer(&builder, &size);
-        if (buf) {
-            memcpy(buffer, buf, size);
-        }
-    }
-    
+    void* buf = flatcc_builder_finalize_buffer(&builder, out_size);
     flatcc_builder_reset(&builder);
-    return buffer;
+    return (char*)buf;
 }
 
 /* Unpack RPC request using FlatCC */
-int uvrpc_unpack_request(const char* buffer, size_t size,
-                         char** service, char** method,
-                         const uint8_t** data, size_t* data_size) {
-    if (!buffer || !service || !method || !data || !data_size) return -1;
+int uvrpc_unpack_request(const char* buffer, uint32_t* msgid, char** method, 
+                          uint8_t** data, size_t* data_size) {
+    if (!buffer || !msgid || !method || !data || !data_size) return UVRPC_ERROR_INVALID_PARAM;
     
-    uvrpc_Request_table_t req = uvrpc_Request_as_root(buffer);
-    if (!req) return -2;
+    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
+    if (!frame) return UVRPC_ERROR;
     
-    *service = NULL;
-    *method = NULL;
-    *data = NULL;
-    *data_size = 0;
+    *msgid = uvrpc_RpcFrame_msgid(frame);
     
-    /* Get service */
-    flatbuffers_string_t s = uvrpc_Request_service(req);
-    if (s) *service = strdup(s);
-    
-    /* Get method */
-    flatbuffers_string_t m = uvrpc_Request_method(req);
-    if (m) *method = strdup(m);
-    
-    /* Get data - flatbuffers_uint8_vec_t is const uint8_t* */
-    flatbuffers_uint8_vec_t d = uvrpc_Request_data(req);
-    if (d) {
-        *data = d;
-        *data_size = flatbuffers_uint8_vec_len(d);
+    flatbuffers_string_t m = uvrpc_RpcFrame_method(frame);
+    if (m) {
+        *method = strdup(m);
+    } else {
+        *method = NULL;
     }
     
-    return 0;
+    flatbuffers_uint8_vec_t d = uvrpc_RpcFrame_params(frame);
+    if (d) {
+        *data_size = flatbuffers_uint8_vec_len(d);
+        if (*data_size > 0) {
+            *data = (uint8_t*)malloc(*data_size);
+            if (*data) {
+                memcpy(*data, d, *data_size);
+            }
+        } else {
+            *data = NULL;
+        }
+    } else {
+        *data = NULL;
+        *data_size = 0;
+    }
+    
+    return UVRPC_OK;
 }
 
 /* Unpack RPC response using FlatCC */
-int uvrpc_unpack_response(const char* buffer, size_t size,
-                          int* status, const uint8_t** data, size_t* data_size) {
-    if (!buffer || !status || !data || !data_size) return -1;
+int uvrpc_unpack_response(const char* buffer, uint32_t* msgid, int32_t* error_code, 
+                           uint8_t** data, size_t* data_size) {
+    if (!buffer || !msgid || !error_code || !data || !data_size) return UVRPC_ERROR_INVALID_PARAM;
     
-    uvrpc_Response_table_t resp = uvrpc_Response_as_root(buffer);
-    if (!resp) return -2;
+    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
+    if (!frame) return UVRPC_ERROR;
     
-    *status = 0;
-    *data = NULL;
-    *data_size = 0;
+    *msgid = uvrpc_RpcFrame_msgid(frame);
+    *error_code = uvrpc_RpcFrame_error_code(frame);
     
-    *status = uvrpc_Response_status(resp);
-    
-    flatbuffers_uint8_vec_t d = uvrpc_Response_data(resp);
+    flatbuffers_uint8_vec_t d = uvrpc_RpcFrame_params(frame);
     if (d) {
-        *data = d;
         *data_size = flatbuffers_uint8_vec_len(d);
+        if (*data_size > 0) {
+            *data = (uint8_t*)malloc(*data_size);
+            if (*data) {
+                memcpy(*data, d, *data_size);
+            }
+        } else {
+            *data = NULL;
+        }
+    } else {
+        *data = NULL;
+        *data_size = 0;
     }
     
-    return 0;
+    return UVRPC_OK;
 }

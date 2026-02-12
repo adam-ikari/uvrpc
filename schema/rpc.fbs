@@ -26,6 +26,7 @@ table RpcFrame {
     msgid: uint32;
     method: string;
     params: [ubyte];
+    error_code: ErrorCode = OK;
 }
 
 root_type RpcFrame;

@@ -32,6 +32,9 @@ struct uvrpc_transport {
     uv_pipe_t pipe_handle;
     uv_pipe_t listen_pipe;
     
+    /* Async handle for triggering callbacks */
+    uv_async_t async_handle;
+    
     /* Read buffer */
     uint8_t read_buffer[8192];
     size_t read_pos;
@@ -233,6 +236,15 @@ static void ipc_connection_callback(uv_stream_t* server, int status) {
     }
 }
 
+/* Async callback handler */
+static void async_callback(uv_async_t* handle) {
+    uvrpc_transport_t* transport = (uvrpc_transport_t*)handle->data;
+    if (transport->connect_cb) {
+        transport->connect_cb(0, transport->ctx);
+        transport->connect_cb = NULL;
+    }
+}
+
 /* Connect callback for TCP client */
 static void tcp_connect_callback(uv_connect_t* req, int status) {
     uvrpc_transport_t* transport = (uvrpc_transport_t*)req->handle->data;
@@ -326,6 +338,10 @@ uvrpc_transport_t* uvrpc_transport_server_new(uv_loop_t* loop, int transport_typ
     transport->has_udp_peer = 0;
     transport->address = NULL;
     
+    /* Initialize async handle for callbacks */
+    uv_async_init(loop, &transport->async_handle, async_callback);
+    transport->async_handle.data = transport;
+    
     /* Initialize handles based on type */
     switch (transport_type) {
         case UVRPC_TRANSPORT_TCP:
@@ -361,6 +377,10 @@ uvrpc_transport_t* uvrpc_transport_client_new(uv_loop_t* loop, int transport_typ
     transport->has_udp_peer = 0;
     transport->address = NULL;
     
+    /* Initialize async handle for callbacks */
+    uv_async_init(loop, &transport->async_handle, async_callback);
+    transport->async_handle.data = transport;
+    
     /* Initialize handles based on type */
     switch (transport_type) {
         case UVRPC_TRANSPORT_TCP:
@@ -390,6 +410,9 @@ void uvrpc_transport_free(uvrpc_transport_t* transport) {
     if (transport->address) {
         free(transport->address);
     }
+    
+    /* Close async handle */
+    uv_close((uv_handle_t*)&transport->async_handle, NULL);
     
     switch (transport->type) {
         case UVRPC_TRANSPORT_TCP:
@@ -583,7 +606,12 @@ int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,
             
             uv_udp_recv_start(&transport->udp_handle, alloc_callback, udp_recv_callback);
             
-            if (connect_cb) connect_cb(0, ctx);
+            /* Async callback through event loop */
+            if (connect_cb) {
+                transport->connect_cb = connect_cb;
+                transport->ctx = ctx;
+                uv_async_send(&transport->async_handle);
+            }
             return UVRPC_OK;
         }
         case UVRPC_TRANSPORT_IPC: {
@@ -613,7 +641,12 @@ int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,
             inproc_add_client(endpoint, transport);
             transport->is_connected = 1;
             
-            if (connect_cb) connect_cb(0, ctx);
+            /* Async callback through event loop */
+            if (connect_cb) {
+                transport->connect_cb = connect_cb;
+                transport->ctx = ctx;
+                uv_async_send(&transport->async_handle);
+            }
             return UVRPC_OK;
         }
     }

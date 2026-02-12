@@ -42,8 +42,8 @@ void response_callback(uvrpc_response_t* resp, void* ctx) {
                 }
             }
         }
-    } else if (resp->error) {
-        printf("Error: %s\n", resp->error);
+    } else if (resp->error_code != 0) {
+        printf("Error code: %d\n", resp->error_code);
     }
     
     g_running = 0; /* Exit after first response */

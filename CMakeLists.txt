@@ -10,6 +10,20 @@ option(UVRPC_STATIC_LINKING "Use static linking" ON)
 option(UVRPC_BUILD_TESTS "Build tests" OFF)
 option(UVRPC_BUILD_EXAMPLES "Build examples" ON)
 
+# Memory allocator option (default: mimalloc)
+set(UVRPC_ALLOCATOR_DEFAULT "mimalloc" CACHE STRING "Memory allocator: system or mimalloc")
+set_property(CACHE UVRPC_ALLOCATOR_DEFAULT PROPERTY STRINGS "system" "mimalloc")
+
+# Add Mimalloc include if using mimalloc
+if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
+    include_directories(${DEPS_DIR}/mimalloc/include)
+    add_definitions(-DUVRPC_ALLOCATOR=1)
+else()
+    add_definitions(-DUVRPC_ALLOCATOR=0)
+endif()
+
+message(STATUS "UVRPC Allocator: ${UVRPC_ALLOCATOR_DEFAULT}")
+
 # Find required packages
 find_package(Threads REQUIRED)
 
@@ -34,6 +48,13 @@ set(UVRPC_SOURCES
     src/uvrpc_server.c
     src/uvrpc_client.c
     src/uvrpc_service.c
+    src/uvrpc_transport.c
+    src/uvrpc_frame.c
+    src/uvrpc_msgid.c
+    src/uvrpc_idmap.c
+    src/uvrpc_publisher.c
+    src/uvrpc_subscriber.c
+    src/uvrpc_allocator.c
 )
 
 # Headers
@@ -45,7 +66,14 @@ set(UVRPC_HEADERS
 
 # Static library
 add_library(uvrpc STATIC ${UVRPC_SOURCES})
-target_link_libraries(uvrpc INTERFACE Threads::Threads m rt)
+
+# Link libraries
+target_link_libraries(uvrpc PUBLIC Threads::Threads m rt)
+
+# Add Mimalloc if using it
+if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
+    target_link_libraries(uvrpc PUBLIC ${DEPS_DIR}/mimalloc/lib/libmimalloc.a)
+endif()
 
 # FlatBuffers schema
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schema)
@@ -67,105 +95,135 @@ add_dependencies(uvrpc generate_flatcc)
 
 # Examples
 if(UVRPC_BUILD_EXAMPLES)
-    add_executable(echo_server examples/echo_server.c ${UVRPC_SOURCES})
-    add_executable(echo_client examples/echo_client.c ${UVRPC_SOURCES})
-    add_executable(pipeline_server examples/pipeline_server.c)
-    add_executable(pipeline_client examples/pipeline_client.c)
-add_executable(inproc_test examples/inproc_test.c)
-    add_executable(multi_client examples/multi_client.c)
     add_executable(simple_server examples/simple_server.c)
-    add_executable(simple_multi_client examples/simple_multi_client.c)
-    add_executable(async_server examples/async_server.c)
-    add_executable(async_client examples/async_client.c)
-    add_executable(async_server_uv examples/async_server_uv.c)
-    add_executable(async_client_uv examples/async_client_uv.c)
+    add_executable(simple_client examples/simple_client.c)
+    add_executable(debug_test examples/debug_test.c)
+    add_executable(perf_test examples/perf_test.c)
+    add_executable(gateway_demo examples/gateway_demo.c)
+    add_executable(allocator_demo examples/allocator_demo.c)
+    add_executable(msgid_demo examples/msgid_demo.c)
+    add_executable(loop_injection_example examples/loop_injection_example.c)
+    add_executable(broadcast_publisher examples/broadcast_publisher.c)
+    add_executable(broadcast_subscriber examples/broadcast_subscriber.c)
 
     if(UVRPC_STATIC_LINKING)
-        target_link_libraries(echo_server
-            ${DEPS_DIR}/nng/build/libnng.a
-            ${DEPS_DIR}/libuv/build/libuv.a
-            ${DEPS_DIR}/flatcc/lib/libflatcc.a
-            Threads::Threads m rt
-        )
-        target_link_options(echo_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(echo_client
-            ${DEPS_DIR}/nng/build/libnng.a
-            ${DEPS_DIR}/libuv/build/libuv.a
-            ${DEPS_DIR}/flatcc/lib/libflatcc.a
-            Threads::Threads m rt
-        )
-        target_link_options(echo_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(pipeline_server
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(pipeline_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(pipeline_client
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(pipeline_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(inproc_test
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(inproc_test PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(multi_client
-            ${DEPS_DIR}/nng/build/libnng.a
-            ${DEPS_DIR}/libuv/build/libuv.a
-            ${DEPS_DIR}/flatcc/lib/libflatcc.a
-            Threads::Threads m rt
-        )
-        target_link_options(multi_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        add_dependencies(multi_client generate_flatcc)
-        
         target_link_libraries(simple_server
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(simple_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(simple_multi_client
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(simple_multi_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(async_server
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(async_server PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(async_client
-            ${DEPS_DIR}/nng/build/libnng.a
-            Threads::Threads m rt
-        )
-        target_link_options(async_client PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
-        
-        target_link_libraries(async_server_uv
-            ${DEPS_DIR}/nng/build/libnng.a
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
             ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
             Threads::Threads m rt
         )
-        target_link_options(async_server_uv PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
         
-        target_link_libraries(async_client_uv
-            ${DEPS_DIR}/nng/build/libnng.a
+        target_link_libraries(simple_client
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
             ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
             Threads::Threads m rt
         )
-        target_link_options(async_client_uv PRIVATE "-Wl,--whole-archive" "-Wl,--no-whole-archive")
+        
+        target_link_libraries(debug_test
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(perf_test
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(gateway_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(allocator_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(msgid_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(loop_injection_example
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(broadcast_publisher
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(broadcast_subscriber
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        # Add Mimalloc with whole-archive if needed
+        if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
+            target_link_options(simple_server PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(simple_client PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(debug_test PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(perf_test PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(gateway_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(allocator_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(msgid_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(loop_injection_example PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(broadcast_publisher PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(broadcast_subscriber PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+        endif()
+        
+        add_dependencies(simple_server generate_flatcc)
+        add_dependencies(simple_client generate_flatcc)
+        add_dependencies(debug_test generate_flatcc)
+        add_dependencies(perf_test generate_flatcc)
+        add_dependencies(gateway_demo generate_flatcc)
+        add_dependencies(allocator_demo generate_flatcc)
+        add_dependencies(msgid_demo generate_flatcc)
+        add_dependencies(loop_injection_example generate_flatcc)
+        add_dependencies(broadcast_publisher generate_flatcc)
+        add_dependencies(broadcast_subscriber generate_flatcc)
+    else()
+        target_link_libraries(simple_server uvrpc)
+        target_link_libraries(simple_client uvrpc)
+        target_link_libraries(debug_test uvrpc)
+        target_link_libraries(perf_test uvrpc)
+        target_link_libraries(gateway_demo uvrpc)
+        target_link_libraries(allocator_demo uvrpc)
+        target_link_libraries(msgid_demo uvrpc)
+        target_link_libraries(loop_injection_example uvrpc)
+        target_link_libraries(broadcast_publisher uvrpc)
+        target_link_libraries(broadcast_subscriber uvrpc)
+        
+        add_dependencies(simple_server generate_flatcc)
+        add_dependencies(simple_client generate_flatcc)
+        add_dependencies(debug_test generate_flatcc)
+        add_dependencies(perf_test generate_flatcc)
+        add_dependencies(gateway_demo generate_flatcc)
+        add_dependencies(allocator_demo generate_flatcc)
+        add_dependencies(msgid_demo generate_flatcc)
+        add_dependencies(loop_injection_example generate_flatcc)
+        add_dependencies(broadcast_publisher generate_flatcc)
+        add_dependencies(broadcast_subscriber generate_flatcc)
     endif()
-
-    add_dependencies(echo_server generate_flatcc)
-    add_dependencies(echo_client generate_flatcc)
 endif()
 
 # Print configuration summary
