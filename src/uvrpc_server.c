@@ -62,11 +62,14 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
 int uvrpc_server_start(uvrpc_server_t* server) {
     if (!server || !server->address) return -1;
     
-    if (nng_listener_create(&server->listener, server->sock, server->address) != 0) {
+    int rv;
+    if ((rv = nng_listener_create(&server->listener, server->sock, server->address)) != 0) {
+        fprintf(stderr, "nng_listener_create failed: %d\n", rv);
         return -2;
     }
     
-    if (nng_listener_start(server->listener, 0) != 0) {
+    if ((rv = nng_listener_start(server->listener, 0)) != 0) {
+        fprintf(stderr, "nng_listener_start failed: %d\n", rv);
         nng_listener_close(server->listener);
         return -3;
     }
