@@ -110,9 +110,17 @@ if(UVRPC_BUILD_EXAMPLES)
     add_executable(async_await_demo examples/async_await_demo.c)
     add_executable(async_chain_demo examples/async_chain_demo.c)
     add_executable(concurrent_demo examples/concurrent_demo.c)
+    add_executable(benchmark examples/benchmark.c)
 
     if(UVRPC_STATIC_LINKING)
         target_link_libraries(simple_server
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
+        target_link_libraries(benchmark
             ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
             ${DEPS_DIR}/libuv/build/libuv.a
             ${DEPS_DIR}/flatcc/lib/libflatcc.a
@@ -247,6 +255,7 @@ if(UVRPC_BUILD_EXAMPLES)
         target_link_libraries(async_await_demo uvrpc)
         target_link_libraries(async_chain_demo uvrpc)
         target_link_libraries(concurrent_demo uvrpc)
+        target_link_libraries(benchmark uvrpc)
         
         add_dependencies(simple_server generate_flatcc)
         add_dependencies(simple_client generate_flatcc)
@@ -261,6 +270,7 @@ if(UVRPC_BUILD_EXAMPLES)
         add_dependencies(async_await_demo generate_flatcc)
         add_dependencies(async_chain_demo generate_flatcc)
         add_dependencies(concurrent_demo generate_flatcc)
+        add_dependencies(benchmark generate_flatcc)
     endif()
 endif()
 
