@@ -109,6 +109,7 @@ if(UVRPC_BUILD_EXAMPLES)
     add_executable(broadcast_subscriber examples/broadcast_subscriber.c)
     add_executable(async_await_demo examples/async_await_demo.c)
     add_executable(async_chain_demo examples/async_chain_demo.c)
+    add_executable(concurrent_demo examples/concurrent_demo.c)
 
     if(UVRPC_STATIC_LINKING)
         target_link_libraries(simple_server
@@ -195,6 +196,13 @@ if(UVRPC_BUILD_EXAMPLES)
             Threads::Threads m rt
         )
         
+        target_link_libraries(concurrent_demo
+            ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc.a
+            ${DEPS_DIR}/libuv/build/libuv.a
+            ${DEPS_DIR}/flatcc/lib/libflatcc.a
+            Threads::Threads m rt
+        )
+        
         # Add Mimalloc with whole-archive if needed
         if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
             target_link_options(simple_server PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
@@ -209,6 +217,7 @@ if(UVRPC_BUILD_EXAMPLES)
             target_link_options(broadcast_subscriber PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
             target_link_options(async_await_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
             target_link_options(async_chain_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
+            target_link_options(concurrent_demo PRIVATE "-Wl,--whole-archive" ${DEPS_DIR}/mimalloc/lib/libmimalloc.a "-Wl,--no-whole-archive")
         endif()
         
         add_dependencies(simple_server generate_flatcc)
@@ -223,6 +232,7 @@ if(UVRPC_BUILD_EXAMPLES)
         add_dependencies(broadcast_subscriber generate_flatcc)
         add_dependencies(async_await_demo generate_flatcc)
         add_dependencies(async_chain_demo generate_flatcc)
+        add_dependencies(concurrent_demo generate_flatcc)
     else()
         target_link_libraries(simple_server uvrpc)
         target_link_libraries(simple_client uvrpc)
@@ -236,6 +246,7 @@ if(UVRPC_BUILD_EXAMPLES)
         target_link_libraries(broadcast_subscriber uvrpc)
         target_link_libraries(async_await_demo uvrpc)
         target_link_libraries(async_chain_demo uvrpc)
+        target_link_libraries(concurrent_demo uvrpc)
         
         add_dependencies(simple_server generate_flatcc)
         add_dependencies(simple_client generate_flatcc)
@@ -249,6 +260,7 @@ if(UVRPC_BUILD_EXAMPLES)
         add_dependencies(broadcast_subscriber generate_flatcc)
         add_dependencies(async_await_demo generate_flatcc)
         add_dependencies(async_chain_demo generate_flatcc)
+        add_dependencies(concurrent_demo generate_flatcc)
     endif()
 endif()
 
