@@ -16,7 +16,7 @@ set_property(CACHE UVRPC_ALLOCATOR_DEFAULT PROPERTY STRINGS "system" "mimalloc")
 
 # Add Mimalloc include if using mimalloc
 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
-    include_directories(${DEPS_DIR}/mimalloc/include)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/deps/mimalloc/include)
     add_definitions(-DUVRPC_ALLOCATOR=1)
 else()
     add_definitions(-DUVRPC_ALLOCATOR=0)
