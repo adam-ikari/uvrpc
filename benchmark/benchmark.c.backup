@@ -213,48 +213,17 @@ static void* client_thread_func(void* arg) {
 static void print_usage(const char* prog) {
     printf("Usage: %s [options]\n\n", prog);
     printf("Options:\n");
-    printf("  -a, --address <addr>      Address string (default: inproc://uvrpc_benchmark)\n");
-    printf("                           Examples:\n");
-    printf("                             -a tcp://127.0.0.1:5555\n");
-    printf("                             -a udp://127.0.0.1:5555\n");
-    printf("                             -a ipc:///tmp/uvrpc_benchmark\n");
-    printf("                             -a inproc://uvrpc_benchmark\n");
-    printf("  -s, --size <bytes>        Payload size in bytes (default: 1024)\n");
-    printf("  -c, --clients <num>       Number of clients (default: 1)\n");
-    printf("  -n, --concurrency <num>   Concurrent requests per client (default: 10)\n");
-    printf("  -r, --requests <num>      Total requests per client (default: 10000)\n");
-    printf("  -T, --timeout <ms>        Request timeout in ms (default: 5000)\n");
-    printf("  -w, --warmup <num>        Warmup requests (default: 100)\n");
-    printf("  -v, --verbose             Verbose output\n");
-    printf("  -h, --help                Show this help\n");
-}
-
-/* Parse address string */
-static int parse_address(const char* addr_str, char** out_address, uvrpc_transport_type* out_transport) {
-    if (!addr_str || !out_address || !out_transport) return -1;
-    
-    const char* prefix = addr_str;
-    
-    /* Detect transport type */
-    if (strncmp(prefix, "tcp://", 6) == 0) {
-        *out_transport = UVRPC_TRANSPORT_TCP;
-        *out_address = strdup(addr_str);
-    } else if (strncmp(prefix, "udp://", 6) == 0) {
-        *out_transport = UVRPC_TRANSPORT_UDP;
-        *out_address = strdup(addr_str);
-    } else if (strncmp(prefix, "ipc://", 6) == 0) {
-        *out_transport = UVRPC_TRANSPORT_IPC;
-        *out_address = strdup(addr_str);
-    } else if (strncmp(prefix, "inproc://", 9) == 0) {
-        *out_transport = UVRPC_TRANSPORT_INPROC;
-        *out_address = strdup(addr_str);
-    } else {
-        /* Default to inproc */
-        *out_transport = UVRPC_TRANSPORT_INPROC;
-        *out_address = strdup(addr_str);
-    }
-    
-    return 0;
+    printf("  -t, --transport <tcp|udp|ipc|inproc>  Transport type (default: inproc)\n");
+    printf("  -p, --port <port>                     Port for TCP/UDP (default: 5555)\n");
+    printf("  -a, --address <addr>                  Address for TCP/UDP (default: 127.0.0.1)\n");
+    printf("  -s, --size <bytes>                    Payload size in bytes (default: 1024)\n");
+    printf("  -c, --clients <num>                   Number of clients (default: 1)\n");
+    printf("  -n, --concurrency <num>               Concurrent requests per client (default: 10)\n");
+    printf("  -r, --requests <num>                  Total requests per client (default: 10000)\n");
+    printf("  -T, --timeout <ms>                    Request timeout in ms (default: 5000)\n");
+    printf("  -w, --warmup <num>                    Warmup requests (default: 100)\n");
+    printf("  -v, --verbose                         Verbose output\n");
+    printf("  -h, --help                            Show this help\n");
 }
 
 /* Parse arguments */
@@ -262,7 +231,9 @@ static int parse_arguments(int argc, char** argv, benchmark_options_t* opts) {
     memset(opts, 0, sizeof(benchmark_options_t));
     
     /* Defaults */
-    opts->address = strdup("inproc://uvrpc_benchmark");
+    opts->transport = UVRPC_TRANSPORT_INPROC;
+    opts->address = strdup("127.0.0.1");
+    opts->port = 5555;
     opts->payload_size = 1024;
     opts->num_clients = 1;
     opts->concurrency = 10;
@@ -272,7 +243,18 @@ static int parse_arguments(int argc, char** argv, benchmark_options_t* opts) {
     opts->verbose = 0;
     
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--address") == 0) {
+        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--transport") == 0) {
+            if (i + 1 >= argc) return -1;
+            i++;
+            if (strcmp(argv[i], "tcp") == 0) opts->transport = UVRPC_TRANSPORT_TCP;
+            else if (strcmp(argv[i], "udp") == 0) opts->transport = UVRPC_TRANSPORT_UDP;
+            else if (strcmp(argv[i], "ipc") == 0) opts->transport = UVRPC_TRANSPORT_IPC;
+            else if (strcmp(argv[i], "inproc") == 0) opts->transport = UVRPC_TRANSPORT_INPROC;
+            else return -1;
+        } else if (strcmp(argv[i], "-p") == 0 || strcmp(argv[i], "--port") == 0) {
+            if (i + 1 >= argc) return -1;
+            opts->port = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--address") == 0) {
             if (i + 1 >= argc) return -1;
             free(opts->address);
             opts->address = strdup(argv[++i]);
@@ -304,9 +286,6 @@ static int parse_arguments(int argc, char** argv, benchmark_options_t* opts) {
             return -1;
         }
     }
-    
-    /* Parse address string to get transport type */
-    parse_address(opts->address, &opts->address, &opts->transport);
     
     return 0;
 }
@@ -341,7 +320,10 @@ static void print_statistics(benchmark_stats_t* stats, benchmark_options_t* opts
     double avg_latency_ms = (stats->total_latency_ns / 1e6) / stats->successful_requests;
     
     printf("\n=== Benchmark Results ===\n");
-printf("Address: %s\n", opts->address);
+    printf("Transport: %s\n", 
+           opts->transport == UVRPC_TRANSPORT_TCP ? "TCP" :
+           opts->transport == UVRPC_TRANSPORT_UDP ? "UDP" :
+           opts->transport == UVRPC_TRANSPORT_IPC ? "IPC" : "INPROC");
     printf("Payload size: %zu bytes\n", opts->payload_size);
     printf("Clients: %d\n", opts->num_clients);
     printf("Concurrency per client: %d\n", opts->concurrency);
@@ -378,7 +360,9 @@ int main(int argc, char** argv) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     
-    printf("Address: %s\n", opts.address);
+    /* Build address */
+    char* address = build_address(&opts);
+    printf("Address: %s\n", address);
     printf("Payload size: %zu bytes\n", opts.payload_size);
     printf("Clients: %d\n", opts.num_clients);
     printf("Concurrency: %d\n", opts.concurrency);
@@ -407,7 +391,7 @@ int main(int argc, char** argv) {
     
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &server_loop);
-    uvrpc_config_set_address(server_config, opts.address);
+    uvrpc_config_set_address(server_config, address);
     uvrpc_config_set_transport(server_config, opts.transport);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
@@ -451,8 +435,8 @@ int main(int argc, char** argv) {
         /* Create config */
         bctx->config = uvrpc_config_new();
         uvrpc_config_set_loop(bctx->config, bctx->loop);
-        uvrpc_config_set_address(bctx->config, bctx->opts->address);
-        uvrpc_config_set_transport(bctx->config, bctx->opts->transport);
+        uvrpc_config_set_address(bctx->config, address);
+        uvrpc_config_set_transport(bctx->config, opts.transport);
         
         /* Create and connect client */
         bctx->client = uvrpc_client_create(bctx->config);
@@ -523,6 +507,7 @@ int main(int argc, char** argv) {
     uvrpc_server_free(server);
     uvrpc_config_free(server_config);
     uv_loop_close(&server_loop);
+    free(address);
     free(payload);
     free(opts.address);
     free(client_stats);

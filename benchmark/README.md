@@ -44,9 +44,7 @@ cd benchmark
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `-t, --transport` | 传输方式 (tcp/udp/ipc/inproc) | inproc |
-| `-p, --port` | 端口号 | 5555 |
-| `-a, --address` | 地址 | 127.0.0.1 |
+| `-a, --address` | 地址字符串 | inproc://uvrpc_benchmark |
 | `-s, --size` | 负载大小（字节） | 1024 |
 | `-c, --clients` | 客户端数量 | 1 |
 | `-n, --concurrency` | 单客户端并发数 | 10 |
@@ -55,6 +53,17 @@ cd benchmark
 | `-w, --warmup` | 预热请求数 | 100 |
 | `-v, --verbose` | 详细输出 | - |
 | `-h, --help` | 帮助信息 | - |
+
+## 地址格式
+
+使用字符串风格配置地址和端口：
+
+```
+tcp://127.0.0.1:5555   - TCP 传输
+udp://127.0.0.1:5555   - UDP 传输
+ipc:///tmp/uvrpc_benchmark - IPC 传输
+inproc://uvrpc_benchmark - INPROC 传输
+```
 
 ## 架构
 
@@ -66,17 +75,23 @@ cd benchmark
 ## 示例
 
 ```bash
-# 基础测试
+# 基础测试（默认 INPROC）
 ./uvrpc_benchmark -s 128 -c 1 -n 10 -r 100
 
 # 高并发测试
-./uvrpc_benchmark -t inproc -s 1024 -c 10 -n 100 -r 10000
+./uvrpc_benchmark -a inproc://uvrpc_benchmark -s 1024 -c 10 -n 100 -r 10000
 
 # TCP 传输测试
-./uvrpc_benchmark -t tcp -a 127.0.0.1 -p 5555 -s 2048 -c 5 -n 50 -r 1000
+./uvrpc_benchmark -a tcp://127.0.0.1:5555 -s 2048 -c 5 -n 50 -r 1000
+
+# UDP 传输测试
+./uvrpc_benchmark -a udp://127.0.0.1:5555 -s 1024 -c 4 -n 20 -r 5000
+
+# IPC 传输测试
+./uvrpc_benchmark -a ipc:///tmp/uvrpc_benchmark -s 512 -c 2 -n 30 -r 2000
 
 # 大负载测试
-./uvrpc_benchmark -t inproc -s 10240 -c 4 -n 20 -r 5000
+./uvrpc_benchmark -a inproc://uvrpc_benchmark -s 10240 -c 4 -n 20 -r 5000
 ```
 
 ## 输出说明
