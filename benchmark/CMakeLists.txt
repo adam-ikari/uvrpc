@@ -1,0 +1,94 @@
+cmake_minimum_required(VERSION 3.10)
+project(benchmark C)
+
+# Force Release mode
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(WARNING "Benchmark requires Release mode. Setting to Release.")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# Add compile definitions for Release mode
+add_definitions(-DNDEBUG -O2)
+
+# Set C standard
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Paths
+set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
+set(DEPS_DIR ${PROJECT_ROOT}/deps)
+set(GENERATED_DIR ${PROJECT_ROOT}/generated)
+
+# Include directories
+include_directories(
+    ${PROJECT_ROOT}/include
+    ${PROJECT_ROOT}/src
+    ${PROJECT_ROOT}/deps/uthash/include
+    ${DEPS_DIR}/flatcc/include
+    ${DEPS_DIR}/libuv/include
+    ${GENERATED_DIR}
+)
+
+# Check if mimalloc is available
+if(EXISTS ${DEPS_DIR}/mimalloc/lib/libmimalloc.a)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../deps/mimalloc/include)
+    add_definitions(-DUVRPC_ALLOCATOR=1)
+    set(USE_MIMALLOC TRUE)
+else()
+    add_definitions(-DUVRPC_ALLOCATOR=0)
+    set(USE_MIMALLOC FALSE)
+endif()
+
+# Find required packages
+find_package(Threads REQUIRED)
+
+# Source files
+set(BENCHMARK_SOURCES
+    benchmark.c
+    ${PROJECT_ROOT}/src/uvrpc_config.c
+    ${PROJECT_ROOT}/src/uvrpc_msgpack.c
+    ${PROJECT_ROOT}/src/uvrpc_server.c
+    ${PROJECT_ROOT}/src/uvrpc_client.c
+    ${PROJECT_ROOT}/src/uvrpc_service.c
+    ${PROJECT_ROOT}/src/uvrpc_transport.c
+    ${PROJECT_ROOT}/src/uvrpc_frame.c
+    ${PROJECT_ROOT}/src/uvrpc_msgid.c
+    ${PROJECT_ROOT}/src/uvrpc_idmap.c
+    ${PROJECT_ROOT}/src/uvrpc_publisher.c
+    ${PROJECT_ROOT}/src/uvrpc_subscriber.c
+    ${PROJECT_ROOT}/src/uvrpc_allocator.c
+    ${PROJECT_ROOT}/src/uvrpc_async.c
+)
+
+# Create executable
+add_executable(uvrpc_benchmark ${BENCHMARK_SOURCES})
+
+# Link libraries
+target_link_libraries(uvrpc_benchmark
+    ${DEPS_DIR}/libuv/build/libuv.a
+    ${DEPS_DIR}/flatcc/lib/libflatcc.a
+    Threads::Threads
+    m
+    rt
+)
+
+# Link mimalloc if available
+if(USE_MIMALLOC)
+    target_link_libraries(uvrpc_benchmark
+        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
+    )
+endif()
+
+# Print configuration
+message(STATUS "")
+message(STATUS "=== Benchmark Configuration ===")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "C flags: ${CMAKE_C_FLAGS}")
+message(STATUS "Allocator: ${USE_MIMALLOC}")
+message(STATUS "================================")
+message(STATUS "")
