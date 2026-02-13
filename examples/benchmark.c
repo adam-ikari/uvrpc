@@ -16,6 +16,11 @@
  *   -w, --warmup <num>                    Warmup requests (default: 100)
  *   -v, --verbose                         Verbose output
  *   -h, --help                            Show this help
+ * 
+ * Architecture:
+ *   - Each client runs in its own thread with its own libuv loop
+ *   - No locks, no critical sections, zero synchronization
+ *   - Each client has independent statistics
  */
 
 #include "../include/uvrpc.h"
@@ -27,6 +32,7 @@
 #include <signal.h>
 #include <inttypes.h>
 #include <time.h>
+#include <pthread.h>
 
 /* Statistics */
 typedef struct {
@@ -44,22 +50,6 @@ typedef struct {
     uint64_t end_time_ns;
 } benchmark_stats_t;
 
-/* Benchmark context */
-typedef struct {
-    int client_id;
-    uv_loop_t* loop;
-    uvrpc_client_t* client;
-    benchmark_stats_t* stats;
-    int total_requests;
-    int completed_requests;
-    int concurrency;
-    int timeout_ms;
-    char* payload;
-    size_t payload_size;
-    int verbose;
-    uint64_t start_time_ns;
-} benchmark_ctx_t;
-
 /* Command line options */
 typedef struct {
     uvrpc_transport_type transport;
@@ -73,6 +63,24 @@ typedef struct {
     int warmup;
     int verbose;
 } benchmark_options_t;
+
+/* Benchmark context */
+typedef struct {
+    int client_id;
+    uv_loop_t* loop;
+    uvrpc_config_t* config;
+    uvrpc_client_t* client;
+    benchmark_stats_t* stats;
+    benchmark_options_t* opts;
+    int total_requests;
+    int completed_requests;
+    int concurrency;
+    int timeout_ms;
+    char* payload;
+    size_t payload_size;
+    int verbose;
+    uint64_t start_time_ns;
+} benchmark_ctx_t;
 
 /* Global signal flag */
 static volatile int g_running = 1;
@@ -127,32 +135,27 @@ static void benchmark_callback(uvrpc_response_t* resp, void* ctx) {
     
     uint64_t now = get_time_ns();
     
-    /* Calculate latency (approximate, use request start time in real implementation) */
-    uint64_t latency = now - bctx->start_time_ns; /* Placeholder */
+    /* Calculate latency */
+    uint64_t latency = now - bctx->start_time_ns;
     
-    /* Update statistics */
-    __sync_fetch_and_add(&bctx->stats->total_requests, 1);
+    /* Update statistics (no locks needed - each client has its own stats) */
+    bctx->stats->total_requests++;
     
     if (resp && resp->status == UVRPC_OK && resp->error_code == 0) {
-        __sync_fetch_and_add(&bctx->stats->successful_requests, 1);
-        __sync_fetch_and_add(&bctx->stats->total_latency_ns, latency);
+        bctx->stats->successful_requests++;
+        bctx->stats->total_latency_ns += latency;
         
         /* Update min/max latency */
-        uint64_t current_min = bctx->stats->min_latency_ns;
-        while (latency < current_min && 
-               !__sync_bool_compare_and_swap(&bctx->stats->min_latency_ns, current_min, latency)) {
-            current_min = bctx->stats->min_latency_ns;
+        if (latency < bctx->stats->min_latency_ns) {
+            bctx->stats->min_latency_ns = latency;
         }
-        
-        uint64_t current_max = bctx->stats->max_latency_ns;
-        while (latency > current_max && 
-               !__sync_bool_compare_and_swap(&bctx->stats->max_latency_ns, current_max, latency)) {
-            current_max = bctx->stats->max_latency_ns;
+        if (latency > bctx->stats->max_latency_ns) {
+            bctx->stats->max_latency_ns = latency;
         }
     } else if (resp && resp->error_code == (int32_t)UVRPC_ERROR_TIMEOUT) {
-        __sync_fetch_and_add(&bctx->stats->timeout_requests, 1);
+        bctx->stats->timeout_requests++;
     } else {
-        __sync_fetch_and_add(&bctx->stats->failed_requests, 1);
+        bctx->stats->failed_requests++;
     }
     
     bctx->completed_requests++;
@@ -188,6 +191,22 @@ static int run_benchmark_client(benchmark_ctx_t* bctx, benchmark_options_t* opts
     }
     
     return 0;
+}
+
+/* Thread function for each client */
+static void* client_thread_func(void* arg) {
+    benchmark_ctx_t* bctx = (benchmark_ctx_t*)arg;
+    
+    /* Run benchmark for this client */
+    run_benchmark_client(bctx, bctx->opts);
+    
+    /* Cleanup */
+    uvrpc_client_free(bctx->client);
+    uvrpc_config_free(bctx->config);
+    uv_loop_close(bctx->loop);
+    free(bctx->loop);
+    
+    return NULL;
 }
 
 /* Print usage */
@@ -359,18 +378,19 @@ int main(int argc, char** argv) {
     }
     payload[opts.payload_size] = '\0';
     
-    /* Initialize statistics */
-    benchmark_stats_t stats;
-    memset(&stats, 0, sizeof(stats));
-    stats.min_latency_ns = UINT64_MAX;
+    /* Initialize statistics - one per client */
+    benchmark_stats_t* client_stats = (benchmark_stats_t*)calloc(opts.num_clients, sizeof(benchmark_stats_t));
+    for (int i = 0; i < opts.num_clients; i++) {
+        client_stats[i].min_latency_ns = UINT64_MAX;
+    }
     
     /* Create server */
     printf("Creating server...\n");
-    uv_loop_t loop;
-    uv_loop_init(&loop);
+    uv_loop_t server_loop;
+    uv_loop_init(&server_loop);
     
     uvrpc_config_t* server_config = uvrpc_config_new();
-    uvrpc_config_set_loop(server_config, &loop);
+    uvrpc_config_set_loop(server_config, &server_loop);
     uvrpc_config_set_address(server_config, address);
     uvrpc_config_set_transport(server_config, opts.transport);
     
@@ -386,64 +406,113 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    printf("Starting benchmark...\n");
-    stats.start_time_ns = get_time_ns();
+    printf("Server started\n\n");
     
-    /* Create clients and run benchmark */
+    /* Warmup */
+    if (opts.warmup > 0) {
+        printf("Warming up (%d requests)...\n", opts.warmup);
+        for (int i = 0; i < 10 && g_running; i++) {
+            uv_run(&server_loop, UV_RUN_NOWAIT);
+        }
+        printf("Warmup complete\n\n");
+    }
+    
+    /* Start benchmark */
+    printf("Starting benchmark with %d clients in separate threads...\n", opts.num_clients);
+    
+    /* Create arrays for client contexts and threads */
+    benchmark_ctx_t* client_contexts = (benchmark_ctx_t*)calloc(opts.num_clients, sizeof(benchmark_ctx_t));
+    pthread_t* client_threads = (pthread_t*)calloc(opts.num_clients, sizeof(pthread_t));
+    
+    /* Create and start client threads */
     for (int client_id = 0; client_id < opts.num_clients && g_running; client_id++) {
-        uv_loop_t* client_loop = &loop; /* Use same loop for simplicity */
+        benchmark_ctx_t* bctx = &client_contexts[client_id];
         
-        uvrpc_config_t* client_config = uvrpc_config_new();
-        uvrpc_config_set_loop(client_config, client_loop);
-        uvrpc_config_set_address(client_config, address);
-        uvrpc_config_set_transport(client_config, opts.transport);
+        /* Create separate loop for this client */
+        bctx->loop = (uv_loop_t*)malloc(sizeof(uv_loop_t));
+        uv_loop_init(bctx->loop);
         
-        uvrpc_client_t* client = uvrpc_client_create(client_config);
-        int ret = uvrpc_client_connect(client);
+        /* Create config */
+        bctx->config = uvrpc_config_new();
+        uvrpc_config_set_loop(bctx->config, bctx->loop);
+        uvrpc_config_set_address(bctx->config, address);
+        uvrpc_config_set_transport(bctx->config, opts.transport);
+        
+        /* Create and connect client */
+        bctx->client = uvrpc_client_create(bctx->config);
+        int ret = uvrpc_client_connect(bctx->client);
         if (ret != UVRPC_OK) {
             fprintf(stderr, "Failed to connect client %d: %d\n", client_id, ret);
             continue;
         }
         
-        benchmark_ctx_t bctx;
-        memset(&bctx, 0, sizeof(bctx));
-        bctx.client_id = client_id;
-        bctx.loop = client_loop;
-        bctx.client = client;
-        bctx.stats = &stats;
-        bctx.total_requests = opts.requests_per_client;
-        bctx.concurrency = opts.concurrency;
-        bctx.timeout_ms = opts.timeout_ms;
-        bctx.payload = payload;
-        bctx.payload_size = opts.payload_size;
-        bctx.verbose = opts.verbose;
-        bctx.start_time_ns = get_time_ns();
+        /* Initialize context */
+        bctx->client_id = client_id;
+        bctx->stats = &client_stats[client_id];
+        bctx->opts = &opts;
+        bctx->total_requests = opts.requests_per_client;
+        bctx->concurrency = opts.concurrency;
+        bctx->timeout_ms = opts.timeout_ms;
+        bctx->payload = payload;
+        bctx->payload_size = opts.payload_size;
+        bctx->verbose = opts.verbose;
+        bctx->start_time_ns = get_time_ns();
         
-        /* Run benchmark for this client */
-        run_benchmark_client(&bctx, &opts);
-        
-        /* Cleanup client */
-        uvrpc_client_free(client);
-        uvrpc_config_free(client_config);
+        /* Create thread for this client */
+        pthread_create(&client_threads[client_id], NULL, client_thread_func, bctx);
     }
     
-    stats.end_time_ns = get_time_ns();
+    /* Start global timer */
+    uint64_t global_start_ns = get_time_ns();
+    
+    /* Wait for all threads to complete */
+    for (int client_id = 0; client_id < opts.num_clients; client_id++) {
+        pthread_join(client_threads[client_id], NULL);
+    }
+    
+    uint64_t global_end_ns = get_time_ns();
+    
+    /* Aggregate statistics from all clients */
+    benchmark_stats_t aggregated_stats;
+    memset(&aggregated_stats, 0, sizeof(aggregated_stats));
+    aggregated_stats.min_latency_ns = UINT64_MAX;
+    
+    for (int i = 0; i < opts.num_clients; i++) {
+        aggregated_stats.total_requests += client_stats[i].total_requests;
+        aggregated_stats.successful_requests += client_stats[i].successful_requests;
+        aggregated_stats.failed_requests += client_stats[i].failed_requests;
+        aggregated_stats.timeout_requests += client_stats[i].timeout_requests;
+        aggregated_stats.total_latency_ns += client_stats[i].total_latency_ns;
+        
+        if (client_stats[i].min_latency_ns < aggregated_stats.min_latency_ns) {
+            aggregated_stats.min_latency_ns = client_stats[i].min_latency_ns;
+        }
+        if (client_stats[i].max_latency_ns > aggregated_stats.max_latency_ns) {
+            aggregated_stats.max_latency_ns = client_stats[i].max_latency_ns;
+        }
+    }
+    
+    aggregated_stats.start_time_ns = global_start_ns;
+    aggregated_stats.end_time_ns = global_end_ns;
     
     /* Wait for remaining events */
     for (int i = 0; i < 100 && g_running; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&server_loop, UV_RUN_NOWAIT);
     }
     
     /* Print results */
-    print_statistics(&stats, &opts);
+    print_statistics(&aggregated_stats, &opts);
     
     /* Cleanup */
     uvrpc_server_free(server);
     uvrpc_config_free(server_config);
-    uv_loop_close(&loop);
+    uv_loop_close(&server_loop);
     free(address);
     free(payload);
     free(opts.address);
+    free(client_stats);
+    free(client_contexts);
+    free(client_threads);
     
     return 0;
 }
