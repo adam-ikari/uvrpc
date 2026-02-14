@@ -121,12 +121,26 @@ add_executable(perf_client perf_client.c)
 target_link_libraries(perf_client uvrpc Threads::Threads m rt)
 add_dependencies(perf_client generate_flatcc)
 
+add_executable(latency_test latency_test.c)
+target_link_libraries(latency_test uvrpc Threads::Threads m rt)
+add_dependencies(latency_test generate_flatcc)
+
+add_executable(simple_latency_test simple_latency_test.c)
+target_link_libraries(simple_latency_test uvrpc Threads::Threads m rt)
+add_dependencies(simple_latency_test generate_flatcc)
+
 # Link mimalloc if available
 if(USE_MIMALLOC)
     target_link_libraries(perf_server uvrpc
         ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
     )
     target_link_libraries(perf_client uvrpc
+        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
+    )
+    target_link_libraries(latency_test uvrpc
+        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
+    )
+    target_link_libraries(simple_latency_test uvrpc
         ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
     )
 endif()

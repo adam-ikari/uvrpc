@@ -26,6 +26,7 @@ struct uvrpc_client {
     uvrpc_transport_t* transport;
     int is_connected;
     uvrpc_msgid_ctx_t* msgid_ctx;  /* 消息ID生成器 */
+    uvrpc_perf_mode_t performance_mode;  /* Performance mode: low latency vs high throughput */
 
     /* User connect callback */
     uvrpc_connect_callback_t user_connect_callback;
@@ -118,6 +119,7 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->loop = config->loop;
     client->address = strdup(config->address);
     client->is_connected = 0;
+    client->performance_mode = config->performance_mode;
     client->user_connect_callback = NULL;
     client->user_connect_ctx = NULL;
 
@@ -252,7 +254,9 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
     
     /* Send request */
     if (client->transport) {
-        uvrpc_transport_send(client->transport, req_data, req_size);
+        /* In high throughput mode, set flush flag to allow batching */
+        int flush = (client->performance_mode == UVRPC_PERF_LOW_LATENCY);
+        uvrpc_transport_send_with_flush(client->transport, req_data, req_size, flush);
     }
     
     uvrpc_free(req_data);

@@ -1032,8 +1032,13 @@ void uvrpc_transport_disconnect(uvrpc_transport_t* transport) {
     }
 }
 
-/* Send data (4-byte length prefix + data) */
+/* Send data (4-byte length prefix + data) - immediate send for backward compatibility */
 void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, size_t size) {
+    uvrpc_transport_send_with_flush(transport, data, size, 1);  /* flush=true for immediate send */
+}
+
+/* Send data with flush control (4-byte length prefix + data) */
+void uvrpc_transport_send_with_flush(uvrpc_transport_t* transport, const uint8_t* data, size_t size, int flush) {
     if (!transport || !data || size == 0) return;
 
     /* Check connection status for TCP and IPC */
@@ -1042,6 +1047,11 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
         fprintf(stderr, "Cannot send: not connected\n");
         return;
     }
+
+    /* For now, flush flag is ignored but provides future optimization point.
+     * In high throughput mode, this could be used to batch multiple writes together.
+     * For low latency mode, flush=true ensures immediate sending.
+     */
 
     /* Allocate buffer with 4-byte length prefix */
     size_t total_size = 4 + size;

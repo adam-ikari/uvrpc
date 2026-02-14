@@ -205,6 +205,43 @@ sudo make install
 ./dist/bin/uvrpc_benchmark --address tcp://127.0.0.1:5555 --clients 10 --requests 10000
 ```
 
+## 性能测试
+
+### 吞吐量测试
+
+```bash
+# 启动服务器
+./dist/bin/perf_server
+
+# 运行客户端（默认模式）
+./dist/bin/perf_client 127.0.0.1:5555 10000
+
+# 使用不同迭代次数
+./dist/bin/perf_client 127.0.0.1:5555 100000
+```
+
+### 性能模式对比
+
+```bash
+# 启动服务器
+./dist/bin/perf_server &
+
+# 测试低延迟模式
+./dist/bin/perf_client 127.0.0.1:5555 10000
+
+# 测试高吞吐模式（需要修改客户端代码设置性能模式）
+```
+
+### 延迟测试
+
+```bash
+# 启动服务器
+./dist/bin/perf_server &
+
+# 运行延迟测试
+./dist/bin/simple_latency_test
+```
+
 ## 安装
 
 ### 系统安装

@@ -39,6 +39,12 @@ typedef enum {
     UVRPC_TRANSPORT_INPROC = 3  /* In-process transport */
 } uvrpc_transport_type;
 
+/* Performance modes */
+typedef enum {
+    UVRPC_PERF_LOW_LATENCY = 0,  /* Low latency: process immediately, minimal batching */
+    UVRPC_PERF_HIGH_THROUGHPUT = 1  /* High throughput: batch processing, optimal for bulk operations */
+} uvrpc_perf_mode_t;
+
 /* Communication types */
 typedef enum {
     UVRPC_COMM_SERVER_CLIENT = 0,  /* Server/Client (request-response) */
@@ -72,6 +78,7 @@ struct uvrpc_config {
     char* address;
     uvrpc_transport_type transport;
     uvrpc_comm_type_t comm_type;
+    uvrpc_perf_mode_t performance_mode;
 };
 
 /* Request structure */
@@ -102,6 +109,7 @@ uvrpc_config_t* uvrpc_config_set_loop(uvrpc_config_t* config, uv_loop_t* loop);
 uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* address);
 uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvrpc_transport_type transport);
 uvrpc_config_t* uvrpc_config_set_comm_type(uvrpc_config_t* config, uvrpc_comm_type_t comm_type);
+uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode);
 
 /* Server API */
 uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config);

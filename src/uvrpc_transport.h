@@ -32,6 +32,7 @@ void uvrpc_transport_free(uvrpc_transport_t* transport);
 int uvrpc_transport_listen(uvrpc_transport_t* transport, const char* address,
                             uvrpc_recv_callback_t recv_cb, void* ctx);
 void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, size_t size);
+void uvrpc_transport_send_with_flush(uvrpc_transport_t* transport, const uint8_t* data, size_t size, int flush);
 
 /* Client operations */
 int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,

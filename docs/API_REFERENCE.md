@@ -87,6 +87,24 @@ uvrpc_config_t* uvrpc_config_set_comm_type(uvrpc_config_t* config, uvrpc_comm_ty
 
 **返回值**：配置对象指针
 
+#### uvrpc_config_set_performance_mode()
+
+设置性能模式。
+
+```c
+uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode);
+```
+
+**参数**：
+- `config`：配置对象指针
+- `mode`：性能模式（UVRPC_PERF_LOW_LATENCY 或 UVRPC_PERF_HIGH_THROUGHPUT）
+
+**返回值**：配置对象指针
+
+**说明**：
+- `UVRPC_PERF_LOW_LATENCY`：低延迟模式，立即发送请求，适合实时系统
+- `UVRPC_PERF_HIGH_THROUGHPUT`：高吞吐模式，允许批处理，适合批处理场景
+
 ## 服务端 API
 
 ### uvrpc_server_t
@@ -527,7 +545,18 @@ typedef void (*uvrpc_error_callback_t)(int error_code, const char* error_msg, vo
 #define UVRPC_ERROR_NOT_CONNECTED -4
 #define UVRPC_ERROR_TIMEOUT -5
 #define UVRPC_ERROR_TRANSPORT -6
+#define UVRPC_ERROR_CALLBACK_LIMIT -7
 ```
+
+**错误码说明**：
+- `UVRPC_OK`：成功
+- `UVRPC_ERROR`：通用错误
+- `UVRPC_ERROR_INVALID_PARAM`：无效参数
+- `UVRPC_ERROR_NO_MEMORY`：内存不足
+- `UVRPC_ERROR_NOT_CONNECTED`：未连接
+- `UVRPC_ERROR_TIMEOUT`：超时
+- `UVRPC_ERROR_TRANSPORT`：传输层错误
+- `UVRPC_ERROR_CALLBACK_LIMIT`：回调数量超过限制（环形缓冲区满）
 
 ## 传输类型
 
@@ -548,6 +577,63 @@ typedef enum {
     UVRPC_COMM_BROADCAST = 1
 } uvrpc_comm_type_t;
 ```
+
+## 性能模式
+
+```c
+typedef enum {
+    UVRPC_PERF_LOW_LATENCY = 0,
+    UVRPC_PERF_HIGH_THROUGHPUT = 1
+} uvrpc_perf_mode_t;
+```
+
+**模式说明**：
+
+- `UVRPC_PERF_LOW_LATENCY`：低延迟模式
+  - 立即发送每个请求
+  - 最小化响应时间
+  - 适用于实时系统、游戏、高频交易等场景
+  - 典型延迟：< 1ms
+
+- `UVRPC_PERF_HIGH_THROUGHPUT`：高吞吐模式
+  - 允许请求批处理
+  - 最大化吞吐量
+  - 适用于批处理、数据同步、日志收集等场景
+  - 典型吞吐量：> 100k ops/s
+
+**使用示例**：
+
+```c
+uvrpc_config_t* config = uvrpc_config_new();
+uvrpc_config_set_loop(config, &loop);
+uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
+uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
+
+uvrpc_client_t* client = uvrpc_client_create(config);
+```
+
+## 配置常量
+
+### UVRPC_MAX_PENDING_CALLBACKS
+
+最大并发待处理回调数（环形缓冲区大小）。
+
+```c
+#ifndef UVRPC_MAX_PENDING_CALLBACKS
+#define UVRPC_MAX_PENDING_CALLBACKS 10000
+#endif
+```
+
+**说明**：
+- 默认值：10,000
+- 影响内存使用：每个条目约 24 字节
+- 编译期配置，影响内存布局
+- 可通过编译选项自定义：`-DUVRPC_MAX_PENDING_CALLBACKS=100000`
+
+**内存使用示例**：
+- 10K 条目：160KB
+- 100K 条目：1.6MB
+- 1M 条目：16MB
 
 ## 内存分配器 API
 

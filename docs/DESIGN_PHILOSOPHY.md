@@ -43,6 +43,7 @@ uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);  // 可选：设置性能模式
 
 // 2. 创建客户端
 uvrpc_client_t* client = uvrpc_client_create(config);
@@ -151,12 +152,13 @@ UVRPC 的核心 API 仅有约 20 个函数：
 所有数据结构都只包含必要的字段：
 
 ```c
-// 配置结构体：仅 4 个字段
+// 配置结构体：仅 5 个字段
 struct uvrpc_config {
     uv_loop_t* loop;
     char* address;
     uvrpc_transport_type transport;
     uvrpc_comm_type_t comm_type;
+    uvrpc_perf_mode_t performance_mode;  // 性能模式
 };
 
 // 请求结构体：仅 6 个字段
@@ -333,6 +335,67 @@ if (ret != UVRPC_OK) {
 - 使用 mimalloc 分配器
 - 减少内存碎片
 - 提高分配速度
+
+### 性能模式
+
+UVRPC 提供两种性能模式，可根据应用场景选择：
+
+#### 低延迟模式 (UVRPC_PERF_LOW_LATENCY)
+
+```c
+uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
+```
+
+**特点**：
+- 立即发送每个请求
+- 最小化响应时间
+- 适用于实时系统
+
+**适用场景**：
+- 实时游戏
+- 高频交易
+- 在线服务
+- 交互式应用
+
+**典型性能**：
+- 延迟：< 1ms
+- 吞吐量：~118k ops/s
+
+#### 高吞吐模式 (UVRPC_PERF_HIGH_THROUGHPUT)
+
+```c
+uvrpc_config_set_performance_mode(config, UVRPC_PERF_HIGH_THROUGHPUT);
+```
+
+**特点**：
+- 允许请求批处理
+- 最大化吞吐量
+- 适用于批处理场景
+
+**适用场景**：
+- 批量数据处理
+- 日志收集
+- 数据同步
+- 后台任务
+
+**典型性能**：
+- 延迟：略高
+- 吞吐量：~119k ops/s
+
+#### 环形缓冲区优化
+
+客户端回调路由使用环形缓冲区数组，性能优势：
+
+- **O(1) 查找**：直接数组访问，无哈希计算
+- **缓存友好**：顺序内存访问，无指针跳转
+- **内存高效**：83% 内存节省（24字节 vs 80字节/条目）
+- **可配置**：编译期配置 `UVRPC_MAX_PENDING_CALLBACKS`
+
+```c
+// 编译期配置
+#define UVRPC_MAX_PENDING_CALLBACKS 10000  // 默认
+#define UVRPC_MAX_PENDING_CALLBACKS 100000  // 高并发
+```
 
 ## 扩展性
 

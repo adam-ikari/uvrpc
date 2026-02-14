@@ -9,11 +9,12 @@
 uvrpc_config_t* uvrpc_config_new(void) {
     uvrpc_config_t* config = (uvrpc_config_t*)calloc(1, sizeof(uvrpc_config_t));
     if (!config) return NULL;
-    
+
     config->loop = NULL;
     config->address = NULL;
     config->transport = UVRPC_TRANSPORT_TCP;  /* Default to TCP */
-    
+    config->performance_mode = UVRPC_PERF_LOW_LATENCY;  /* Default to low latency */
+
     return config;
 }
 
@@ -66,5 +67,11 @@ uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvrpc_transpo
 uvrpc_config_t* uvrpc_config_set_comm_type(uvrpc_config_t* config, uvrpc_comm_type_t comm_type) {
     if (!config) return NULL;
     config->comm_type = comm_type;
+    return config;
+}
+
+uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode) {
+    if (!config) return NULL;
+    config->performance_mode = mode;
     return config;
 }
