@@ -52,10 +52,13 @@ typedef struct uvrpc_response uvrpc_response_t;
 /* Callback types */
 typedef void (*uvrpc_handler_t)(uvrpc_request_t* req, void* ctx);
 typedef void (*uvrpc_callback_t)(uvrpc_response_t* resp, void* ctx);
+typedef void (*uvrpc_connect_callback_t)(int status, void* ctx);
 
 /* Broadcast callback types */
 typedef void (*uvrpc_publish_callback_t)(int status, void* ctx);
 typedef void (*uvrpc_subscribe_callback_t)(const char* topic, const uint8_t* data, size_t size, void* ctx);
+
+typedef void (*uvrpc_error_callback_t)(int error_code, const char* error_msg, void* ctx);
 
 /* Configuration */
 struct uvrpc_config {
@@ -72,6 +75,7 @@ struct uvrpc_request {
     char* method;
     uint8_t* params;
     size_t params_size;
+    uv_stream_t* client_stream;  /* Client connection for sending response */
     void* user_data;
 };
 
@@ -103,6 +107,8 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method, uvrpc_hand
 /* Client API */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config);
 int uvrpc_client_connect(uvrpc_client_t* client);
+int uvrpc_client_connect_with_callback(uvrpc_client_t* client, 
+                                         uvrpc_connect_callback_t callback, void* ctx);
 void uvrpc_client_disconnect(uvrpc_client_t* client);
 void uvrpc_client_free(uvrpc_client_t* client);
 int uvrpc_client_call(uvrpc_client_t* client, const char* method,

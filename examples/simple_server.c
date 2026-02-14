@@ -1,7 +1,5 @@
 /**
- * UVRPC Simple Server Example
- * Zero threads, Zero locks, Zero global variables
- * All I/O managed by libuv event loop
+ * UVRPC Simple Server Example - Debug Version
  */
 
 #include "../include/uvrpc.h"
@@ -12,30 +10,25 @@
 /* Echo handler */
 void echo_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
-    
-    printf("Received request: method=%s, msgid=%lu\n", req->method, req->msgid);
-    
-    /* Echo back the params as result */
+    printf("[HANDLER] Received request: method=%s, msgid=%lu\n", req->method, req->msgid);
     uvrpc_request_send_response(req, UVRPC_OK, req->params, req->params_size);
 }
 
 /* Add handler */
 void add_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
-    
-    printf("Received add request: msgid=%lu\n", req->msgid);
-    
-    /* Parse params (assuming two int32 values) */
+    fprintf(stderr, "[HANDLER] Received add request: msgid=%lu\n", req->msgid);
+    fflush(stderr);
     if (req->params_size >= 8) {
         int32_t a = *(int32_t*)req->params;
         int32_t b = *(int32_t*)(req->params + 4);
         int32_t result = a + b;
-        
-        printf("Calculating: %d + %d = %d\n", a, b, result);
-        
+        fprintf(stderr, "[HANDLER] Calculating: %d + %d = %d\n", a, b, result);
+        fflush(stderr);
         uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)&result, sizeof(result));
     } else {
-        printf("Invalid params size: %zu\n", req->params_size);
+        fprintf(stderr, "[HANDLER] Invalid params size: %zu\n", req->params_size);
+        fflush(stderr);
         uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);
     }
 }
@@ -43,56 +36,91 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
 int run_server_or_client(uv_loop_t* loop, int argc, char** argv) {
     const char* address = (argc > 1) ? argv[1] : "127.0.0.1:5555";
     
-    printf("UVRPC Simple Server\n");
-    printf("Address: %s\n\n", address);
+    printf("[INIT] UVRPC Simple Server\n");
+    printf("[INIT] Address: %s\n\n", address);
+    fflush(stdout);
     
-        
-    /* Create server configuration */
+    printf("[INIT] Creating server configuration...\n");
+    fflush(stdout);
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
+    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
-    /* Create server */
+    printf("[INIT] Creating server...\n");
+    fflush(stdout);
     uvrpc_server_t* server = uvrpc_server_create(config);
     if (!server) {
-        fprintf(stderr, "Failed to create server\n");
+        fprintf(stderr, "[INIT] Failed to create server\n");
         uvrpc_config_free(config);
-            return 1;
+        return 1;
     }
+    printf("[INIT] Server created successfully\n");
+    fflush(stdout);
     
-    /* Register handlers */
+    printf("[INIT] Registering echo handler...\n");
+    fflush(stdout);
     uvrpc_server_register(server, "echo", echo_handler, NULL);
+    printf("[INIT] Registering add handler...\n");
+    fflush(stdout);
     uvrpc_server_register(server, "add", add_handler, NULL);
     
-    /* Start server */
-    if (uvrpc_server_start(server) != UVRPC_OK) {
-        fprintf(stderr, "Failed to start server\n");
+    printf("[INIT] Starting server...\n");
+    fflush(stdout);
+    int ret = uvrpc_server_start(server);
+    printf("[INIT] uvrpc_server_start returned: %d\n", ret);
+    fflush(stdout);
+    
+    if (ret != UVRPC_OK) {
+        fprintf(stderr, "[INIT] Failed to start server: %d\n", ret);
         uvrpc_server_free(server);
         uvrpc_config_free(config);
-            return 1;
+        return 1;
     }
+    printf("[INIT] Server started successfully\n");
+    fflush(stdout);
     
-    printf("Server running. Press Ctrl+C to stop.\n\n");
-    
-    /* Run event loop */
+    printf("[LOOP] Running event loop...\n");
+    fflush(stdout);
     uv_run(loop, UV_RUN_DEFAULT);
+    printf("[LOOP] Event loop exited\n");
+    fflush(stdout);
     
     /* Cleanup */
-    printf("\nStopping server...\n");
+    printf("[CLEAN] Stopping server...\n");
+    fflush(stdout);
     uvrpc_server_free(server);
     uvrpc_config_free(config);
     uv_loop_close(loop);
     
-    printf("Server stopped\n");
+    printf("[EXIT] Server stopped\n");
+    fflush(stdout);
     return 0;
 }
 
 int main(int argc, char** argv) {
-    uv_loop_t loop;
-    uv_loop_init(&loop);
+    fprintf(stderr, "[MAIN] Starting main function\n");
+    fflush(stderr);
     
+    printf("[MAIN] Initializing loop...\n");
+    fflush(stdout);
+    uv_loop_t loop;
+    int loop_result = uv_loop_init(&loop);
+    printf("[MAIN] uv_loop_init returned: %d\n", loop_result);
+    fflush(stdout);
+    
+    fprintf(stderr, "[MAIN] Calling run_server_or_client\n");
+    fflush(stderr);
     int result = run_server_or_client(&loop, argc, argv);
     
-    uv_loop_close(&loop);
+    printf("[MAIN] Closing loop...\n");
+    fflush(stderr);
+    int close_result = uv_loop_close(&loop);
+    printf("[MAIN] uv_loop_close returned: %d\n", close_result);
+    fflush(stderr);
+    
+    fprintf(stderr, "[MAIN] Exiting with result: %d\n", result);
+    fflush(stderr);
     return result;
 }

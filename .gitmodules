@@ -1,27 +1,15 @@
-[submodule "uvzmq"]
-	path = deps/uvzmq
-	url = https://github.com/adam-ikari/uvzmq.git
-[submodule "uthash"]
-	path = deps/uthash
-	url = https://github.com/troydhanson/uthash.git
-[submodule "flatbuffers"]
-	path = deps/flatbuffers
-	url = https://github.com/google/flatbuffers.git
-[submodule "libuv"]
+[submodule "deps/libuv"]
 	path = deps/libuv
 	url = https://github.com/libuv/libuv.git
-[submodule "zeromq"]
-	path = deps/zeromq
-	url = https://github.com/zeromq/libzmq.git
-[submodule "msgpack-c"]
-	path = deps/msgpack-c
-	url = https://github.com/ludocode/mpack.git
-[submodule "mimalloc"]
-	path = deps/mimalloc
-	url = https://github.com/microsoft/mimalloc.git
-[submodule "deps/nng"]
-	path = deps/nng
-	url = https://github.com/nanomsg/nng
 [submodule "deps/flatcc"]
 	path = deps/flatcc
 	url = https://github.com/dvidelabs/flatcc.git
+[submodule "deps/mimalloc"]
+	path = deps/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
+[submodule "deps/uthash"]
+	path = deps/uthash
+	url = https://github.com/troydhanson/uthash.git
+[submodule "deps/gtest"]
+	path = deps/gtest
+	url = https://github.com/google/googletest.git

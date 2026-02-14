@@ -5,7 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
-#include "uvrpc_frame.h"
+#include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include <stdlib.h>
 #include <string.h>
@@ -99,16 +99,16 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
     
     uint8_t* p = msg;
     
-    /* Topic length (4 bytes big-endian) */
-    *(uint32_t*)p = htonl((uint32_t)topic_len);
+    /* Topic length (4 bytes little-endian for consistency with FlatBuffers) */
+    *(uint32_t*)p = (uint32_t)topic_len;
     p += 4;
     
     /* Topic */
     memcpy(p, topic, topic_len);
     p += topic_len;
     
-    /* Data length (4 bytes big-endian) */
-    *(uint32_t*)p = htonl((uint32_t)size);
+    /* Data length (4 bytes little-endian) */
+    *(uint32_t*)p = (uint32_t)size;
     p += 4;
     
     /* Data */

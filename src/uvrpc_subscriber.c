@@ -35,38 +35,34 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
     uvrpc_subscriber_t* subscriber = (uvrpc_subscriber_t*)ctx;
     
     if (size < 8) {
-        free(data);
         return;
     }
     
     uint8_t* p = data;
     
-    /* Parse topic length */
-    uint32_t topic_len = ntohl(*(uint32_t*)p);
+    /* Parse topic length (little-endian for consistency with FlatBuffers) */
+    uint32_t topic_len = *(uint32_t*)p;
     p += 4;
     
     if (size < 8 + topic_len) {
-        free(data);
         return;
     }
     
     /* Extract topic */
     char* topic = (char*)malloc(topic_len + 1);
     if (!topic) {
-        free(data);
         return;
     }
     memcpy(topic, p, topic_len);
     topic[topic_len] = '\0';
     p += topic_len;
     
-    /* Parse data length */
-    uint32_t data_size = ntohl(*(uint32_t*)p);
+    /* Parse data length (little-endian) */
+    uint32_t data_size = *(uint32_t*)p;
     p += 4;
     
     if (size < 8 + topic_len + data_size) {
         free(topic);
-        free(data);
         return;
     }
     
@@ -90,7 +86,6 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
     }
     
     free(topic);
-    free(data);
 }
 
 /* Create subscriber */

@@ -5,7 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
-#include "uvrpc_frame.h"
+#include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include "uvrpc_msgid.h"
 #include <uthash.h>
@@ -29,6 +29,10 @@ struct uvrpc_client {
     int is_connected;
     uvrpc_msgid_ctx_t* msgid_ctx;  /* 消息ID生成器 */
     
+    /* User connect callback */
+    uvrpc_connect_callback_t user_connect_callback;
+    void* user_connect_ctx;
+    
     /* Pending callbacks list */
     pending_callback_t* pending_callbacks;
 };
@@ -37,6 +41,13 @@ struct uvrpc_client {
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
     client->is_connected = (status == 0);
+    
+    /* Call user's connect callback if provided */
+    if (client->user_connect_callback) {
+        uvrpc_connect_callback_t cb = client->user_connect_callback;
+        client->user_connect_callback = NULL;
+        cb(status, client->user_connect_ctx);
+    }
     
     if (status != 0) {
         fprintf(stderr, "Client connection failed: %d\n", status);
@@ -69,13 +80,27 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
             resp.status = (error_code != 0) ? UVRPC_ERROR : UVRPC_OK;
             resp.msgid = msgid;
             resp.error_code = error_code;
-            resp.result = (uint8_t*)result;
+            
+            /* Copy result data to avoid use-after-free */
+            uint8_t* result_copy = NULL;
+            if (result && result_size > 0) {
+                result_copy = malloc(result_size);
+                if (result_copy) {
+                    memcpy(result_copy, result, result_size);
+                }
+            }
+            resp.result = result_copy;
             resp.result_size = result_size;
             resp.user_data = NULL;
             
             /* Call callback */
             if (pending->callback) {
                 pending->callback(&resp, pending->ctx);
+            }
+            
+            /* Free copied result */
+            if (result_copy) {
+                free(result_copy);
             }
             
             /* Remove from list */
@@ -107,6 +132,8 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->address = strdup(config->address);
     client->is_connected = 0;
     client->pending_callbacks = NULL;
+    client->user_connect_callback = NULL;
+    client->user_connect_ctx = NULL;
     
     /* Create message ID generator */
     client->msgid_ctx = uvrpc_msgid_ctx_new();
@@ -128,6 +155,22 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
     if (!client || !client->transport) return UVRPC_ERROR_INVALID_PARAM;
     
     if (client->is_connected) return UVRPC_OK;
+    
+    return uvrpc_transport_connect(client->transport, client->address,
+                                    client_connect_callback,
+                                    client_recv_callback, client);
+}
+
+/* Connect to server with callback */
+int uvrpc_client_connect_with_callback(uvrpc_client_t* client, 
+                                         uvrpc_connect_callback_t callback, void* ctx) {
+    if (!client || !client->transport) return UVRPC_ERROR_INVALID_PARAM;
+    
+    if (client->is_connected) return UVRPC_OK;
+    
+    /* Store user callback */
+    client->user_connect_callback = callback;
+    client->user_connect_ctx = ctx;
     
     return uvrpc_transport_connect(client->transport, client->address,
                                     client_connect_callback,
@@ -170,6 +213,7 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     }
     
     free(client->address);
+    
     free(client);
 }
 

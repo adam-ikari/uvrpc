@@ -1,5 +1,6 @@
 # Build directories
 build/
+dist/
 cmake-build-*/
 
 # CMake generated files
@@ -17,11 +18,9 @@ gen_benchmark
 
 # Object files
 *.o
-*.a
 *.so
 *.dylib
 libmsgpackc.a
-libuvrpc.a
 
 # Editor files
 .vscode/

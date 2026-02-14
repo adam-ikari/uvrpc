@@ -50,12 +50,11 @@ find_package(Threads REQUIRED)
 set(BENCHMARK_SOURCES
     benchmark.c
     ${PROJECT_ROOT}/src/uvrpc_config.c
-    ${PROJECT_ROOT}/src/uvrpc_msgpack.c
+    ${PROJECT_ROOT}/src/uvrpc_flatbuffers.c
     ${PROJECT_ROOT}/src/uvrpc_server.c
     ${PROJECT_ROOT}/src/uvrpc_client.c
     ${PROJECT_ROOT}/src/uvrpc_service.c
     ${PROJECT_ROOT}/src/uvrpc_transport.c
-    ${PROJECT_ROOT}/src/uvrpc_frame.c
     ${PROJECT_ROOT}/src/uvrpc_msgid.c
     ${PROJECT_ROOT}/src/uvrpc_idmap.c
     ${PROJECT_ROOT}/src/uvrpc_publisher.c
@@ -68,17 +67,66 @@ set(BENCHMARK_SOURCES
 add_executable(uvrpc_benchmark ${BENCHMARK_SOURCES})
 
 # Link libraries
-target_link_libraries(uvrpc_benchmark
+target_link_libraries(uvrpc_benchmark uvrpc
     ${DEPS_DIR}/libuv/build/libuv.a
     ${DEPS_DIR}/flatcc/lib/libflatcc.a
     Threads::Threads
     m
     rt
+    dl
+)
+
+# Multi-process benchmark
+set(BENCHMARK_MULTIPROCESS_SOURCES
+    benchmark_multiprocess.c
+    ${PROJECT_ROOT}/src/uvrpc_config.c
+    ${PROJECT_ROOT}/src/uvrpc_flatbuffers.c
+    ${PROJECT_ROOT}/src/uvrpc_server.c
+    ${PROJECT_ROOT}/src/uvrpc_client.c
+    ${PROJECT_ROOT}/src/uvrpc_service.c
+    ${PROJECT_ROOT}/src/uvrpc_transport.c
+    ${PROJECT_ROOT}/src/uvrpc_msgid.c
+    ${PROJECT_ROOT}/src/uvrpc_idmap.c
+    ${PROJECT_ROOT}/src/uvrpc_publisher.c
+    ${PROJECT_ROOT}/src/uvrpc_subscriber.c
+    ${PROJECT_ROOT}/src/uvrpc_allocator.c
+    ${PROJECT_ROOT}/src/uvrpc_async.c
+)
+
+add_executable(benchmark_multiprocess ${BENCHMARK_MULTIPROCESS_SOURCES})
+
+# Link libraries
+target_link_libraries(benchmark_multiprocess uvrpc
+    ${DEPS_DIR}/libuv/build/libuv.a
+    ${DEPS_DIR}/flatcc/lib/libflatcc.a
+    Threads::Threads
+    m
+    rt
+    dl
 )
 
 # Link mimalloc if available
 if(USE_MIMALLOC)
-    target_link_libraries(uvrpc_benchmark
+    target_link_libraries(benchmark_multiprocess uvrpc
+        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
+    )
+endif()
+
+# Performance test programs
+add_executable(perf_server perf_server.c)
+target_link_libraries(perf_server uvrpc Threads::Threads m rt)
+add_dependencies(perf_server generate_flatcc)
+
+add_executable(perf_client perf_client.c)
+target_link_libraries(perf_client uvrpc Threads::Threads m rt)
+add_dependencies(perf_client generate_flatcc)
+
+# Link mimalloc if available
+if(USE_MIMALLOC)
+    target_link_libraries(perf_server uvrpc
+        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
+    )
+    target_link_libraries(perf_client uvrpc
         ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
     )
 endif()

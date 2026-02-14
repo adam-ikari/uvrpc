@@ -57,6 +57,7 @@ int uvrpc_encode_response(uint32_t msgid, int32_t error_code,
     
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_RESPONSE);
+    uvrpc_RpcFrame_error_code_add(&builder, error_code);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_params_add(&builder, result_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
@@ -105,7 +106,7 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
     if (!frame) return UVRPC_ERROR;
     
     *out_msgid = uvrpc_RpcFrame_msgid(frame);
-    *out_error_code = 0;  /* Error code encoded in params for now */
+    *out_error_code = uvrpc_RpcFrame_error_code(frame);
     
     flatbuffers_uint8_vec_t r = uvrpc_RpcFrame_params(frame);
     *out_result = r;
