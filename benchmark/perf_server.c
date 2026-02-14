@@ -4,22 +4,13 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../../generated/rpc_benchmark/rpc_api.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void add_handler(uvrpc_request_t* req, void* ctx) {
-    (void)ctx;
-    if (req->params_size >= 8) {
-        int32_t a = *(int32_t*)req->params;
-        int32_t b = *(int32_t*)(req->params + 4);
-        int32_t result = a + b;
-        uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)&result, sizeof(result));
-    }
-}
-
 int main(int argc, char** argv) {
-    const char* address = (argc > 1) ? argv[1] : "127.0.0.1:5555";
+    const char* address = (argc > 1) ? argv[1] : "tcp://127.0.0.1:5555";
     
     /* Create loop */
     uv_loop_t loop;
@@ -29,7 +20,7 @@ int main(int argc, char** argv) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    /* Transport type auto-detected from address prefix */
     uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     /* Create server */
@@ -39,8 +30,8 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    /* Register handler */
-    uvrpc_server_register(server, "add", add_handler, NULL);
+    /* Register handlers using generated stub */
+    rpc_register_all(server);
     
     /* Start server */
     uvrpc_server_start(server);
