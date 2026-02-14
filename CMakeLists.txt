@@ -73,12 +73,14 @@ set(UVRPC_SOURCES
     src/uvrpc_subscriber.c
     src/uvrpc_allocator.c
     src/uvrpc_async.c
+    src/uvrpc_bus.c
 )
 
 # Headers
 set(UVRPC_HEADERS
     include/uvrpc.h
     include/uvrpc_async.h
+    include/uvrpc_bus.h
     src/uvrpc_flatbuffers.h
     src/uvrpc_service.h
 )
