@@ -12,6 +12,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <unistd.h>
 
 #define MAX_THREADS 10
 #define MAX_CLIENTS 100
@@ -45,6 +46,7 @@ typedef struct {
 typedef struct {
     int responses_received;
     int target_responses;
+    int target_clients;
     int connections_established;
     int ready_to_send;
     volatile int done;
@@ -65,7 +67,8 @@ void on_connect(int status, void* ctx) {
     thread_state_t* state = (thread_state_t*)ctx;
     if (status == 0) {
         state->connections_established++;
-        if (state->connections_established == 1) {
+        /* Set ready_to_send when all expected clients are connected */
+        if (state->connections_established >= state->target_clients) {
             state->ready_to_send = 1;
         }
     }
@@ -100,6 +103,9 @@ void on_latency_response(uvrpc_response_t* resp, void* ctx) {
 int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
                    const char* address, thread_state_t* state, int low_latency) {
     uvrpc_perf_mode_t perf_mode = low_latency ? UVRPC_PERF_LOW_LATENCY : UVRPC_PERF_HIGH_THROUGHPUT;
+    
+    /* Store target number of clients */
+    state->target_clients = num_clients;
     
     for (int i = 0; i < num_clients; i++) {
         uvrpc_config_t* config = uvrpc_config_new();
@@ -140,7 +146,7 @@ int send_requests(uvrpc_client_t** clients, int num_clients, int start_idx, int 
     int sent = start_idx;
     
     while (sent < end_idx) {
-        int batch_end = (sent + batch_size < end_idx) ? sent + batch_end : end_idx;
+        int batch_end = (sent + batch_size < end_idx) ? sent + batch_size : end_idx;
 
         for (int i = sent; i < batch_end; i++) {
             int client_idx = i % num_clients;
@@ -192,6 +198,7 @@ void print_test_results(int iterations, int responses, int failed, struct timesp
     printf("Success rate: %.1f%%\n", (responses * 100.0) / iterations);
     printf("Response sum: %d (to prevent compiler optimization)\n", atomic_load(&g_response_sum));
     printf("Failed: %d\n", failed);
+    fflush(stdout);
 }
 
 /* Helper: Cleanup clients and drain loop */
@@ -254,6 +261,7 @@ void run_single_multi_test(const char* address, int num_clients, int iterations,
     thread_state_t state = {
         .responses_received = 0,
         .target_responses = iterations,
+        .target_clients = num_clients,
         .connections_established = 0,
         .ready_to_send = 0,
         .done = 0
@@ -299,7 +307,8 @@ void run_single_multi_test(const char* address, int num_clients, int iterations,
     
     flatcc_builder_clear(&builder);
     
-    for (int i = 0; i < MAX_LOOP_DRAIN; i++) {
+    /* Drain event loop briefly */
+    for (int i = 0; i < 2; i++) {
         uv_run(&loop, UV_RUN_NOWAIT);
     }
     
@@ -581,5 +590,8 @@ int main(int argc, char** argv) {
         }
     }
 
+    /* Force exit to avoid hanging on libuv thread pool cleanup */
+    _exit(0);
+    
     return 0;
 }
