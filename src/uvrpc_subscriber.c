@@ -5,6 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include "uvrpc_transport.h"
 #include <uthash.h>
 #include <stdlib.h>
@@ -49,7 +50,7 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
     }
     
     /* Extract topic */
-    char* topic = (char*)malloc(topic_len + 1);
+    char* topic = (char*)uvrpc_alloc(topic_len + 1);
     if (!topic) {
         return;
     }
@@ -74,7 +75,7 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
         /* Call callback with the data */
         uint8_t* data_copy = NULL;
         if (data_size > 0) {
-            data_copy = (uint8_t*)malloc(data_size);
+            data_copy = (uint8_t*)uvrpc_alloc(data_size);
             if (data_copy) {
                 memcpy(data_copy, p, data_size);
             }

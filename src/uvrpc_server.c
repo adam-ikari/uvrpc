@@ -5,6 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include "uvrpc_msgid.h"
@@ -117,7 +118,7 @@ static void server_recv_callback(uint8_t* data, size_t size, void* ctx) {
         if (resp_data && client_stream) {
             /* Send error response to client */
             size_t total_size = 4 + resp_size;
-            uint8_t* buffer = malloc(total_size);
+            uint8_t* buffer = uvrpc_alloc(total_size);
             if (buffer) {
                 buffer[0] = (resp_size >> 24) & 0xFF;
                 buffer[1] = (resp_size >> 16) & 0xFF;
@@ -126,12 +127,12 @@ static void server_recv_callback(uint8_t* data, size_t size, void* ctx) {
                 memcpy(buffer + 4, resp_data, resp_size);
                 
                 uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-                uv_write_t* write_req = malloc(sizeof(uv_write_t));
+                uv_write_t* write_req = uvrpc_alloc(sizeof(uv_write_t));
                 if (write_req) {
                     write_req->data = buffer;
                     uv_write(write_req, client_stream, &buf, 1, write_callback);
                 } else {
-                    free(buffer);
+                    uvrpc_free(buffer);
                 }
             }
             free(resp_data);
@@ -276,7 +277,7 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         if (req->client_stream) {
             /* Allocate buffer with 4-byte length prefix */
             size_t total_size = 4 + resp_size;
-            uint8_t* buffer = malloc(total_size);
+            uint8_t* buffer = uvrpc_alloc(total_size);
             if (buffer) {
                 buffer[0] = (resp_size >> 24) & 0xFF;
                 buffer[1] = (resp_size >> 16) & 0xFF;
@@ -285,13 +286,13 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                 memcpy(buffer + 4, resp_data, resp_size);
                 
                 uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-                uv_write_t* write_req = malloc(sizeof(uv_write_t));
+                uv_write_t* write_req = uvrpc_alloc(sizeof(uv_write_t));
                 if (write_req) {
                     write_req->data = buffer;  /* Store buffer for cleanup */
                     uv_write(write_req, req->client_stream, &buf, 1, write_callback);
                 } else {
                     fprintf(stderr, "Failed to allocate write request for error response\n");
-                    free(buffer);
+                    uvrpc_free(buffer);
                 }
             } else {
             }

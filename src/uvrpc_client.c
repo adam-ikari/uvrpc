@@ -5,6 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include "uvrpc_msgid.h"
@@ -65,7 +66,7 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
     size_t result_size = 0;
     
     if (uvrpc_decode_response(data, size, &msgid, &error_code, &result, &result_size) != UVRPC_OK) {
-        free(data);
+        uvrpc_free(data);
         return;
     }
     
@@ -84,7 +85,7 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
             /* Copy result data to avoid use-after-free */
             uint8_t* result_copy = NULL;
             if (result && result_size > 0) {
-                result_copy = malloc(result_size);
+                result_copy = uvrpc_alloc(result_size);
                 if (result_copy) {
                     memcpy(result_copy, result, result_size);
                 }
@@ -100,9 +101,8 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
             
             /* Free copied result */
             if (result_copy) {
-                free(result_copy);
-            }
-            
+                    uvrpc_free(result_copy);
+                }            
             /* Remove from list */
             if (prev) {
                 prev->next = pending->next;
@@ -110,7 +110,7 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
                 client->pending_callbacks = pending->next;
             }
             
-            free(pending);
+            uvrpc_free(pending);
             break;
         }
         
@@ -142,9 +142,8 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->transport = uvrpc_transport_client_new(config->loop, config->transport);
     if (!client->transport) {
         uvrpc_msgid_ctx_free(client->msgid_ctx);
-        free(client->address);
-        free(client);
-        return NULL;
+        uvrpc_free(client->address);
+            uvrpc_free(client);        return NULL;
     }
     
     return client;
@@ -243,7 +242,7 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
     if (callback) {
         pending_callback_t* pending = calloc(1, sizeof(pending_callback_t));
         if (!pending) {
-            free(req_data);
+            uvrpc_free(req_data);
             return UVRPC_ERROR_NO_MEMORY;
         }
         
@@ -259,7 +258,7 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
         uvrpc_transport_send(client->transport, req_data, req_size);
     }
     
-    free(req_data);
+    uvrpc_free(req_data);
     
     return UVRPC_OK;
 }

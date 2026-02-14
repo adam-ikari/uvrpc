@@ -5,6 +5,7 @@
 
 #include "uvrpc_transport.h"
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -130,9 +131,9 @@ static void inproc_cleanup_registry(uv_loop_t* loop) {
     inproc_endpoint_t* endpoint = registry->endpoints;
     while (endpoint) {
         inproc_endpoint_t* next = endpoint->hh.next;
-        if (endpoint->name) free(endpoint->name);
-        if (endpoint->clients) free(endpoint->clients);
-        free(endpoint);
+        if (endpoint->name) uvrpc_free(endpoint->name);
+        if (endpoint->clients) uvrpc_free(endpoint->clients);
+        uvrpc_free(endpoint);
         endpoint = next;
     }
     
@@ -183,7 +184,7 @@ static void inproc_add_client(inproc_endpoint_t* endpoint, uvrpc_transport_t* cl
 static void inproc_send_to_all(uvrpc_transport_t* sender, inproc_endpoint_t* endpoint, const uint8_t* data, size_t size) {
     for (int i = 0; i < endpoint->client_count; i++) {
         if (endpoint->clients[i] != sender && endpoint->clients[i]->recv_cb) {
-            uint8_t* copy = malloc(size);
+            uint8_t* copy = uvrpc_alloc(size);
             if (copy) {
                 memcpy(copy, data, size);
                 endpoint->clients[i]->recv_cb(copy, size, endpoint->clients[i]->ctx);
@@ -193,7 +194,7 @@ static void inproc_send_to_all(uvrpc_transport_t* sender, inproc_endpoint_t* end
 
     /* Also send to server */
     if (sender != endpoint->server_transport && endpoint->server_transport && endpoint->server_transport->recv_cb) {
-        uint8_t* copy = malloc(size);
+        uint8_t* copy = uvrpc_alloc(size);
         if (copy) {
             memcpy(copy, data, size);
             endpoint->server_transport->recv_cb(copy, size, endpoint->server_transport->ctx);
@@ -228,7 +229,7 @@ static void process_frames(uvrpc_transport_t* transport) {
         if (transport->read_pos < total_size) break; /* Not enough data */
         
         /* Extract frame data (skip 4-byte length prefix) */
-        uint8_t* frame_data = malloc(frame_size);
+        uint8_t* frame_data = uvrpc_alloc(frame_size);
         if (frame_data) {
             memcpy(frame_data, transport->read_buffer + 4, frame_size);
             
@@ -236,7 +237,7 @@ static void process_frames(uvrpc_transport_t* transport) {
                 transport->recv_cb(frame_data, frame_size, transport->ctx);
             }
             
-            free(frame_data);
+            uvrpc_free(frame_data);
         }
         
         /* Remove processed frame from buffer */
@@ -321,7 +322,7 @@ static void client_read_callback(uv_stream_t* stream, ssize_t nread, const uv_bu
         
         /* Call server receive callback with stream context */
         if (conn->recv_cb) {
-            uint8_t* frame_data = malloc(frame_size);
+            uint8_t* frame_data = uvrpc_alloc(frame_size);
             if (frame_data) {
                 memcpy(frame_data, conn->read_buffer + 4, frame_size);
                 /* Pass stream as context for response */
@@ -373,7 +374,7 @@ static void tcp_connection_callback(uv_stream_t* server, int status) {
         transport->client_connections = client_conn;
     } else {
         uv_close((uv_handle_t*)&client_conn->handle.tcp_handle, NULL);
-        free(client_conn);
+        uvrpc_free(client_conn);
     }
 }
 
@@ -560,8 +561,8 @@ static void write_callback(uv_write_t* req, int status) {
         /* Handle send error - could add error callback here if needed */
         fprintf(stderr, "Write error: %s\n", uv_strerror(status));
     }
-    free(req->data);
-    free(req);
+    uvrpc_free(req->data);
+    uvrpc_free(req);
 }
 
 /* UDP send callback */
@@ -682,7 +683,7 @@ void uvrpc_transport_free(uvrpc_transport_t* transport) {
                 uv_close((uv_handle_t*)&conn->handle.pipe_handle, NULL);
             }
         }
-        free(conn);
+        uvrpc_free(conn);
         conn = next;
     }
     transport->client_connections = NULL;
@@ -697,7 +698,7 @@ void uvrpc_transport_free(uvrpc_transport_t* transport) {
     transport->udp_peers = NULL;
 
     if (transport->address) {
-        free(transport->address);
+        uvrpc_free(transport->address);
     }
 
     /* Close async handle */
@@ -1044,7 +1045,7 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
 
     /* Allocate buffer with 4-byte length prefix */
     size_t total_size = 4 + size;
-    uint8_t* buffer = malloc(total_size);
+    uint8_t* buffer = uvrpc_alloc(total_size);
     if (!buffer) {
         fprintf(stderr, "Failed to allocate send buffer (%zu bytes)\n", total_size);
         return;
@@ -1062,7 +1063,7 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
     /* Send based on transport type */
     switch (transport->type) {
         case UVRPC_TRANSPORT_TCP: {
-            uv_write_t* req = malloc(sizeof(uv_write_t));
+            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
             if (!req) {
                 free(buffer);
                 return;
@@ -1091,7 +1092,7 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
             if (peer_count > 0 && peer_count <= UVRPC_MAX_UDP_PEERS) {
                 /* For single peer, send directly */
                 if (peer_count == 1) {
-                    uv_udp_send_t* req = malloc(sizeof(uv_udp_send_t));
+                    uv_udp_send_t* req = uvrpc_alloc(sizeof(uv_udp_send_t));
                     if (req) {
                         req->data = buffer;
                         uv_udp_send(req, &transport->udp_handle, &buf, 1,
@@ -1104,10 +1105,10 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
                     peer = transport->udp_peers;
                     while (peer) {
                         /* Create separate buffer for each peer */
-                        uint8_t* peer_buffer = malloc(total_size);
+                        uint8_t* peer_buffer = uvrpc_alloc(total_size);
                         if (peer_buffer) {
                             memcpy(peer_buffer, buffer, total_size);
-                            uv_udp_send_t* req = malloc(sizeof(uv_udp_send_t));
+                            uv_udp_send_t* req = uvrpc_alloc(sizeof(uv_udp_send_t));
                             if (req) {
                                 req->data = peer_buffer;
                                 uv_buf_t peer_buf = uv_buf_init((char*)peer_buffer, total_size);
@@ -1127,7 +1128,7 @@ void uvrpc_transport_send(uvrpc_transport_t* transport, const uint8_t* data, siz
             break;
         }
         case UVRPC_TRANSPORT_IPC: {
-            uv_write_t* req = malloc(sizeof(uv_write_t));
+            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
             if (!req) {
                 free(buffer);
                 return;

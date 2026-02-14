@@ -7,11 +7,41 @@
 #include "../include/uvrpc_allocator.h"
 #include <setjmp.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #define UVRPC_MAX_ASYNC_CALLS 100
 #define UVRPC_MAX_CONCURRENT_CALLS 20
+
+/* Retry context for timer-based retry */
+typedef struct retry_context {
+    uvrpc_client_t* client;
+    char* method;
+    uint8_t* params;
+    size_t params_size;
+    uvrpc_async_result_t** result;
+    int attempt;
+    int max_retries;
+    uint64_t retry_delay_ms;
+    uvrpc_async_ctx_t* ctx;
+    uv_timer_t timer;
+} retry_context_t;
+
+/* Timer callback for retry delay */
+static void retry_delay_callback(uv_timer_t* handle) {
+    retry_context_t* retry_ctx = (retry_context_t*)handle->data;
+    
+    /* Retry the call */
+    uvrpc_async_retry(retry_ctx->ctx, retry_ctx->client, retry_ctx->method,
+                     retry_ctx->params, retry_ctx->params_size, retry_ctx->result,
+                     retry_ctx->max_retries, retry_ctx->retry_delay_ms);
+    
+    /* Cleanup retry context */
+    uvrpc_free(retry_ctx->method);
+    uvrpc_free(retry_ctx->params);
+    uvrpc_free(retry_ctx);
+}
 
 /* Async context structure */
 struct uvrpc_async_ctx {
@@ -446,11 +476,34 @@ int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
         }
         
         if (attempt < max_retries && retry_delay_ms > 0) {
-            /* Delay before retry */
-            struct timespec ts;
-            ts.tv_sec = retry_delay_ms / 1000;
-            ts.tv_nsec = (retry_delay_ms % 1000) * 1000000;
-            nanosleep(&ts, NULL);
+            /* Non-blocking delay using timer - return to caller, retry will be triggered by timer */
+            /* Store retry context for timer callback */
+            retry_context_t* retry_ctx = uvrpc_alloc(sizeof(retry_context_t));
+            if (!retry_ctx) {
+                return UVRPC_ERROR;
+            }
+            retry_ctx->client = client;
+            retry_ctx->method = strdup(method);
+            retry_ctx->params = uvrpc_alloc(params_size);
+            if (!retry_ctx->method || !retry_ctx->params) {
+                free(retry_ctx->method);
+                free(retry_ctx->params);
+                free(retry_ctx);
+                return UVRPC_ERROR;
+            }
+            memcpy(retry_ctx->params, params, params_size);
+            retry_ctx->params_size = params_size;
+            retry_ctx->result = result;
+            retry_ctx->attempt = attempt;
+            retry_ctx->max_retries = max_retries;
+            retry_ctx->retry_delay_ms = retry_delay_ms;
+            retry_ctx->ctx = ctx;
+            
+            uv_timer_init(ctx->loop, &retry_ctx->timer);
+            retry_ctx->timer.data = retry_ctx;
+            uv_timer_start(&retry_ctx->timer, retry_delay_callback, retry_delay_ms, 0);
+            
+            return UVRPC_ERROR;  /* Will retry via timer */
         }
     }
     

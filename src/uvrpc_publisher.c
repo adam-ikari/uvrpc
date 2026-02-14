@@ -5,6 +5,7 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include <stdlib.h>
@@ -94,7 +95,7 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
     size_t topic_len = strlen(topic);
     size_t total_size = 4 + topic_len + 4 + size;
     
-    uint8_t* msg = (uint8_t*)malloc(total_size);
+    uint8_t* msg = (uint8_t*)uvrpc_alloc(total_size);
     if (!msg) return UVRPC_ERROR_NO_MEMORY;
     
     uint8_t* p = msg;
