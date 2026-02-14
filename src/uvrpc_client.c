@@ -12,14 +12,13 @@
 #include <uthash.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
-/* Pending callback */
+/* Pending callback - using hash table for O(1) lookup */
 typedef struct pending_callback {
     uint64_t msgid;
     uvrpc_callback_t callback;
     void* ctx;
-    struct pending_callback* next;
+    UT_hash_handle hh;
 } pending_callback_t;
 
 /* Client structure */
@@ -34,7 +33,7 @@ struct uvrpc_client {
     uvrpc_connect_callback_t user_connect_callback;
     void* user_connect_ctx;
     
-    /* Pending callbacks list */
+    /* Pending callbacks hash table */
     pending_callback_t* pending_callbacks;
 };
 
@@ -70,52 +69,42 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
         return;
     }
     
-    /* Find pending callback */
-    pending_callback_t* pending = client->pending_callbacks;
-    pending_callback_t* prev = NULL;
+    /* Find pending callback using hash table for O(1) lookup */
+    pending_callback_t* pending = NULL;
+    HASH_FIND_INT(client->pending_callbacks, &msgid, pending);
     
-    while (pending) {
-        if (pending->msgid == msgid) {
-            /* Create response structure */
-            uvrpc_response_t resp;
-            resp.status = (error_code != 0) ? UVRPC_ERROR : UVRPC_OK;
-            resp.msgid = msgid;
-            resp.error_code = error_code;
-            
-            /* Copy result data to avoid use-after-free */
-            uint8_t* result_copy = NULL;
-            if (result && result_size > 0) {
-                result_copy = uvrpc_alloc(result_size);
-                if (result_copy) {
-                    memcpy(result_copy, result, result_size);
-                }
-            }
-            resp.result = result_copy;
-            resp.result_size = result_size;
-            resp.user_data = NULL;
-            
-            /* Call callback */
-            if (pending->callback) {
-                pending->callback(&resp, pending->ctx);
-            }
-            
-            /* Free copied result */
+    if (pending) {
+        /* Create response structure */
+        uvrpc_response_t resp;
+        resp.status = (error_code != 0) ? UVRPC_ERROR : UVRPC_OK;
+        resp.msgid = msgid;
+        resp.error_code = error_code;
+        
+        /* Copy result data to avoid use-after-free */
+        uint8_t* result_copy = NULL;
+        if (result && result_size > 0) {
+            result_copy = uvrpc_alloc(result_size);
             if (result_copy) {
-                    uvrpc_free(result_copy);
-                }            
-            /* Remove from list */
-            if (prev) {
-                prev->next = pending->next;
-            } else {
-                client->pending_callbacks = pending->next;
+                memcpy(result_copy, result, result_size);
             }
-            
-            uvrpc_free(pending);
-            break;
+        }
+        resp.result = result_copy;
+        resp.result_size = result_size;
+        resp.user_data = NULL;
+        
+        /* Call callback */
+        if (pending->callback) {
+            pending->callback(&resp, pending->ctx);
         }
         
-        prev = pending;
-        pending = pending->next;
+        /* Free copied result */
+        if (result_copy) {
+            uvrpc_free(result_copy);
+        }
+        
+        /* Remove from hash table */
+        HASH_DEL(client->pending_callbacks, pending);
+        uvrpc_free(pending);
     }
     
     free(data);
@@ -203,17 +192,17 @@ void uvrpc_client_free(uvrpc_client_t* client) {
         uvrpc_msgid_ctx_free(client->msgid_ctx);
     }
     
-    /* Free pending callbacks */
-    pending_callback_t* pending = client->pending_callbacks;
-    while (pending) {
-        pending_callback_t* next = pending->next;
-        free(pending);
-        pending = next;
+client->is_connected = 0;
+    
+    /* Free all pending callbacks */
+    pending_callback_t* pending, *tmp;
+    HASH_ITER(hh, client->pending_callbacks, pending, tmp) {
+        HASH_DEL(client->pending_callbacks, pending);
+        uvrpc_free(pending);
     }
     
-    free(client->address);
-    
-    free(client);
+    uvrpc_free(client->address);
+    uvrpc_free(client);
 }
 
 /* Call remote method */
@@ -238,9 +227,9 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
         return UVRPC_ERROR;
     }
     
-    /* Register callback */
+    /* Register callback in hash table */
     if (callback) {
-        pending_callback_t* pending = calloc(1, sizeof(pending_callback_t));
+        pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
         if (!pending) {
             uvrpc_free(req_data);
             return UVRPC_ERROR_NO_MEMORY;
@@ -249,8 +238,7 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
         pending->msgid = msgid;
         pending->callback = callback;
         pending->ctx = ctx;
-        pending->next = client->pending_callbacks;
-        client->pending_callbacks = pending;
+        HASH_ADD_INT(client->pending_callbacks, msgid, pending);
     }
     
     /* Send request */
