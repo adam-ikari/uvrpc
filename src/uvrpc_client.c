@@ -9,16 +9,14 @@
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
 #include "uvrpc_msgid.h"
-#include <uthash.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Pending callback - using hash table for O(1) lookup */
+/* Pending callback - using ring buffer array for O(1) lookup */
 typedef struct pending_callback {
-    uint64_t msgid;
+    uint32_t msgid;  /* For validation */
     uvrpc_callback_t callback;
     void* ctx;
-    UT_hash_handle hh;
 } pending_callback_t;
 
 /* Client structure */
@@ -28,13 +26,13 @@ struct uvrpc_client {
     uvrpc_transport_t* transport;
     int is_connected;
     uvrpc_msgid_ctx_t* msgid_ctx;  /* 消息ID生成器 */
-    
+
     /* User connect callback */
     uvrpc_connect_callback_t user_connect_callback;
     void* user_connect_ctx;
-    
-    /* Pending callbacks hash table */
-    pending_callback_t* pending_callbacks;
+
+    /* Pending callbacks ring buffer array (O(1) lookup) */
+    pending_callback_t* pending_callbacks[UVRPC_MAX_PENDING_CALLBACKS];
 };
 
 /* Transport connect callback */
@@ -69,11 +67,11 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
         return;
     }
     
-    /* Find pending callback using hash table for O(1) lookup */
-    pending_callback_t* pending = NULL;
-    HASH_FIND_INT(client->pending_callbacks, &msgid, pending);
-    
-    if (pending) {
+    /* Find pending callback using ring buffer array for O(1) lookup */
+    uint32_t idx = msgid % UVRPC_MAX_PENDING_CALLBACKS;
+    pending_callback_t* pending = client->pending_callbacks[idx];
+
+    if (pending && pending->msgid == msgid) {
         /* Create response structure */
         uvrpc_response_t resp;
         resp.status = (error_code != 0) ? UVRPC_ERROR : UVRPC_OK;
@@ -102,8 +100,8 @@ static void client_recv_callback(uint8_t* data, size_t size, void* ctx) {
             uvrpc_free(result_copy);
         }
         
-        /* Remove from hash table */
-        HASH_DEL(client->pending_callbacks, pending);
+        /* Remove from ring buffer array */
+        client->pending_callbacks[idx] = NULL;
         uvrpc_free(pending);
     }
     
@@ -120,9 +118,11 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->loop = config->loop;
     client->address = strdup(config->address);
     client->is_connected = 0;
-    client->pending_callbacks = NULL;
     client->user_connect_callback = NULL;
     client->user_connect_ctx = NULL;
+
+    /* Initialize ring buffer array */
+    memset(client->pending_callbacks, 0, sizeof(client->pending_callbacks));
     
     /* Create message ID generator */
     client->msgid_ctx = uvrpc_msgid_ctx_new();
@@ -193,12 +193,13 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     }
     
 client->is_connected = 0;
-    
-    /* Free all pending callbacks */
-    pending_callback_t* pending, *tmp;
-    HASH_ITER(hh, client->pending_callbacks, pending, tmp) {
-        HASH_DEL(client->pending_callbacks, pending);
-        uvrpc_free(pending);
+
+    /* Free all pending callbacks from ring buffer array */
+    for (int i = 0; i < UVRPC_MAX_PENDING_CALLBACKS; i++) {
+        if (client->pending_callbacks[i]) {
+            uvrpc_free(client->pending_callbacks[i]);
+            client->pending_callbacks[i] = NULL;
+        }
     }
     
     uvrpc_free(client->address);
@@ -227,18 +228,26 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
         return UVRPC_ERROR;
     }
     
-    /* Register callback in hash table */
+    /* Register callback in ring buffer array */
     if (callback) {
         pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
         if (!pending) {
             uvrpc_free(req_data);
             return UVRPC_ERROR_NO_MEMORY;
         }
-        
-        pending->msgid = msgid;
+
+        uint32_t idx = (uint32_t)msgid % UVRPC_MAX_PENDING_CALLBACKS;
+        if (client->pending_callbacks[idx] != NULL) {
+            /* Collision detected - should not happen with sequential msgids */
+            uvrpc_free(pending);
+            uvrpc_free(req_data);
+            return UVRPC_ERROR_CALLBACK_LIMIT;
+        }
+
+        pending->msgid = (uint32_t)msgid;
         pending->callback = callback;
         pending->ctx = ctx;
-        HASH_ADD_INT(client->pending_callbacks, msgid, pending);
+        client->pending_callbacks[idx] = pending;
     }
     
     /* Send request */

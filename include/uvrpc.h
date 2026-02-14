@@ -24,6 +24,12 @@ extern "C" {
 #define UVRPC_ERROR_NOT_CONNECTED -4
 #define UVRPC_ERROR_TIMEOUT -5
 #define UVRPC_ERROR_TRANSPORT -6
+#define UVRPC_ERROR_CALLBACK_LIMIT -7
+
+/* Configuration constants */
+#ifndef UVRPC_MAX_PENDING_CALLBACKS
+#define UVRPC_MAX_PENDING_CALLBACKS 10000  /* Max concurrent pending callbacks (ring buffer size) */
+#endif
 
 /* Transport types */
 typedef enum {
