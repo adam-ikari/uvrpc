@@ -35,6 +35,7 @@ typedef struct {
     int thread_id;
     int num_clients;
     int concurrency;
+    int test_duration_ms;
     const char* address;
     atomic_int* total_responses;
     atomic_int* total_failures;
@@ -267,7 +268,7 @@ void print_latency_results(int iterations) {
 }
 
 /* Single/Multi client test */
-void run_single_multi_test(const char* address, int num_clients, int concurrency, int low_latency) {
+void run_single_multi_test(const char* address, int num_clients, int concurrency, int test_duration_ms, int low_latency) {
     printf("run_single_multi_test started\n");
     fflush(stdout);
     
@@ -282,7 +283,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
         .connections_established = 0,
         .ready_to_send = 0,
         .sent_requests = 0,
-        .test_duration_ms = 1000,  /* 1 second test duration */
+        .test_duration_ms = test_duration_ms,
         .done = 0
     };
     
@@ -297,8 +298,8 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
 
     /* Wait for connections */
     int connected = wait_for_connections(&loop, &state);
-    printf("%d clients connected (target: %d), running throughput test for 1 second...\n",
-           connected, num_clients);
+    printf("%d clients connected (target: %d), running throughput test for %.1f seconds...\n",
+           connected, num_clients, test_duration_ms / 1000.0);
 
     /* Pre-create FlatBuffers builder for reuse */
     flatcc_builder_t builder;
@@ -344,7 +345,7 @@ void* thread_func(void* arg) {
         .connections_established = 0,
         .ready_to_send = 0,
         .sent_requests = 0,
-        .test_duration_ms = 1000,
+        .test_duration_ms = ctx->test_duration_ms,
         .done = 0
     };
 
@@ -390,7 +391,7 @@ void* thread_func(void* arg) {
     return NULL;
 }
 
-void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int low_latency) {
+void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int test_duration_ms, int low_latency) {
     atomic_int total_responses = 0;
     atomic_int total_failures = 0;
 
@@ -400,7 +401,7 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     printf("Total clients: %d\n", num_threads * clients_per_thread);
     printf("Concurrency per client: %d\n", concurrency);
     printf("Performance Mode: %s\n", low_latency ? "Low Latency" : "High Throughput");
-    printf("Test Duration: 1 second per thread\n");
+    printf("Test Duration: %.1f seconds per thread\n", test_duration_ms / 1000.0);
     printf("=======================\n\n");
 
     pthread_t threads[MAX_THREADS];
@@ -415,6 +416,7 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
         contexts[i].thread_id = i;
         contexts[i].num_clients = clients_per_thread;
         contexts[i].concurrency = concurrency;
+        contexts[i].test_duration_ms = test_duration_ms;
         contexts[i].address = address;
         contexts[i].total_responses = &total_responses;
         contexts[i].total_failures = &total_failures;
@@ -521,19 +523,20 @@ void print_usage(const char* prog_name) {
     printf("  -t <threads>      Number of threads (default: 1)\n");
     printf("  -c <clients>      Clients per thread (default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
+    printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
     printf("  -h                Show this help\n\n");
     printf("Test Methods:\n");
-    printf("  Throughput test: Runs for 1 second, measures maximum ops/s\n");
+    printf("  Throughput test: Runs for specified duration, measures maximum ops/s\n");
     printf("  Latency test: Measures request-response latency with percentiles\n\n");
     printf("Examples:\n");
-    printf("  # Single client throughput test\n");
+    printf("  # Single client throughput test (1 second)\n");
     printf("  %s -a tcp://127.0.0.1:5555 -b 100\n\n", prog_name);
-    printf("  # Multi-client throughput test (10 clients)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -c 10 -b 100\n\n", prog_name);
-    printf("  # Multi-thread test (5 threads, 2 clients each)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -t 5 -c 2 -b 50\n\n", prog_name);
+    printf("  # Multi-client throughput test (10 clients, 5 seconds)\n");
+    printf("  %s -a tcp://127.0.0.1:5555 -c 10 -b 100 -d 5000\n\n", prog_name);
+    printf("  # Multi-thread test (5 threads, 2 clients each, 3 seconds)\n");
+    printf("  %s -a tcp://127.0.0.1:5555 -t 5 -c 2 -b 50 -d 3000\n\n", prog_name);
     printf("  # Latency test\n");
     printf("  %s -a tcp://127.0.0.1:5555 --latency\n\n", prog_name);
     printf("  # Low latency mode\n");
@@ -559,6 +562,7 @@ int main(int argc, char** argv) {
     int num_threads = 1;
     int clients_per_thread = 1;
     int concurrency = 100;
+    int test_duration_ms = 1000;  /* Default: 1 second */
     int low_latency = 0;
     int latency_mode = 0;
 
@@ -572,6 +576,8 @@ int main(int argc, char** argv) {
             clients_per_thread = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-b") == 0 && i + 1 < argc) {
             concurrency = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
+            test_duration_ms = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-l") == 0) {
             low_latency = 1;
         } else if (strcmp(argv[i], "--latency") == 0) {
@@ -595,12 +601,12 @@ int main(int argc, char** argv) {
         printf("Clients per thread: %d\n", clients_per_thread);
         printf("Total clients: %d\n", total_clients);
         printf("Concurrency: %d\n", concurrency);
-        printf("Test Mode: Throughput (1 second)\n\n");
+        printf("Test Mode: Throughput (%.1f seconds)\n\n", test_duration_ms / 1000.0);
         
         if (num_threads == 1) {
-            run_single_multi_test(address, clients_per_thread, concurrency, low_latency);
+            run_single_multi_test(address, clients_per_thread, concurrency, test_duration_ms, low_latency);
         } else {
-            run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, low_latency);
+            run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, test_duration_ms, low_latency);
         }
     }
 
