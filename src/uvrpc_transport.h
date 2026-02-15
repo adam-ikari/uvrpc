@@ -9,6 +9,7 @@
 #include <uv.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "../include/uvrpc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +22,7 @@ typedef struct uvrpc_transport uvrpc_transport_t;
 typedef void (*uvrpc_recv_callback_t)(uint8_t* data, size_t size, void* ctx);
 typedef void (*uvrpc_connect_callback_t)(int status, void* ctx);
 typedef void (*uvrpc_close_callback_t)(void* ctx);
-typedef void (*uvrpc_error_callback_t)(int error_code, const char* error_msg, void* ctx);
+typedef void (*uvrpc_error_callback_t)(uvrpc_error_t error_code, const char* error_msg, void* ctx);
 
 /* Transport creation */
 uvrpc_transport_t* uvrpc_transport_server_new(uv_loop_t* loop, int transport_type);
