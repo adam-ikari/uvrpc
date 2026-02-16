@@ -152,10 +152,10 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
             fprintf(stderr, "[TCP READ] Frame size: %u (read_pos=%zu)\n", frame_size, client->read_pos);
             fflush(stderr);
 
-            /* Validate frame size */
-            if (frame_size == 0 || frame_size > 1024*1024) {
+            /* Validate frame size - stricter limit for stability */
+            if (frame_size == 0 || frame_size > 64*1024) {  /* 64KB max */
                 /* Invalid frame size, reset buffer */
-                fprintf(stderr, "[TCP READ] Invalid frame size, resetting buffer\n");
+                fprintf(stderr, "[TCP READ] Invalid frame size (%u), resetting buffer\n", frame_size);
                 client->read_pos = 0;
                 break;
             }
