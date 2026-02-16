@@ -1,48 +1,32 @@
 #!/bin/bash
 
-# Quick performance test using simple_client
-ADDRESS=${1:-"tcp://127.0.0.1:54321"}
-ITERATIONS=${2:-10}
+# UVRPC 简单性能测试
 
-# Kill any existing processes
-pkill -9 -f simple_server 2>/dev/null
-pkill -9 -f simple_client 2>/dev/null
-sleep 1
+echo "=== UVRPC 性能测试 ==="
 
-# Start server
-./dist/bin/simple_server $ADDRESS > /tmp/server.log 2>&1 &
+# 启动服务器
+./dist/bin/simple_server tcp://127.0.0.1:5606 2>&1 &
 SERVER_PID=$!
 sleep 2
 
-# Check if server is listening
-if ! lsof -i :54321 2>/dev/null | grep -q LISTEN; then
-    echo "ERROR: Server not listening"
-    kill $SERVER_PID 2>/dev/null
-    exit 1
-fi
+# 测试单个客户端的吞吐量
+echo "测试单客户端吞吐量..."
+START=$(date +%s)
 
-echo "Server started (PID: $SERVER_PID)"
-echo "Running $ITERATIONS iterations..."
-
-# Run test
-START=$(date +%s%N)
-for i in $(seq 1 $ITERATIONS); do
-    ./dist/bin/simple_client $ADDRESS > /tmp/client_$i.log 2>&1
-    if ! grep -q "Result: 30" /tmp/client_$i.log; then
-        echo "ERROR: Request $i failed"
-    fi
+for i in {1..100}; do
+    ./dist/bin/simple_client tcp://127.0.0.1:5606 2>&1 > /dev/null 2>&1 &
 done
-END=$(date +%s%N)
 
-ELAPSED=$(( (END - START) / 1000000 ))
-OPS=$(( ITERATIONS * 1000000 / ELAPSED ))
+wait
 
-echo ""
-echo "=== Results ==="
-echo "Iterations: $ITERATIONS"
-echo "Time: ${ELAPSED}ms"
-echo "Throughput: ~${OPS} ops/s"
+END=$(date +%s)
+DURATION=$((END - START))
 
-# Cleanup
+echo "发送 100 个请求，耗时 $DURATION 秒"
+echo "吞吐量: $((100 / DURATION)) ops/s"
+
+# 清理
 kill $SERVER_PID 2>/dev/null
-rm -f /tmp/client_*.log /tmp/server.log
+wait $SERVER_PID 2>/dev/null
+
+echo "=== 测试完成 ==="

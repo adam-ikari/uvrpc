@@ -243,22 +243,22 @@ uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void
 
 uvbus_error_t uvbus_connect(uvbus_t* bus) {
     if (!bus || !bus->transport || !bus->transport->vtable) {
+        fprintf(stderr, "[DEBUG] uvbus_connect: Invalid param (bus=%p, transport=%p, vtable=%p)\n", 
+                bus, bus ? bus->transport : NULL, bus && bus->transport ? bus->transport->vtable : NULL);
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
     if (bus->transport->is_server) {
+        fprintf(stderr, "[DEBUG] uvbus_connect: Cannot connect in server mode\n");
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
     if (bus->transport->vtable->connect) {
-        uvbus_error_t result = bus->transport->vtable->connect(bus->transport, bus->transport->address);
-        if (result == UVBUS_OK) {
-            bus->is_active = 1;
-            bus->transport->is_connected = 1;
-        }
-        return result;
+        /* Note: Connection is asynchronous, is_connected will be set in the callback */
+        return bus->transport->vtable->connect(bus->transport, bus->transport->address);
     }
     
+    fprintf(stderr, "[DEBUG] uvbus_connect: No connect function in vtable\n");
     return UVBUS_ERROR;
 }
 
@@ -276,11 +276,8 @@ uvbus_error_t uvbus_connect_with_callback(uvbus_t* bus, uvbus_connect_callback_t
     bus->transport->callback_ctx = ctx;
     
     if (bus->transport->vtable->connect) {
-        uvbus_error_t result = bus->transport->vtable->connect(bus->transport, bus->transport->address);
-        if (result == UVBUS_OK) {
-            bus->is_active = 1;
-        }
-        return result;
+        /* Note: Connection is asynchronous, is_active will be set in the callback */
+        return bus->transport->vtable->connect(bus->transport, bus->transport->address);
     }
     
     return UVBUS_ERROR;

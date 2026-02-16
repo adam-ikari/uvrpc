@@ -1,0 +1,105 @@
+namespace rpc;
+
+/* ============================================================
+   FlatBuffers RPC Service Definition
+   ============================================================ */
+
+/* Request/Response Types */
+
+table MathAddRequest {
+    a: int32;
+    b: int32;
+}
+
+table MathAddResponse {
+    result: int32;
+}
+
+table MathSubtractRequest {
+    a: int32;
+    b: int32;
+}
+
+table MathSubtractResponse {
+    result: int32;
+}
+
+table MathMultiplyRequest {
+    a: int32;
+    b: int32;
+}
+
+table MathMultiplyResponse {
+    result: int32;
+}
+
+table MathDivideRequest {
+    a: int32;
+    b: int32;
+}
+
+table MathDivideResponse {
+    result: int32;
+    error: string;
+}
+
+/* User Service Types */
+
+table UserGetRequest {
+    user_id: int64;
+}
+
+table UserGetResponse {
+    user_id: int64;
+    name: string;
+    email: string;
+    age: int32;
+}
+
+table UserCreateRequest {
+    name: string;
+    email: string;
+    age: int32;
+}
+
+table UserCreateResponse {
+    user_id: int64;
+    success: bool;
+    message: string;
+}
+
+/* Echo Service Types */
+
+table EchoRequest {
+    message: string;
+    timestamp: int64;
+}
+
+table EchoResponse {
+    message: string;
+    timestamp: int64;
+    server_time: int64;
+}
+
+/* ============================================================
+   RPC Service Declarations
+   Syntax: rpc_service ServiceName {
+       Method(RequestType):ResponseType;
+   }
+   ============================================================ */
+
+rpc_service MathService {
+    Add(MathAddRequest):MathAddResponse;
+    Subtract(MathSubtractRequest):MathSubtractResponse;
+    Multiply(MathMultiplyRequest):MathMultiplyResponse;
+    Divide(MathDivideRequest):MathDivideResponse;
+}
+
+rpc_service UserService {
+    GetUser(UserGetRequest):UserGetResponse;
+    CreateUser(UserCreateRequest):UserCreateResponse;
+}
+
+rpc_service EchoService {
+    Echo(EchoRequest):EchoResponse;
+}

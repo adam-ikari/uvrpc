@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #define UVRPC_MAX_ASYNC_CALLS 100
 #define UVRPC_MAX_CONCURRENT_CALLS 20
@@ -31,12 +32,11 @@ typedef struct retry_context {
 /* Timer callback for retry delay */
 static void retry_delay_callback(uv_timer_t* handle) {
     retry_context_t* retry_ctx = (retry_context_t*)handle->data;
-    
+
     /* Retry the call */
-    uvrpc_async_retry(retry_ctx->ctx, retry_ctx->client, retry_ctx->method,
-                     retry_ctx->params, retry_ctx->params_size, retry_ctx->result,
-                     retry_ctx->max_retries, retry_ctx->retry_delay_ms);
-    
+    uvrpc_client_call_async(retry_ctx->ctx, retry_ctx->client, retry_ctx->method,
+                           retry_ctx->params, retry_ctx->params_size, retry_ctx->result);
+
     /* Cleanup retry context */
     uvrpc_free(retry_ctx->method);
     uvrpc_free(retry_ctx->params);
@@ -395,9 +395,6 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
         uv_timer_start(&timeout_timer, any_timeout_callback, timeout_ms, 0);
     }
     
-    /* Save loop data for timeout callback */
-    ctx->loop->data = ctx;
-    
     /* Set jump point */
     int jump_status = setjmp(ctx->any_jmp_buf);
     
@@ -415,7 +412,6 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
         
         /* Check if timeout occurred */
         if (timed_out) {
-            ctx->loop->data = NULL;
             if (timeout_ms > 0) {
                 uv_timer_stop(&timeout_timer);
                 uv_close((uv_handle_t*)&timeout_timer, NULL);
@@ -427,7 +423,6 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
         return UVRPC_ERROR_TIMEOUT;
     } else {
         /* Jumped back from callback or timeout */
-        ctx->loop->data = NULL;
         
         if (timeout_ms > 0) {
             uv_timer_stop(&timeout_timer);
@@ -483,12 +478,12 @@ int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                 return UVRPC_ERROR;
             }
             retry_ctx->client = client;
-            retry_ctx->method = strdup(method);
+            retry_ctx->method = uvrpc_strdup(method);
             retry_ctx->params = uvrpc_alloc(params_size);
             if (!retry_ctx->method || !retry_ctx->params) {
-                free(retry_ctx->method);
-                free(retry_ctx->params);
-                free(retry_ctx);
+                uvrpc_free(retry_ctx->method);
+                uvrpc_free(retry_ctx->params);
+                uvrpc_free(retry_ctx);
                 return UVRPC_ERROR;
             }
             memcpy(retry_ctx->params, params, params_size);
@@ -530,7 +525,7 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
             ctx->timed_out = 0;
             uv_timer_start(&ctx->timeout_timer, timeout_callback, timeout_ms, 0);
         }
-        
+
         /* Make the call */
         return uvrpc_client_call_async(ctx, client, method, params, params_size, result);
     } else {
@@ -541,4 +536,106 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
         }
         return UVRPC_ERROR_TIMEOUT;
     }
+}
+
+/* Promise.retry with exponential backoff */
+int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
+                                   const char* method, const uint8_t* params,
+                                   size_t params_size, uvrpc_async_result_t** result,
+                                   int max_retries, uint64_t initial_delay_ms,
+                                   double backoff_multiplier) {
+    if (!ctx || !client || !method || !result) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    if (max_retries < 0) max_retries = 3;
+    if (initial_delay_ms == 0) initial_delay_ms = 100;
+    if (backoff_multiplier < 1.0) backoff_multiplier = 2.0;
+
+    for (int attempt = 0; attempt <= max_retries; attempt++) {
+        int status = uvrpc_client_call_async(ctx, client, method, params, params_size, result);
+
+        if (status == UVRPC_OK && *result && (*result)->error_code == 0) {
+            return UVRPC_OK;
+        }
+
+        if (*result) {
+            uvrpc_async_result_free(*result);
+            *result = NULL;
+        }
+
+        if (attempt < max_retries) {
+            /* Calculate delay with exponential backoff */
+            uint64_t delay_ms = (uint64_t)(initial_delay_ms * pow(backoff_multiplier, attempt));
+
+            /* Non-blocking delay using timer */
+            retry_context_t* retry_ctx = uvrpc_alloc(sizeof(retry_context_t));
+            if (!retry_ctx) {
+                return UVRPC_ERROR;
+            }
+            retry_ctx->client = client;
+            retry_ctx->method = uvrpc_strdup(method);
+            retry_ctx->params = uvrpc_alloc(params_size);
+            if (!retry_ctx->method || !retry_ctx->params) {
+                uvrpc_free(retry_ctx->method);
+                uvrpc_free(retry_ctx->params);
+                uvrpc_free(retry_ctx);
+                return UVRPC_ERROR;
+            }
+            memcpy(retry_ctx->params, params, params_size);
+            retry_ctx->params_size = params_size;
+            retry_ctx->result = result;
+            retry_ctx->attempt = attempt;
+            retry_ctx->max_retries = max_retries;
+            retry_ctx->retry_delay_ms = delay_ms;
+            retry_ctx->ctx = ctx;
+
+            uv_timer_init(ctx->loop, &retry_ctx->timer);
+            retry_ctx->timer.data = retry_ctx;
+            uv_timer_start(&retry_ctx->timer, retry_delay_callback, delay_ms, 0);
+
+            return UVRPC_ERROR;  /* Will retry via timer */
+        }
+    }
+
+    return UVRPC_ERROR;
+}
+
+/* Cancel all pending async operations */
+int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx) {
+    if (!ctx) return UVRPC_ERROR_INVALID_PARAM;
+
+    /* Stop timeout timer if running */
+    if (ctx->timeout_ms > 0 && !uv_is_closing((uv_handle_t*)&ctx->timeout_timer)) {
+        uv_timer_stop(&ctx->timeout_timer);
+        uv_close((uv_handle_t*)&ctx->timeout_timer, NULL);
+    }
+
+    /* Free all pending results */
+    for (int i = 0; i < UVRPC_MAX_ASYNC_CALLS; i++) {
+        if (ctx->pending_results[i]) {
+            uvrpc_async_result_free(ctx->pending_results[i]);
+            ctx->pending_results[i] = NULL;
+        }
+    }
+
+    /* Reset state */
+    ctx->call_count = 0;
+    ctx->current_call = -1;
+    ctx->is_running = 0;
+
+    return UVRPC_OK;
+}
+
+/* Get pending async operation count */
+int uvrpc_async_get_pending_count(uvrpc_async_ctx_t* ctx) {
+    if (!ctx) return 0;
+
+    int count = 0;
+    for (int i = 0; i < UVRPC_MAX_ASYNC_CALLS; i++) {
+        if (ctx->pending_results[i] != NULL) {
+            count++;
+        }
+    }
+    return count;
 }

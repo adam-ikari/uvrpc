@@ -152,7 +152,9 @@ static void inproc_send_to_all(inproc_endpoint_t* endpoint,
         if (client && client->is_active) {
             /* Use client's own callback instead of endpoint's */
             if (client->recv_cb) {
-                client->recv_cb(data, size, client->callback_ctx);
+                /* Pass client as client_ctx, and server context (if any) as server_ctx */
+                /* For INPROC, client->callback_ctx is the server context */
+                client->recv_cb(data, size, client, client->callback_ctx);
             }
         }
     }
@@ -340,7 +342,8 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
             /* Send to server */
             inproc_endpoint_t* endpoint = client->server_endpoint;
             if (transport->recv_cb) {
-                transport->recv_cb(data, size, transport->callback_ctx);
+                /* Pass client as client_ctx, and server context as server_ctx */
+                transport->recv_cb(data, size, client, transport->callback_ctx);
             }
         }
     }
@@ -365,7 +368,8 @@ static int inproc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void
     }
     
     if (transport->recv_cb) {
-        transport->recv_cb(data, size, transport->callback_ctx);
+        /* Pass client as client_ctx, and server context as server_ctx */
+        transport->recv_cb(data, size, client, transport->callback_ctx);
     }
     
     return UVBUS_OK;

@@ -1,0 +1,20 @@
+namespace example;
+
+/* Example RPC request/response schemas */
+
+table AddRequest {
+    a: int32;
+    b: int32;
+}
+
+table AddResponse {
+    result: int32;
+}
+
+table EchoRequest {
+    message: string;
+}
+
+table EchoResponse {
+    message: string;
+}

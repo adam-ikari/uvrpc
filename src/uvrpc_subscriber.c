@@ -63,14 +63,14 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
     p += 4;
     
     if (size < 8 + topic_len + data_size) {
-        free(topic);
+        uvrpc_free(topic);
         return;
     }
-    
+
     /* Find subscription for this topic */
     subscription_entry_t* entry = NULL;
     HASH_FIND_STR(subscriber->subscriptions, topic, entry);
-    
+
     if (entry && entry->callback) {
         /* Call callback with the data */
         uint8_t* data_copy = NULL;
@@ -80,36 +80,40 @@ static void subscriber_recv_callback(uint8_t* data, size_t size, void* ctx) {
                 memcpy(data_copy, p, data_size);
             }
         }
-        
+
         entry->callback(topic, data_copy, data_size, entry->ctx);
-        
-        if (data_copy) free(data_copy);
+
+        if (data_copy) uvrpc_free(data_copy);
     }
-    
-    free(topic);
+
+    uvrpc_free(topic);
 }
 
 /* Create subscriber */
 uvrpc_subscriber_t* uvrpc_subscriber_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
-    
-    uvrpc_subscriber_t* subscriber = calloc(1, sizeof(uvrpc_subscriber_t));
+
+    uvrpc_subscriber_t* subscriber = uvrpc_calloc(1, sizeof(uvrpc_subscriber_t));
     if (!subscriber) return NULL;
-    
+
     subscriber->loop = config->loop;
-    subscriber->address = strdup(config->address);
+    subscriber->address = uvrpc_strdup(config->address);
+    if (!subscriber->address) {
+        uvrpc_free(subscriber);
+        return NULL;
+    }
     subscriber->transport_type = config->transport;
     subscriber->is_connected = 0;
     subscriber->subscriptions = NULL;
-    
+
     /* Create transport */
     subscriber->transport = uvrpc_transport_client_new(config->loop, config->transport);
     if (!subscriber->transport) {
-        free(subscriber->address);
-        free(subscriber);
+        uvrpc_free(subscriber->address);
+        uvrpc_free(subscriber);
         return NULL;
     }
-    
+
     return subscriber;
 }
 
@@ -137,24 +141,24 @@ void uvrpc_subscriber_disconnect(uvrpc_subscriber_t* subscriber) {
 /* Free subscriber */
 void uvrpc_subscriber_free(uvrpc_subscriber_t* subscriber) {
     if (!subscriber) return;
-    
+
     uvrpc_subscriber_disconnect(subscriber);
-    
+
     /* Free transport */
     if (subscriber->transport) {
         uvrpc_transport_free(subscriber->transport);
     }
-    
+
     /* Free subscriptions */
     subscription_entry_t* entry, *tmp;
     HASH_ITER(hh, subscriber->subscriptions, entry, tmp) {
         HASH_DEL(subscriber->subscriptions, entry);
-        free(entry->topic);
-        free(entry);
+        uvrpc_free(entry->topic);
+        uvrpc_free(entry);
     }
-    
-    free(subscriber->address);
-    free(subscriber);
+
+    uvrpc_free(subscriber->address);
+    uvrpc_free(subscriber);
 }
 
 /* Subscribe to topic */
@@ -168,10 +172,14 @@ int uvrpc_subscriber_subscribe(uvrpc_subscriber_t* subscriber, const char* topic
     if (entry) return UVRPC_ERROR; /* Already subscribed */
     
     /* Create new subscription */
-    entry = calloc(1, sizeof(subscription_entry_t));
+    entry = uvrpc_calloc(1, sizeof(subscription_entry_t));
     if (!entry) return UVRPC_ERROR_NO_MEMORY;
-    
-    entry->topic = strdup(topic);
+
+    entry->topic = uvrpc_strdup(topic);
+    if (!entry->topic) {
+        uvrpc_free(entry);
+        return UVRPC_ERROR_NO_MEMORY;
+    }
     entry->callback = callback;
     entry->ctx = ctx;
     
@@ -193,8 +201,8 @@ int uvrpc_subscriber_unsubscribe(uvrpc_subscriber_t* subscriber, const char* top
     
     /* Remove subscription */
     HASH_DEL(subscriber->subscriptions, entry);
-    free(entry->topic);
-    free(entry);
+    uvrpc_free(entry->topic);
+    uvrpc_free(entry);
     
     printf("Unsubscribed from topic: %s\n", topic);
     

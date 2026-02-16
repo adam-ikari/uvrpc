@@ -8,6 +8,7 @@
 #include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_transport.h"
+#include "uvrpc_transport_internal.h"
 #include "uvrpc_msgid.h"
 #include <uthash.h>
 #include <stdlib.h>
@@ -33,49 +34,41 @@ typedef struct handler_entry {
     UT_hash_handle hh;
 } handler_entry_t;
 
-/* Pending request */
+/* Pending request - for ring buffer */
 typedef struct pending_request {
-    uint64_t msgid;
-    char* method;
-    uint8_t* params;
-    size_t params_size;
-    uv_stream_t* client;
-    struct pending_request* next;
+    uint32_t msgid;              /* Message ID */
+    uint32_t generation;         /* Generation counter */
+    uv_stream_t* client_stream;  /* Client stream for response */
+    int in_use;                  /* Flag to indicate if slot is in use */
 } pending_request_t;
 
 /* Server structure */
 struct uvrpc_server {
     uv_loop_t* loop;
     char* address;
-    uvrpc_transport_t* transport;
+    uvbus_t* uvbus;
     handler_entry_t* handlers;
     int is_running;
     
-    /* Pending requests queue */
-    pending_request_t* pending_requests;
+    /* Pending requests ring buffer */
+    pending_request_t** pending_requests;
+    int max_pending_requests;    /* Ring buffer size (must be power of 2) */
+    uint32_t generation;         /* Generation counter */
+    
+    /* Statistics */
+    uint64_t total_requests;
+    uint64_t total_responses;
 };
 
 /* Transport receive callback */
-static void server_recv_callback(uint8_t* data, size_t size, void* ctx) {
-    uv_stream_t* client_stream = (uv_stream_t*)ctx;
+
+static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
+    uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
     
-    /* Get client connection from stream data */
-    typedef struct {
-        union {
-            uv_tcp_t tcp_handle;
-            uv_pipe_t pipe_handle;
-        } handle;
-        int is_tcp;
-        struct { } *next;
-        uint8_t read_buffer[65536];
-        size_t read_pos;
-        void (*recv_cb)(uint8_t*, size_t, void*);
-        void* recv_ctx;
-        void* server;
-    } client_connection_t;
-    
-    client_connection_t* conn = (client_connection_t*)client_stream->data;
-    uvrpc_server_t* server = (uvrpc_server_t*)conn->server;
+    if (!server) {
+        fprintf(stderr, "Error: Cannot get server context\n");
+        return;
+    }
     
     /* Decode request */
     uint32_t msgid;
@@ -92,6 +85,9 @@ static void server_recv_callback(uint8_t* data, size_t size, void* ctx) {
     HASH_FIND_STR(server->handlers, method, entry);
     
     if (entry && entry->handler) {
+        /* Increment request counter */
+        server->total_requests++;
+        
         /* Create request structure */
         uvrpc_request_t req;
         req.server = server;
@@ -99,82 +95,136 @@ static void server_recv_callback(uint8_t* data, size_t size, void* ctx) {
         req.method = method;
         req.params = (uint8_t*)params;
         req.params_size = params_size;
-        req.client_stream = client_stream;  /* Set client stream for response */
+        req.client_ctx = client_ctx;
         req.user_data = NULL;
         
         /* Call handler */
         entry->handler(&req, entry->ctx);
-        
+
         /* Free decoded method */
-        if (method) free(method);
+        if (method) uvrpc_free(method);
     } else {
         /* Handler not found, send error response */
         fprintf(stderr, "Handler not found: '%s'\n", method);
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
-        
-        uvrpc_encode_response(msgid, 6, NULL, 0, &resp_data, &resp_size);
-        
-        if (resp_data && client_stream) {
-            /* Send error response to client */
-            size_t total_size = 4 + resp_size;
-            uint8_t* buffer = uvrpc_alloc(total_size);
-            if (buffer) {
-                buffer[0] = (resp_size >> 24) & 0xFF;
-                buffer[1] = (resp_size >> 16) & 0xFF;
-                buffer[2] = (resp_size >> 8) & 0xFF;
-                buffer[3] = resp_size & 0xFF;
-                memcpy(buffer + 4, resp_data, resp_size);
-                
-                uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-                uv_write_t* write_req = uvrpc_alloc(sizeof(uv_write_t));
-                if (write_req) {
-                    write_req->data = buffer;
-                    uv_write(write_req, client_stream, &buf, 1, write_callback);
-                } else {
-                    uvrpc_free(buffer);
-                }
-            }
-            free(resp_data);
+
+        uvrpc_encode_error(msgid, 2, "Method not found", &resp_data, &resp_size);
+
+        if (resp_data) {
+            uvrpc_free(resp_data);
         }
-        
-        if (method) free(method);
+
+        if (method) uvrpc_free(method);
     }
+}
+
+/* Server statistics */
+uint64_t uvrpc_server_get_total_requests(uvrpc_server_t* server) {
+    if (!server) return 0;
+    return server->total_requests;
+}
+
+uint64_t uvrpc_server_get_total_responses(uvrpc_server_t* server) {
+    if (!server) return 0;
+    return server->total_responses;
 }
 
 /* Create server */
 uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
     
-    uvrpc_server_t* server = calloc(1, sizeof(uvrpc_server_t));
+    uvrpc_server_t* server = uvrpc_calloc(1, sizeof(uvrpc_server_t));
     if (!server) return NULL;
-    
+
     server->loop = config->loop;
-    server->address = strdup(config->address);
-    server->handlers = NULL;
-    server->is_running = 0;
-    server->pending_requests = NULL;
-    
-    /* Create transport with specified type */
-    server->transport = uvrpc_transport_server_new(config->loop, config->transport);
-    if (!server->transport) {
-        free(server->address);
-        free(server);
+    server->address = uvrpc_strdup(config->address);
+    if (!server->address) {
+        uvrpc_free(server);
         return NULL;
     }
+    server->handlers = NULL;
+    server->is_running = 0;
+    
+    /* Initialize ring buffer */
+    server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
+                                   config->max_pending_callbacks : UVRPC_MAX_PENDING_CALLBACKS;
+    server->generation = 0;
+    
+    /* Allocate ring buffer array */
+    server->pending_requests = (pending_request_t**)uvrpc_calloc(
+        server->max_pending_requests, sizeof(pending_request_t*));
+    if (!server->pending_requests) {
+        uvrpc_free(server->address);
+        uvrpc_free(server);
+        return NULL;
+    }
+
+    /* Create UVBus configuration */
+    uvbus_config_t* bus_config = uvbus_config_new();
+    if (!bus_config) {
+        uvrpc_free(server->pending_requests);
+        uvrpc_free(server->address);
+        uvrpc_free(server);
+        return NULL;
+    }
+    
+    uvbus_config_set_loop(bus_config, config->loop);
+    
+    /* Map UVRPC transport type to UVBus transport type */
+    uvbus_transport_type_t uvbus_type;
+    switch (config->transport) {
+        case UVRPC_TRANSPORT_TCP:
+            uvbus_type = UVBUS_TRANSPORT_TCP;
+            break;
+        case UVRPC_TRANSPORT_UDP:
+            uvbus_type = UVBUS_TRANSPORT_UDP;
+            break;
+        case UVRPC_TRANSPORT_IPC:
+            uvbus_type = UVBUS_TRANSPORT_IPC;
+            break;
+        case UVRPC_TRANSPORT_INPROC:
+            uvbus_type = UVBUS_TRANSPORT_INPROC;
+            break;
+        default:
+            uvbus_config_free(bus_config);
+            uvrpc_free(server->pending_requests);
+            uvrpc_free(server->address);
+            uvrpc_free(server);
+            return NULL;
+    }
+    
+    uvbus_config_set_transport(bus_config, uvbus_type);
+    uvbus_config_set_address(bus_config, server->address);
+    
+    /* Set up receive callback */
+    uvbus_config_set_recv_callback(bus_config, server_recv_callback, server);
+    
+    /* Create UVBus server */
+    server->uvbus = uvbus_server_new(bus_config);
+    if (!server->uvbus) {
+        uvbus_config_free(bus_config);
+        uvrpc_free(server->pending_requests);
+        uvrpc_free(server->address);
+        uvrpc_free(server);
+        return NULL;
+    }
+    
+    uvbus_config_free(bus_config);
     
     return server;
 }
 
 /* Start server */
 int uvrpc_server_start(uvrpc_server_t* server) {
-    if (!server || !server->transport) return UVRPC_ERROR_INVALID_PARAM;
+    if (!server || !server->uvbus) return UVRPC_ERROR_INVALID_PARAM;
     
     if (server->is_running) return UVRPC_OK;
     
-    int rv = uvrpc_transport_listen(server->transport, server->address,
-                                     server_recv_callback, server);
-    if (rv != UVRPC_OK) return rv;
+    uvbus_error_t err = uvbus_listen(server->uvbus);
+    if (err != UVBUS_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
     
     server->is_running = 1;
     
@@ -196,31 +246,31 @@ void uvrpc_server_free(uvrpc_server_t* server) {
     
     uvrpc_server_stop(server);
     
-    /* Free transport */
-    if (server->transport) {
-        uvrpc_transport_free(server->transport);
+    /* Free UVBus */
+    if (server->uvbus) {
+        uvbus_free(server->uvbus);
     }
     
     /* Free handlers */
     handler_entry_t* entry, *tmp;
     HASH_ITER(hh, server->handlers, entry, tmp) {
         HASH_DEL(server->handlers, entry);
-        free(entry->name);
-        free(entry);
+        uvrpc_free(entry->name);
+        uvrpc_free(entry);
     }
     
-    /* Free pending requests */
-    pending_request_t* req = server->pending_requests;
-    while (req) {
-        pending_request_t* next = req->next;
-        if (req->method) free(req->method);
-        if (req->params) free(req->params);
-        free(req);
-        req = next;
+    /* Free pending requests ring buffer */
+    if (server->pending_requests) {
+        for (int i = 0; i < server->max_pending_requests; i++) {
+            if (server->pending_requests[i]) {
+                uvrpc_free(server->pending_requests[i]);
+            }
+        }
+        uvrpc_free(server->pending_requests);
     }
-    
-    free(server->address);
-    free(server);
+
+    uvrpc_free(server->address);
+    uvrpc_free(server);
 }
 
 /* Register handler */
@@ -237,19 +287,18 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
     }
     
     /* Create new entry */
-    entry = calloc(1, sizeof(handler_entry_t));
+    entry = uvrpc_calloc(1, sizeof(handler_entry_t));
     if (!entry) return UVRPC_ERROR_NO_MEMORY;
-    
-    entry->name = strdup(method);
+
+    entry->name = uvrpc_strdup(method);
     if (!entry->name) {
-        free(entry);
+        uvrpc_free(entry);
         return UVRPC_ERROR_NO_MEMORY;
     }
     entry->handler = handler;
     entry->ctx = ctx;
     
     HASH_ADD_STR(server->handlers, name, entry);
-    
     
     /* Verify registration */
     handler_entry_t* verify = NULL;
@@ -261,46 +310,26 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
 /* Send response */
 void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                                   const uint8_t* result, size_t result_size) {
-    if (!req || !req->server) return;
-    
+    if (!req || !req->server || !req->client_ctx) return;
+
     uvrpc_server_t* server = req->server;
-    
+
     /* Encode response */
     uint8_t* resp_data = NULL;
     size_t resp_size = 0;
-    
-    int32_t error_code = (status == UVRPC_OK) ? 0 : 1;
-    
-    if (uvrpc_encode_response(req->msgid, error_code, result, result_size,
+
+    if (uvrpc_encode_response(req->msgid, result, result_size,
                               &resp_data, &resp_size) == UVRPC_OK) {
-        /* Send response to client stream */
-        if (req->client_stream) {
-            /* Allocate buffer with 4-byte length prefix */
-            size_t total_size = 4 + resp_size;
-            uint8_t* buffer = uvrpc_alloc(total_size);
-            if (buffer) {
-                buffer[0] = (resp_size >> 24) & 0xFF;
-                buffer[1] = (resp_size >> 16) & 0xFF;
-                buffer[2] = (resp_size >> 8) & 0xFF;
-                buffer[3] = resp_size & 0xFF;
-                memcpy(buffer + 4, resp_data, resp_size);
-                
-                uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-                uv_write_t* write_req = uvrpc_alloc(sizeof(uv_write_t));
-                if (write_req) {
-                    write_req->data = buffer;  /* Store buffer for cleanup */
-                    uv_write(write_req, req->client_stream, &buf, 1, write_callback);
-                } else {
-                    fprintf(stderr, "Failed to allocate write request for error response\n");
-                    uvrpc_free(buffer);
-                }
-            } else {
-            }
+        /* Send response via UVBus */
+        uvbus_t* uvbus = server->uvbus;
+        if (uvbus && uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx) == UVBUS_OK) {
+            server->total_responses++;
         } else {
-            fprintf(stderr, "Cannot send response: no client stream\n");
+            fprintf(stderr, "Failed to send response via UVBus\n");
         }
-        free(resp_data);
+        uvrpc_free(resp_data);
     } else {
+        fprintf(stderr, "Failed to encode response\n");
     }
 }
 
@@ -308,4 +337,64 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
 void uvrpc_request_free(uvrpc_request_t* req) {
     if (!req) return;
     /* Note: method and params point to frame data, don't free them here */
+}
+
+/* Send response */
+int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t result_size) {
+    if (!req || !req->server || !req->client_ctx) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    /* Encode response */
+    uint8_t* response_data;
+    size_t response_size;
+
+    if (uvrpc_encode_response(req->msgid, result, result_size,
+                              &response_data, &response_size) != UVRPC_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    /* Send response via UVBus */
+    uvbus_t* uvbus = req->server->uvbus;
+    uvbus_error_t err = uvbus_send_to(uvbus, response_data, 
+                                       response_size, req->client_ctx);
+
+    uvrpc_free(response_data);
+
+    if (err != UVBUS_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    req->server->total_responses++;
+    return UVRPC_OK;
+}
+
+/* Send error response */
+int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const char* error_message) {
+    if (!req || !req->server || !req->client_ctx) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    /* Encode error response */
+    uint8_t* response_data;
+    size_t response_size;
+
+    if (uvrpc_encode_error(req->msgid, error_code, error_message,
+                           &response_data, &response_size) != UVRPC_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    /* Send response via UVBus */
+    uvbus_t* uvbus = req->server->uvbus;
+    uvbus_error_t err = uvbus_send_to(uvbus, response_data, 
+                                       response_size, req->client_ctx);
+
+    uvrpc_free(response_data);
+
+    if (err != UVBUS_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    req->server->total_responses++;
+    return UVRPC_OK;
 }

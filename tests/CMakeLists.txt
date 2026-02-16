@@ -57,3 +57,61 @@ gtest_discover_tests(uvrpc_tests)
 
 # Integration tests
 add_subdirectory(integration)
+
+# Performance tests
+add_executable(tcp_performance_test
+    tcp_performance_test.c
+)
+
+target_link_libraries(tcp_performance_test
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(tcp_performance_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+set_target_properties(tcp_performance_test PROPERTIES
+    OUTPUT_NAME tcp_performance_test
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../dist/bin
+)
+
+# IPC Performance Test
+add_executable(ipc_performance_test
+    ipc_performance_test.c
+)
+
+target_link_libraries(ipc_performance_test
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(ipc_performance_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+set_target_properties(ipc_performance_test PROPERTIES
+    OUTPUT_NAME ipc_performance_test
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../dist/bin
+)

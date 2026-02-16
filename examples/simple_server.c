@@ -33,19 +33,13 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
     }
 }
 
-int run_server_or_client(uv_loop_t* loop, int argc, char** argv) {
-    const char* address = (argc > 1) ? argv[1] : "127.0.0.1:5555";
-    
-    printf("[INIT] UVRPC Simple Server\n");
-    printf("[INIT] Address: %s\n\n", address);
-    fflush(stdout);
-    
+uvrpc_server_t* create_server(uv_loop_t* loop, const char* address) {
     printf("[INIT] Creating server configuration...\n");
     fflush(stdout);
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    /* Transport type auto-detected from address prefix */
     uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     printf("[INIT] Creating server...\n");
@@ -54,7 +48,7 @@ int run_server_or_client(uv_loop_t* loop, int argc, char** argv) {
     if (!server) {
         fprintf(stderr, "[INIT] Failed to create server\n");
         uvrpc_config_free(config);
-        return 1;
+        return NULL;
     }
     printf("[INIT] Server created successfully\n");
     fflush(stdout);
@@ -76,32 +70,33 @@ int run_server_or_client(uv_loop_t* loop, int argc, char** argv) {
         fprintf(stderr, "[INIT] Failed to start server: %d\n", ret);
         uvrpc_server_free(server);
         uvrpc_config_free(config);
-        return 1;
+        return NULL;
     }
     printf("[INIT] Server started successfully\n");
     fflush(stdout);
     
-    printf("[LOOP] Running event loop...\n");
-    fflush(stdout);
-    uv_run(loop, UV_RUN_DEFAULT);
-    printf("[LOOP] Event loop exited\n");
-    fflush(stdout);
-    
-    /* Cleanup */
-    printf("[CLEAN] Stopping server...\n");
-    fflush(stdout);
-    uvrpc_server_free(server);
-    uvrpc_config_free(config);
-    uv_loop_close(loop);
-    
-    printf("[EXIT] Server stopped\n");
-    fflush(stdout);
-    return 0;
+    return server;
+}
+
+void destroy_server(uvrpc_server_t* server) {
+    if (server) {
+        printf("[CLEAN] Stopping server...\n");
+        fflush(stdout);
+        uvrpc_server_free(server);
+        printf("[EXIT] Server stopped\n");
+        fflush(stdout);
+    }
 }
 
 int main(int argc, char** argv) {
+    const char* address = (argc > 1) ? argv[1] : "127.0.0.1:5555";
+    
     fprintf(stderr, "[MAIN] Starting main function\n");
     fflush(stderr);
+    
+    printf("[INIT] UVRPC Simple Server\n");
+    printf("[INIT] Address: %s\n\n", address);
+    fflush(stdout);
     
     printf("[MAIN] Initializing loop...\n");
     fflush(stdout);
@@ -110,17 +105,23 @@ int main(int argc, char** argv) {
     printf("[MAIN] uv_loop_init returned: %d\n", loop_result);
     fflush(stdout);
     
-    fprintf(stderr, "[MAIN] Calling run_server_or_client\n");
-    fflush(stderr);
-    int result = run_server_or_client(&loop, argc, argv);
+    /* Create and start server (server does NOT run the loop) */
+    uvrpc_server_t* server = create_server(&loop, address);
+    if (!server) {
+        uv_loop_close(&loop);
+        return 1;
+    }
     
-    printf("[MAIN] Closing loop...\n");
-    fflush(stderr);
-    int close_result = uv_loop_close(&loop);
-    printf("[MAIN] uv_loop_close returned: %d\n", close_result);
-    fflush(stderr);
+    /* Run event loop externally */
+    printf("[LOOP] Running event loop (server is driven by external loop)...\n");
+    fflush(stdout);
+    uv_run(&loop, UV_RUN_DEFAULT);
+    printf("[LOOP] Event loop exited\n");
+    fflush(stdout);
     
-    fprintf(stderr, "[MAIN] Exiting with result: %d\n", result);
-    fflush(stderr);
-    return result;
+    /* Cleanup */
+    destroy_server(server);
+    uv_loop_close(&loop);
+    
+    return 0;
 }

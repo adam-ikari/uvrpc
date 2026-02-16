@@ -67,7 +67,13 @@ static int parse_ipc_address(const char* address, char** socket_path) {
 
 /* Client read callback */
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+    if (!stream) return;
+    
     uvbus_transport_t* transport = (uvbus_transport_t*)stream->data;
+    if (!transport) {
+        uvrpc_free(buf->base);
+        return;
+    }
     
     if (nread < 0) {
         if (nread != UV_EOF) {
@@ -80,7 +86,15 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
     }
     
     if (nread > 0 && transport->recv_cb) {
-        transport->recv_cb((const uint8_t*)buf->base, nread, transport->callback_ctx);
+        /* Determine if this is server mode or client mode */
+        if (transport->is_server) {
+            /* Server mode: pass client context and server context */
+            uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)stream->data;
+            transport->recv_cb((const uint8_t*)buf->base, nread, client, transport->callback_ctx);
+        } else {
+            /* Client mode: pass NULL for client context */
+            transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+        }
     }
     
     uvrpc_free(buf->base);

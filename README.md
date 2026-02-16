@@ -6,13 +6,13 @@
 
 ### 核心原则
 
-1. **极简设计** - 最小化 API、依赖和配置，零学习成本
+1. **极简设计** - 最小化 API、依赖和配置
 2. **零线程，零锁，零全局变量** - 所有 I/O 由 libuv 事件循环管理
 3. **性能驱动** - 零拷贝、事件驱动、高性能内存分配
 4. **透明度优先** - 结构体公开，用户可完全控制
-5. **循环注入** - 支持自定义 libuv loop，多实例、单元测试、云原生
+5. **循环注入** - 支持自定义 libuv loop，多实例独立运行或共享循环
 6. **异步统一** - 所有调用都是异步的，无同步阻塞模式
-7. **多协议支持** - TCP、UDP、IPC、INPROC 传输层
+7. **多协议统一抽象** - 支持 TCP、UDP、IPC、INPROC，使用方式完全相同
 
 ### 架构层次
 
@@ -50,9 +50,11 @@
 - **事件驱动**：基于 libuv，完全异步非阻塞
 - **多传输支持**：TCP、UDP、IPC、INPROC
 - **零拷贝**：FlatBuffers 二进制序列化，最小化内存拷贝
-- **循环注入**：支持自定义 libuv loop，云原生友好
+- **循环注入**：支持自定义 libuv loop，多实例独立运行或共享循环
 - **内存分配器**：支持 mimalloc、系统分配器、自定义分配器
-- **类型安全**：FlatBuffers 强类型序列化
+- **类型安全**：FlatBuffers DSL 生成类型安全的 API，编译时检查
+- **代码生成**：使用 FlatBuffers DSL 声明服务，自动生成客户端/服务端代码
+- **多实例支持**：同一进程可创建多个独立实例，支持独立或共享事件循环
 - **单线程模型**：无锁设计，避免临界区通信
 
 ## 性能指标
@@ -181,31 +183,45 @@ int main() {
 }
 ```
 
-## 传输类型
+## 传输协议
 
-### TCP
+UVRPC 支持多种传输协议，使用统一的抽象接口，使用方式完全相同：
+
+### TCP 传输
 ```c
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 ```
+**特性**：可靠的面向连接通信，适合需要可靠传输的场景
 
-### UDP
+### UDP 传输
 ```c
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
 uvrpc_config_set_address(config, "udp://127.0.0.1:5555");
 ```
+**特性**：无连接数据报通信，适合低延迟、可容忍丢包的场景
 
-### IPC
+### IPC 传输
 ```c
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_IPC);
 uvrpc_config_set_address(config, "ipc:///tmp/uvrpc.sock");
 ```
+**特性**：本地进程间通信，使用 Unix Domain Socket，性能优于 TCP
 
-### INPROC
+### INPROC 传输
 ```c
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
-uvrpc_config_set_address(config, "inproc://service");
+uvrpc_config_set_address(config, "inproc://my_service");
 ```
+**特性**：内存内零拷贝通信，性能最优，适合同一进程内的模块通信
+
+### 统一的使用方式
+所有传输协议使用相同的 API 调用：
+- 相同的服务端 API：`uvrpc_server_create()`, `uvrpc_server_start()`
+- 相同的客户端 API：`uvrpc_client_create()`, `uvrpc_client_connect()`, `uvrpc_client_call()`
+- 相同的回调模式：连接回调、接收回调、响应回调
+- 相同的错误处理：统一的错误码和错误处理模式
+- **仅需修改 URL**：更换传输协议只需修改地址前缀
 
 ## 内存分配器
 

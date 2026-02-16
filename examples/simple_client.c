@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    /* Transport type auto-detected from address prefix */
     uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     /* Create client */

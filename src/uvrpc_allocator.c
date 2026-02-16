@@ -1,10 +1,10 @@
 /**
  * UVRPC Memory Allocator Implementation
- * 
- * 支持运行时选择分配器类型：
- * - system: 标准 malloc/free
- * - mimalloc: 高性能 mimalloc
- * - custom: 用户自定义分配器
+ *
+ * Supports runtime allocator type selection:
+ * - system: Standard malloc/free
+ * - mimalloc: High-performance mimalloc
+ * - custom: User-defined allocator
  */
 
 #include "../include/uvrpc_allocator.h"
@@ -12,26 +12,26 @@
 #include <string.h>
 #include <stdio.h>
 
-/* 分配器类型常量（必须与头文件中的枚举一致） */
+/* Allocator type constants (must match header enum) */
 #define UVRPC_ALLOCATOR_SYSTEM 0
 #define UVRPC_ALLOCATOR_MIMALLOC 1
 #define UVRPC_ALLOCATOR_CUSTOM 2
 
-/* 编译时默认分配器（可通过 CMake 修改） */
+/* Compile-time default allocator (can be modified via CMake) */
 #ifndef UVRPC_DEFAULT_ALLOCATOR
 #define UVRPC_DEFAULT_ALLOCATOR UVRPC_ALLOCATOR_MIMALLOC
 #endif
 
-/* Mimalloc 支持（仅在编译时启用） */
+/* Mimalloc support (enabled at compile time only) */
 #if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
 #include <mimalloc.h>
 #endif
 
-/* 全局分配器状态 */
+/* Global allocator state */
 static uvrpc_allocator_type_t g_allocator_type = UVRPC_DEFAULT_ALLOCATOR;
 static uvrpc_custom_allocator_t g_custom_allocator = {0};
 
-/* 系统分配器函数 */
+/* System allocator functions */
 static void* system_alloc(size_t size) {
     return malloc(size);
 }
@@ -48,7 +48,7 @@ static void system_free(void* ptr) {
     free(ptr);
 }
 
-/* Mimalloc 分配器函数（仅在编译时启用） */
+/* Mimalloc allocator functions (enabled at compile time only) */
 #if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
 static void* mimalloc_alloc(size_t size) {
     return mi_malloc(size);
@@ -67,10 +67,10 @@ static void mimalloc_free(void* ptr) {
 }
 #endif
 
-/* 初始化分配器 */
+/* Initialize allocator */
 void uvrpc_allocator_init(uvrpc_allocator_type_t type, const uvrpc_custom_allocator_t* custom) {
     g_allocator_type = type;
-    
+
     if (type == UVRPC_ALLOCATOR_CUSTOM && custom) {
         if (custom->alloc && custom->calloc && custom->realloc && custom->free) {
             g_custom_allocator = *custom;
@@ -81,19 +81,19 @@ void uvrpc_allocator_init(uvrpc_allocator_type_t type, const uvrpc_custom_alloca
     }
 }
 
-/* 清理分配器 */
+/* Cleanup allocator */
 void uvrpc_allocator_cleanup(void) {
-    /* 重置为默认分配器 */
+    /* Reset to default allocator */
     g_allocator_type = UVRPC_DEFAULT_ALLOCATOR;
     memset(&g_custom_allocator, 0, sizeof(g_custom_allocator));
 }
 
-/* 获取当前分配器类型 */
+/* Get current allocator type */
 uvrpc_allocator_type_t uvrpc_allocator_get_type(void) {
     return g_allocator_type;
 }
 
-/* 获取当前分配器名称 */
+/* Get current allocator name */
 const char* uvrpc_allocator_get_name(void) {
     switch (g_allocator_type) {
         case UVRPC_ALLOCATOR_SYSTEM:
@@ -107,7 +107,7 @@ const char* uvrpc_allocator_get_name(void) {
     }
 }
 
-/* 内存分配函数 */
+/* Memory allocation functions */
 void* uvrpc_alloc(size_t size) {
     switch (g_allocator_type) {
         case UVRPC_ALLOCATOR_SYSTEM:
@@ -164,7 +164,7 @@ void* uvrpc_realloc(void* ptr, size_t size) {
 
 void uvrpc_free(void* ptr) {
     if (!ptr) return;
-    
+
     switch (g_allocator_type) {
         case UVRPC_ALLOCATOR_SYSTEM:
             system_free(ptr);
@@ -190,10 +190,10 @@ void uvrpc_free(void* ptr) {
     }
 }
 
-/* 字符串复制辅助函数 */
+/* String duplication helper function */
 char* uvrpc_strdup(const char* s) {
     if (!s) return NULL;
-    
+
     size_t len = strlen(s) + 1;
     char* copy = (char*)uvrpc_alloc(len);
     if (copy) {

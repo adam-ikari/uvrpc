@@ -102,10 +102,13 @@ int uvrpc_async_all(uvrpc_async_ctx_t* ctx,
 /**
  * Execute multiple async calls concurrently and wait for any to complete (Promise.any)
  * @param ctx async context
- * @param calls array of async calls
- * @param count number of calls
+ * @param clients array of RPC clients
+ * @param methods array of method names
+ * @param params_array array of parameters
+ * @param params_sizes array of parameter sizes
  * @param result output result (caller must free)
  * @param completed_index index of the completed call
+ * @param count number of calls
  * @param timeout_ms timeout in milliseconds (0 for no timeout)
  * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout
  */
@@ -120,7 +123,30 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
                      uint64_t timeout_ms);
 
 /**
- * Execute async call with retry (Promise.retry)
+ * Execute multiple async calls concurrently and wait for race (first to complete wins, similar to Promise.any)
+ * @param ctx async context
+ * @param clients array of RPC clients
+ * @param methods array of method names
+ * @param params_array array of parameters
+ * @param params_sizes array of parameter sizes
+ * @param result output result (caller must free)
+ * @param completed_index index of the completed call
+ * @param count number of calls
+ * @param timeout_ms timeout in milliseconds (0 for no timeout)
+ * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout
+ */
+int uvrpc_async_race(uvrpc_async_ctx_t* ctx,
+                      uvrpc_client_t** clients,
+                      const char** methods,
+                      const uint8_t** params_array,
+                      size_t* params_sizes,
+                      uvrpc_async_result_t** result,
+                      int* completed_index,
+                      int count,
+                      uint64_t timeout_ms);
+
+/**
+ * Execute async call with retry and exponential backoff (Promise.retry)
  * @param ctx async context
  * @param client RPC client
  * @param method method name
@@ -128,13 +154,15 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
  * @param params_size parameter size
  * @param result output result pointer
  * @param max_retries maximum number of retries
- * @param retry_delay_ms delay between retries in milliseconds
+ * @param initial_delay_ms initial delay between retries in milliseconds
+ * @param backoff_multiplier multiplier for exponential backoff (e.g., 2.0)
  * @return UVRPC_OK on success, error code on failure
  */
-int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
-                       const char* method, const uint8_t* params,
-                       size_t params_size, uvrpc_async_result_t** result,
-                       int max_retries, uint64_t retry_delay_ms);
+int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
+                                   const char* method, const uint8_t* params,
+                                   size_t params_size, uvrpc_async_result_t** result,
+                                   int max_retries, uint64_t initial_delay_ms,
+                                   double backoff_multiplier);
 
 /**
  * Execute async call with timeout (Promise.timeout)
@@ -151,6 +179,20 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                          const char* method, const uint8_t* params,
                          size_t params_size, uvrpc_async_result_t** result,
                          uint64_t timeout_ms);
+
+/**
+ * Cancel pending async operations
+ * @param ctx async context
+ * @return UVRPC_OK on success
+ */
+int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx);
+
+/**
+ * Get number of pending async operations
+ * @param ctx async context
+ * @return number of pending operations
+ */
+int uvrpc_async_get_pending_count(uvrpc_async_ctx_t* ctx);
 
 /* Helper macros for async/await syntax */
 #define UVRPC_ASYNC(ctx, timeout_ms) \

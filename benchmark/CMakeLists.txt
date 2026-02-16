@@ -47,35 +47,44 @@ endif()
 find_package(Threads REQUIRED)
 
 # Performance test programs
-add_executable(perf_server perf_server.c ${GENERATED_DIR}/rpc/rpc_user_impl.c ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c)
-target_link_libraries(perf_server uvrpc rpc_benchmark Threads::Threads m rt)
-add_dependencies(perf_server generate_flatcc)
+add_executable(server perf_server.c 
+    ${GENERATED_DIR}/rpc/rpc_user_impl.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c)
+target_link_libraries(server uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(server generate_flatcc)
 
-add_executable(perf_benchmark perf_benchmark.c)
-target_link_libraries(perf_benchmark uvrpc rpc_benchmark Threads::Threads m rt)
-add_dependencies(perf_benchmark generate_flatcc)
+add_executable(client perf_benchmark.c)
+target_link_libraries(client uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(client generate_flatcc)
 
 # RPC benchmark library (generated code - client only)
 set(RPC_BENCHMARK_SOURCES
     ${GENERATED_DIR}/rpc_benchmark/rpc_client.c
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${PROJECT_ROOT}/src/uvrpc_async.c  # Add async implementation
 )
 
 add_library(rpc_benchmark STATIC ${RPC_BENCHMARK_SOURCES})
 target_include_directories(rpc_benchmark PUBLIC ${GENERATED_DIR}/rpc_benchmark)
 target_include_directories(rpc_benchmark PUBLIC ${GENERATED_DIR}/rpc)
+target_include_directories(rpc_benchmark PUBLIC ${PROJECT_ROOT}/include)
+target_include_directories(rpc_benchmark PUBLIC ${PROJECT_ROOT}/src)
+target_link_libraries(rpc_benchmark uvrpc Threads::Threads m rt)
 
 # Link mimalloc if available
 if(USE_MIMALLOC)
-    target_link_libraries(perf_server uvrpc
+    target_link_libraries(server uvrpc
         ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
     )
-    target_link_libraries(perf_client uvrpc
-        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
-    )
-    target_link_libraries(latency_test uvrpc
+    target_link_libraries(client uvrpc
         ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
     )
 endif()
+
+# INPROC test program
+add_executable(inproc_test inproc_test.c)
+target_link_libraries(inproc_test uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(inproc_test generate_flatcc)
 
 # Print configuration
 message(STATUS "")

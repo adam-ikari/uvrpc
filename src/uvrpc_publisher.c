@@ -24,23 +24,27 @@ struct uvrpc_publisher {
 /* Create publisher */
 uvrpc_publisher_t* uvrpc_publisher_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
-    
-    uvrpc_publisher_t* publisher = calloc(1, sizeof(uvrpc_publisher_t));
+
+    uvrpc_publisher_t* publisher = uvrpc_calloc(1, sizeof(uvrpc_publisher_t));
     if (!publisher) return NULL;
-    
+
     publisher->loop = config->loop;
-    publisher->address = strdup(config->address);
+    publisher->address = uvrpc_strdup(config->address);
+    if (!publisher->address) {
+        uvrpc_free(publisher);
+        return NULL;
+    }
     publisher->transport_type = config->transport;
     publisher->is_running = 0;
-    
+
     /* Create transport based on type */
     publisher->transport = uvrpc_transport_server_new(config->loop, config->transport);
     if (!publisher->transport) {
-        free(publisher->address);
-        free(publisher);
+        uvrpc_free(publisher->address);
+        uvrpc_free(publisher);
         return NULL;
     }
-    
+
     return publisher;
 }
 
@@ -69,16 +73,16 @@ void uvrpc_publisher_stop(uvrpc_publisher_t* publisher) {
 /* Free publisher */
 void uvrpc_publisher_free(uvrpc_publisher_t* publisher) {
     if (!publisher) return;
-    
+
     uvrpc_publisher_stop(publisher);
-    
+
     /* Free transport */
     if (publisher->transport) {
         uvrpc_transport_free(publisher->transport);
     }
-    
-    free(publisher->address);
-    free(publisher);
+
+    uvrpc_free(publisher->address);
+    uvrpc_free(publisher);
 }
 
 /* Publish message */
@@ -121,9 +125,9 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
     if (publisher->transport) {
         uvrpc_transport_send(publisher->transport, msg, total_size);
     }
-    
-    free(msg);
-    
+
+    uvrpc_free(msg);
+
     /* Call callback */
     if (callback) {
         callback(UVRPC_OK, ctx);

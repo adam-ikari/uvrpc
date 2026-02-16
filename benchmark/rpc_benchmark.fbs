@@ -1,0 +1,34 @@
+namespace rpc;
+
+/* ============================================================
+   RPC Benchmark Service Definition
+   For performance testing
+   ============================================================ */
+
+/* Benchmark Request/Response Types */
+
+table BenchmarkAddRequest {
+    a: int32;
+    b: int32;
+}
+
+table BenchmarkAddResponse {
+    result: int32;
+}
+
+table BenchmarkEchoRequest {
+    data: [ubyte];
+}
+
+table BenchmarkEchoResponse {
+    data: [ubyte];
+}
+
+/* ============================================================
+   RPC Benchmark Service
+   ============================================================ */
+
+rpc_service BenchmarkService {
+    Add(BenchmarkAddRequest):BenchmarkAddResponse;
+    Echo(BenchmarkEchoRequest):BenchmarkEchoResponse;
+}

@@ -4,6 +4,7 @@
  */
 
 #include "uvrpc_transport.h"
+#include "uvrpc_transport_internal.h"
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
 #include <stdlib.h>
@@ -14,232 +15,47 @@
 #define UVRPC_MAX_FRAME_SIZE (10 * 1024 * 1024) /* 10MB max frame */
 #define UVRPC_MAX_UDP_PEERS 1000 /* Maximum UDP peers to prevent DoS */
 
-/* Client connection wrapper for tracking */
-typedef struct client_connection {
-    union {
-        uv_tcp_t tcp_handle;
-        uv_pipe_t pipe_handle;
-    } handle;
-    int is_tcp;
-    struct client_connection* next;
-    
-    /* Read buffer for this connection */
-    uint8_t read_buffer[65536];
-    size_t read_pos;
-    
-    /* Server callback context */
-    uvrpc_recv_callback_t recv_cb;
-    void* recv_ctx;
-    
-    /* Server pointer for context access */
-    void* server;  /* uvrpc_server_t* */
-} client_connection_t;
-
-/* UDP peer address tracking */
-typedef struct udp_peer {
-    struct sockaddr_storage addr;
-    struct udp_peer* next;
-} udp_peer_t;
-
-/* Transport structure */
-struct uvrpc_transport {
-    uv_loop_t* loop;
-    int type;
-
-    /* Address (for INPROC) */
-    char* address;
-
-    /* Client connection tracking (for TCP/IPC servers) */
-    client_connection_t* client_connections;
-    
-    /* TCP handles */
-    uv_tcp_t tcp_handle;
-    uv_tcp_t listen_handle;
-    uv_connect_t connect_req;
-    
-    /* UDP handles */
-    uv_udp_t udp_handle;
-    
-    /* IPC handles */
-    uv_pipe_t pipe_handle;
-    uv_pipe_t listen_pipe;
-    
-    /* Async handle for triggering callbacks */
-    uv_async_t async_handle;
-
-    /* Timeout timer */
-    uv_timer_t timeout_timer;
-    uint64_t timeout_ms;
-    int timeout_enabled;
-    
-    /* Read buffer */
-    uint8_t read_buffer[8192];
-    size_t read_pos;
-    
-    /* Callbacks */
-    uvrpc_recv_callback_t recv_cb;
-    uvrpc_connect_callback_t connect_cb;
-    uvrpc_close_callback_t close_cb;
-    uvrpc_error_callback_t error_cb;
-    void* ctx;
-    
-    /* Flags */
-    int is_server;
-    int is_connected;
-
-    /* UDP peer address tracking */
-    udp_peer_t* udp_peers;
-};
-
-/* INPROC endpoint registry */
-typedef struct inproc_endpoint {
-    char* name;
-    uvrpc_transport_t* server_transport;
-    uvrpc_transport_t** clients;
-    int client_count;
-    int client_capacity;
-    UT_hash_handle hh;
-} inproc_endpoint_t;
-
-/* Per-loop INPROC registry container */
-typedef struct inproc_registry {
-    inproc_endpoint_t* endpoints;
-} inproc_registry_t;
-
-/* Get INPROC registry from loop data */
-static inproc_registry_t* inproc_get_registry(uv_loop_t* loop) {
-    if (!loop) {
-        return NULL;
-    }
-    
-    if (!loop->data) {
-        loop->data = calloc(1, sizeof(inproc_registry_t));
-        if (!loop->data) {
-            return NULL;
-        }
-    }
-    return (inproc_registry_t*)loop->data;
-}
-
-/* Cleanup INPROC registry */
-static void inproc_cleanup_registry(uv_loop_t* loop) {
-    if (!loop->data) return;
-    
-    inproc_registry_t* registry = (inproc_registry_t*)loop->data;
-    
-    /* Free all endpoints */
-    inproc_endpoint_t* endpoint = registry->endpoints;
-    while (endpoint) {
-        inproc_endpoint_t* next = endpoint->hh.next;
-        if (endpoint->name) uvrpc_free(endpoint->name);
-        if (endpoint->clients) uvrpc_free(endpoint->clients);
-        uvrpc_free(endpoint);
-        endpoint = next;
-    }
-    
-    free(registry);
-    loop->data = NULL;
-}
-
-/* Find or create INPROC endpoint */
-static inproc_endpoint_t* inproc_get_endpoint(uv_loop_t* loop, const char* name) {
-    if (!loop || !name) {
-        return NULL;
-    }
-    
-    inproc_registry_t* registry = inproc_get_registry(loop);
-    if (!registry) {
-        return NULL;
-    }
-    
-    inproc_endpoint_t* endpoint = NULL;
-    HASH_FIND_STR(registry->endpoints, name, endpoint);
-
-    if (!endpoint) {
-        endpoint = calloc(1, sizeof(inproc_endpoint_t));
-        if (!endpoint) {
-            return NULL;
-        }
-        endpoint->name = strdup(name);
-        endpoint->server_transport = NULL;
-        endpoint->clients = NULL;
-        endpoint->client_count = 0;
-        endpoint->client_capacity = 0;
-        HASH_ADD_STR(registry->endpoints, name, endpoint);
-    }
-
-    return endpoint;
-}
-
-/* Add client to INPROC endpoint */
-static void inproc_add_client(inproc_endpoint_t* endpoint, uvrpc_transport_t* client) {
-    if (endpoint->client_count >= endpoint->client_capacity) {
-        endpoint->client_capacity = endpoint->client_capacity == 0 ? 4 : endpoint->client_capacity * 2;
-        endpoint->clients = realloc(endpoint->clients, endpoint->client_capacity * sizeof(uvrpc_transport_t*));
-    }
-    endpoint->clients[endpoint->client_count++] = client;
-}
-
-/* Send data from client to server or server to client */
-static void inproc_send_to_all(uvrpc_transport_t* sender, inproc_endpoint_t* endpoint, const uint8_t* data, size_t size) {
-    for (int i = 0; i < endpoint->client_count; i++) {
-        if (endpoint->clients[i] != sender && endpoint->clients[i]->recv_cb) {
-            uint8_t* copy = uvrpc_alloc(size);
-            if (copy) {
-                memcpy(copy, data, size);
-                endpoint->clients[i]->recv_cb(copy, size, endpoint->clients[i]->ctx);
-            }
-        }
-    }
-
-    /* Also send to server */
-    if (sender != endpoint->server_transport && endpoint->server_transport && endpoint->server_transport->recv_cb) {
-        uint8_t* copy = uvrpc_alloc(size);
-        if (copy) {
-            memcpy(copy, data, size);
-            endpoint->server_transport->recv_cb(copy, size, endpoint->server_transport->ctx);
-        }
-    }
-}
-
-/* Parse 4-byte length prefix */
-static int parse_frame_length(uvrpc_transport_t* transport, size_t* frame_size) {
-    if (transport->read_pos < 4) return 0;
-    
-    uint32_t len = (transport->read_buffer[0] << 24) |
-                   (transport->read_buffer[1] << 16) |
-                   (transport->read_buffer[2] << 8) |
-                   transport->read_buffer[3];
-    
-    if (len > UVRPC_MAX_FRAME_SIZE) return -1;
-    
-    *frame_size = len;
-    return 1;
-}
+/* Forward declaration for INPROC implementation */
+typedef struct uvrpc_inproc_transport uvrpc_inproc_transport_t;
+typedef struct inproc_endpoint inproc_endpoint_t;
 
 /* Process complete frames */
 static void process_frames(uvrpc_transport_t* transport) {
     while (1) {
         size_t frame_size = 0;
-        int rv = parse_frame_length(transport, &frame_size);
-        
+        int rv = parse_frame_length(transport->read_buffer, transport->read_pos, &frame_size);
+
         if (rv <= 0) break; /* Incomplete frame or error */
-        
+
+        /* Check for integer overflow in total_size calculation */
+        if (frame_size > SIZE_MAX - 4) {
+            fprintf(stderr, "Frame size too large, potential overflow\n");
+            transport->read_pos = 0; /* Reset buffer to prevent corruption */
+            break;
+        }
+
         size_t total_size = 4 + frame_size;
         if (transport->read_pos < total_size) break; /* Not enough data */
-        
+
+        /* Additional bounds check before memcpy */
+        if (total_size > sizeof(transport->read_buffer)) {
+            fprintf(stderr, "Frame exceeds buffer size\n");
+            transport->read_pos = 0; /* Reset buffer to prevent corruption */
+            break;
+        }
+
         /* Extract frame data (skip 4-byte length prefix) */
         uint8_t* frame_data = uvrpc_alloc(frame_size);
         if (frame_data) {
             memcpy(frame_data, transport->read_buffer + 4, frame_size);
-            
+
             if (transport->recv_cb) {
                 transport->recv_cb(frame_data, frame_size, transport->ctx);
             }
-            
+
             uvrpc_free(frame_data);
         }
-        
+
         /* Remove processed frame from buffer */
         memmove(transport->read_buffer, transport->read_buffer + total_size,
                 transport->read_pos - total_size);
@@ -327,7 +143,7 @@ static void client_read_callback(uv_stream_t* stream, ssize_t nread, const uv_bu
                 memcpy(frame_data, conn->read_buffer + 4, frame_size);
                 /* Pass stream as context for response */
                 conn->recv_cb(frame_data, frame_size, stream);
-                free(frame_data);
+                uvrpc_free(frame_data);
             }
         } else {
         }
@@ -352,7 +168,7 @@ static void tcp_connection_callback(uv_stream_t* server, int status) {
     uvrpc_transport_t* transport = (uvrpc_transport_t*)server->data;
 
     /* Accept connection */
-    client_connection_t* client_conn = calloc(1, sizeof(client_connection_t));
+    client_connection_t* client_conn = uvrpc_calloc(1, sizeof(client_connection_t));
     if (!client_conn) {
         fprintf(stderr, "Failed to allocate client connection\n");
         return;
@@ -391,7 +207,7 @@ static void ipc_connection_callback(uv_stream_t* server, int status) {
     uvrpc_transport_t* transport = (uvrpc_transport_t*)server->data;
 
     /* Accept connection */
-    client_connection_t* client_conn = calloc(1, sizeof(client_connection_t));
+    client_connection_t* client_conn = uvrpc_calloc(1, sizeof(client_connection_t));
     if (!client_conn) {
         fprintf(stderr, "Failed to allocate IPC client connection\n");
         return;
@@ -538,7 +354,7 @@ static void udp_recv_callback(uv_udp_t* handle, ssize_t nread, const uv_buf_t* b
 
         /* Add new peer if not found */
         if (!found) {
-            udp_peer_t* new_peer = calloc(1, sizeof(udp_peer_t));
+            udp_peer_t* new_peer = uvrpc_calloc(1, sizeof(udp_peer_t));
             if (new_peer) {
                 memcpy(&new_peer->addr, addr, sizeof(struct sockaddr_storage));
                 new_peer->next = transport->udp_peers;
@@ -549,8 +365,13 @@ static void udp_recv_callback(uv_udp_t* handle, ssize_t nread, const uv_buf_t* b
 
     /* Process frames directly from buffer */
     transport->read_pos = nread;
-    if (nread < sizeof(transport->read_buffer)) {
+    if (nread <= sizeof(transport->read_buffer)) {
         memcpy(transport->read_buffer, buf->base, nread);
+    } else {
+        /* Data exceeds buffer size, truncate to prevent overflow */
+        fprintf(stderr, "UDP packet exceeds buffer size, truncating\n");
+        memcpy(transport->read_buffer, buf->base, sizeof(transport->read_buffer));
+        transport->read_pos = sizeof(transport->read_buffer);
     }
     process_frames(transport);
 }
@@ -571,13 +392,15 @@ static void udp_send_callback(uv_udp_send_t* req, int status) {
         /* Handle send error - could add error callback here if needed */
         fprintf(stderr, "UDP send error: %s\n", uv_strerror(status));
     }
-    free(req->data);
-    free(req);
+    if (req->data) {
+        uvrpc_free(req->data);
+    }
+    uvrpc_free(req);
 }
 
 /* Create server transport */
 uvrpc_transport_t* uvrpc_transport_server_new(uv_loop_t* loop, int transport_type) {
-    uvrpc_transport_t* transport = calloc(1, sizeof(uvrpc_transport_t));
+    uvrpc_transport_t* transport = uvrpc_calloc(1, sizeof(uvrpc_transport_t));
     if (!transport) return NULL;
     
     transport->loop = loop;
@@ -616,7 +439,24 @@ uvrpc_transport_t* uvrpc_transport_server_new(uv_loop_t* loop, int transport_typ
             transport->listen_pipe.data = transport;
             break;
         case UVRPC_TRANSPORT_INPROC:
-            /* INPROC uses in-memory registry */
+            /* INPROC uses inproc transport implementation */
+            {
+                /* Don't create endpoint yet - will be created in listen */
+                void* impl = NULL;
+                int rc = uvrpc_transport_inproc_server_new(loop, NULL, NULL, NULL, NULL, NULL, &impl);
+                if (rc != UVRPC_OK || !impl) {
+                    uvrpc_free(transport);
+                    return NULL;
+                }
+                /* Set up transport to use INPROC implementation */
+                transport->impl = impl;
+                transport->vtable = &inproc_vtable;
+                transport->type = UVRPC_TRANSPORT_INPROC;
+                transport->is_server = 1;
+                transport->is_connected = 0;
+                transport->address = NULL;
+                return transport;
+            }
             break;
     }
     
@@ -625,7 +465,7 @@ uvrpc_transport_t* uvrpc_transport_server_new(uv_loop_t* loop, int transport_typ
 
 /* Create client transport */
 uvrpc_transport_t* uvrpc_transport_client_new(uv_loop_t* loop, int transport_type) {
-    uvrpc_transport_t* transport = calloc(1, sizeof(uvrpc_transport_t));
+    uvrpc_transport_t* transport = uvrpc_calloc(1, sizeof(uvrpc_transport_t));
     if (!transport) return NULL;
     
     transport->loop = loop;
@@ -655,7 +495,24 @@ uvrpc_transport_t* uvrpc_transport_client_new(uv_loop_t* loop, int transport_typ
             transport->pipe_handle.data = transport;
             break;
         case UVRPC_TRANSPORT_INPROC:
-            /* INPROC uses in-memory registry */
+            /* INPROC uses inproc transport implementation */
+            {
+                /* Don't connect yet - will connect in uvrpc_transport_connect */
+                void* impl = NULL;
+                int rc = uvrpc_transport_inproc_client_new(loop, NULL, NULL, NULL, NULL, NULL, &impl);
+                if (rc != UVRPC_OK || !impl) {
+                    uvrpc_free(transport);
+                    return NULL;
+                }
+                /* Set up transport to use INPROC implementation */
+                transport->impl = impl;
+                transport->vtable = &inproc_vtable;
+                transport->type = UVRPC_TRANSPORT_INPROC;
+                transport->is_server = 0;
+                transport->is_connected = 0;
+                transport->address = NULL;
+                return transport;
+            }
             break;
     }
     
@@ -742,13 +599,13 @@ void uvrpc_transport_free(uvrpc_transport_t* transport) {
         case UVRPC_TRANSPORT_INPROC:
             /* Cleanup INPROC registry when server transport is freed */
             if (transport->is_server && loop) {
-                inproc_cleanup_registry(loop);
+                /* INPROC doesn't need cleanup - global list is managed internally */
             }
             break;
     }
 
     /* Note: Close callbacks will be processed by the event loop owner */
-    free(transport);
+    uvrpc_free(transport);
 }
 /* Listen on address (server) */
 int uvrpc_transport_listen(uvrpc_transport_t* transport, const char* address,
@@ -844,6 +701,7 @@ int uvrpc_transport_listen(uvrpc_transport_t* transport, const char* address,
             break;
         }
         case UVRPC_TRANSPORT_INPROC: {
+            /* INPROC listen - create endpoint with the actual address */
             /* Strip inproc:// prefix */
             const char* name = address;
             if (address && strncmp(address, "inproc://", 9) == 0) {
@@ -854,22 +712,26 @@ int uvrpc_transport_listen(uvrpc_transport_t* transport, const char* address,
                 return UVRPC_ERROR_INVALID_PARAM;
             }
 
-            transport->address = strdup(name);
-
-            inproc_endpoint_t* endpoint = inproc_get_endpoint(transport->loop, name);
+            /* Find or create endpoint */
+            inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
             if (!endpoint) {
-                free(transport->address);
-                transport->address = NULL;
-                return UVRPC_ERROR;
+                endpoint = uvrpc_inproc_create_endpoint(name);
+                if (!endpoint) {
+                    return UVRPC_ERROR_NO_MEMORY;
+                }
             }
             
+            /* Set server transport */
             if (endpoint->server_transport) {
                 return UVRPC_ERROR; /* Server already exists */
             }
-
             endpoint->server_transport = transport;
-            transport->is_connected = 1;
 
+            transport->address = uvrpc_strdup(address);
+            if (!transport->address) {
+                return UVRPC_ERROR_NO_MEMORY;
+            }
+            transport->is_connected = 1;
             return UVRPC_OK;
         }
     }
@@ -975,7 +837,7 @@ int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,
             return UVRPC_OK;
         }
         case UVRPC_TRANSPORT_INPROC: {
-            /* Strip inproc:// prefix */
+            /* INPROC connect - find endpoint and register client */
             const char* name = address;
             if (address && strncmp(address, "inproc://", 9) == 0) {
                 name = address + 9;
@@ -985,24 +847,37 @@ int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,
                 return UVRPC_ERROR_INVALID_PARAM;
             }
 
-            transport->address = strdup(name);
+            transport->address = uvrpc_strdup(name);
+            if (!transport->address) {
+                return UVRPC_ERROR_NO_MEMORY;
+            }
 
-            inproc_endpoint_t* endpoint = inproc_get_endpoint(transport->loop, name);
+            inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
             if (!endpoint || !endpoint->server_transport) {
-                free(transport->address);
+                uvrpc_free(transport->address);
                 transport->address = NULL;
-                return UVRPC_ERROR; /* No server exists */
+                return UVRPC_ERROR_NOT_CONNECTED;
             }
 
-            inproc_add_client(endpoint, transport);
+            /* Copy callbacks to INPROC implementation */
+            if (transport->impl) {
+                uvrpc_inproc_transport_t* inproc_impl = (uvrpc_inproc_transport_t*)transport->impl;
+                inproc_impl->recv_cb = transport->recv_cb;
+                inproc_impl->connect_cb = transport->connect_cb;
+                inproc_impl->error_cb = transport->error_cb;
+                inproc_impl->ctx = transport->ctx;
+                
+                /* Add INPROC implementation to endpoint's client list */
+                inproc_add_client(endpoint, inproc_impl);
+            }
+            
             transport->is_connected = 1;
-
-            /* Async callback through event loop */
-            if (connect_cb) {
-                transport->connect_cb = connect_cb;
-                transport->ctx = ctx;
-                uv_async_send(&transport->async_handle);
+            
+            /* Call connect callback */
+            if (transport->connect_cb) {
+                transport->connect_cb(UVRPC_OK, transport->ctx);
             }
+            
             return UVRPC_OK;
         }
     }
@@ -1025,8 +900,31 @@ void uvrpc_transport_disconnect(uvrpc_transport_t* transport) {
             case UVRPC_TRANSPORT_IPC:
                 uv_read_stop((uv_stream_t*)&transport->pipe_handle);
                 break;
-            case UVRPC_TRANSPORT_INPROC:
+            case UVRPC_TRANSPORT_INPROC: {
+                /* Remove client from endpoint list */
+                if (transport->address) {
+                    inproc_endpoint_t* endpoint = inproc_find_endpoint(transport->address);
+                    if (endpoint) {
+
+                        if (endpoint) {
+                            /* Find and remove this client from the clients array */
+                            int found = 0;
+                            for (int i = 0; i < endpoint->client_count; i++) {
+                                if (endpoint->clients[i] == transport) {
+                                    found = 1;
+                                    /* Shift remaining clients down */
+                                    for (int j = i; j < endpoint->client_count - 1; j++) {
+                                        endpoint->clients[j] = endpoint->clients[j + 1];
+                                    }
+                                    endpoint->client_count--;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 break;
+            }
         }
         transport->is_connected = 0;
     }
@@ -1073,18 +971,52 @@ void uvrpc_transport_send_with_flush(uvrpc_transport_t* transport, const uint8_t
     /* Send based on transport type */
     switch (transport->type) {
         case UVRPC_TRANSPORT_TCP: {
-            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
-            if (!req) {
-                free(buffer);
-                return;
+            if (transport->is_server) {
+                /* Server: send to all connected clients */
+                client_connection_t* client = transport->client_connections;
+                int client_count = 0;
+
+                /* Count clients first */
+                while (client) {
+                    client_count++;
+                    client = client->next;
+                }
+
+                if (client_count > 0) {
+                    /* Create a separate buffer and write request for each client */
+                    client = transport->client_connections;
+                    while (client) {
+                        uint8_t* client_buffer = uvrpc_alloc(total_size);
+                        if (client_buffer) {
+                            memcpy(client_buffer, buffer, total_size);
+
+                            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
+                            if (req) {
+                                uv_buf_t client_buf = uv_buf_init((char*)client_buffer, total_size);
+                                req->data = client_buffer;
+                                uv_write(req, (uv_stream_t*)&client->handle.tcp_handle, &client_buf, 1, write_callback);
+                            } else {
+                                uvrpc_free(client_buffer);
+                            }
+                        }
+                        client = client->next;
+                    }
+                    uvrpc_free(buffer); /* Free original buffer, we've made copies */
+                } else {
+                    uvrpc_free(buffer); /* No clients, just free buffer */
+                }
+            } else {
+                /* Client: send to server */
+                uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
+                if (!req) {
+                    uvrpc_free(buffer);
+                    return;
+                }
+
+                uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
+                req->data = buffer;
+                uv_write(req, (uv_stream_t*)&transport->tcp_handle, &buf, 1, write_callback);
             }
-
-            uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-            req->data = buffer;
-
-            uv_stream_t* stream = transport->is_server ?
-                (uv_stream_t*)&transport->listen_handle : (uv_stream_t*)&transport->tcp_handle;
-            uv_write(req, stream, &buf, 1, write_callback);
             break;
         }
 
@@ -1108,7 +1040,7 @@ void uvrpc_transport_send_with_flush(uvrpc_transport_t* transport, const uint8_t
                         uv_udp_send(req, &transport->udp_handle, &buf, 1,
                                     (struct sockaddr*)&transport->udp_peers->addr, udp_send_callback);
                     } else {
-                        free(buffer);
+                        uvrpc_free(buffer);
                     }
                 } else {
                     /* For multiple peers, send to each (create separate buffers) */
@@ -1125,45 +1057,78 @@ void uvrpc_transport_send_with_flush(uvrpc_transport_t* transport, const uint8_t
                                 uv_udp_send(req, &transport->udp_handle, &peer_buf, 1,
                                             (struct sockaddr*)&peer->addr, udp_send_callback);
                             } else {
-                                free(peer_buffer);
+                                uvrpc_free(peer_buffer);
                             }
                         }
                         peer = peer->next;
                     }
-                    free(buffer);
+                    uvrpc_free(buffer);
                 }
             } else {
-                free(buffer);
+                uvrpc_free(buffer);
             }
             break;
         }
         case UVRPC_TRANSPORT_IPC: {
-            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
-            if (!req) {
-                free(buffer);
-                return;
+            if (transport->is_server) {
+                /* Server: send to all connected clients */
+                client_connection_t* client = transport->client_connections;
+                int client_count = 0;
+
+                /* Count clients first */
+                while (client) {
+                    client_count++;
+                    client = client->next;
+                }
+
+                if (client_count > 0) {
+                    /* Create a separate buffer and write request for each client */
+                    client = transport->client_connections;
+                    while (client) {
+                        uint8_t* client_buffer = uvrpc_alloc(total_size);
+                        if (client_buffer) {
+                            memcpy(client_buffer, buffer, total_size);
+
+                            uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
+                            if (req) {
+                                uv_buf_t client_buf = uv_buf_init((char*)client_buffer, total_size);
+                                req->data = client_buffer;
+                                uv_write(req, (uv_stream_t*)&client->handle.pipe_handle, &client_buf, 1, write_callback);
+                            } else {
+                                uvrpc_free(client_buffer);
+                            }
+                        }
+                        client = client->next;
+                    }
+                    uvrpc_free(buffer); /* Free original buffer, we've made copies */
+                } else {
+                    uvrpc_free(buffer); /* No clients, just free buffer */
+                }
+            } else {
+                /* Client: send to server */
+                uv_write_t* req = uvrpc_alloc(sizeof(uv_write_t));
+                if (!req) {
+                    uvrpc_free(buffer);
+                    return;
+                }
+
+                uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
+                req->data = buffer;
+                uv_write(req, (uv_stream_t*)&transport->pipe_handle, &buf, 1, write_callback);
             }
-
-            uv_buf_t buf = uv_buf_init((char*)buffer, total_size);
-            req->data = buffer;
-
-            uv_stream_t* stream = transport->is_server ?
-                (uv_stream_t*)&transport->listen_pipe : (uv_stream_t*)&transport->pipe_handle;
-            uv_write(req, stream, &buf, 1, write_callback);
             break;
         }
         case UVRPC_TRANSPORT_INPROC: {
-            inproc_endpoint_t* endpoint = NULL;
-            if (transport->address) {
-                inproc_registry_t* registry = inproc_get_registry(transport->loop);
-                HASH_FIND_STR(registry->endpoints, transport->address, endpoint);
-            }
+                    inproc_endpoint_t* endpoint = NULL;
+                    if (transport->address) {
+                        endpoint = inproc_find_endpoint(transport->address);
+                    }
 
             if (endpoint) {
                 inproc_send_to_all(transport, endpoint, data, size);
             }
 
-            free(buffer);
+            uvrpc_free(buffer);
             break;
         }
     }

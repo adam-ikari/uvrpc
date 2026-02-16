@@ -1,11 +1,11 @@
 /**
  * UVRPC Message ID Encoding (32-bit)
- * 
- * 设计原则：
- * 1. 32位整数，紧凑高效
- * 2. 简单递增，无需复杂编码
- * 3. 单客户端环境保证唯一性
- * 4. 无锁设计，零全局变量
+ *
+ * Design principles:
+ * 1. 32-bit integer, compact and efficient
+ * 2. Simple increment, no complex encoding needed
+ * 3. Uniqueness guaranteed in single-client environment
+ * 4. Lock-free design, zero global variables
  */
 
 #ifndef UVRPC_MSGID_H
@@ -17,16 +17,19 @@
 extern "C" {
 #endif
 
-/* 消息ID上下文 */
+/* Message ID context */
 typedef struct {
-    uint32_t next_seq;     /* 下一个序列号 */
+    uint32_t next_seq;     /* Next sequence number */
 } uvrpc_msgid_ctx_t;
 
-/* 创建消息ID上下文 */
+/* Create message ID context */
 uvrpc_msgid_ctx_t* uvrpc_msgid_ctx_new(void);
 void uvrpc_msgid_ctx_free(uvrpc_msgid_ctx_t* ctx);
 
-/* 生成下一个消息ID (32位) */
+/* Set initial sequence number (for multi-client scenarios) */
+void uvrpc_msgid_ctx_set_start(uvrpc_msgid_ctx_t* ctx, uint32_t start_seq);
+
+/* Generate next message ID (32-bit) */
 uint32_t uvrpc_msgid_next(uvrpc_msgid_ctx_t* ctx);
 
 #ifdef __cplusplus

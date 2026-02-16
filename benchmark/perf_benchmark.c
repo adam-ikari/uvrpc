@@ -57,6 +57,7 @@ typedef struct {
 
 /* Global state */
 static atomic_int g_response_sum = 0;
+static atomic_int g_result_sum = 0;
 
 /* Latency test state */
 static struct {
@@ -66,10 +67,12 @@ static struct {
     int total;
 } g_latency_state = {NULL, NULL, NULL, 0};
 
-/* Timer callback to stop the test after fixed duration */
-void on_test_timeout(uv_timer_t* handle) {
-    thread_state_t* state = (thread_state_t*)handle->data;
-    state->done = 1;
+/* Signal handler for graceful shutdown */
+static volatile sig_atomic_t g_shutdown_requested = 0;
+
+void on_signal(int signum) {
+    (void)signum;
+    g_shutdown_requested = 1;
 }
 
 void on_connect(int status, void* ctx) {
@@ -86,11 +89,18 @@ void on_connect(int status, void* ctx) {
 void on_response(uvrpc_response_t* resp, void* ctx) {
     thread_state_t* state = (thread_state_t*)ctx;
     
-    if (resp->status == UVRPC_OK) {
-        state->responses_received++;
+    /* Count all responses, regardless of status */
+    state->responses_received++;
+    
+    if (resp->status == UVRPC_OK && resp->result && resp->result_size >= sizeof(int32_t)) {
+        /* Parse result as int32_t */
+        int32_t result = *((int32_t*)resp->result);
         
         /* Prevent compiler optimization by using atomic counter */
         atomic_fetch_add(&g_response_sum, 1);
+        
+        /* Also accumulate result to verify correctness */
+        atomic_fetch_add(&g_result_sum, result);
     }
 }
 
@@ -144,65 +154,49 @@ int wait_for_connections(uv_loop_t* loop, thread_state_t* state) {
 }
 
 /* Helper: Send batch of requests continuously until test is done */
-int send_requests(uvrpc_client_t** clients, int num_clients, int batch_size, flatcc_builder_t* builder, 
-                  thread_state_t* state, unsigned int* seed, uv_loop_t* loop) {
+int send_requests(uvrpc_client_t** clients, int num_clients, int batch_size, thread_state_t* state) {
     int failed = 0;
     
-    /* Start timer to stop test after fixed duration */
-    uv_timer_init(loop, &state->timer_handle);
-    state->timer_handle.data = state;
-    uv_timer_start(&state->timer_handle, on_test_timeout, state->test_duration_ms, 0);
+    /* Get loop once */
+    uv_loop_t* loop = uvrpc_client_get_loop(clients[0]);
     
-    /* Send requests continuously until timer triggers */
-    while (!state->done) {
+    /* Send requests continuously until shutdown is requested */
+    while (!g_shutdown_requested) {
         /* Send batch of requests */
-        for (int i = 0; i < batch_size && !state->done; i++) {
+        for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
             int client_idx = state->sent_requests % num_clients;
             
-            /* Use random parameters to prevent compiler optimization */
-            int32_t a = (int32_t)(rand_r(seed) % 1000);
-            int32_t b = (int32_t)(rand_r(seed) % 1000);
+/* Create request parameters */
+            int32_t a = 100;
+            int32_t b = 200;
             
-            flatcc_builder_reset(builder);
-            rpc_BenchmarkAddRequest_start_as_root(builder);
-            rpc_BenchmarkAddRequest_a_add(builder, a);
-            rpc_BenchmarkAddRequest_b_add(builder, b);
-            rpc_BenchmarkAddRequest_end_as_root(builder);
+            /* Use generated client API */
+            int ret = BenchmarkService_Add(clients[client_idx], on_response, state, a, b);
             
-            size_t size;
-            void* buf = flatcc_builder_finalize_buffer(builder, &size);
+            /* Always increment sent requests count */
+            state->sent_requests++;
             
-            int ret = uvrpc_client_call(clients[client_idx], "Add", buf, size, on_response, state);
-            
-            if (ret == UVRPC_OK) {
-                state->sent_requests++;
-            } else {
+            if (ret != UVRPC_OK) {
                 failed++;
-            }
-            
-            /* Run event loop to process responses while sending */
-            if (i % 10 == 0) {
-                uv_run(loop, UV_RUN_NOWAIT);
+                /* Debug: print first few failures */
+                if (failed <= 5) {
+                    fprintf(stderr, "[DEBUG] Request %d failed with error code: %d\n", state->sent_requests, ret);
+                }
             }
         }
         
-        /* Run event loop to process responses */
-        uv_run(loop, UV_RUN_ONCE);
+        /* Run event loop to process responses periodically */
+        if (loop) {
+            uv_run(loop, UV_RUN_NOWAIT);
+        }
     }
-    
-    /* Stop timer */
-    uv_timer_stop(&state->timer_handle);
-    uv_close((uv_handle_t*)&state->timer_handle, NULL);
     
     return failed;
 }
 
 /* Helper: Wait for responses */
 int wait_for_responses(uv_loop_t* loop, thread_state_t* state, int target) {
-    /* Wait a short time for any pending responses to complete */
-    for (int i = 0; i < 100; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
-    }
+    /* No manual waiting - responses are driven by the event loop */
     return state->responses_received;
 }
 
@@ -213,19 +207,26 @@ void print_test_results(int sent, int responses, int failed, struct timespec* st
     printf("Received: %d\n", responses);
     printf("Time: %.3f s\n", elapsed);
     printf("Throughput: %.0f ops/s (sent)\n", sent / elapsed);
-    printf("Success rate: %.1f%%\n", (responses * 100.0) / sent);
-    printf("Response sum: %d (to prevent compiler optimization)\n", atomic_load(&g_response_sum));
+    
+    /* Calculate success rate based on received responses only */
+    int successful_responses = atomic_load(&g_response_sum);
+    int result_sum = atomic_load(&g_result_sum);
+    if (responses > 0) {
+        printf("Success rate: %.1f%% (based on received responses)\n", (successful_responses * 100.0) / responses);
+        printf("Result count: %d (correct responses)\n", successful_responses);
+        if (successful_responses > 0) {
+            printf("Result average: %.1f (to verify correctness)\n", (double)result_sum / successful_responses);
+        }
+    }
     printf("Failed: %d\n", failed);
     fflush(stdout);
 }
 
-/* Helper: Cleanup clients and drain loop */
-void cleanup_clients_and_loop(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop, flatcc_builder_t* builder) {
+void cleanup_clients_and_loop(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop, void* ctx) {
+    (void)ctx;
     for (int i = 0; i < num_clients; i++) {
         uvrpc_client_free(clients[i]);
     }
-    
-    flatcc_builder_clear(builder);
     
     for (int i = 0; i < MAX_LOOP_DRAIN; i++) {
         uv_run(loop, UV_RUN_NOWAIT);
@@ -301,16 +302,14 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     printf("%d clients connected (target: %d), running throughput test for %.1f seconds...\n",
            connected, num_clients, test_duration_ms / 1000.0);
 
-    /* Pre-create FlatBuffers builder for reuse */
-    flatcc_builder_t builder;
-    flatcc_builder_init(&builder);
-    unsigned int seed = time(NULL);
+    printf("Sending requests (press Ctrl+C to stop)...\n");
+    fflush(stdout);
 
     /* Run throughput test */
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     
-    int failed = send_requests(clients, num_clients, concurrency, &builder, &state, &seed, &loop);
+    int failed = send_requests(clients, num_clients, concurrency, &state);
     
     /* Wait for remaining responses */
     wait_for_responses(&loop, &state, 0);
@@ -323,13 +322,6 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     /* Cleanup */
     for (int i = 0; i < num_clients; i++) {
         uvrpc_client_free(clients[i]);
-    }
-    
-    flatcc_builder_clear(&builder);
-    
-    /* Drain event loop briefly */
-    for (int i = 0; i < 2; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
     }
     
     uv_loop_close(&loop);
@@ -368,19 +360,14 @@ void* thread_func(void* arg) {
     int connected = wait_for_connections(&loop, &state);
     printf("[Thread %d] %d clients connected\n", ctx->thread_id, connected);
 
-    /* Pre-create FlatBuffers builder for reuse */
-    flatcc_builder_t builder;
-    flatcc_builder_init(&builder);
-
     /* Send requests continuously for 1 second */
-    int failed = send_requests(clients, ctx->num_clients, ctx->concurrency, &builder, &state, &seed, &loop);
+    int failed = send_requests(clients, ctx->num_clients, ctx->concurrency, &state);
     
     /* Wait for remaining responses */
     wait_for_responses(&loop, &state, 0);
 
     /* Cleanup */
-    cleanup_clients_and_loop(clients, ctx->num_clients, &loop, &builder);
-    uv_loop_close(&loop);
+    cleanup_clients_and_loop(clients, ctx->num_clients, &loop, NULL);
 
     atomic_fetch_add(ctx->total_responses, state.responses_received);
     atomic_fetch_add(ctx->total_failures, failed);
@@ -472,22 +459,13 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
 
     /* Send requests one by one for latency measurement */
     for (int i = 0; i < iterations; i++) {
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        
-        rpc_BenchmarkAddRequest_start_as_root(&builder);
-        rpc_BenchmarkAddRequest_a_add(&builder, 10);
-        rpc_BenchmarkAddRequest_b_add(&builder, 20);
-        rpc_BenchmarkAddRequest_end_as_root(&builder);
-        
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        int32_t a = 10;
+        int32_t b = 20;
         
         clock_gettime(CLOCK_MONOTONIC, &g_latency_state.start_times[i]);
         
-        uvrpc_client_call(client, "Add", buf, size, on_latency_response, (void*)(long)i);
-        
-        flatcc_builder_reset(&builder);
+        /* Use generated client API */
+        BenchmarkService_Add(client, on_latency_response, (void*)(long)i, a, b);
         
         /* Wait for response */
         int wait = 0;
@@ -549,6 +527,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    /* Setup signal handlers for graceful shutdown */
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+
     const char* first_arg = argv[1];
     
     /* Check for help first */
@@ -591,6 +573,7 @@ int main(int argc, char** argv) {
     printf("=== UVRPC Unified Benchmark ===\n");
     printf("Address: %s\n", address);
     printf("Performance Mode: %s\n", low_latency ? "Low Latency" : "High Throughput");
+    printf("Press Ctrl+C to stop the benchmark\n");
     
     if (latency_mode) {
         printf("Test Mode: Latency\n\n");

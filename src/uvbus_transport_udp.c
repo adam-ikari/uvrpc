@@ -90,7 +90,14 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     }
     
     if (nread > 0 && transport->recv_cb) {
-        transport->recv_cb((const uint8_t*)buf->base, nread, transport->callback_ctx);
+        /* Copy the client address to use as client context */
+        struct sockaddr_storage* addr_copy = (struct sockaddr_storage*)uvrpc_alloc(sizeof(struct sockaddr_storage));
+        if (addr_copy) {
+            memcpy(addr_copy, addr, sizeof(struct sockaddr_storage));
+            transport->recv_cb((const uint8_t*)buf->base, nread, addr_copy, transport->callback_ctx);
+        } else {
+            transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+        }
     }
     
     uvrpc_free(buf->base);
@@ -122,7 +129,8 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     }
     
     if (nread > 0 && transport->recv_cb) {
-        transport->recv_cb((const uint8_t*)buf->base, nread, transport->callback_ctx);
+        /* Client mode: pass NULL for client context */
+        transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
     }
     
     uvrpc_free(buf->base);

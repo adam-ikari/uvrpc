@@ -1,32 +1,11 @@
 namespace uvrpc;
 
-/* Message types */
-enum FrameType : byte {
-    REQUEST = 0,
-    RESPONSE = 1,
-    NOTIFICATION = 2,
-    ERROR = 3
-}
-
-/* Error codes */
-enum ErrorCode : int32 {
-    OK = 0,
-    INVALID_PARAM = 1,
-    NO_MEMORY = 2,
-    NOT_CONNECTED = 3,
-    TIMEOUT = 4,
-    TRANSPORT_ERROR = 5,
-    METHOD_NOT_FOUND = 6,
-    INTERNAL_ERROR = 7
-}
-
-/* Unified RPC Frame: [type, msgid, method, params] */
+/* Minimal RPC Frame: [type:1byte|msgid:32bit|method:params] */
 table RpcFrame {
-    type: FrameType;
+    type: uint8;
     msgid: uint32;
     method: string;
     params: [ubyte];
-    error_code: ErrorCode = OK;
 }
 
 root_type RpcFrame;

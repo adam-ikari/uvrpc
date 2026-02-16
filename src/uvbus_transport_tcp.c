@@ -102,6 +102,7 @@ static int parse_tcp_address(const char* address, char** host, int* port) {
 /* Client read callback */
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
+    
     uvbus_transport_t* transport = (uvbus_transport_t*)stream->data;
     if (!transport) {
         uvrpc_free(buf->base);
@@ -119,7 +120,15 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
     }
     
     if (nread > 0 && transport->recv_cb) {
-        transport->recv_cb((const uint8_t*)buf->base, nread, transport->callback_ctx);
+        /* Determine if this is server mode or client mode */
+        if (transport->is_server) {
+            /* Server mode: pass client context and server context */
+            uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)stream->data;
+            transport->recv_cb((const uint8_t*)buf->base, nread, client, transport->callback_ctx);
+        } else {
+            /* Client mode: pass NULL for client context (not needed) */
+            transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+        }
     }
     
     uvrpc_free(buf->base);
@@ -231,12 +240,21 @@ static void on_server_close(uv_handle_t* handle) {
 
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
-    if (!req) return;
+    fprintf(stderr, "[DEBUG] on_client_connect: Called with status %d\n", status);
+    
+    if (!req) {
+        fprintf(stderr, "[DEBUG] on_client_connect: req is NULL\n");
+        return;
+    }
     
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
-    if (!transport) return;
+    if (!transport) {
+        fprintf(stderr, "[DEBUG] on_client_connect: transport is NULL\n");
+        return;
+    }
     
     if (status == 0) {
+        fprintf(stderr, "[DEBUG] on_client_connect: Connection successful\n");
         transport->is_connected = 1;
         
         /* Start reading */
@@ -246,9 +264,13 @@ static void on_client_connect(uv_connect_t* req, int status) {
         }
         
         if (transport->connect_cb) {
+            fprintf(stderr, "[DEBUG] on_client_connect: Calling transport connect_cb\n");
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+        } else {
+            fprintf(stderr, "[DEBUG] on_client_connect: No transport connect_cb\n");
         }
     } else {
+        fprintf(stderr, "[DEBUG] on_client_connect: Connection failed with status %d\n", status);
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }

@@ -66,6 +66,7 @@ set(UVRPC_SOURCES
     src/uvrpc_client.c
     src/uvrpc_service.c
     src/uvrpc_transport.c
+    src/uvrpc_transport_inproc.c
     src/uvrpc_flatbuffers.c
     src/uvrpc_msgid.c
     src/uvrpc_idmap.c
@@ -73,12 +74,18 @@ set(UVRPC_SOURCES
     src/uvrpc_subscriber.c
     src/uvrpc_allocator.c
     src/uvrpc_async.c
+    src/uvbus.c
+    src/uvbus_transport_tcp.c
+    src/uvbus_transport_udp.c
+    src/uvbus_transport_ipc.c
+    src/uvbus_transport_inproc.c
 )
 
 # Headers
 set(UVRPC_HEADERS
     include/uvrpc.h
     include/uvrpc_async.h
+    include/uvbus.h
     src/uvrpc_flatbuffers.h
     src/uvrpc_service.h
 )
@@ -191,14 +198,14 @@ add_subdirectory(benchmark)
             rt
             dl
         )
-        
+
         # Add static linking flags
         set_target_properties(${name} PROPERTIES LINK_FLAGS "-static -pthread")
-        
+
         add_dependencies(${name} generate_flatcc)
     endfunction()
 
-    # Create all example targets
+    # Create example targets
     create_example_target(simple_server)
     create_example_target(simple_client)
     create_example_target(debug_test)
@@ -211,6 +218,10 @@ add_subdirectory(benchmark)
     create_example_target(async_await_demo)
     create_example_target(async_chain_demo)
     create_example_target(concurrent_demo)
+    create_example_target(flatbuffers_simple_demo)
+    create_example_target(rpc_dsl_demo)
+    create_example_target(udp_rpc_demo)
+    create_example_target(uvbus_demo)
 endif()
 
 # Print configuration summary

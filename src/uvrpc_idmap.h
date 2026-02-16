@@ -1,9 +1,9 @@
 /**
  * UVRPC ID Mapping for Gateway
- * 
- * 网关场景下的 ID 转换机制：
- * 1. 客户端 msgid_raw -> 网关 msgid_gateway -> 后端
- * 2. 后端响应 -> 网关查表 -> 客户端 msgid_raw
+ *
+ * ID transformation mechanism for gateway scenarios:
+ * 1. Client msgid_raw -> Gateway msgid_gateway -> Backend
+ * 2. Backend response -> Gateway lookup -> Client msgid_raw
  */
 
 #ifndef UVRPC_IDMAP_H
@@ -17,32 +17,32 @@
 extern "C" {
 #endif
 
-/* ID 映射条目 */
+/* ID mapping entry */
 typedef struct {
-    uint32_t msgid_raw;        /* 客户端原始 msgid */
-    uint32_t msgid_gateway;    /* 网关 msgid */
-    void* client_handle;       /* 客户端连接句柄 */
+    uint32_t msgid_raw;        /* Client original msgid */
+    uint32_t msgid_gateway;    /* Gateway msgid */
+    void* client_handle;       /* Client connection handle */
     UT_hash_handle hh;         /* uthash */
 } uvrpc_idmap_entry_t;
 
-/* ID 映射上下文 */
+/* ID mapping context */
 typedef struct {
-    uvrpc_idmap_entry_t* map;  /* msgid_gateway -> entry 的哈希表 */
-    uint32_t next_gateway_id;  /* 下一个网关 msgid */
+    uvrpc_idmap_entry_t* map;  /* Hash table: msgid_gateway -> entry */
+    uint32_t next_gateway_id;  /* Next gateway msgid */
 } uvrpc_idmap_ctx_t;
 
-/* 创建 ID 映射上下文 */
+/* Create ID mapping context */
 uvrpc_idmap_ctx_t* uvrpc_idmap_ctx_new(void);
 void uvrpc_idmap_ctx_free(uvrpc_idmap_ctx_t* ctx);
 
-/* 转换：客户端 msgid -> 网关 msgid */
+/* Transform: client msgid -> gateway msgid */
 uint32_t uvrpc_idmap_to_gateway(uvrpc_idmap_ctx_t* ctx, uint32_t msgid_raw, void* client_handle);
 
-/* 反向转换：网关 msgid -> 客户端 msgid */
-int uvrpc_idmap_to_raw(uvrpc_idmap_ctx_t* ctx, uint32_t msgid_gateway, 
+/* Reverse transform: gateway msgid -> client msgid */
+int uvrpc_idmap_to_raw(uvrpc_idmap_ctx_t* ctx, uint32_t msgid_gateway,
                        uint32_t* out_msgid_raw, void** out_client_handle);
 
-/* 删除映射 */
+/* Remove mapping */
 void uvrpc_idmap_remove(uvrpc_idmap_ctx_t* ctx, uint32_t msgid_gateway);
 
 #ifdef __cplusplus

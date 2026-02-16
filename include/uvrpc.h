@@ -1,6 +1,6 @@
 /**
  * UVRPC - Ultra-Fast RPC Framework
- * Design: libuv + FlatCC
+ * Design: libuv + FlatCC + UVBus
  * Philosophy: Zero threads, Zero locks, Zero global variables
  *             All I/O managed by libuv event loop
  */
@@ -11,6 +11,7 @@
 #include <uv.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "uvbus.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,7 +127,7 @@ struct uvrpc_request {
     char* method;
     uint8_t* params;
     size_t params_size;
-    uv_stream_t* client_stream;  /* Client connection for sending response */
+    void* client_ctx;  /* Client context for sending response (from UVBus) */
     void* user_data;
 };
 
@@ -181,6 +182,10 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method, uvrpc_hand
 /* Server statistics */
 uint64_t uvrpc_server_get_total_requests(uvrpc_server_t* server);
 uint64_t uvrpc_server_get_total_responses(uvrpc_server_t* server);
+
+/* Server response API */
+int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t result_size);
+int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const char* error_message);
 
 /* Client API */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config);
