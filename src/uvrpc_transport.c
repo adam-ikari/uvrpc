@@ -853,7 +853,11 @@ int uvrpc_transport_connect(uvrpc_transport_t* transport, const char* address,
             }
 
             inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
+            printf("[DEBUG INPROC] Looking for endpoint: '%s', found: %p\n", name, (void*)endpoint);
+            fflush(stdout);
             if (!endpoint || !endpoint->server_transport) {
+                printf("[DEBUG INPROC] Endpoint not found or no server transport\n");
+                fflush(stdout);
                 uvrpc_free(transport->address);
                 transport->address = NULL;
                 return UVRPC_ERROR_NOT_CONNECTED;

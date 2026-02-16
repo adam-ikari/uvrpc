@@ -55,10 +55,12 @@ uvrpc_server_t* create_server(uv_loop_t* loop, const char* address) {
     
     printf("[INIT] Registering echo handler...\n");
     fflush(stdout);
-    uvrpc_server_register(server, "echo", echo_handler, NULL);
+    const char* echo_method = "echo";
+    uvrpc_server_register(server, echo_method, echo_handler, NULL);
     printf("[INIT] Registering add handler...\n");
     fflush(stdout);
-    uvrpc_server_register(server, "add", add_handler, NULL);
+    const char* add_method = "add";
+    uvrpc_server_register(server, add_method, add_handler, NULL);
     
     printf("[INIT] Starting server...\n");
     fflush(stdout);
@@ -92,6 +94,16 @@ int main(int argc, char** argv) {
     const char* address = (argc > 1) ? argv[1] : "127.0.0.1:5555";
     
     fprintf(stderr, "[MAIN] Starting main function\n");
+    fprintf(stderr, "[MAIN] String literal test: 'echo' hex=");
+    for (size_t i = 0; i < strlen("echo"); i++) {
+        fprintf(stderr, "%02x ", (unsigned char)"echo"[i]);
+    }
+    fprintf(stderr, "\n");
+    fprintf(stderr, "[MAIN] String literal test: 'add' hex=");
+    for (size_t i = 0; i < strlen("add"); i++) {
+        fprintf(stderr, "%02x ", (unsigned char)"add"[i]);
+    }
+    fprintf(stderr, "\n");
     fflush(stderr);
     
     printf("[INIT] UVRPC Simple Server\n");

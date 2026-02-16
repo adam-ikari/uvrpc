@@ -222,6 +222,8 @@ add_subdirectory(benchmark)
     create_example_target(rpc_dsl_demo)
     create_example_target(udp_rpc_demo)
     create_example_target(uvbus_demo)
+    create_example_target(uvbus_server_only)
+    create_example_target(uvbus_client_only)
 endif()
 
 # Print configuration summary

@@ -3,6 +3,8 @@
 
 echo "=== UVRPC Transport Performance Comparison ==="
 
+cd /home/zhaodi-chen/project/uvrpc
+
 # Test TCP
 echo ""
 echo "=== TCP Transport ==="

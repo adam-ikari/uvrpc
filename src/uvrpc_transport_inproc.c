@@ -125,11 +125,6 @@ int uvrpc_transport_inproc_server_new(uv_loop_t* loop, const char* address,
                                       uvrpc_connect_callback_t connect_cb,
                                       uvrpc_error_callback_t error_cb,
                                       void* ctx, void** transport_out) {
-    (void)recv_cb;
-    (void)connect_cb;
-    (void)error_cb;
-    (void)ctx;
-    
     if (!loop || !transport_out) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
@@ -141,10 +136,10 @@ int uvrpc_transport_inproc_server_new(uv_loop_t* loop, const char* address,
     
     transport->loop = loop;
     transport->is_server = 1;
-    transport->recv_cb = NULL;
-    transport->connect_cb = NULL;
-    transport->error_cb = NULL;
-    transport->ctx = NULL;
+    transport->recv_cb = recv_cb;
+    transport->connect_cb = connect_cb;
+    transport->error_cb = error_cb;
+    transport->ctx = ctx;
     transport->is_connected = 0;
     
     /* Address can be NULL - will be set later via listen */
@@ -169,10 +164,6 @@ int uvrpc_transport_inproc_client_new(uv_loop_t* loop, const char* address,
                                       uvrpc_connect_callback_t connect_cb,
                                       uvrpc_error_callback_t error_cb,
                                       void* ctx, void** transport_out) {
-    (void)recv_cb;
-    (void)connect_cb;
-    (void)error_cb;
-    (void)ctx;
     (void)address;  /* Address will be set later in connect */
     
     if (!loop || !transport_out) {
@@ -186,12 +177,10 @@ int uvrpc_transport_inproc_client_new(uv_loop_t* loop, const char* address,
     
     transport->loop = loop;
     transport->is_server = 0;
-    
-    /* Callbacks will be set by transport layer */
-    transport->recv_cb = NULL;
-    transport->connect_cb = NULL;
-    transport->error_cb = NULL;
-    transport->ctx = NULL;
+    transport->recv_cb = recv_cb;
+    transport->connect_cb = connect_cb;
+    transport->error_cb = error_cb;
+    transport->ctx = ctx;
     transport->is_connected = 0;
     
     /* Address will be set later in connect */
@@ -199,6 +188,76 @@ int uvrpc_transport_inproc_client_new(uv_loop_t* loop, const char* address,
     transport->endpoint = NULL;
     
     *transport_out = transport;
+    
+    return UVRPC_OK;
+}
+
+/* Listen on endpoint (server only) */
+int uvrpc_transport_inproc_listen(void* transport_ctx, const char* address) {
+    if (!transport_ctx) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    uvrpc_inproc_transport_t* transport = (uvrpc_inproc_transport_t*)transport_ctx;
+    
+    if (!transport->is_server) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    /* Update address if provided */
+    if (address) {
+        if (transport->address) uvrpc_free(transport->address);
+        transport->address = uvrpc_strdup(address);
+        if (!transport->address) return UVRPC_ERROR_NO_MEMORY;
+    }
+    
+    /* Create or get endpoint */
+    if (!transport->endpoint) {
+        transport->endpoint = create_endpoint(transport->address);
+        if (!transport->endpoint) return UVRPC_ERROR_NO_MEMORY;
+    }
+    
+    /* Set server transport */
+    transport->endpoint->server_transport = transport;
+    transport->is_connected = 1;
+    
+    printf("[DEBUG] INPROC Server listening on: %s\n", transport->address ? transport->address : "(null)");
+    fflush(stdout);
+    
+    return UVRPC_OK;
+}
+
+/* Connect to endpoint (client only) */
+int uvrpc_transport_inproc_connect(void* transport_ctx, const char* address) {
+    if (!transport_ctx || !address) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    uvrpc_inproc_transport_t* transport = (uvrpc_inproc_transport_t*)transport_ctx;
+    
+    if (transport->is_server) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    /* Update address */
+    if (transport->address) uvrpc_free(transport->address);
+    transport->address = uvrpc_strdup(address);
+    if (!transport->address) return UVRPC_ERROR_NO_MEMORY;
+    
+    /* Find or create endpoint */
+    transport->endpoint = create_endpoint(transport->address);
+    if (!transport->endpoint) return UVRPC_ERROR_NO_MEMORY;
+    
+    /* Add client to endpoint */
+    if (transport->endpoint->server_transport) {
+        /* Server already exists, add client */
+        inproc_add_client(transport->endpoint, transport);
+    }
+    
+    transport->is_connected = 1;
+    
+    printf("[DEBUG] INPROC Client connected to: %s\n", transport->address);
+    fflush(stdout);
     
     return UVRPC_OK;
 }
@@ -377,8 +436,8 @@ void* uvrpc_transport_inproc_new(uv_loop_t* loop, int is_server) {
 
 /* Vtable for INPROC transport */
 const uvrpc_transport_vtable_t inproc_vtable = {
-    .listen = NULL,
-    .connect = NULL,
+    .listen = (int (*)(void*, const char*))uvrpc_transport_inproc_listen,
+    .connect = (int (*)(void*, const char*))uvrpc_transport_inproc_connect,
     .disconnect = NULL,
     .send = (void (*)(void*, const uint8_t*, size_t))uvrpc_transport_inproc_send,
     .send_to = NULL,

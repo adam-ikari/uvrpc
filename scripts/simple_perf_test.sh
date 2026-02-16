@@ -4,6 +4,7 @@
 echo "=== UVRPC Performance Test ==="
 
 # Start server
+cd /home/zhaodi-chen/project/uvrpc
 ./dist/bin/server tcp://127.0.0.1:5555 > /tmp/server.log 2>&1 &
 SERVER_PID=$!
 echo "Server started with PID: $SERVER_PID"
