@@ -225,6 +225,7 @@ static int udp_listen(void* impl_ptr, const char* address) {
     
     server->is_listening = 1;
     transport->is_connected = 1;
+    transport->parent_bus->is_active = 1;
     transport->impl.udp_server = (void*)server;
     
     return UVBUS_OK;
@@ -286,6 +287,7 @@ static int udp_connect(void* impl_ptr, const char* address) {
     }
     
     client->is_connected = 1;
+    transport->parent_bus->is_active = 1;
     transport->is_connected = 1;
     transport->impl.udp_client = (void*)client;
     
