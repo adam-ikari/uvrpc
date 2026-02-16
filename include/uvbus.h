@@ -89,21 +89,24 @@ struct uvbus_transport {
     uvbus_transport_type_t type;
     uv_loop_t* loop;
     char* address;
-    
+
+    /* Parent bus reference */
+    struct uvbus* parent_bus;
+
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
     uvbus_connect_callback_t connect_cb;
     uvbus_close_callback_t close_cb;
     uvbus_error_callback_t error_cb;
     void* callback_ctx;
-    
+
     /* Flags */
     int is_server;
     int is_connected;
-    
+
     /* Virtual function table */
     const uvbus_transport_vtable_t* vtable;
-    
+
     /* Transport-specific implementation */
     union {
         void* tcp_server;

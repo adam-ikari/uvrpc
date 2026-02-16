@@ -459,7 +459,11 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
 
     /* Send request */
     if (client->uvbus) {
+        fprintf(stderr, "[DEBUG] client_call: Sending request via uvbus\n");
+        fflush(stderr);
         uvbus_send(client->uvbus, req_data, req_size);
+        fprintf(stderr, "[DEBUG] client_call: uvbus_send returned\n");
+        fflush(stderr);
     }
 
     /* Send request */
@@ -469,6 +473,8 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
 
     uvrpc_free(req_data);
 
+    fprintf(stderr, "[DEBUG] client_call: Returning OK\n");
+    fflush(stderr);
     return UVRPC_OK;
 }
 

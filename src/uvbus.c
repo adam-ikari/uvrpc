@@ -123,7 +123,8 @@ uvbus_t* uvbus_server_new(uvbus_config_t* config) {
         uvrpc_free(bus);
         return NULL;
     }
-    
+
+    bus->transport->parent_bus = bus;
     bus->transport->is_server = 1;
     bus->transport->type = config->transport;
     bus->transport->loop = config->loop;
@@ -162,7 +163,8 @@ uvbus_t* uvbus_client_new(uvbus_config_t* config) {
         uvrpc_free(bus);
         return NULL;
     }
-    
+
+    bus->transport->parent_bus = bus;
     bus->transport->is_server = 0;
     bus->transport->type = config->transport;
     bus->transport->loop = config->loop;
@@ -210,18 +212,27 @@ void uvbus_stop(uvbus_t* bus) {
 }
 
 uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
+    fprintf(stderr, "[DEBUG] uvbus_send: Called with size=%zu\n", size);
+    fflush(stderr);
+
     if (!bus || !bus->transport || !bus->transport->vtable) {
+        fprintf(stderr, "[DEBUG] uvbus_send: Invalid parameters\n");
+        fflush(stderr);
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!bus->is_active) {
+        fprintf(stderr, "[DEBUG] uvbus_send: Not active (is_active=%d)\n", bus->is_active);
+        fflush(stderr);
         return UVBUS_ERROR_NOT_CONNECTED;
     }
-    
+
+    fprintf(stderr, "[DEBUG] uvbus_send: Calling transport->send\n");
+    fflush(stderr);
     if (bus->transport->vtable->send) {
         return bus->transport->vtable->send(bus->transport, data, size);
     }
-    
+
     return UVBUS_ERROR;
 }
 

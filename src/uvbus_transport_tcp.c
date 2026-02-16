@@ -103,7 +103,13 @@ static int parse_tcp_address(const char* address, char** host, int* port) {
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
     
-    uvbus_transport_t* transport = (uvbus_transport_t*)stream->data;
+    uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)stream->data;
+    if (!client) {
+        uvrpc_free(buf->base);
+        return;
+    }
+    
+    uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
     if (!transport) {
         uvrpc_free(buf->base);
         return;
@@ -120,10 +126,11 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
     }
     
     if (nread > 0 && transport->recv_cb) {
+        fprintf(stderr, "[DEBUG] on_client_read: Received %zd bytes\n", nread);
+        fflush(stderr);
         /* Determine if this is server mode or client mode */
         if (transport->is_server) {
             /* Server mode: pass client context and server context */
-            uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)stream->data;
             transport->recv_cb((const uint8_t*)buf->base, nread, client, transport->callback_ctx);
         } else {
             /* Client mode: pass NULL for client context (not needed) */
@@ -182,7 +189,7 @@ static void on_server_connection(uv_stream_t* server, int status) {
     }
     
     uv_tcp_init(transport->loop, &client->tcp_handle);
-    client->tcp_handle.data = transport;
+    client->tcp_handle.data = client;
     
     /* Accept connection */
     if (uv_accept(server, (uv_stream_t*)&client->tcp_handle) == 0) {
@@ -241,28 +248,35 @@ static void on_server_close(uv_handle_t* handle) {
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
     fprintf(stderr, "[DEBUG] on_client_connect: Called with status %d\n", status);
-    
+
     if (!req) {
         fprintf(stderr, "[DEBUG] on_client_connect: req is NULL\n");
         return;
     }
-    
+
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
     if (!transport) {
         fprintf(stderr, "[DEBUG] on_client_connect: transport is NULL\n");
         return;
     }
-    
+
     if (status == 0) {
         fprintf(stderr, "[DEBUG] on_client_connect: Connection successful\n");
         transport->is_connected = 1;
-        
+
         /* Start reading */
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         if (client) {
             uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read);
         }
-        
+
+        /* Set bus is_active flag - this is critical for sending to work */
+        if (transport->parent_bus) {
+            transport->parent_bus->is_active = 1;
+            fprintf(stderr, "[DEBUG] on_client_connect: Set bus->is_active=1\n");
+            fflush(stderr);
+        }
+
         if (transport->connect_cb) {
             fprintf(stderr, "[DEBUG] on_client_connect: Calling transport connect_cb\n");
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
@@ -461,6 +475,8 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
     }
     
     if (!transport->is_connected) {
+        fprintf(stderr, "[DEBUG] tcp_send: Not connected\n");
+        fflush(stderr);
         return UVBUS_ERROR_NOT_CONNECTED;
     }
     
@@ -472,44 +488,50 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
             if (!req) {
                 continue;
             }
-            
+
             uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
             if (!data_copy) {
                 uvrpc_free(req);
                 continue;
             }
             memcpy(data_copy, data, size);
-            
+
             uv_buf_t buf = uv_buf_init((char*)data_copy, size);
             req->data = data_copy;
-            
+
             uv_write(req, (uv_stream_t*)&server->clients[i]->tcp_handle, &buf, 1, on_write);
         }
     } else {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         /* Send to server */
+        fprintf(stderr, "[DEBUG] tcp_send: Sending %zu bytes to server\n", size);
+        fflush(stderr);
         uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
         if (!req) {
             return UVBUS_ERROR_NO_MEMORY;
         }
-        
+
         uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
         if (!data_copy) {
             uvrpc_free(req);
             return UVBUS_ERROR_NO_MEMORY;
         }
         memcpy(data_copy, data, size);
-        
+
         uv_buf_t buf = uv_buf_init((char*)data_copy, size);
         req->data = data_copy;
-        
+
         if (uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write) != 0) {
+            fprintf(stderr, "[DEBUG] tcp_send: uv_write failed\n");
+            fflush(stderr);
             uvrpc_free(data_copy);
             uvrpc_free(req);
             return UVBUS_ERROR_IO;
         }
+        fprintf(stderr, "[DEBUG] tcp_send: uv_write succeeded\n");
+        fflush(stderr);
     }
-    
+
     return UVBUS_OK;
 }
 
