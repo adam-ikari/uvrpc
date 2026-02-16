@@ -227,6 +227,11 @@ static int inproc_listen(void* impl_ptr, const char* address) {
     transport->impl.inproc_server = (void*)endpoint;
     transport->is_connected = 1;
     
+    /* Set bus as active */
+    if (transport->parent_bus) {
+        transport->parent_bus->is_active = 1;
+    }
+    
     return UVBUS_OK;
 }
 
@@ -273,6 +278,11 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     
     transport->impl.inproc_client = (void*)client;
     transport->is_connected = 1;
+    
+    /* Set bus as active */
+    if (transport->parent_bus) {
+        transport->parent_bus->is_active = 1;
+    }
     
     if (transport->connect_cb) {
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
@@ -341,9 +351,9 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
         if (client->server_endpoint) {
             /* Send to server */
             inproc_endpoint_t* endpoint = client->server_endpoint;
-            if (transport->recv_cb) {
+            if (endpoint->recv_cb) {
                 /* Pass client as client_ctx, and server context as server_ctx */
-                transport->recv_cb(data, size, client, transport->callback_ctx);
+                endpoint->recv_cb(data, size, client, endpoint->callback_ctx);
             }
         }
     }
@@ -367,9 +377,10 @@ static int inproc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
-    if (transport->recv_cb) {
-        /* Pass client as client_ctx, and server context as server_ctx */
-        transport->recv_cb(data, size, client, transport->callback_ctx);
+    /* Call the client's callback, not the server's callback */
+    if (client->recv_cb) {
+        /* Pass client as client_ctx, and client's callback_ctx as server_ctx */
+        client->recv_cb(data, size, client, client->callback_ctx);
     }
     
     return UVBUS_OK;
