@@ -139,6 +139,14 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
         if (client->read_pos + nread <= sizeof(client->read_buffer)) {
             memcpy(client->read_buffer + client->read_pos, buf->base, nread);
             client->read_pos += nread;
+        } else {
+            /* Buffer overflow - reset and log error */
+            fprintf(stderr, "[TCP READ] Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu\n",
+                    client->read_pos, nread, sizeof(client->read_buffer));
+            fflush(stderr);
+            client->read_pos = 0;
+            uvrpc_free(buf->base);
+            return;
         }
 
         /* Process complete frames */
@@ -195,9 +203,11 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
             }
 
             /* Remove processed frame from buffer */
-            memmove(client->read_buffer, client->read_buffer + total_size,
-                    client->read_pos - total_size);
-            client->read_pos -= total_size;
+            size_t remaining = client->read_pos - total_size;
+            if (remaining > 0 && remaining < sizeof(client->read_buffer)) {
+                memmove(client->read_buffer, client->read_buffer + total_size, remaining);
+            }
+            client->read_pos = remaining;
         }
     }
 
