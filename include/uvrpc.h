@@ -13,6 +13,13 @@
 #include <stddef.h>
 #include "uvbus.h"
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVRPC_DEBUG
+#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVRPC_LOG(fmt, ...) ((void)0)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

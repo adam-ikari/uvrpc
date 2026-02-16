@@ -10,6 +10,13 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVRPC_DEBUG
+#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVRPC_LOG(fmt, ...) ((void)0)
+#endif
+
 typedef struct uvbus_tcp_client uvbus_tcp_client_t;
 typedef struct uvbus_tcp_server uvbus_tcp_server_t;
 
@@ -114,6 +121,8 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         uvrpc_free(buf->base);
         return;
     }
+    
+UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport->recv_cb);
 
     if (nread < 0) {
         if (nread != UV_EOF) {
@@ -140,9 +149,13 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                                   (uint32_t)client->read_buffer[2] << 8 |
                                   (uint32_t)client->read_buffer[3];
 
+            fprintf(stderr, "[TCP READ] Frame size: %u (read_pos=%zu)\n", frame_size, client->read_pos);
+            fflush(stderr);
+
             /* Validate frame size */
             if (frame_size == 0 || frame_size > 1024*1024) {
                 /* Invalid frame size, reset buffer */
+                fprintf(stderr, "[TCP READ] Invalid frame size, resetting buffer\n");
                 client->read_pos = 0;
                 break;
             }
@@ -155,33 +168,30 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 
             /* Extract frame data (skip 4-byte length prefix) */
             if (transport->recv_cb) {
-                fprintf(stderr, "[DEBUG] on_client_read: Processing frame of %u bytes, calling recv_cb=%p\n", frame_size, (void*)transport->recv_cb);
-                fprintf(stderr, "[DEBUG] on_client_read: data=%p, size=%u, client=%p, callback_ctx=%p\n",
-                        client->read_buffer + 4, frame_size, client, transport->callback_ctx);
-                fflush(stderr);
-
-                /* Safety check: verify function pointer is in reasonable range */
-                uintptr_t func_addr = (uintptr_t)transport->recv_cb;
-                if (func_addr < 0x1000 || func_addr > 0x7fffffffffff) {
-                    fprintf(stderr, "[ERROR] on_client_read: Invalid function pointer %p!\n", (void*)func_addr);
-                    fflush(stderr);
-                    client->read_pos = 0;  /* Reset buffer to prevent further corruption */
+                /* Copy frame data to heap so callback can safely access it */
+                uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
+                if (!frame_copy) {
+                    UVRPC_LOG("ERROR: Failed to allocate %u bytes for frame", frame_size);
+                    if (transport->error_cb) {
+                        transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
+                    }
+                    client->read_pos = 0;
                     break;
                 }
+                memcpy(frame_copy, client->read_buffer + 4, frame_size);
 
                 /* Determine if this is server mode or client mode */
                 if (transport->is_server) {
                     /* Server mode: pass client context and server context */
-                    transport->recv_cb(client->read_buffer + 4, frame_size, client, transport->callback_ctx);
+                    transport->recv_cb(frame_copy, frame_size, client, transport->callback_ctx);
                 } else {
                     /* Client mode: pass NULL for client context (not needed) */
-                    transport->recv_cb(client->read_buffer + 4, frame_size, NULL, transport->callback_ctx);
+                    transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
                 }
-                fprintf(stderr, "[DEBUG] on_client_read: recv_cb returned\n");
-                fflush(stderr);
-            } else {
-                fprintf(stderr, "[DEBUG] on_client_read: No recv_cb!\n");
-                fflush(stderr);
+                
+                /* Always free the frame copy after callback returns
+                 * This ensures cleanup even if callback forgets to free it */
+                uvrpc_free(frame_copy);
             }
 
             /* Remove processed frame from buffer */
@@ -300,21 +310,16 @@ static void on_server_close(uv_handle_t* handle) {
 
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
-    fprintf(stderr, "[DEBUG] on_client_connect: Called with status %d\n", status);
-
     if (!req) {
-        fprintf(stderr, "[DEBUG] on_client_connect: req is NULL\n");
         return;
     }
 
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
     if (!transport) {
-        fprintf(stderr, "[DEBUG] on_client_connect: transport is NULL\n");
         return;
     }
 
     if (status == 0) {
-        fprintf(stderr, "[DEBUG] on_client_connect: Connection successful\n");
         transport->is_connected = 1;
 
         /* Start reading */
@@ -326,18 +331,12 @@ static void on_client_connect(uv_connect_t* req, int status) {
         /* Set bus is_active flag - this is critical for sending to work */
         if (transport->parent_bus) {
             transport->parent_bus->is_active = 1;
-            fprintf(stderr, "[DEBUG] on_client_connect: Set bus->is_active=1\n");
-            fflush(stderr);
         }
 
         if (transport->connect_cb) {
-            fprintf(stderr, "[DEBUG] on_client_connect: Calling transport connect_cb\n");
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
-        } else {
-            fprintf(stderr, "[DEBUG] on_client_connect: No transport connect_cb\n");
         }
     } else {
-        fprintf(stderr, "[DEBUG] on_client_connect: Connection failed with status %d\n", status);
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }
@@ -467,7 +466,7 @@ static int tcp_connect(void* impl_ptr, const char* address) {
     
     /* Initialize TCP handle */
     uv_tcp_init(transport->loop, &client->tcp_handle);
-    client->tcp_handle.data = transport;
+    client->tcp_handle.data = client;  /* Set to client so on_client_read can find it */
     
     /* Set up server address */
     struct sockaddr_in addr;
@@ -528,8 +527,6 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
     }
 
     if (!transport->is_connected) {
-        fprintf(stderr, "[DEBUG] tcp_send: Not connected\n");
-        fflush(stderr);
         return UVBUS_ERROR_NOT_CONNECTED;
     }
 
@@ -574,8 +571,6 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
     } else {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         /* Send to server */
-        fprintf(stderr, "[DEBUG] tcp_send: Sending %zu bytes (total %zu with frame header) to server\n", size, total_size);
-        fflush(stderr);
         uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
         if (!req) {
             uvrpc_free(frame_data);
@@ -586,14 +581,10 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
         req->data = frame_data;
 
         if (uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write) != 0) {
-            fprintf(stderr, "[DEBUG] tcp_send: uv_write failed\n");
-            fflush(stderr);
             uvrpc_free(frame_data);
             uvrpc_free(req);
             return UVBUS_ERROR_IO;
         }
-        fprintf(stderr, "[DEBUG] tcp_send: uv_write succeeded\n");
-        fflush(stderr);
     }
 
     /* Note: frame_data is now owned by the write request, don't free it here */

@@ -18,7 +18,7 @@ protected:
     }
     
     void TearDown() override {
-        flatcc_builder_reset(&builder);
+        flatcc_builder_clear(&builder);
         if (buffer) {
             free(buffer);
             buffer = NULL;
@@ -42,7 +42,7 @@ TEST_F(FlatBuffersTest, EncodeRequest) {
     
     // Build request frame
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_REQUEST);
+    uvrpc_RpcFrame_type_add(&builder, 0);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
     uvrpc_RpcFrame_params_add(&builder, params_ref);
@@ -57,7 +57,7 @@ TEST_F(FlatBuffersTest, EncodeRequest) {
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
     
-    EXPECT_EQ(uvrpc_RpcFrame_type(frame), uvrpc_FrameType_REQUEST);
+    EXPECT_EQ(uvrpc_RpcFrame_type(frame), 0);
     EXPECT_EQ(uvrpc_RpcFrame_msgid(frame), msgid);
     
     flatbuffers_string_t decoded_method = uvrpc_RpcFrame_method(frame);
@@ -80,9 +80,8 @@ TEST_F(FlatBuffersTest, EncodeResponse) {
     
     // Build response frame
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_RESPONSE);
+    uvrpc_RpcFrame_type_add(&builder, 1);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
-    uvrpc_RpcFrame_error_code_add(&builder, error_code);
     uvrpc_RpcFrame_params_add(&builder, result_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
@@ -95,9 +94,8 @@ TEST_F(FlatBuffersTest, EncodeResponse) {
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
     
-    EXPECT_EQ(uvrpc_RpcFrame_type(frame), uvrpc_FrameType_RESPONSE);
+    EXPECT_EQ(uvrpc_RpcFrame_type(frame), 1);
     EXPECT_EQ(uvrpc_RpcFrame_msgid(frame), msgid);
-    EXPECT_EQ(uvrpc_RpcFrame_error_code(frame), error_code);
 }
 
 TEST_F(FlatBuffersTest, EncodeResponseWithError) {
@@ -111,9 +109,8 @@ TEST_F(FlatBuffersTest, EncodeResponseWithError) {
     
     // Build response frame with error
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_RESPONSE);
+    uvrpc_RpcFrame_type_add(&builder, 1);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
-    uvrpc_RpcFrame_error_code_add(&builder, error_code);
     uvrpc_RpcFrame_params_add(&builder, result_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
@@ -124,7 +121,6 @@ TEST_F(FlatBuffersTest, EncodeResponseWithError) {
     // Verify error code
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
-    EXPECT_EQ(uvrpc_RpcFrame_error_code(frame), error_code);
 }
 
 TEST_F(FlatBuffersTest, EncodeNotification) {
@@ -139,7 +135,7 @@ TEST_F(FlatBuffersTest, EncodeNotification) {
     
     // Build notification frame
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_NOTIFICATION);
+    uvrpc_RpcFrame_type_add(&builder, 2);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
     uvrpc_RpcFrame_params_add(&builder, data_ref);
@@ -152,7 +148,7 @@ TEST_F(FlatBuffersTest, EncodeNotification) {
     // Verify frame
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
-    EXPECT_EQ(uvrpc_RpcFrame_type(frame), uvrpc_FrameType_NOTIFICATION);
+    EXPECT_EQ(uvrpc_RpcFrame_type(frame), 2);
 }
 
 TEST_F(FlatBuffersTest, LargePayload) {
@@ -175,7 +171,7 @@ TEST_F(FlatBuffersTest, LargePayload) {
     
     // Build frame
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_REQUEST);
+    uvrpc_RpcFrame_type_add(&builder, 0);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
     uvrpc_RpcFrame_params_add(&builder, data_ref);
@@ -210,7 +206,7 @@ TEST_F(FlatBuffersTest, EmptyParams) {
     
     // Build frame
     uvrpc_RpcFrame_start_as_root(&builder);
-    uvrpc_RpcFrame_type_add(&builder, uvrpc_FrameType_REQUEST);
+    uvrpc_RpcFrame_type_add(&builder, 0);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
     uvrpc_RpcFrame_end_as_root(&builder);

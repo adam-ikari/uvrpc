@@ -28,6 +28,7 @@ struct uvrpc_client {
     int is_connected;
     uvrpc_msgid_ctx_t* msgid_ctx;  /* Message ID generator */
     uvrpc_perf_mode_t performance_mode;  /* Performance mode: low latency vs high throughput */
+    int in_callback;  /* Flag to prevent re-entry into callbacks */
 
     /* User connect callback */
     uvrpc_connect_callback_t user_connect_callback;
@@ -74,28 +75,21 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     (void)client_ctx;  /* Not used for client mode */
     uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
 
-    fprintf(stderr, "[DEBUG] client_recv_callback: Called with client=%p, client->uvbus=%p\n", client, client ? client->uvbus : NULL);
-    fflush(stderr);
-
     if (!client || !client->uvbus) {
-        fprintf(stderr, "[ERROR] client_recv_callback: Invalid client or uvbus!\n");
-        fflush(stderr);
+        uvrpc_free(data);
         return;
     }
-
-    /* Check recv_cb value */
-    if (client->uvbus->transport && client->uvbus->transport->recv_cb) {
-        fprintf(stderr, "[DEBUG] client_recv_callback: client->uvbus->transport->recv_cb=%p\n", client->uvbus->transport->recv_cb);
-        fflush(stderr);
+    
+    /* Prevent re-entry into callback */
+    if (client->in_callback) {
+        UVRPC_LOG("ERROR: Re-entry detected, dropping response");
+        uvrpc_free(data);
+        return;
     }
-
-    fprintf(stderr, "[DEBUG] client_recv_callback: Called with size=%zu\n", size);
-    fflush(stderr);
+    client->in_callback = 1;
 
     /* Get frame type */
     int frame_type = uvrpc_get_frame_type(data, size);
-    fprintf(stderr, "[DEBUG] client_recv_callback: frame_type=%d\n", frame_type);
-    fflush(stderr);
     
     if (frame_type < 0) {
         uvrpc_free(data);
@@ -130,6 +124,9 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             resp.result_size = 0;
             resp.user_data = NULL;
 
+            /* Remove from ring buffer before calling callback (to avoid re-entry) */
+            client->pending_callbacks[idx] = NULL;
+
             /* Call callback */
             if (pending->callback) {
                 pending->callback(&resp, pending->ctx);
@@ -140,8 +137,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
                 uvrpc_free(error_message);
             }
 
-            /* Remove from ring buffer */
-            client->pending_callbacks[idx] = NULL;
+            /* Free pending callback structure */
             uvrpc_free(pending);
         }
 
@@ -161,7 +157,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     /* Find pending callback using direct indexing with bitmask */
     uint32_t idx = msgid & (client->max_pending_callbacks - 1);
     pending_callback_t* pending = client->pending_callbacks[idx];
-
+    
     /* Check if callback exists and matches msgid and generation */
     if (pending && pending->msgid == msgid && pending->generation == client->generation) {
         /* Create response structure */
@@ -183,16 +179,12 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         resp.result_size = result_size;
         resp.user_data = NULL;
 
+        /* Remove from ring buffer before calling callback (to avoid re-entry) */
+        client->pending_callbacks[idx] = NULL;
+
         /* Call callback */
         if (pending->callback) {
-            fprintf(stderr, "[DEBUG] client_recv_callback: Calling callback for msgid=%u\n", msgid);
-            fflush(stderr);
             pending->callback(&resp, pending->ctx);
-            fprintf(stderr, "[DEBUG] client_recv_callback: Callback returned\n");
-            fflush(stderr);
-        } else {
-            fprintf(stderr, "[DEBUG] client_recv_callback: No callback for msgid=%u\n", msgid);
-            fflush(stderr);
         }
 
         /* Free copied result AFTER callback returns */
@@ -200,8 +192,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             uvrpc_free(result_copy);
         }
 
-        /* Remove from ring buffer */
-        client->pending_callbacks[idx] = NULL;
+        /* Free pending callback structure */
         uvrpc_free(pending);
 
         /* Decrease concurrent count */
@@ -209,6 +200,9 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     }
 
     uvrpc_free(data);
+    
+    /* Clear re-entry flag */
+    client->in_callback = 0;
 }
 
 /* Create client */
@@ -339,8 +333,6 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
     
     if (client->is_connected) return UVRPC_OK;
     
-    fprintf(stderr, "[DEBUG] uvrpc_client_connect_with_callback: Starting connection\n");
-    
     /* Store user callback */
     client->user_connect_callback = callback;
     client->user_connect_ctx = ctx;
@@ -350,14 +342,11 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
     uvbus->config.connect_cb = client_connect_callback;
     uvbus->config.callback_ctx = client;
     
-    fprintf(stderr, "[DEBUG] uvrpc_client_connect_with_callback: Calling uvbus_connect\n");
     uvbus_error_t err = uvbus_connect(uvbus);
     if (err != UVBUS_OK) {
-        fprintf(stderr, "[DEBUG] uvrpc_client_connect_with_callback: uvbus_connect returned error %d\n", err);
         return UVRPC_ERROR_TRANSPORT;
     }
     
-    fprintf(stderr, "[DEBUG] uvrpc_client_connect_with_callback: uvbus_connect returned OK\n");
     /* Note: is_connected will be set in the async callback */
     return UVRPC_OK;
 }
@@ -484,24 +473,13 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         }
     }
 
-    /* Send request */
-    if (client->uvbus) {
-        fprintf(stderr, "[DEBUG] client_call: Sending request via uvbus\n");
-        fflush(stderr);
-        uvbus_send(client->uvbus, req_data, req_size);
-        fprintf(stderr, "[DEBUG] client_call: uvbus_send returned\n");
-        fflush(stderr);
-    }
-
-    /* Send request */
+    /* Send request (must be after callback registration to avoid race conditions) */
     if (client->uvbus) {
         uvbus_send(client->uvbus, req_data, req_size);
     }
 
     uvrpc_free(req_data);
 
-    fprintf(stderr, "[DEBUG] client_call: Returning OK\n");
-    fflush(stderr);
     return UVRPC_OK;
 }
 

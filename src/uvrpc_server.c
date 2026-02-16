@@ -20,9 +20,9 @@ static void write_callback(uv_write_t* req, int status) {
     (void)status;
     if (req) {
         if (req->data) {
-            free(req->data);
+            uvrpc_free(req->data);
         }
-        free(req);
+        uvrpc_free(req);
     }
 }
 
@@ -31,7 +31,7 @@ typedef struct handler_entry {
     char* name;
     uvrpc_handler_t handler;
     void* ctx;
-    UT_hash_handle hh;
+    UT_hash_handle hh;  /* uthash handle */
 } handler_entry_t;
 
 /* Pending request - for ring buffer */
@@ -60,29 +60,43 @@ struct uvrpc_server {
     uint64_t total_responses;
 };
 
-/* Transport receive callback */
-
+/* Server receive callback */
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
+    (void)client_ctx;
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
     
-    if (!server) {
-        fprintf(stderr, "Error: Cannot get server context\n");
-        return;
-    }
-    
+    if (!server) return;
+
     /* Decode request */
-    uint32_t msgid;
+    uint32_t msgid = 0;
     char* method = NULL;
     const uint8_t* params = NULL;
     size_t params_size = 0;
     
     if (uvrpc_decode_request(data, size, &msgid, &method, &params, &params_size) != UVRPC_OK) {
+        UVRPC_LOG("Failed to decode request (size=%zu)", size);
         return;
     }
     
-    /* Find handler */
+    /* Create lowercase copy for case-insensitive matching */
+    char* method_lower = NULL;
+    if (method) {
+        method_lower = uvrpc_strdup(method);
+        if (method_lower) {
+            for (char* p = method_lower; *p; p++) {
+                *p = tolower((unsigned char)*p);
+            }
+        }
+    }
+    
+    /* Find handler using lowercase method name */
     handler_entry_t* entry = NULL;
-    HASH_FIND_STR(server->handlers, method, entry);
+    HASH_FIND_STR(server->handlers, method_lower, entry);
+    
+    /* Free the lowercase copy */
+    if (method_lower) {
+        uvrpc_free(method_lower);
+    }
     
     if (entry && entry->handler) {
         /* Increment request counter */
@@ -98,8 +112,15 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         req.client_ctx = client_ctx;
         req.user_data = NULL;
         
+        fprintf(stderr, "[SERVER] Calling handler for method='%s', params_size=%zu, handler=%p\n",
+                method, params_size, entry->handler);
+        fflush(stderr);
+        
         /* Call handler */
         entry->handler(&req, entry->ctx);
+        
+        fprintf(stderr, "[SERVER] Handler returned\n");
+        fflush(stderr);
 
         /* Free decoded method */
         if (method) uvrpc_free(method);
@@ -290,19 +311,22 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
     entry = uvrpc_calloc(1, sizeof(handler_entry_t));
     if (!entry) return UVRPC_ERROR_NO_MEMORY;
 
-    entry->name = uvrpc_strdup(method);
-    if (!entry->name) {
+    /* Create lowercase copy for case-insensitive lookup */
+    char* method_lower = uvrpc_strdup(method);
+    if (!method_lower) {
         uvrpc_free(entry);
         return UVRPC_ERROR_NO_MEMORY;
     }
+    
+    for (char* p = method_lower; *p; p++) {
+        *p = tolower((unsigned char)*p);
+    }
+    
+    entry->name = method_lower;  /* Store lowercase name in hash table */
     entry->handler = handler;
     entry->ctx = ctx;
     
     HASH_ADD_STR(server->handlers, name, entry);
-    
-    /* Verify registration */
-    handler_entry_t* verify = NULL;
-    HASH_FIND_STR(server->handlers, method, verify);
     
     return UVRPC_OK;
 }
@@ -324,12 +348,8 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         uvbus_t* uvbus = server->uvbus;
         if (uvbus && uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx) == UVBUS_OK) {
             server->total_responses++;
-        } else {
-            fprintf(stderr, "Failed to send response via UVBus\n");
         }
         uvrpc_free(resp_data);
-    } else {
-        fprintf(stderr, "Failed to encode response\n");
     }
 }
 

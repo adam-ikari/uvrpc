@@ -39,7 +39,7 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
         *out_data = buf;
     }
 
-    flatcc_builder_reset(&builder);
+    flatcc_builder_clear(&builder);
     return UVRPC_OK;
 }
 
@@ -70,7 +70,7 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
         *out_data = buf;
     }
 
-    flatcc_builder_reset(&builder);
+    flatcc_builder_clear(&builder);
     return UVRPC_OK;
 }
 
@@ -146,7 +146,7 @@ int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* error_mes
     size_t error_data_size = 4 + (error_message ? strlen(error_message) + 1 : 1);
     uint8_t* error_data = (uint8_t*)uvrpc_alloc(error_data_size);
     if (!error_data) {
-        flatcc_builder_reset(&builder);
+        flatcc_builder_clear(&builder);
         return UVRPC_ERROR_NO_MEMORY;
     }
 
@@ -178,7 +178,7 @@ int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* error_mes
         *out_data = buf;
     }
 
-    flatcc_builder_reset(&builder);
+    flatcc_builder_clear(&builder);
     return UVRPC_OK;
 }
 
@@ -220,30 +220,16 @@ int uvrpc_decode_error(const uint8_t* data, size_t size,
 
 /* Get frame type */
 int uvrpc_get_frame_type(const uint8_t* data, size_t size) {
-    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Called with data=%p, size=%zu\n", data, size);
-    fflush(stderr);
-
     if (!data || size < 4) {
-        fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Invalid parameters\n");
-        fflush(stderr);
         return -1;
     }
 
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
-    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: frame=%p\n", frame);
-    fflush(stderr);
-
     if (!frame) {
-        fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Failed to parse frame\n");
-        fflush(stderr);
         return -1;
     }
 
-    int type = (int)uvrpc_RpcFrame_type(frame);
-    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: type=%d\n", type);
-    fflush(stderr);
-
-    return type;
+    return (int)uvrpc_RpcFrame_type(frame);
 }
 
 /* Free decoded data */

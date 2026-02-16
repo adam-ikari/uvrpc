@@ -212,23 +212,14 @@ void uvbus_stop(uvbus_t* bus) {
 }
 
 uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
-    fprintf(stderr, "[DEBUG] uvbus_send: Called with size=%zu\n", size);
-    fflush(stderr);
-
     if (!bus || !bus->transport || !bus->transport->vtable) {
-        fprintf(stderr, "[DEBUG] uvbus_send: Invalid parameters\n");
-        fflush(stderr);
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
     if (!bus->is_active) {
-        fprintf(stderr, "[DEBUG] uvbus_send: Not active (is_active=%d)\n", bus->is_active);
-        fflush(stderr);
         return UVBUS_ERROR_NOT_CONNECTED;
     }
 
-    fprintf(stderr, "[DEBUG] uvbus_send: Calling transport->send\n");
-    fflush(stderr);
     if (bus->transport->vtable->send) {
         return bus->transport->vtable->send(bus->transport, data, size);
     }
@@ -254,13 +245,10 @@ uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void
 
 uvbus_error_t uvbus_connect(uvbus_t* bus) {
     if (!bus || !bus->transport || !bus->transport->vtable) {
-        fprintf(stderr, "[DEBUG] uvbus_connect: Invalid param (bus=%p, transport=%p, vtable=%p)\n", 
-                bus, bus ? bus->transport : NULL, bus && bus->transport ? bus->transport->vtable : NULL);
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
     if (bus->transport->is_server) {
-        fprintf(stderr, "[DEBUG] uvbus_connect: Cannot connect in server mode\n");
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
@@ -269,7 +257,6 @@ uvbus_error_t uvbus_connect(uvbus_t* bus) {
         return bus->transport->vtable->connect(bus->transport, bus->transport->address);
     }
     
-    fprintf(stderr, "[DEBUG] uvbus_connect: No connect function in vtable\n");
     return UVBUS_ERROR;
 }
 
@@ -359,13 +346,12 @@ void uvbus_free(uvbus_t* bus) {
     
     /* Free transport */
     if (bus->transport) {
-        if (bus->transport->address) {
-            uvrpc_free(bus->transport->address);
-        }
-        
         if (bus->transport->vtable && bus->transport->vtable->free) {
             bus->transport->vtable->free(bus->transport);
         } else {
+            if (bus->transport->address) {
+                uvrpc_free(bus->transport->address);
+            }
             uvrpc_free(bus->transport);
         }
     }

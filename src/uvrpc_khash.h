@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include "../include/uvrpc_allocator.h"
 
 #if UINTPTR_MAX == 0xffffffffUL
 #define KH_INT32_T uint32_t
@@ -82,9 +83,9 @@ static inline khint32_t __ac_hash_resize(khash_t *h, uint32_t *new_buckets, uint
         }
     }
     memset(h->flags, 0xaa, __ac_fsize(h->n_buckets));
-    free(h->flags);
-    free(new_flags);
-    free(new_buckets);
+    uvrpc_free(h->flags);
+    uvrpc_free(new_flags);
+    uvrpc_free(new_buckets);
     return 0;
 }
 

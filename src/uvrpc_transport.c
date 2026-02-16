@@ -229,7 +229,7 @@ static void ipc_connection_callback(uv_stream_t* server, int status) {
         transport->client_connections = client_conn;
     } else {
         uv_close((uv_handle_t*)&client_conn->handle.pipe_handle, NULL);
-        free(client_conn);
+        uvrpc_free(client_conn);
     }
 }
 
@@ -549,7 +549,7 @@ void uvrpc_transport_free(uvrpc_transport_t* transport) {
     udp_peer_t* peer = transport->udp_peers;
     while (peer) {
         udp_peer_t* next = peer->next;
-        free(peer);
+        uvrpc_free(peer);
         peer = next;
     }
     transport->udp_peers = NULL;
