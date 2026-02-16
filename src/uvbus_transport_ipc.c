@@ -119,6 +119,11 @@ static void on_client_connect(uv_connect_t* req, int status) {
     if (status == 0) {
         transport->is_connected = 1;
         
+        /* Set bus as active */
+        if (transport->parent_bus) {
+            transport->parent_bus->is_active = 1;
+        }
+        
         /* Start reading */
         uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)transport->impl.ipc_client;
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
@@ -262,6 +267,11 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     server->is_listening = 1;
     transport->is_connected = 1;
     transport->impl.ipc_server = (void*)server;
+    
+    /* Set bus as active - server is ready to accept connections */
+    if (transport->parent_bus) {
+        transport->parent_bus->is_active = 1;
+    }
     
     return UVBUS_OK;
 }
