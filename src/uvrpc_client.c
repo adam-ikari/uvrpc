@@ -74,8 +74,28 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     (void)client_ctx;  /* Not used for client mode */
     uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
 
+    fprintf(stderr, "[DEBUG] client_recv_callback: Called with client=%p, client->uvbus=%p\n", client, client ? client->uvbus : NULL);
+    fflush(stderr);
+
+    if (!client || !client->uvbus) {
+        fprintf(stderr, "[ERROR] client_recv_callback: Invalid client or uvbus!\n");
+        fflush(stderr);
+        return;
+    }
+
+    /* Check recv_cb value */
+    if (client->uvbus->transport && client->uvbus->transport->recv_cb) {
+        fprintf(stderr, "[DEBUG] client_recv_callback: client->uvbus->transport->recv_cb=%p\n", client->uvbus->transport->recv_cb);
+        fflush(stderr);
+    }
+
+    fprintf(stderr, "[DEBUG] client_recv_callback: Called with size=%zu\n", size);
+    fflush(stderr);
+
     /* Get frame type */
     int frame_type = uvrpc_get_frame_type(data, size);
+    fprintf(stderr, "[DEBUG] client_recv_callback: frame_type=%d\n", frame_type);
+    fflush(stderr);
     
     if (frame_type < 0) {
         uvrpc_free(data);
@@ -165,10 +185,17 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
 
         /* Call callback */
         if (pending->callback) {
+            fprintf(stderr, "[DEBUG] client_recv_callback: Calling callback for msgid=%u\n", msgid);
+            fflush(stderr);
             pending->callback(&resp, pending->ctx);
+            fprintf(stderr, "[DEBUG] client_recv_callback: Callback returned\n");
+            fflush(stderr);
+        } else {
+            fprintf(stderr, "[DEBUG] client_recv_callback: No callback for msgid=%u\n", msgid);
+            fflush(stderr);
         }
 
-        /* Free copied result */
+        /* Free copied result AFTER callback returns */
         if (result_copy) {
             uvrpc_free(result_copy);
         }

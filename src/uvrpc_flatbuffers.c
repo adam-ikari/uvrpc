@@ -220,16 +220,30 @@ int uvrpc_decode_error(const uint8_t* data, size_t size,
 
 /* Get frame type */
 int uvrpc_get_frame_type(const uint8_t* data, size_t size) {
+    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Called with data=%p, size=%zu\n", data, size);
+    fflush(stderr);
+
     if (!data || size < 4) {
+        fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Invalid parameters\n");
+        fflush(stderr);
         return -1;
     }
 
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: frame=%p\n", frame);
+    fflush(stderr);
+
     if (!frame) {
+        fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: Failed to parse frame\n");
+        fflush(stderr);
         return -1;
     }
 
-    return (int)uvrpc_RpcFrame_type(frame);
+    int type = (int)uvrpc_RpcFrame_type(frame);
+    fprintf(stderr, "[DEBUG] uvrpc_get_frame_type: type=%d\n", type);
+    fflush(stderr);
+
+    return type;
 }
 
 /* Free decoded data */
