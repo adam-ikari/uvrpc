@@ -62,9 +62,8 @@ struct uvrpc_server {
 
 /* Server receive callback */
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
-    (void)client_ctx;
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
-    
+
     if (!server) return;
 
     /* Decode request */
@@ -72,12 +71,12 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     char* method = NULL;
     const uint8_t* params = NULL;
     size_t params_size = 0;
-    
+
     if (uvrpc_decode_request(data, size, &msgid, &method, &params, &params_size) != UVRPC_OK) {
         UVRPC_LOG("Failed to decode request (size=%zu)", size);
         return;
     }
-    
+
     /* Create lowercase copy for case-insensitive matching */
     char* method_lower = NULL;
     if (method) {
