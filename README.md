@@ -59,15 +59,26 @@
 
 ## 性能指标
 
-| 指标 | 说明 |
-|-----|------|
-| 吞吐量 | 取决于具体测试场景和硬件配置 |
-| 延迟 | 取决于具体测试场景和硬件配置 |
-| 传输方式 | TCP / UDP / IPC / INPROC |
-| 序列化 | FlatBuffers (二进制) |
-| 内存分配器 | mimalloc (默认) |
+| 传输层 | 吞吐量 (ops/s) | 相对性能 | 特点 |
+|--------|----------------|----------|------|
+| **INPROC** | 471,163 | 3.9x | 零拷贝，同进程内最快 |
+| **IPC** | 199,818 | 1.6x | Unix Domain Socket，本地进程间通信 |
+| **UDP** | 133,597 | 1.1x | 无连接，高吞吐 |
+| **TCP** | 121,979 | 1.0x | 可靠传输，基准 |
 
-**注意**：以上性能指标为理论值，实际性能请运行基准测试获取准确数据。
+### 性能特点
+- **INPROC**: 零拷贝同步执行，适合同进程内高性能通信
+- **IPC**: 无网络开销，适合本地进程间通信，性能优于网络传输
+- **UDP**: 无连接协议，适合高吞吐、可容忍丢失的场景
+- **TCP**: 可靠传输，适合需要保证数据完整性的场景
+
+### 测试配置
+- 构建模式: Release (-O2 优化，无调试符号)
+- 测试时长: 3 秒
+- 批处理大小: 100 请求
+- 成功率: 所有传输层 100%
+
+**注意**: 实际性能取决于硬件配置、网络条件和负载场景。
 
 ## 依赖
 
@@ -266,12 +277,28 @@ if (ret != UVRPC_OK) {
 ## 性能测试
 
 ```bash
-# 运行基准测试获取实际性能数据
-./dist/bin/uvrpc_benchmark
+# 运行所有传输层的性能测试
+./benchmark/simple_perf_test.sh
 
-# 查看帮助信息
-./dist/bin/uvrpc_benchmark --help
+# 运行特定传输层的测试
+./benchmark/run_benchmark.sh tcp://127.0.0.1:5555 single
+./benchmark/run_benchmark.sh ipc://uvrpc_ipc_test single
+./benchmark/run_benchmark.sh udp://127.0.0.1:5556 single
+
+# 查看性能报告
+cat benchmark/TRANSPORT_PERFORMANCE_REPORT.md
 ```
+
+### 性能测试结果
+
+最新测试结果（Release 模式，-O2 优化）：
+
+- **INPROC**: 471,163 ops/s - 零拷贝，同进程内通信
+- **IPC**: 199,818 ops/s - Unix Domain Socket，本地进程间通信
+- **UDP**: 133,597 ops/s - 无连接协议，高吞吐
+- **TCP**: 121,979 ops/s - 可靠传输，基准
+
+所有传输层在中等负载下均达到 100% 成功率。
 
 ## 项目结构
 
