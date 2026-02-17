@@ -63,8 +63,8 @@ static void remove_endpoint(inproc_endpoint_t* endpoint) {
     endpoint->next = NULL;
 }
 
-/* Create new endpoint */
-static inproc_endpoint_t* create_endpoint(const char* name) {
+/* Create new endpoint (returns NULL if already exists with server) */
+static inproc_endpoint_t* create_endpoint(const char* name, int* exists) {
     if (!name) return NULL;
     
     /* Strip inproc:// prefix if present */
@@ -75,7 +75,10 @@ static inproc_endpoint_t* create_endpoint(const char* name) {
     
     /* Check if already exists */
     inproc_endpoint_t* existing = find_endpoint(endpoint_name);
-    if (existing) return existing;
+    if (existing) {
+        if (exists) *exists = 1;
+        return existing;  /* Return existing for clients, caller should check server_transport */
+    }
     
     /* Create new endpoint */
     inproc_endpoint_t* endpoint = uvrpc_calloc(1, sizeof(inproc_endpoint_t));
@@ -94,6 +97,7 @@ static inproc_endpoint_t* create_endpoint(const char* name) {
     endpoint->next = NULL;
     
     add_endpoint(endpoint);
+    if (exists) *exists = 0;
     return endpoint;
 }
 
@@ -116,7 +120,7 @@ inproc_endpoint_t* uvrpc_inproc_create_endpoint(const char* name) {
         endpoint_name = name + 9;
     }
     
-    return create_endpoint(endpoint_name);
+    return create_endpoint(endpoint_name, NULL);
 }
 
 /* Server transport creation */
@@ -213,16 +217,19 @@ int uvrpc_transport_inproc_listen(void* transport_ctx, const char* address) {
     
     /* Create or get endpoint */
     if (!transport->endpoint) {
-        transport->endpoint = create_endpoint(transport->address);
+        int exists = 0;
+        transport->endpoint = create_endpoint(transport->address, &exists);
         if (!transport->endpoint) return UVRPC_ERROR_NO_MEMORY;
+        
+        /* Check if endpoint already has a server - prevent multi-service pollution */
+        if (exists && transport->endpoint->server_transport != NULL) {
+            return UVRPC_ERROR_ALREADY_EXISTS;  /* Endpoint already in use by another server */
+        }
     }
     
     /* Set server transport */
     transport->endpoint->server_transport = transport;
     transport->is_connected = 1;
-    
-    printf("[DEBUG] INPROC Server listening on: %s\n", transport->address ? transport->address : "(null)");
-    fflush(stdout);
     
     return UVRPC_OK;
 }
@@ -245,7 +252,7 @@ int uvrpc_transport_inproc_connect(void* transport_ctx, const char* address) {
     if (!transport->address) return UVRPC_ERROR_NO_MEMORY;
     
     /* Find or create endpoint */
-    transport->endpoint = create_endpoint(transport->address);
+    transport->endpoint = create_endpoint(transport->address, NULL);
     if (!transport->endpoint) return UVRPC_ERROR_NO_MEMORY;
     
     /* Add client to endpoint */
@@ -255,9 +262,6 @@ int uvrpc_transport_inproc_connect(void* transport_ctx, const char* address) {
     }
     
     transport->is_connected = 1;
-    
-    printf("[DEBUG] INPROC Client connected to: %s\n", transport->address);
-    fflush(stdout);
     
     return UVRPC_OK;
 }
@@ -269,8 +273,7 @@ int uvrpc_transport_inproc_send(void* transport_ctx, const void* data, size_t le
     }
     
     uvrpc_inproc_transport_t* transport = (uvrpc_inproc_transport_t*)transport_ctx;
-    printf("[DEBUG] Send: is_connected=%d, endpoint=%p\n", transport->is_connected, (void*)transport->endpoint);
-    fflush(stdout);
+    
     if (!transport->is_connected || !transport->endpoint) {
         return UVRPC_ERROR_NOT_CONNECTED;
     }

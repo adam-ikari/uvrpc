@@ -92,6 +92,23 @@ typedef enum {
     UVRPC_COMM_BROADCAST = 1        /* Broadcast (pub-sub) */
 } uvrpc_comm_type_t;
 
+/* Context cleanup callback */
+typedef void (*uvrpc_context_cleanup_t)(void* data, void* user_data);
+
+/* Universal context structure for server and client */
+typedef struct uvrpc_context {
+    void* data;                           /* User-defined data */
+    uvrpc_context_cleanup_t cleanup;      /* Optional cleanup callback */
+    void* cleanup_data;                   /* Data passed to cleanup callback */
+    uint32_t flags;                       /* Context flags (reserved) */
+    uint32_t reserved;                    /* Reserved for future use */
+} uvrpc_context_t;
+
+/* Context API */
+uvrpc_context_t* uvrpc_context_new(void* data);
+uvrpc_context_t* uvrpc_context_new_with_cleanup(void* data, uvrpc_context_cleanup_t cleanup, void* cleanup_data);
+void uvrpc_context_free(uvrpc_context_t* ctx);
+void* uvrpc_context_get_data(uvrpc_context_t* ctx);
 
 /* Forward declarations */
 typedef struct uvrpc_config uvrpc_config_t;
@@ -186,6 +203,10 @@ void uvrpc_server_stop(uvrpc_server_t* server);
 void uvrpc_server_free(uvrpc_server_t* server);
 int uvrpc_server_register(uvrpc_server_t* server, const char* method, uvrpc_handler_t handler, void* ctx);
 
+/* Context injection */
+void uvrpc_server_set_context(uvrpc_server_t* server, uvrpc_context_t* ctx);
+uvrpc_context_t* uvrpc_server_get_context(uvrpc_server_t* server);
+
 /* Server statistics */
 uint64_t uvrpc_server_get_total_requests(uvrpc_server_t* server);
 uint64_t uvrpc_server_get_total_responses(uvrpc_server_t* server);
@@ -202,6 +223,10 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
 void uvrpc_client_disconnect(uvrpc_client_t* client);
 void uvrpc_client_free(uvrpc_client_t* client);
 uv_loop_t* uvrpc_client_get_loop(uvrpc_client_t* client);
+
+/* Context injection */
+void uvrpc_client_set_context(uvrpc_client_t* client, uvrpc_context_t* ctx);
+uvrpc_context_t* uvrpc_client_get_context(uvrpc_client_t* client);
 
 /* Retry configuration */
 int uvrpc_client_set_max_retries(uvrpc_client_t* client, int max_retries);

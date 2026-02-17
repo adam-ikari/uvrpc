@@ -30,6 +30,9 @@ struct uvrpc_client {
     uvrpc_perf_mode_t performance_mode;  /* Performance mode: low latency vs high throughput */
     int in_callback;  /* Flag to prevent re-entry into callbacks */
 
+    /* User-defined context */
+    uvrpc_context_t* ctx;
+
     /* User connect callback */
     uvrpc_connect_callback_t user_connect_callback;
     void* user_connect_ctx;
@@ -79,14 +82,6 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         uvrpc_free(data);
         return;
     }
-    
-    /* Prevent re-entry into callback */
-    if (client->in_callback) {
-        UVRPC_LOG("ERROR: Re-entry detected, dropping response");
-        uvrpc_free(data);
-        return;
-    }
-    client->in_callback = 1;
 
     /* Get frame type */
     int frame_type = uvrpc_get_frame_type(data, size);
@@ -200,9 +195,6 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     }
 
     uvrpc_free(data);
-    
-    /* Clear re-entry flag */
-    client->in_callback = 0;
 }
 
 /* Create client */
@@ -402,6 +394,18 @@ void uvrpc_client_free(uvrpc_client_t* client) {
 uv_loop_t* uvrpc_client_get_loop(uvrpc_client_t* client) {
     if (!client) return NULL;
     return client->loop;
+}
+
+/* Set context */
+void uvrpc_client_set_context(uvrpc_client_t* client, uvrpc_context_t* ctx) {
+    if (client) {
+        client->ctx = ctx;
+    }
+}
+
+/* Get context */
+uvrpc_context_t* uvrpc_client_get_context(uvrpc_client_t* client) {
+    return client ? client->ctx : NULL;
 }
 
 /* Set max retries */

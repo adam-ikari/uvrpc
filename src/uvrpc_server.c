@@ -50,6 +50,9 @@ struct uvrpc_server {
     handler_entry_t* handlers;
     int is_running;
     
+    /* User-defined context */
+    uvrpc_context_t* ctx;
+    
     /* Pending requests ring buffer */
     pending_request_t** pending_requests;
     int max_pending_requests;    /* Ring buffer size (must be power of 2) */
@@ -111,15 +114,8 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         req.client_ctx = client_ctx;
         req.user_data = NULL;
         
-        fprintf(stderr, "[SERVER] Calling handler for method='%s', params_size=%zu, handler=%p\n",
-                method, params_size, entry->handler);
-        fflush(stderr);
-        
         /* Call handler */
         entry->handler(&req, entry->ctx);
-        
-        fprintf(stderr, "[SERVER] Handler returned\n");
-        fflush(stderr);
 
         /* Free decoded method */
         if (method) uvrpc_free(method);
@@ -243,7 +239,17 @@ int uvrpc_server_start(uvrpc_server_t* server) {
     
     uvbus_error_t err = uvbus_listen(server->uvbus);
     if (err != UVBUS_OK) {
-        return UVRPC_ERROR_TRANSPORT;
+        /* Map UVBus errors to UVRPC errors */
+        switch (err) {
+            case UVBUS_ERROR_ALREADY_EXISTS:
+                return UVRPC_ERROR_ALREADY_EXISTS;
+            case UVBUS_ERROR_NO_MEMORY:
+                return UVRPC_ERROR_NO_MEMORY;
+            case UVBUS_ERROR_INVALID_PARAM:
+                return UVRPC_ERROR_INVALID_PARAM;
+            default:
+                return UVRPC_ERROR_TRANSPORT;
+        }
     }
     
     server->is_running = 1;
@@ -328,6 +334,18 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
     HASH_ADD_STR(server->handlers, name, entry);
     
     return UVRPC_OK;
+}
+
+/* Set context */
+void uvrpc_server_set_context(uvrpc_server_t* server, uvrpc_context_t* ctx) {
+    if (server) {
+        server->ctx = ctx;
+    }
+}
+
+/* Get context */
+uvrpc_context_t* uvrpc_server_get_context(uvrpc_server_t* server) {
+    return server ? server->ctx : NULL;
 }
 
 /* Send response */

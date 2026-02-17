@@ -61,6 +61,7 @@ include_directories(
 # Source files
 set(UVRPC_SOURCES
     src/uvrpc_config.c
+    src/uvrpc_context.c
     src/uvrpc_flatbuffers.c
     src/uvrpc_server.c
     src/uvrpc_client.c
