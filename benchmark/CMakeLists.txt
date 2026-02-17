@@ -14,6 +14,10 @@ endif()
 # Add compile definitions for Release mode
 add_definitions(-DNDEBUG -O2)
 
+# Strip debug symbols for performance
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
+
 # Set C standard
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -81,10 +85,44 @@ if(USE_MIMALLOC)
     )
 endif()
 
-# INPROC test program
-add_executable(inproc_test inproc_test.c)
-target_link_libraries(inproc_test uvrpc rpc_benchmark Threads::Threads m rt)
-add_dependencies(inproc_test generate_flatcc)
+# Simple INPROC test (no multithreading)
+add_executable(test_inproc_simple test_inproc_simple.c)
+target_link_libraries(test_inproc_simple uvrpc Threads::Threads m pthread)
+
+# Unified transport test program
+add_executable(transport_test transport_test.c)
+target_link_libraries(transport_test uvrpc Threads::Threads m pthread)
+
+# INPROC benchmark program (same-process server and client)
+add_executable(inproc_benchmark inproc_benchmark.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+target_link_libraries(inproc_benchmark uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(inproc_benchmark generate_flatcc)
+
+# INPROC benchmark V2 (using synchronous calls)
+add_executable(inproc_benchmark_v2 inproc_benchmark_v2.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+target_link_libraries(inproc_benchmark_v2 uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(inproc_benchmark_v2 generate_flatcc)
+
+# Simple client test
+add_executable(test_simple_client test_simple_client.c)
+target_link_libraries(test_simple_client uvrpc Threads::Threads m rt)
+
+# Test rpc_client_create
+add_executable(test_rpc_client test_rpc_client.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+target_link_libraries(test_rpc_client uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(test_rpc_client generate_flatcc)
+
+# Simple INPROC benchmark
+add_executable(test_inproc_benchmark_simple test_inproc_benchmark_simple.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+target_link_libraries(test_inproc_benchmark_simple uvrpc rpc_benchmark Threads::Threads m rt)
+add_dependencies(test_inproc_benchmark_simple generate_flatcc)
 
 # Print configuration
 message(STATUS "")

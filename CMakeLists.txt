@@ -5,6 +5,13 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 
+# Release mode flags
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O2 -DNDEBUG)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
+endif()
+
 # Output directories
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/dist/bin)
@@ -66,9 +73,6 @@ set(UVRPC_SOURCES
     src/uvrpc_server.c
     src/uvrpc_client.c
     src/uvrpc_service.c
-    src/uvrpc_transport.c
-    src/uvrpc_transport_inproc.c
-    src/uvrpc_flatbuffers.c
     src/uvrpc_msgid.c
     src/uvrpc_idmap.c
     src/uvrpc_publisher.c
