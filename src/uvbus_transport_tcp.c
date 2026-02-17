@@ -321,13 +321,18 @@ static void on_server_close(uv_handle_t* handle) {
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
     if (!req) {
+        fprintf(stderr, "[TCP CONNECT] req is NULL\n");
         return;
     }
 
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
     if (!transport) {
+        fprintf(stderr, "[TCP CONNECT] transport is NULL\n");
         return;
     }
+
+    fprintf(stderr, "[TCP CONNECT] status=%d (%s)\n", status, status == 0 ? "OK" : uv_strerror(status));
+    fflush(stderr);
 
     if (status == 0) {
         transport->is_connected = 1;
@@ -336,19 +341,38 @@ static void on_client_connect(uv_connect_t* req, int status) {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         if (client) {
             uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read);
+            fprintf(stderr, "[TCP CONNECT] Read started\n");
+            fflush(stderr);
         }
 
         /* Set bus is_active flag - this is critical for sending to work */
         if (transport->parent_bus) {
             transport->parent_bus->is_active = 1;
+            fprintf(stderr, "[TCP CONNECT] Set parent_bus->is_active=1\n");
+            fflush(stderr);
+        } else {
+            fprintf(stderr, "[TCP CONNECT] WARNING: parent_bus is NULL\n");
+            fflush(stderr);
         }
 
         if (transport->connect_cb) {
+            fprintf(stderr, "[TCP CONNECT] Calling connect_cb(UVBUS_OK)\n");
+            fflush(stderr);
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+        } else {
+            fprintf(stderr, "[TCP CONNECT] WARNING: connect_cb is NULL\n");
+            fflush(stderr);
         }
     } else {
+        fprintf(stderr, "[TCP CONNECT] Connection failed: %s\n", uv_strerror(status));
+        fflush(stderr);
         if (transport->connect_cb) {
+            fprintf(stderr, "[TCP CONNECT] Calling connect_cb(UVBUS_ERROR_IO)\n");
+            fflush(stderr);
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
+        } else {
+            fprintf(stderr, "[TCP CONNECT] WARNING: connect_cb is NULL\n");
+            fflush(stderr);
         }
     }
 }
@@ -439,6 +463,11 @@ static int tcp_listen(void* impl_ptr, const char* address) {
     server->is_listening = 1;
     transport->is_connected = 1;
     transport->impl.tcp_server = (void*)server;
+    
+    /* Set bus as active - server is ready to accept connections */
+    if (transport->parent_bus) {
+        transport->parent_bus->is_active = 1;
+    }
     
     return UVBUS_OK;
 }

@@ -85,10 +85,6 @@ if(USE_MIMALLOC)
     )
 endif()
 
-# Simple INPROC test (no multithreading)
-add_executable(test_inproc_simple test_inproc_simple.c)
-target_link_libraries(test_inproc_simple uvrpc Threads::Threads m pthread)
-
 # Print configuration
 message(STATUS "")
 message(STATUS "=== Benchmark Configuration ===")

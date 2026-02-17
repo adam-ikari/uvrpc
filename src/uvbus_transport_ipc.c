@@ -69,11 +69,12 @@ static int parse_ipc_address(const char* address, char** socket_path) {
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
     
-    uvbus_transport_t* transport = (uvbus_transport_t*)stream->data;
-    if (!transport) {
-        uvrpc_free(buf->base);
-        return;
-    }
+    /* Get client from stream data (pipe_handle.data should point to client, not transport) */
+    uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)stream->data;
+    if (!client) return;
+    
+    uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
+    if (!transport) return;
     
     if (nread < 0) {
         if (nread != UV_EOF) {
@@ -81,7 +82,6 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                 transport->error_cb(UVBUS_ERROR_IO, uv_strerror(nread), transport->callback_ctx);
             }
         }
-        uvrpc_free(buf->base);
         return;
     }
     
@@ -89,15 +89,12 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         /* Determine if this is server mode or client mode */
         if (transport->is_server) {
             /* Server mode: pass client context and server context */
-            uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)stream->data;
             transport->recv_cb((const uint8_t*)buf->base, nread, client, transport->callback_ctx);
         } else {
             /* Client mode: pass NULL for client context */
             transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
         }
     }
-    
-    uvrpc_free(buf->base);
 }
 
 /* Client alloc callback */
@@ -161,7 +158,7 @@ static void on_server_connection(uv_stream_t* server, int status) {
     
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &client->pipe_handle, 0);
-    client->pipe_handle.data = transport;
+    client->pipe_handle.data = client;
     
     /* Accept connection */
     if (uv_accept(server, (uv_stream_t*)&client->pipe_handle) == 0) {
@@ -228,6 +225,9 @@ static int ipc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
+    printf("[IPC LISTEN] Starting server on %s\n", socket_path);
+    fflush(stdout);
+    
     /* Create server */
     uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)uvrpc_alloc(sizeof(uvbus_ipc_server_t));
     if (!server) {
@@ -246,8 +246,13 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     uv_pipe_init(transport->loop, &server->listen_pipe, 0);
     server->listen_pipe.data = transport;
     
+    printf("[IPC LISTEN] Pipe initialized\n");
+    fflush(stdout);
+    
     /* Bind to socket path */
-    if (uv_pipe_bind(&server->listen_pipe, socket_path) != 0) {
+    int bind_result = uv_pipe_bind(&server->listen_pipe, socket_path);
+    if (bind_result != 0) {
+        fprintf(stderr, "[IPC LISTEN] Bind failed: %s\n", uv_strerror(bind_result));
         uv_close((uv_handle_t*)&server->listen_pipe, NULL);
         uvrpc_free(server->socket_path);
         uvrpc_free(server->clients);
@@ -255,14 +260,22 @@ static int ipc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_IO;
     }
     
+    printf("[IPC LISTEN] Bind successful\n");
+    fflush(stdout);
+    
     /* Listen */
-    if (uv_listen((uv_stream_t*)&server->listen_pipe, 128, on_server_connection) != 0) {
+    int listen_result = uv_listen((uv_stream_t*)&server->listen_pipe, 128, on_server_connection);
+    if (listen_result != 0) {
+        fprintf(stderr, "[IPC LISTEN] Listen failed: %s\n", uv_strerror(listen_result));
         uv_close((uv_handle_t*)&server->listen_pipe, NULL);
         uvrpc_free(server->socket_path);
         uvrpc_free(server->clients);
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
+    
+    printf("[IPC LISTEN] Listen successful\n");
+    fflush(stdout);
     
     server->is_listening = 1;
     transport->is_connected = 1;
@@ -272,6 +285,9 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
+    
+    printf("[IPC LISTEN] Server started successfully\n");
+    fflush(stdout);
     
     return UVBUS_OK;
 }
@@ -306,7 +322,7 @@ static int ipc_connect(void* impl_ptr, const char* address) {
     
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &client->pipe_handle, 0);
-    client->pipe_handle.data = transport;
+    client->pipe_handle.data = client;
     
     /* Connect */
     transport->impl.ipc_client = (void*)client;
