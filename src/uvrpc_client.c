@@ -7,7 +7,6 @@
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
-#include "uvrpc_transport.h"
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
 #include <string.h>
@@ -329,10 +328,16 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
     client->user_connect_callback = callback;
     client->user_connect_ctx = ctx;
     
-    /* Update UVBus config with callback */
+    /* Update UVBus config and transport callbacks */
     uvbus_t* uvbus = client->uvbus;
     uvbus->config.connect_cb = client_connect_callback;
     uvbus->config.callback_ctx = client;
+    
+    /* Also update transport callbacks directly for INPROC */
+    if (uvbus->transport) {
+        uvbus->transport->connect_cb = client_connect_callback;
+        uvbus->transport->callback_ctx = client;
+    }
     
     uvbus_error_t err = uvbus_connect(uvbus);
     if (err != UVBUS_OK) {

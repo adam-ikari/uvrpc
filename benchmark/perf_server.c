@@ -93,8 +93,8 @@ uvrpc_server_t* server_start(uv_loop_t* loop, const char* address) {
         return NULL;
     }
     
-    /* Register handlers using generated stub */
-    rpc_register_all(server);
+    /* Register handlers using generated stub with user context */
+    rpc_register_all(server, NULL);
     
     /* Start server */
     int ret = uvrpc_server_start(server);

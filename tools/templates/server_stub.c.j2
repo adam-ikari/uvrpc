@@ -29,16 +29,16 @@ static void uvrpc_{{ service_name_lower }}_handler(uvrpc_request_t* req, void* c
 }
 
 /* Create {{ service.name }} server */
-uvrpc_server_t* uvrpc_{{ service_name_lower }}_create_server(uv_loop_t* loop, const char* address) {
+uvrpc_server_t* uvrpc_{{ service_name_lower }}_create_server(uv_loop_t* loop, const char* address, void* user_context) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(config);
     
-    /* Register all service handlers */
+    /* Register all service handlers with user context */
 {% for method in service.methods -%}
-    uvrpc_server_register(server, "{{ method.name }}", uvrpc_{{ service_name_lower }}_handler, NULL);
+    uvrpc_server_register(server, "{{ method.name }}", uvrpc_{{ service_name_lower }}_handler, user_context);
 {% endfor -%}
     
     return server;

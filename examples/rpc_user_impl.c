@@ -19,9 +19,11 @@
  */
 int rpc_handle_request(const char* method_name, 
                       const void* request,
-                      uvrpc_request_t* req) {
+                      uvrpc_request_t* req,
+                      void* ctx) {
     
-    printf("[User Handler] Method: %s\n", method_name);
+    printf("[User Handler] Method: %s (ctx=%p)\n", method_name, ctx);
+    (void)ctx;  /* TODO: Use the context if needed */
     
     if (strcmp(method_name, "Add") == 0) {
         /* MathService.Add */
