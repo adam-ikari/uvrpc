@@ -284,8 +284,16 @@ static int inproc_connect(void* impl_ptr, const char* address) {
         transport->parent_bus->is_active = 1;
     }
     
+    printf("[INPROC CONNECT] connect_cb=%p, callback_ctx=%p\n", 
+           (void*)transport->connect_cb, (void*)transport->callback_ctx);
+    fflush(stdout);
+    
     if (transport->connect_cb) {
+        printf("[INPROC CONNECT] Calling connect_cb...\n");
+        fflush(stdout);
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+        printf("[INPROC CONNECT] connect_cb returned\n");
+        fflush(stdout);
     }
     
     return UVBUS_OK;

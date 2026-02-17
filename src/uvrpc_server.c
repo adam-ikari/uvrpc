@@ -7,8 +7,6 @@
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
-#include "uvrpc_transport.h"
-#include "uvrpc_transport_internal.h"
 #include "uvrpc_msgid.h"
 #include <uthash.h>
 #include <stdlib.h>
@@ -234,9 +232,9 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
 /* Start server */
 int uvrpc_server_start(uvrpc_server_t* server) {
     if (!server || !server->uvbus) return UVRPC_ERROR_INVALID_PARAM;
-    
+
     if (server->is_running) return UVRPC_OK;
-    
+
     uvbus_error_t err = uvbus_listen(server->uvbus);
     if (err != UVBUS_OK) {
         /* Map UVBus errors to UVRPC errors */
@@ -351,7 +349,10 @@ uvrpc_context_t* uvrpc_server_get_context(uvrpc_server_t* server) {
 /* Send response */
 void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                                   const uint8_t* result, size_t result_size) {
-    if (!req || !req->server || !req->client_ctx) return;
+    if (!req || !req->server || !req->client_ctx) {
+        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL\n");
+        return;
+    }
 
     uvrpc_server_t* server = req->server;
 
@@ -363,8 +364,11 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                               &resp_data, &resp_size) == UVRPC_OK) {
         /* Send response via UVBus */
         uvbus_t* uvbus = server->uvbus;
-        if (uvbus && uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx) == UVBUS_OK) {
+        uvbus_error_t err = uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx);
+        if (err == UVBUS_OK) {
             server->total_responses++;
+        } else {
+            fprintf(stderr, "[SERVER] Failed to send response: %d\n", err);
         }
         uvrpc_free(resp_data);
     }

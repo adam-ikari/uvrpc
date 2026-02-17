@@ -30,9 +30,16 @@ void uvrpc_msgid_ctx_set_start(uvrpc_msgid_ctx_t* ctx, uint32_t start_seq) {
     }
 }
 
-/* Generate next message ID */
+/* Generate next message ID (32-bit) */
 uint32_t uvrpc_msgid_next(uvrpc_msgid_ctx_t* ctx) {
     if (!ctx) return 0;
 
-    return ctx->next_seq++;
+    uint32_t msgid = ctx->next_seq++;
+    
+    /* Wrap around on overflow (32-bit) */
+    if (ctx->next_seq == 0) {
+        ctx->next_seq = 1;  /* Skip 0, start from 1 */
+    }
+    
+    return msgid;
 }

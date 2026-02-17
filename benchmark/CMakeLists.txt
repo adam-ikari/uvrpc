@@ -35,6 +35,7 @@ include_directories(
     ${DEPS_DIR}/flatcc/include
     ${DEPS_DIR}/libuv/include
     ${GENERATED_DIR}
+    ${GENERATED_DIR}/rpc_benchmark
 )
 
 # Check if mimalloc is available
@@ -94,3 +95,17 @@ message(STATUS "C flags: ${CMAKE_C_FLAGS}")
 message(STATUS "Allocator: ${USE_MIMALLOC}")
 message(STATUS "================================")
 message(STATUS "")
+
+# Stress test with multiple independent loops
+add_executable(stress_test_multi_loop stress_test_multi_loop.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${GENERATED_DIR}/rpc/rpc_user_impl.c)
+target_link_libraries(stress_test_multi_loop uvrpc Threads::Threads m rt)
+add_dependencies(stress_test_multi_loop generate_flatcc)
+
+# Unified benchmark with fork/process support
+add_executable(unified_benchmark unified_benchmark.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+target_link_libraries(unified_benchmark uvrpc Threads::Threads m rt)
+add_dependencies(unified_benchmark generate_flatcc)

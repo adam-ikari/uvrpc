@@ -6,8 +6,8 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
+#include "../include/uvbus.h"
 #include "uvrpc_flatbuffers.h"
-#include "uvrpc_transport.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -16,8 +16,8 @@
 struct uvrpc_publisher {
     uv_loop_t* loop;
     char* address;
-    uvrpc_transport_t* transport;
-    uvrpc_transport_type transport_type;
+    uvbus_t* uvbus;
+    uvbus_transport_type_t transport_type;
     int is_running;
 };
 
@@ -34,12 +34,28 @@ uvrpc_publisher_t* uvrpc_publisher_create(uvrpc_config_t* config) {
         uvrpc_free(publisher);
         return NULL;
     }
-    publisher->transport_type = config->transport;
+
+    /* Convert uvrpc_transport_type to uvbus_transport_type_t */
+    publisher->transport_type = (uvbus_transport_type_t)config->transport;
     publisher->is_running = 0;
 
-    /* Create transport based on type */
-    publisher->transport = uvrpc_transport_server_new(config->loop, config->transport);
-    if (!publisher->transport) {
+    /* Create uvbus config */
+    uvbus_config_t* bus_config = uvbus_config_new();
+    if (!bus_config) {
+        uvrpc_free(publisher->address);
+        uvrpc_free(publisher);
+        return NULL;
+    }
+
+    uvbus_config_set_loop(bus_config, publisher->loop);
+    uvbus_config_set_transport(bus_config, publisher->transport_type);
+    uvbus_config_set_address(bus_config, publisher->address);
+
+    /* Create uvbus server (broadcast publisher) */
+    publisher->uvbus = uvbus_server_new(bus_config);
+    uvbus_config_free(bus_config);
+
+    if (!publisher->uvbus) {
         uvrpc_free(publisher->address);
         uvrpc_free(publisher);
         return NULL;
@@ -50,17 +66,17 @@ uvrpc_publisher_t* uvrpc_publisher_create(uvrpc_config_t* config) {
 
 /* Start publisher */
 int uvrpc_publisher_start(uvrpc_publisher_t* publisher) {
-    if (!publisher || !publisher->transport) return UVRPC_ERROR_INVALID_PARAM;
-    
+    if (!publisher || !publisher->uvbus) return UVRPC_ERROR_INVALID_PARAM;
+
     if (publisher->is_running) return UVRPC_OK;
-    
+
     /* Broadcast doesn't need a receive callback */
-    int rv = uvrpc_transport_listen(publisher->transport, publisher->address, NULL, NULL);
-    if (rv != UVRPC_OK) return rv;
-    
+    int rv = uvbus_listen(publisher->uvbus);
+    if (rv != UVBUS_OK) return UVRPC_ERROR_TRANSPORT;
+
     publisher->is_running = 1;
     printf("Publisher started on %s\n", publisher->address);
-    
+
     return UVRPC_OK;
 }
 
@@ -76,9 +92,9 @@ void uvrpc_publisher_free(uvrpc_publisher_t* publisher) {
 
     uvrpc_publisher_stop(publisher);
 
-    /* Free transport */
-    if (publisher->transport) {
-        uvrpc_transport_free(publisher->transport);
+    /* Free uvbus */
+    if (publisher->uvbus) {
+        uvbus_free(publisher->uvbus);
     }
 
     uvrpc_free(publisher->address);
@@ -90,40 +106,40 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
                              const uint8_t* data, size_t size,
                              uvrpc_publish_callback_t callback, void* ctx) {
     if (!publisher || !topic) return UVRPC_ERROR_INVALID_PARAM;
-    
+
     if (!publisher->is_running) {
         return UVRPC_ERROR;
     }
-    
+
     /* Encode broadcast message: [topic_len, topic, data_len, data] */
     size_t topic_len = strlen(topic);
     size_t total_size = 4 + topic_len + 4 + size;
-    
+
     uint8_t* msg = (uint8_t*)uvrpc_alloc(total_size);
     if (!msg) return UVRPC_ERROR_NO_MEMORY;
-    
+
     uint8_t* p = msg;
-    
+
     /* Topic length (4 bytes little-endian for consistency with FlatBuffers) */
     *(uint32_t*)p = (uint32_t)topic_len;
     p += 4;
-    
+
     /* Topic */
     memcpy(p, topic, topic_len);
     p += topic_len;
-    
+
     /* Data length (4 bytes little-endian) */
     *(uint32_t*)p = (uint32_t)size;
     p += 4;
-    
+
     /* Data */
     if (data && size > 0) {
         memcpy(p, data, size);
     }
-    
+
     /* Send message */
-    if (publisher->transport) {
-        uvrpc_transport_send(publisher->transport, msg, total_size);
+    if (publisher->uvbus) {
+        uvbus_client_send(publisher->uvbus, msg, total_size);
     }
 
     uvrpc_free(msg);
@@ -132,6 +148,6 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
     if (callback) {
         callback(UVRPC_OK, ctx);
     }
-    
+
     return UVRPC_OK;
 }
