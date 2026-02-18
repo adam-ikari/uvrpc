@@ -57,3 +57,7 @@ find_package(Threads REQUIRED)
 # Performance benchmark
 add_executable(perf_benchmark perf_benchmark.c)
 target_link_libraries(perf_benchmark uvrpc Threads::Threads m rt dl)
+
+# Broadcast benchmark
+add_executable(broadcast_benchmark broadcast_benchmark.c)
+target_link_libraries(broadcast_benchmark uvrpc Threads::Threads m rt dl)
