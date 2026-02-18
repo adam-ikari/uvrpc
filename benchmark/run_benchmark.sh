@@ -13,14 +13,14 @@ NC='\033[0m'
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-SERVER_BIN="${PROJECT_ROOT}/dist/bin/server"
-CLIENT_BIN="${PROJECT_ROOT}/dist/bin/client"
+SERVER_BIN="${PROJECT_ROOT}/dist/bin/simple_server"
+CLIENT_BIN="${PROJECT_ROOT}/dist/bin/simple_client"
 PID_DIR="/tmp/uvrpc_benchmark_pids"
 SERVER_PID_FILE="${PID_DIR}/server.pid"
 CLIENT_PIDS_FILE="${PID_DIR}/clients.pids"
 
 # Default parameters
-DEFAULT_ADDRESS="tcp://127.0.0.1:5555"
+DEFAULT_ADDRESS="127.0.0.1:5555"
 DEFAULT_TEST_TYPE="all"
 DEFAULT_DURATION=2000  # 2 seconds in milliseconds
 DEFAULT_BATCH=100
@@ -30,8 +30,12 @@ if [ $# -eq 0 ]; then
     ADDRESS="$DEFAULT_ADDRESS"
     TEST_TYPE="$DEFAULT_TEST_TYPE"
 elif [ $# -eq 1 ]; then
-    # Check if first argument is an address or test type
-    if [[ "$1" =~ ^[a-z]+:// ]] || [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+    # Check if first argument is a transport type (tcp, ipc, udp, inproc) or an address
+    if [[ "$1" =~ ^(tcp|ipc|udp|inproc)$ ]]; then
+        # It's a transport type, construct address
+        ADDRESS="$1://127.0.0.1:5555"
+        TEST_TYPE="$DEFAULT_TEST_TYPE"
+    elif [[ "$1" =~ ^[a-z]+:// ]] || [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
         ADDRESS="$1"
         TEST_TYPE="$DEFAULT_TEST_TYPE"
     else
@@ -39,7 +43,12 @@ elif [ $# -eq 1 ]; then
         TEST_TYPE="$1"
     fi
 elif [ $# -ge 2 ]; then
-    ADDRESS="$1"
+    # First argument could be transport type or full address
+    if [[ "$1" =~ ^(tcp|ipc|udp|inproc)$ ]]; then
+        ADDRESS="$1://127.0.0.1:5555"
+    else
+        ADDRESS="$1"
+    fi
     TEST_TYPE="$2"
 fi
 
@@ -186,12 +195,12 @@ run_benchmark_safe() {
 
 run_single() {
     run_benchmark_safe "Single Client Test" \
-        -a "$ADDRESS" -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION"
+        "$ADDRESS" -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION"
 }
 
 run_multi() {
     run_benchmark_safe "Multi-Client Test (10 clients)" \
-        -a "$ADDRESS" -c 10 -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION"
+        "$ADDRESS" -c 10 -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION"
 }
 
 run_process() {
@@ -202,7 +211,7 @@ run_process() {
     
     for i in {1..5}; do
         local logfile="/tmp/benchmark_client_${i}.log"
-        timeout 30 "$CLIENT_BIN" -a "$ADDRESS" -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION" > "$logfile" 2>&1 &
+        timeout 30 "$CLIENT_BIN" "$ADDRESS" -b "$DEFAULT_BATCH" -d "$DEFAULT_DURATION" > "$logfile" 2>&1 &
         local pid=$!
         pids+=("$pid")
         echo "$pid" >> "$CLIENT_PIDS_FILE"
@@ -240,7 +249,7 @@ run_process() {
 
 run_thread() {
     run_benchmark_safe "Multi-Thread Test (5 threads, 2 clients each)" \
-        -a "$ADDRESS" -t 5 -c 2 -b 50 -d "$DEFAULT_DURATION"
+        "$ADDRESS" -t 5 -c 2 -b 50 -d "$DEFAULT_DURATION"
 }
 
 run_scaling() {
@@ -257,7 +266,7 @@ run_scaling() {
 
 run_latency() {
     run_benchmark_safe "Latency Test (1000 iterations)" \
-        -a "$ADDRESS" --latency
+        "$ADDRESS" --latency
 }
 
 main() {

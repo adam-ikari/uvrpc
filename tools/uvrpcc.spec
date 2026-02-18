@@ -1,6 +1,6 @@
 # UVRPC DSL Code Generator
 # PyInstaller build configuration with bundled FlatCC
-# Usage: make generator-with-flatcc
+# Usage: make generator
 
 import os
 import sys
@@ -42,7 +42,7 @@ if FLATCC_PATH:
     binaries.append((FLATCC_PATH, 'bin'))
 
 a = Analysis(
-    ['rpc_dsl_generator_with_flatcc.py'],
+    ['uvrpcc.py'],
     pathex=[spec_root],
     binaries=binaries,
     datas=[
@@ -84,13 +84,24 @@ exe = EXE(
     entitlements_file=None,
 )
 
-coll = COLLECT(
-    exe,
+# Use onefile mode to output directly to dist directory
+exe = EXE(
+    pyz,
+    a.scripts,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
+    [],
     name='uvrpcc',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=True,
+    upx=False,
+    upx_exclude=[],
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
 )

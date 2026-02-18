@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(uvrpc VERSION 0.1.0 LANGUAGES C)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 
@@ -195,7 +195,7 @@ add_subdirectory(benchmark)
     function(create_example_target name)
         add_executable(${name} examples/${name}.c)
 
-        # Always use static linking for test/example programs
+        # Always use static linking for example programs
         target_link_libraries(${name}
             uvrpc
             Threads::Threads
@@ -230,6 +230,8 @@ add_subdirectory(benchmark)
     create_example_target(uvbus_server_only)
     create_example_target(uvbus_client_only)
     create_example_target(complete_example)
+    create_example_target(perf_mode_demo)
+    # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now
 endif()
 
 # Print configuration summary
