@@ -45,6 +45,7 @@ typedef struct {
     const char* address;
     atomic_int* total_responses;
     atomic_int* total_failures;
+    atomic_int* total_requests;
     int low_latency;
 } thread_context_t;
 
@@ -59,6 +60,11 @@ typedef struct {
     int test_duration_ms;
     volatile int done;
     uv_timer_t timer_handle;
+    uv_timer_t batch_timer_handle;
+    uvrpc_client_t** clients;
+    int num_clients;
+    int batch_size;
+    int failed;
 } thread_state_t;
 
 /* Global state */
@@ -104,6 +110,12 @@ static void on_test_timer(uv_timer_t* handle) {
     g_shutdown_requested = 1;
     state->done = 1;
     uv_timer_stop(handle);
+    /* Stop the batch timer */
+    if (state->batch_timer_handle.loop) {
+        uv_timer_stop(&state->batch_timer_handle);
+    }
+    /* Stop the event loop */
+    uv_stop(handle->loop);
 }
 
 void on_connect(int status, void* ctx) {
@@ -184,45 +196,37 @@ int wait_for_connections(uv_loop_t* loop, thread_state_t* state) {
     return state->connections_established;
 }
 
-/* Helper: Send batch of requests continuously until test is done */
-int send_requests(uvrpc_client_t** clients, int num_clients, int batch_size, thread_state_t* state) {
-    int failed = 0;
+/* Helper: Send batch of requests using callbacks */
+static void send_batch_requests(uv_timer_t* handle) {
+    thread_state_t* state = (thread_state_t*)handle->data;
+    uv_loop_t* loop = handle->loop;
+    uvrpc_client_t** clients = state->clients;
+    int num_clients = state->num_clients;
+    int batch_size = state->batch_size;
     
-    /* Get loop once */
-    uv_loop_t* loop = uvrpc_client_get_loop(clients[0]);
+    /* Copy timer handle to state for cleanup */
+    state->batch_timer_handle = *handle;
     
-    /* Send requests continuously until shutdown is requested */
-    while (!g_shutdown_requested) {
-        /* Send batch of requests */
-        for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
-            int client_idx = state->sent_requests % num_clients;
-            
-/* Create request parameters */
-            int32_t a = 100;
-            int32_t b = 200;
-            
-            /* Use generated client API */
-            int ret = BenchmarkService_Add(clients[client_idx], on_response, state, a, b);
-            
-            /* Always increment sent requests count */
-            state->sent_requests++;
-            
-            if (ret != UVRPC_OK) {
-                failed++;
-                /* Debug: print first few failures */
-                if (failed <= 5) {
-                    fprintf(stderr, "[DEBUG] Request %d failed with error code: %d\n", state->sent_requests, ret);
-                }
-            }
-        }
+    /* Send batch of requests */
+    for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
+        int client_idx = state->sent_requests % num_clients;
         
-        /* Run event loop to process responses periodically */
-        if (loop) {
-            uv_run(loop, UV_RUN_NOWAIT);
+        int32_t a = 100;
+        int32_t b = 200;
+        
+        int ret = BenchmarkService_Add(clients[client_idx], on_response, state, a, b);
+        
+        state->sent_requests++;
+        
+        if (ret != UVRPC_OK) {
+            state->failed++;
         }
     }
     
-    return failed;
+    /* If shutdown was requested, stop the event loop */
+    if (g_shutdown_requested) {
+        uv_stop(loop);
+    }
 }
 
 /* Helper: Wait for responses */
@@ -336,7 +340,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
         return;
     }
 
-    /* Wait for connections */
+/* Wait for connections */
     int connected = wait_for_connections(&loop, &state);
     printf("%d clients connected (target: %d), running throughput test for %.1f seconds...\n",
            connected, num_clients, test_duration_ms / 1000.0);
@@ -351,23 +355,35 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     
     uv_timer_start(&timer, on_test_timer, test_duration_ms, 0);
 
-    /* Run throughput test */
+    /* Setup batch timer to send requests periodically */
+    uv_timer_t batch_timer;
+    uv_timer_init(&loop, &batch_timer);
+    state.clients = clients;
+    state.num_clients = num_clients;
+    state.batch_size = concurrency;
+    state.failed = 0;
+    batch_timer.data = &state;
+    batch_timer.loop = &loop;
+    
+    /* Send requests every 1ms */
+    uv_timer_start(&batch_timer, send_batch_requests, 1, 1);
+
+    /* Run event loop with UV_RUN_DEFAULT */
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
     
-    int failed = send_requests(clients, num_clients, concurrency, &state);
-    
-    /* Wait for remaining responses */
-    wait_for_responses(&loop, &state, 0);
+    uv_run(&loop, UV_RUN_DEFAULT);
     
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    /* Cleanup timer */
+    /* Cleanup timers */
     uv_timer_stop(&timer);
+    uv_timer_stop(&batch_timer);
     uv_close((uv_handle_t*)&timer, NULL);
+    uv_close((uv_handle_t*)&batch_timer, NULL);
 
     /* Results */
-    print_test_results(state.sent_requests, state.responses_received, failed, &start, &end);
+    print_test_results(state.sent_requests, state.responses_received, state.failed, &start, &end);
 
     /* Cleanup */
     for (int i = 0; i < num_clients; i++) {
@@ -410,20 +426,49 @@ void* thread_func(void* arg) {
     int connected = wait_for_connections(&loop, &state);
     printf("[Thread %d] %d clients connected\n", ctx->thread_id, connected);
 
-    /* Send requests continuously for 1 second */
-    int failed = send_requests(clients, ctx->num_clients, ctx->concurrency, &state);
+    /* Setup timer to stop test after specified duration */
+    uv_timer_t timer;
+    uv_timer_init(&loop, &timer);
+    timer.data = &state;
     
-    /* Wait for remaining responses */
-    wait_for_responses(&loop, &state, 0);
+    uv_timer_start(&timer, on_test_timer, ctx->test_duration_ms, 0);
+
+    /* Setup batch timer to send requests periodically */
+    uv_timer_t batch_timer;
+    uv_timer_init(&loop, &batch_timer);
+    state.clients = clients;
+    state.num_clients = ctx->num_clients;
+    state.batch_size = ctx->concurrency;
+    state.failed = 0;
+    batch_timer.data = &state;
+    batch_timer.loop = &loop;
+    
+    /* Send requests every 1ms */
+    uv_timer_start(&batch_timer, send_batch_requests, 1, 1);
+
+    /* Run event loop with UV_RUN_DEFAULT */
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    /* Cleanup timers */
+    uv_timer_stop(&timer);
+    uv_timer_stop(&batch_timer);
+    uv_close((uv_handle_t*)&timer, NULL);
+    uv_close((uv_handle_t*)&batch_timer, NULL);
 
     /* Cleanup */
     cleanup_clients_and_loop(clients, ctx->num_clients, &loop, NULL);
 
     atomic_fetch_add(ctx->total_responses, state.responses_received);
-    atomic_fetch_add(ctx->total_failures, failed);
+    atomic_fetch_add(ctx->total_failures, state.failed);
+    atomic_fetch_add(ctx->total_requests, state.sent_requests);
     
     printf("[Thread %d] Completed: %d requests sent, %d responses received, %d failures\n", 
-           ctx->thread_id, state.requests_sent, state.responses_received, failed);
+           ctx->thread_id, state.sent_requests, state.responses_received, state.failed);
 
     return NULL;
 }
@@ -431,6 +476,7 @@ void* thread_func(void* arg) {
 void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int test_duration_ms, int low_latency) {
     atomic_int total_responses = 0;
     atomic_int total_failures = 0;
+    atomic_int total_requests = 0;
 
     printf("=== Multi-Thread Test ===\n");
     printf("Threads: %d\n", num_threads);
@@ -457,6 +503,7 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
         contexts[i].address = address;
         contexts[i].total_responses = &total_responses;
         contexts[i].total_failures = &total_failures;
+        contexts[i].total_requests = &total_requests;
         contexts[i].low_latency = low_latency;
 
         pthread_create(&threads[i], NULL, thread_func, &contexts[i]);
@@ -471,12 +518,14 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
     int responses = atomic_load(&total_responses);
     int failures = atomic_load(&total_failures);
+    int requests = atomic_load(&total_requests);
 
     printf("\n=== Test Results ===\n");
     printf("Time: %.3f s\n", elapsed);
+    printf("Total requests: %d\n", requests);
     printf("Total responses: %d\n", responses);
     printf("Total failures: %d\n", failures);
-    printf("Success rate: %.1f%%\n", responses > 0 ? (responses * 100.0) / (responses + failures) : 0);
+    printf("Success rate: %.1f%%\n", requests > 0 ? (responses * 100.0) / requests : 0);
     printf("Throughput: %.0f ops/s\n", responses / elapsed);
     printf("====================\n");
 }
