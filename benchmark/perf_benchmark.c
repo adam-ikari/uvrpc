@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #define MAX_THREADS 10
 #define MAX_CLIENTS 100
@@ -146,6 +147,16 @@ void on_stats_timer(uv_timer_t* handle) {
         
         g_last_requests = total_requests;
         g_last_responses = total_responses;
+    }
+}
+
+/* Helper: Get memory usage statistics */
+static void print_memory_usage(const char* label) {
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0) {
+        long rss_mb = usage.ru_maxrss / 1024;  /* Convert KB to MB */
+        printf("[%s] Memory: %ld MB RSS\n", label, rss_mb);
+        fflush(stdout);
     }
 }
 
@@ -307,6 +318,9 @@ void print_test_results(int sent, int responses, int failed, struct timespec* st
         }
     }
     printf("Failed: %d\n", failed);
+    
+    /* Print memory usage */
+    print_memory_usage("TEST");
     fflush(stdout);
 }
 
@@ -353,6 +367,7 @@ void print_latency_results(int iterations) {
         }
         printf("Avg: %.3f ms\n", (avg / received_count) * 1000);
     }
+    print_memory_usage("LATENCY");
     printf("============================\n");
 }
 
@@ -572,6 +587,7 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     printf("Total failures: %d\n", failures);
     printf("Success rate: %.1f%%\n", requests > 0 ? (responses * 100.0) / requests : 0);
     printf("Throughput: %.0f ops/s\n", responses / elapsed);
+    print_memory_usage("MULTI-THREAD");
     printf("====================\n");
 }
 
@@ -653,6 +669,7 @@ void run_server_mode(const char* address) {
     uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
     printf("[SERVER] Final statistics: %lu total requests, %lu total responses\n",
            total_requests, total_responses);
+    print_memory_usage("SERVER");
     fflush(stdout);
     
     uvrpc_server_free(g_server);
@@ -887,6 +904,9 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
     printf("Total errors: %d\n", total_errors);
     printf("Success rate: %.2f%%\n", 
            total_completed > 0 ? (total_completed * 100.0) / (total_completed + total_errors) : 0);
+    
+    /* Print memory usage */
+    print_memory_usage("FORK");
     
     /* Cleanup shared memory */
     munmap(g_shared_stats, g_shm_size);
