@@ -127,6 +127,17 @@ void benchmark_add_handler(uvrpc_request_t* req, void* ctx) {
         int32_t a = *(int32_t*)req->params;
         int32_t b = *(int32_t*)(req->params + sizeof(int32_t));
         int32_t result = a + b;
+        
+        /* Check for integer overflow */
+        if (a > 0 && b > 0 && result < 0) {
+            uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);
+            return;
+        }
+        if (a < 0 && b < 0 && result > 0) {
+            uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);
+            return;
+        }
+        
         uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)&result, sizeof(result));
     } else {
         uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);

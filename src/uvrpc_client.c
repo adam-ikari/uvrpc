@@ -190,12 +190,11 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         uvrpc_free(pending);
 
         /* Decrease concurrent count */
-        client->current_concurrent--;
-    }
-
-    /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c)
-     * after the callback returns. Do NOT free it here to avoid double free. */
-}
+            client->current_concurrent--;
+            }
+        
+            /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
+             * after the callback returns. Do NOT free it here to avoid double free. */}
 
 /* Create client */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
