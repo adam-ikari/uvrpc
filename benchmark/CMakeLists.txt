@@ -58,7 +58,9 @@ add_executable(server perf_server.c
 target_link_libraries(server uvrpc rpc_benchmark Threads::Threads m rt)
 add_dependencies(server generate_flatcc)
 
-add_executable(client perf_benchmark.c)
+add_executable(client perf_benchmark.c 
+    ${GENERATED_DIR}/rpc/rpc_user_impl.c 
+    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c)
 target_link_libraries(client uvrpc rpc_benchmark Threads::Threads m rt)
 add_dependencies(client generate_flatcc)
 

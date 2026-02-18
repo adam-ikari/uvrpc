@@ -516,6 +516,209 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     uv_loop_close(&loop);
 }
 
+/* Server mode implementation */
+static void run_server_mode(const char* address) {
+    printf("Starting server on %s...\n", address);
+    
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, &loop);
+    uvrpc_config_set_address(config, address);
+    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
+    
+    uvrpc_server_t* server = uvrpc_server_create(config);
+    if (!server) {
+        fprintf(stderr, "Failed to create server\n");
+        uvrpc_config_free(config);
+        return;
+    }
+    
+    rpc_register_all(server, NULL);
+    
+    if (uvrpc_server_start(server) != UVRPC_OK) {
+        fprintf(stderr, "Failed to start server\n");
+        uvrpc_server_free(server);
+        uvrpc_config_free(config);
+        return;
+    }
+    
+    printf("Server started successfully, running event loop...\n");
+    printf("Press Ctrl+C to stop\n");
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_server_stop(server);
+    uvrpc_server_free(server);
+    uvrpc_config_free(config);
+    uv_loop_close(&loop);
+    
+    printf("Server stopped\n");
+}
+
+/* Fork mode client process */
+static void run_fork_client_process(int loop_idx, int client_idx, const char* address,
+                                     int total_requests, int low_latency) {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, &loop);
+    uvrpc_config_set_address(config, address);
+    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_performance_mode(config, 
+        low_latency ? UVRPC_PERF_LOW_LATENCY : UVRPC_PERF_HIGH_THROUGHPUT);
+    
+    uvrpc_client_t* client = uvrpc_client_create(config);
+    if (!client) {
+        exit(1);
+    }
+    
+    if (uvrpc_client_connect(client) != UVRPC_OK) {
+        uvrpc_client_free(client);
+        uvrpc_config_free(config);
+        uv_loop_close(&loop);
+        exit(1);
+    }
+    
+    /* Wait for connection */
+    for (int i = 0; i < 100; i++) {
+        uv_run(&loop, UV_RUN_ONCE);
+    }
+    
+    /* Send requests */
+    int completed = 0;
+    int errors = 0;
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    
+    for (int i = 0; i < total_requests && !g_shutdown_requested; i++) {
+        int32_t a = 42;
+        int32_t b = 58;
+        
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        rpc_BenchmarkAddRequest_start_as_root(&builder);
+        rpc_BenchmarkAddRequest_a_add(&builder, a);
+        rpc_BenchmarkAddRequest_b_add(&builder, b);
+        rpc_BenchmarkAddRequest_end_as_root(&builder);
+        
+        size_t size;
+        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        
+        int ret = uvrpc_client_call(client, "Add", buf, size, NULL, NULL);
+        
+        flatcc_builder_reset(&builder);
+        
+        if (ret == UVRPC_OK) {
+            completed++;
+        } else {
+            errors++;
+        }
+        
+        uv_run(&loop, UV_RUN_ONCE);
+    }
+    
+    gettimeofday(&end, NULL);
+    
+    /* Update shared memory */
+    if (g_shared_stats) {
+        int idx = loop_idx * MAX_CLIENTS + client_idx;
+        g_shared_stats[idx].pid = getpid();
+        g_shared_stats[idx].loop_idx = loop_idx;
+        g_shared_stats[idx].client_idx = client_idx;
+        g_shared_stats[idx].completed = completed;
+        g_shared_stats[idx].errors = errors;
+        g_shared_stats[idx].latency_us = 
+            (end.tv_sec - start.tv_sec) * 1000000LL + (end.tv_usec - start.tv_usec);
+    }
+    
+    uvrpc_client_disconnect(client);
+    uvrpc_client_free(client);
+    uvrpc_config_free(config);
+    uv_loop_close(&loop);
+    
+    exit(0);
+}
+
+/* Fork mode main */
+static void run_fork_mode(const char* address, int num_loops, int clients_per_loop,
+                          int test_duration_ms, int low_latency) {
+    /* Initialize shared memory */
+    int total_clients = num_loops * clients_per_loop;
+    g_shm_size = total_clients * sizeof(client_stats_t);
+    
+    g_shm_fd = shm_open(g_shm_name, O_CREAT | O_RDWR, 0666);
+    if (g_shm_fd == -1) {
+        perror("shm_open");
+        return;
+    }
+    
+    ftruncate(g_shm_fd, g_shm_size);
+    
+    g_shared_stats = mmap(NULL, g_shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, g_shm_fd, 0);
+    if (g_shared_stats == MAP_FAILED) {
+        perror("mmap");
+        close(g_shm_fd);
+        shm_unlink(g_shm_name);
+        return;
+    }
+    
+    memset(g_shared_stats, 0, g_shm_size);
+    
+    /* Fork client processes */
+    pid_t pids[MAX_PROCESSES * MAX_CLIENTS];
+    int num_pids = 0;
+    
+    for (int i = 0; i < num_loops; i++) {
+        for (int j = 0; j < clients_per_loop; j++) {
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("fork");
+                continue;
+            } else if (pid == 0) {
+                /* Child process */
+                int requests_per_client = 1000; /* Default requests per client */
+                run_fork_client_process(i, j, address, requests_per_client, low_latency);
+                exit(0);
+            } else {
+                /* Parent process */
+                pids[num_pids++] = pid;
+            }
+        }
+    }
+    
+    /* Wait for all child processes */
+    for (int i = 0; i < num_pids; i++) {
+        int status;
+        waitpid(pids[i], &status, 0);
+    }
+    
+    /* Collect and print statistics */
+    printf("\n=== Fork Mode Results ===\n");
+    printf("Total clients: %d\n", total_clients);
+    
+    int total_completed = 0;
+    int total_errors = 0;
+    
+    for (int i = 0; i < total_clients; i++) {
+        total_completed += g_shared_stats[i].completed;
+        total_errors += g_shared_stats[i].errors;
+    }
+    
+    printf("Total requests completed: %d\n", total_completed);
+    printf("Total errors: %d\n", total_errors);
+    printf("Success rate: %.2f%%\n", 
+           total_completed > 0 ? (total_completed * 100.0) / (total_completed + total_errors) : 0);
+    
+    /* Cleanup shared memory */
+    munmap(g_shared_stats, g_shm_size);
+    close(g_shm_fd);
+    shm_unlink(g_shm_name);
+}
+
 void print_usage(const char* prog_name) {
     printf("UVRPC Unified Benchmark Client\n\n");
     printf("Usage: %s [options]\n\n", prog_name);
@@ -608,21 +811,38 @@ int main(int argc, char** argv) {
     printf("Performance Mode: %s\n", low_latency ? "Low Latency" : "High Throughput");
     printf("Press Ctrl+C to stop the benchmark\n");
     
+    if (server_mode) {
+        run_server_mode(address);
+        _exit(0);
+    }
+    
     if (latency_mode) {
         printf("Test Mode: Latency\n\n");
         run_latency_test(address, 1000, low_latency);
     } else {
         int total_clients = num_threads * clients_per_thread;
-        printf("Threads: %d\n", num_threads);
-        printf("Clients per thread: %d\n", clients_per_thread);
-        printf("Total clients: %d\n", total_clients);
-        printf("Concurrency: %d\n", concurrency);
-        printf("Test Mode: Throughput (%.1f seconds)\n\n", test_duration_ms / 1000.0);
         
-        if (num_threads == 1) {
-            run_single_multi_test(address, clients_per_thread, concurrency, test_duration_ms, low_latency);
+        if (fork_mode) {
+            printf("Mode: Fork (Multi-Process)\n");
+            printf("Loops/Processes: %d\n", num_threads);
+            printf("Clients per loop: %d\n", clients_per_thread);
+            printf("Total clients: %d\n", total_clients);
+            printf("Test Mode: Throughput\n\n");
+            
+            run_fork_mode(address, num_threads, clients_per_thread, test_duration_ms, low_latency);
         } else {
-            run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, test_duration_ms, low_latency);
+            printf("Mode: Thread (Shared Loop)\n");
+            printf("Threads: %d\n", num_threads);
+            printf("Clients per thread: %d\n", clients_per_thread);
+            printf("Total clients: %d\n", total_clients);
+            printf("Concurrency: %d\n", concurrency);
+            printf("Test Mode: Throughput (%.1f seconds)\n\n", test_duration_ms / 1000.0);
+            
+            if (num_threads == 1) {
+                run_single_multi_test(address, clients_per_thread, concurrency, test_duration_ms, low_latency);
+            } else {
+                run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, test_duration_ms, low_latency);
+            }
         }
     }
 
