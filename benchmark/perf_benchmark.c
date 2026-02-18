@@ -379,7 +379,14 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     uv_loop_t loop;
     uv_loop_init(&loop);
     
-    uvrpc_client_t* clients[MAX_CLIENTS];
+    /* Dynamically allocate clients array to save memory */
+    uvrpc_client_t** clients = malloc(num_clients * sizeof(uvrpc_client_t*));
+    if (!clients) {
+        fprintf(stderr, "Failed to allocate clients array\n");
+        uv_loop_close(&loop);
+        return;
+    }
+    
     thread_state_t state = {
         .responses_received = 0,
         .requests_sent = 0,
@@ -450,6 +457,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
         uvrpc_client_free(clients[i]);
     }
     
+    free(clients);  /* Free the dynamically allocated array */
     uv_loop_close(&loop);
 }
 
@@ -473,12 +481,19 @@ void* thread_func(void* arg) {
     uv_loop_t loop;
     uv_loop_init(&loop);
 
-    uvrpc_client_t* clients[100];
+    /* Dynamically allocate clients array to save memory */
+    uvrpc_client_t** clients = malloc(ctx->num_clients * sizeof(uvrpc_client_t*));
+    if (!clients) {
+        fprintf(stderr, "[Thread %d] Failed to allocate clients array\n", ctx->thread_id);
+        return NULL;
+    }
+    
     unsigned int seed = time(NULL) ^ ctx->thread_id;
     
     /* Create clients */
     if (create_clients(clients, ctx->num_clients, &loop, ctx->address, &state, ctx->low_latency) != 0) {
         fprintf(stderr, "[Thread %d] Failed to create clients\n", ctx->thread_id);
+        free(clients);
         return NULL;
     }
 
@@ -522,6 +537,7 @@ void* thread_func(void* arg) {
 
     /* Cleanup */
     cleanup_clients_and_loop(clients, ctx->num_clients, &loop, NULL);
+    free(clients);  /* Free the dynamically allocated array */
 
     atomic_fetch_add(ctx->total_responses, state.responses_received);
     atomic_fetch_add(ctx->total_failures, state.failed);
