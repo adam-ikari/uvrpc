@@ -219,7 +219,15 @@ int send_requests(uvrpc_client_t** clients, int num_clients, int batch_size, thr
 
 /* Helper: Wait for responses */
 int wait_for_responses(uv_loop_t* loop, thread_state_t* state, int target) {
-    /* No manual waiting - responses are driven by the event loop */
+    /* Run event loop to process remaining responses, but limit iterations */
+    int iterations = 0;
+    int max_iterations = 1000; /* Reasonable limit to drain pending responses */
+    
+    while (state->responses_received < state->sent_requests && iterations < max_iterations) {
+        uv_run(loop, UV_RUN_NOWAIT); /* Use NOWAIT to avoid blocking */
+        iterations++;
+    }
+    
     return state->responses_received;
 }
 
@@ -328,6 +336,19 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     printf("Sending requests (press Ctrl+C to stop)...\n");
     fflush(stdout);
 
+    /* Setup timer to stop test after specified duration */
+    uv_timer_t timer;
+    uv_timer_init(&loop, &timer);
+    timer.data = &state;
+    
+    /* Timer callback to stop sending requests */
+    uv_timer_start(&timer, [](uv_timer_t* handle) {
+        thread_state_t* s = (thread_state_t*)handle->data;
+        g_shutdown_requested = 1;
+        s->done = 1;
+        uv_timer_stop(handle);
+    }, test_duration_ms, 0);
+
     /* Run throughput test */
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -338,6 +359,10 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     wait_for_responses(&loop, &state, 0);
     
     clock_gettime(CLOCK_MONOTONIC, &end);
+
+    /* Cleanup timer */
+    uv_timer_stop(&timer);
+    uv_close((uv_handle_t*)&timer, NULL);
 
     /* Results */
     print_test_results(state.sent_requests, state.responses_received, failed, &start, &end);
@@ -577,16 +602,23 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
     }
     
     if (uvrpc_client_connect(client) != UVRPC_OK) {
+        fprintf(stderr, "[FORK CLIENT %d-%d] Failed to connect\n", loop_idx, client_idx);
         uvrpc_client_free(client);
         uvrpc_config_free(config);
         uv_loop_close(&loop);
         exit(1);
     }
     
-    /* Wait for connection */
-    for (int i = 0; i < 100; i++) {
+    /* Wait for connection to be fully established */
+    for (int i = 0; i < 500; i++) {
         uv_run(&loop, UV_RUN_ONCE);
+        if (i % 100 == 0) {
+            usleep(10000); /* Wait 10ms every 100 iterations */
+        }
     }
+    
+    /* Small delay to ensure connection is stable */
+    usleep(50000); /* 50ms */
     
     /* Send requests */
     int completed = 0;
