@@ -107,6 +107,8 @@ static int g_shm_fd = -1;
 static const char* g_shm_name = "/uvrpc_benchmark_shm";
 static volatile sig_atomic_t g_server_pid = 0;
 static const char* g_server_address = NULL;
+static int g_server_timeout_ms = 0;  /* Server timeout in milliseconds */
+static uv_timer_t g_server_timeout_timer;  /* Server timeout timer */
 
 void on_signal(int signum) {
     (void)signum;
@@ -157,6 +159,18 @@ static void print_memory_usage(const char* label) {
         long rss_mb = usage.ru_maxrss / 1024;  /* Convert KB to MB */
         printf("[%s] Memory: %ld MB RSS\n", label, rss_mb);
         fflush(stdout);
+    }
+}
+
+/* Server timeout callback - auto-stop server after timeout */
+static void on_server_timeout(uv_timer_t* handle) {
+    (void)handle;
+    fprintf(stderr, "[SERVER] Timeout reached (%d ms), shutting down...\n", g_server_timeout_ms);
+    fflush(stderr);
+    
+    /* Stop the event loop gracefully */
+    if (g_server_loop) {
+        uv_stop(g_server_loop);
     }
 }
 
@@ -667,6 +681,14 @@ void run_server_mode(const char* address) {
     uv_timer_init(&loop, &g_stats_timer);
     uv_timer_start(&g_stats_timer, on_stats_timer, 1000, 1000);
     
+    /* Setup server timeout timer if timeout is configured */
+    if (g_server_timeout_ms > 0) {
+        uv_timer_init(&loop, &g_server_timeout_timer);
+        uv_timer_start(&g_server_timeout_timer, on_server_timeout, g_server_timeout_ms, 0);
+        printf("[SERVER] Auto-shutdown in %d ms\n", g_server_timeout_ms);
+        fflush(stdout);
+    }
+    
     /* Setup signal handlers for graceful shutdown */
     static uv_signal_t sigint_sig, sigterm_sig;
     uv_signal_init(&loop, &sigint_sig);
@@ -685,6 +707,12 @@ void run_server_mode(const char* address) {
     /* Cleanup */
     uv_timer_stop(&g_stats_timer);
     uv_close((uv_handle_t*)&g_stats_timer, NULL);
+    
+    /* Stop and close timeout timer if it was configured */
+    if (g_server_timeout_ms > 0) {
+        uv_timer_stop(&g_server_timeout_timer);
+        uv_close((uv_handle_t*)&g_server_timeout_timer, NULL);
+    }
     
     /* Print final statistics */
     uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
@@ -951,6 +979,7 @@ void print_usage(const char* prog_name) {
     printf("  --latency         Run latency test (ignores -t and -c)\n");
     printf("  --fork            Use fork mode instead of threads (for multi-process testing)\n");
     printf("  --server          Run in server mode\n");
+    printf("  --server-timeout <ms> Server auto-shutdown timeout (default: 0, no timeout)\n");
     printf("  -h                Show this help\n\n");
     printf("Modes:\n");
     printf("  Server mode: Starts a performance-optimized server\n");
@@ -1003,6 +1032,7 @@ int main(int argc, char** argv) {
     int latency_mode = 0;
     int fork_mode = 0;
     int server_mode = 0;
+    int server_timeout_ms = 0;  /* Default: no timeout */
 
     /* Parse all arguments */
     for (int i = 1; i < argc; i++) {
@@ -1024,6 +1054,8 @@ int main(int argc, char** argv) {
             fork_mode = 1;
         } else if (strcmp(argv[i], "--server") == 0) {
             server_mode = 1;
+        } else if (strcmp(argv[i], "--server-timeout") == 0 && i + 1 < argc) {
+            server_timeout_ms = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -1036,6 +1068,7 @@ int main(int argc, char** argv) {
     printf("Press Ctrl+C to stop the benchmark\n");
     
     if (server_mode) {
+        g_server_timeout_ms = server_timeout_ms;  /* Set global timeout */
         run_server_mode(address);
         _exit(0);
     }
