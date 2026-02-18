@@ -193,7 +193,8 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         client->current_concurrent--;
     }
 
-    uvrpc_free(data);
+    /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c)
+     * after the callback returns. Do NOT free it here to avoid double free. */
 }
 
 /* Create client */

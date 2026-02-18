@@ -120,6 +120,19 @@ void on_signal(int signum) {
     }
 }
 
+/* Handler for Add operation */
+void benchmark_add_handler(uvrpc_request_t* req, void* ctx) {
+    (void)ctx;
+    if (req->params && req->params_size >= sizeof(int32_t) * 2) {
+        int32_t a = *(int32_t*)req->params;
+        int32_t b = *(int32_t*)(req->params + sizeof(int32_t));
+        int32_t result = a + b;
+        uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)&result, sizeof(result));
+    } else {
+        uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);
+    }
+}
+
 /* Server signal handler for uv_signal_t */
 void on_server_signal(uv_signal_t* handle, int signum) {
     (void)handle;
@@ -286,8 +299,9 @@ static void send_batch_requests(uv_timer_t* handle) {
         
         int32_t a = 100;
         int32_t b = 200;
+        int32_t params[2] = {a, b};
         
-        int ret = BenchmarkService_Add(clients[client_idx], on_response, state, a, b);
+        int ret = uvrpc_client_call(clients[client_idx], "Add", (uint8_t*)params, sizeof(params), on_response, state);
         
         state->sent_requests++;
         
@@ -661,8 +675,8 @@ void run_server_mode(const char* address) {
         return;
     }
     
-    /* Register handlers using generated stub */
-    rpc_register_all(g_server, NULL);
+    /* Register handlers manually */
+    uvrpc_server_register(g_server, "Add", benchmark_add_handler, NULL);
     
     /* Start server */
     int ret = uvrpc_server_start(g_server);
@@ -780,11 +794,12 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     for (int i = 0; i < iterations; i++) {
         int32_t a = 10;
         int32_t b = 20;
+        int32_t params[2] = {a, b};
         
         clock_gettime(CLOCK_MONOTONIC, &g_latency_state.start_times[i]);
         
-        /* Use generated client API */
-        BenchmarkService_Add(client, on_latency_response, (void*)(long)i, a, b);
+        /* Use uvrpc_client_call API */
+        uvrpc_client_call(client, "Add", (uint8_t*)params, sizeof(params), on_latency_response, (void*)(long)i);
         
         /* Wait for response */
         int wait = 0;

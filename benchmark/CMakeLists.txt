@@ -52,63 +52,8 @@ endif()
 find_package(Threads REQUIRED)
 
 # Performance test programs
-add_executable(server perf_server.c 
-    ${GENERATED_DIR}/rpc/rpc_user_impl.c 
-    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c)
-target_link_libraries(server uvrpc rpc_benchmark Threads::Threads m rt)
-add_dependencies(server generate_flatcc)
 
-add_executable(client perf_benchmark.c 
-    ${GENERATED_DIR}/rpc/rpc_user_impl.c 
-    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c)
-target_link_libraries(client uvrpc rpc_benchmark Threads::Threads m rt)
-add_dependencies(client generate_flatcc)
 
-# RPC benchmark library (generated code - client only)
-set(RPC_BENCHMARK_SOURCES
-    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c
-    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
-    ${PROJECT_ROOT}/src/uvrpc_async.c  # Add async implementation
-)
-
-add_library(rpc_benchmark STATIC ${RPC_BENCHMARK_SOURCES})
-target_include_directories(rpc_benchmark PUBLIC ${GENERATED_DIR}/rpc_benchmark)
-target_include_directories(rpc_benchmark PUBLIC ${GENERATED_DIR}/rpc)
-target_include_directories(rpc_benchmark PUBLIC ${PROJECT_ROOT}/include)
-target_include_directories(rpc_benchmark PUBLIC ${PROJECT_ROOT}/src)
-target_link_libraries(rpc_benchmark uvrpc Threads::Threads m rt)
-
-# Link mimalloc if available
-if(USE_MIMALLOC)
-    target_link_libraries(server uvrpc
-        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
-    )
-    target_link_libraries(client uvrpc
-        ${DEPS_DIR}/mimalloc/lib/libmimalloc.a
-    )
-endif()
-
-# Print configuration
-message(STATUS "")
-message(STATUS "=== Benchmark Configuration ===")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "C compiler: ${CMAKE_C_COMPILER}")
-message(STATUS "C flags: ${CMAKE_C_FLAGS}")
-message(STATUS "Allocator: ${USE_MIMALLOC}")
-message(STATUS "================================")
-message(STATUS "")
-
-# Stress test with multiple independent loops
-add_executable(stress_test_multi_loop stress_test_multi_loop.c 
-    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
-    ${GENERATED_DIR}/rpc/rpc_user_impl.c)
-target_link_libraries(stress_test_multi_loop uvrpc Threads::Threads m rt)
-add_dependencies(stress_test_multi_loop generate_flatcc)
-
-# Unified benchmark with fork/process support
-add_executable(unified_benchmark unified_benchmark.c 
-    ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
-    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c
-    ${GENERATED_DIR}/rpc/rpc_user_impl.c)
-target_link_libraries(unified_benchmark uvrpc Threads::Threads m rt)
-add_dependencies(unified_benchmark generate_flatcc)
+# Performance benchmark
+add_executable(perf_benchmark perf_benchmark.c)
+target_link_libraries(perf_benchmark uvrpc Threads::Threads m rt dl)
