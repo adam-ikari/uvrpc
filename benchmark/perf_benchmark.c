@@ -109,6 +109,7 @@ static volatile sig_atomic_t g_server_pid = 0;
 static const char* g_server_address = NULL;
 static int g_server_timeout_ms = 0;  /* Server timeout in milliseconds */
 static uv_timer_t g_server_timeout_timer;  /* Server timeout timer */
+static struct timespec g_server_start_time;  /* Server start time for throughput calculation */
 
 void on_signal(int signum) {
     (void)signum;
@@ -143,8 +144,8 @@ void on_stats_timer(uv_timer_t* handle) {
         uint64_t requests_delta = total_requests - g_last_requests;
         uint64_t responses_delta = total_responses - g_last_responses;
         
-        printf("[SERVER] Total: %lu req, %lu resp | Delta: %lu req/s, %lu resp/s\n",
-               total_requests, total_responses, requests_delta, responses_delta);
+        printf("[SERVER] Total: %lu req, %lu resp | Delta: %lu req/s, %lu resp/s | Throughput: %lu ops/s\n",
+               total_requests, total_responses, requests_delta, responses_delta, responses_delta);
         fflush(stdout);
         
         g_last_requests = total_requests;
@@ -321,7 +322,7 @@ void print_test_results(int sent, int responses, int failed, struct timespec* st
     printf("Sent: %d\n", sent);
     printf("Received: %d\n", responses);
     printf("Time: %.3f s\n", elapsed);
-    printf("Throughput: %.0f ops/s (sent)\n", sent / elapsed);
+    printf("Client throughput: %.0f ops/s (sent)\n", sent / elapsed);
     
     /* Calculate success rate based on received responses only */
     int successful_responses = atomic_load(&g_response_sum);
@@ -673,6 +674,9 @@ void run_server_mode(const char* address) {
         return;
     }
     
+    /* Record server start time for throughput calculation */
+    clock_gettime(CLOCK_MONOTONIC, &g_server_start_time);
+    
     printf("Server started on %s\n", address);
     printf("Press Ctrl+C to stop the server\n");
     fflush(stdout);
@@ -715,10 +719,24 @@ void run_server_mode(const char* address) {
     }
     
     /* Print final statistics */
+    struct timespec end_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    
     uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
     uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
-    printf("[SERVER] Final statistics: %lu total requests, %lu total responses\n",
-           total_requests, total_responses);
+    
+    /* Calculate total elapsed time in seconds */
+    double elapsed = (end_time.tv_sec - g_server_start_time.tv_sec) + 
+                     (end_time.tv_nsec - g_server_start_time.tv_nsec) / 1e9;
+    
+    /* Calculate total throughput */
+    double total_throughput = elapsed > 0 ? total_responses / elapsed : 0;
+    
+    printf("[SERVER] Final statistics:\n");
+    printf("[SERVER]   Total requests: %lu\n", total_requests);
+    printf("[SERVER]   Total responses: %lu\n", total_responses);
+    printf("[SERVER]   Elapsed time: %.3f s\n", elapsed);
+    printf("[SERVER]   Total throughput: %.0f ops/s\n", total_throughput);
     print_memory_usage("SERVER");
     fflush(stdout);
     
