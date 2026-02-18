@@ -25,6 +25,9 @@ add_executable(uvrpc_tests
     unit/test_allocator.cpp
     unit/test_flatbuffers.cpp
     unit/test_msgid.cpp
+    unit/test_client.cpp
+    unit/test_server.cpp
+    unit/test_config.cpp
 )
 
 # Link against UVRPC library
