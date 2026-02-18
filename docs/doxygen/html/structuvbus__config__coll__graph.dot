@@ -1,0 +1,28 @@
+digraph "uvbus_config"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="uvbus_config",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip=" "];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" loop" ,fontname="Helvetica"];
+  Node2 [label="uv_loop_t *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" transport" ,fontname="Helvetica"];
+  Node3 [label="uvbus_transport_type_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" address" ,fontname="Helvetica"];
+  Node4 [label="const char *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node5 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" recv_cb" ,fontname="Helvetica"];
+  Node5 [label="size_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node6 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" connect_cb" ,fontname="Helvetica"];
+  Node6 [label="void(*)(uvbus_error\l_t status, void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node7 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" close_cb" ,fontname="Helvetica"];
+  Node7 [label="void(*)(void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node8 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" error_cb" ,fontname="Helvetica"];
+  Node8 [label="void(*)(uvbus_error\l_t error_code, const\l char *error_msg, void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node9 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" callback_ctx" ,fontname="Helvetica"];
+  Node9 [label="void *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node10 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" timeout_ms" ,fontname="Helvetica"];
+  Node10 [label="uint64_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node11 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" enable_timeout" ,fontname="Helvetica"];
+  Node11 [label="int",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+}

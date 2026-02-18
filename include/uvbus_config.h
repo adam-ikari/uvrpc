@@ -1,28 +1,48 @@
 /**
- * UVBus Configuration Constants
+ * @file uvbus_config.h
+ * @brief UVBus Configuration Constants
+ * 
+ * Defines default values and limits for UVBus configuration.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) 2026
+ * @license MIT License
  */
 
 #ifndef UVBUS_CONFIG_H
 #define UVBUS_CONFIG_H
 
-/* Buffer sizes */
-#define UVBUS_MAX_BUFFER_SIZE 65536
-#define UVBUS_DEFAULT_BUFFER_SIZE 4096
+/** @defgroup BufferSettings Buffer Settings */
+/** @{ */
+#define UVBUS_MAX_BUFFER_SIZE 65536      /**< @brief Maximum buffer size */
+#define UVBUS_DEFAULT_BUFFER_SIZE 4096   /**< @brief Default buffer size */
+/** @} */
 
-/* Client management */
-#define UVBUS_INITIAL_CLIENT_CAPACITY 10
-#define UVBUS_MAX_CLIENTS 1024
+/** @defgroup ClientSettings Client Settings */
+/** @{ */
+#define UVBUS_INITIAL_CLIENT_CAPACITY 10 /**< @brief Initial client capacity */
+#define UVBUS_MAX_CLIENTS 1024           /**< @brief Maximum number of clients */
+/** @} */
 
-/* Server settings */
-#define UVBUS_BACKLOG 128
-#define UVBUS_MAX_ENDPOINTS 256
+/** @defgroup ServerSettings Server Settings */
+/** @{ */
+#define UVBUS_BACKLOG 128                /**< @brief Server backlog */
+#define UVBUS_MAX_ENDPOINTS 256          /**< @brief Maximum number of endpoints */
+/** @} */
 
-/* Hash table size */
-#define UVBUS_HASH_TABLE_SIZE 256
+/** @defgroup HashTableSettings Hash Table Settings */
+/** @{ */
+#define UVBUS_HASH_TABLE_SIZE 256        /**< @brief Hash table size */
+/** @} */
 
-/* Timeout settings */
-#define UVBUS_DEFAULT_TIMEOUT_MS 5000
-#define UVBUS_MIN_TIMEOUT_MS 100
-#define UVBUS_MAX_TIMEOUT_MS 60000
+/** @defgroup TimeoutSettings Timeout Settings */
+/** @{ */
+#define UVBUS_DEFAULT_TIMEOUT_MS 5000    /**< @brief Default timeout in milliseconds */
+#define UVBUS_MIN_TIMEOUT_MS 100         /**< @brief Minimum timeout in milliseconds */
+#define UVBUS_MAX_TIMEOUT_MS 60000       /**< @brief Maximum timeout in milliseconds */
+/** @} */
 
 #endif /* UVBUS_CONFIG_H */

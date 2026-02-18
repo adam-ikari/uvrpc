@@ -1,0 +1,52 @@
+digraph "uvbus"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="uvbus",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip=" "];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" config" ,fontname="Helvetica"];
+  Node2 [label="uvbus_config",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structuvbus__config.html",tooltip=" "];
+  Node3 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" loop" ,fontname="Helvetica"];
+  Node3 [label="uv_loop_t *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node4 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" transport" ,fontname="Helvetica"];
+  Node4 [label="uvbus_transport_type_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node5 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" address" ,fontname="Helvetica"];
+  Node5 [label="const char *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node6 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" recv_cb" ,fontname="Helvetica"];
+  Node6 [label="size_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node7 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" connect_cb" ,fontname="Helvetica"];
+  Node7 [label="void(*)(uvbus_error\l_t status, void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node8 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" close_cb" ,fontname="Helvetica"];
+  Node8 [label="void(*)(void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node9 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" error_cb" ,fontname="Helvetica"];
+  Node9 [label="void(*)(uvbus_error\l_t error_code, const\l char *error_msg, void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node10 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" callback_ctx" ,fontname="Helvetica"];
+  Node10 [label="void *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node11 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" timeout_ms" ,fontname="Helvetica"];
+  Node11 [label="uint64_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node12 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" enable_timeout" ,fontname="Helvetica"];
+  Node12 [label="int",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node13 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" transport" ,fontname="Helvetica"];
+  Node13 [label="uvbus_transport",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structuvbus__transport.html",tooltip=" "];
+  Node4 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" type" ,fontname="Helvetica"];
+  Node3 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" loop" ,fontname="Helvetica"];
+  Node14 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" address" ,fontname="Helvetica"];
+  Node14 [label="char *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node1 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" parent_bus" ,fontname="Helvetica"];
+  Node15 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" recv_cb" ,fontname="Helvetica"];
+  Node15 [label="uint8_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node7 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" connect_cb" ,fontname="Helvetica"];
+  Node8 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" close_cb" ,fontname="Helvetica"];
+  Node9 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" error_cb" ,fontname="Helvetica"];
+  Node10 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" callback_ctx\ninproc_client\ninproc_server\nipc_client\nipc_server\ntcp_client\ntcp_server\nudp_client\nudp_server" ,fontname="Helvetica"];
+  Node12 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" is_connected\nis_server" ,fontname="Helvetica"];
+  Node16 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" vtable" ,fontname="Helvetica"];
+  Node16 [label="uvbus_transport_vtable",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structuvbus__transport__vtable.html",tooltip=" "];
+  Node12 -> Node16 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" connect\nlisten\nsend\nsend_to" ,fontname="Helvetica"];
+  Node17 -> Node16 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" disconnect\nfree" ,fontname="Helvetica"];
+  Node17 [label="void(*)(void *impl)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node18 -> Node13 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" impl" ,fontname="Helvetica"];
+  Node18 [label="anonymous:impl",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node12 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" is_active" ,fontname="Helvetica"];
+}

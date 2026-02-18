@@ -1,7 +1,13 @@
 /**
- * UVRPC Async Server
+ * @file uvrpc_server.c
+ * @brief UVRPC Async Server Implementation
+ * 
  * Zero threads, Zero locks, Zero global variables
  * All I/O managed by libuv event loop
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc.h"
@@ -12,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 /* Write callback to free buffer */
 static void write_callback(uv_write_t* req, int status) {

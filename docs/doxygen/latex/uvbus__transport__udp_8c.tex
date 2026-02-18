@@ -1,0 +1,726 @@
+\hypertarget{uvbus__transport__udp_8c}{}\doxysection{src/uvbus\+\_\+transport\+\_\+udp.c File Reference}
+\label{uvbus__transport__udp_8c}\index{src/uvbus\_transport\_udp.c@{src/uvbus\_transport\_udp.c}}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structuvbus__udp__client}{uvbus\+\_\+udp\+\_\+client}}
+\item 
+struct \mbox{\hyperlink{structuvbus__udp__server}{uvbus\+\_\+udp\+\_\+server}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef struct \mbox{\hyperlink{structuvbus__udp__client}{uvbus\+\_\+udp\+\_\+client}} \mbox{\hyperlink{uvbus__transport__udp_8c_ae49d756117003afa8a21e3f0b146475b}{uvbus\+\_\+udp\+\_\+client\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structuvbus__udp__server}{uvbus\+\_\+udp\+\_\+server}} \mbox{\hyperlink{uvbus__transport__udp_8c_a9ebe7952e8d6ad1e4806f04d0bd67086}{uvbus\+\_\+udp\+\_\+server\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvbus_8h_adc46d9173e0b80030fd5ab616466d33c}{uvbus\+\_\+transport\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__transport__udp_8c_a2055660fb7349d59db63bbb75cdad85f}{create\+\_\+udp\+\_\+transport}} (\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} type, uv\+\_\+loop\+\_\+t $\ast$loop)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a5d40578880eeeb2be10a1157e9da1bbe}{on\+\_\+client\+\_\+alloc}} (uv\+\_\+handle\+\_\+t $\ast$handle, size\+\_\+t suggested\+\_\+size, uv\+\_\+buf\+\_\+t $\ast$buf)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_aa98e79ac96f2806e57845ca0d083dae0}{on\+\_\+client\+\_\+recv}} (uv\+\_\+udp\+\_\+t $\ast$handle, ssize\+\_\+t nread, const uv\+\_\+buf\+\_\+t $\ast$buf, const struct sockaddr $\ast$addr, unsigned flags)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a10ad14f6993fac66edbf5d2f6a75aa62}{on\+\_\+send}} (uv\+\_\+udp\+\_\+send\+\_\+t $\ast$req, int status)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a3a6e3c6f3690ccabaf601c829181e1d5}{on\+\_\+server\+\_\+alloc}} (uv\+\_\+handle\+\_\+t $\ast$handle, size\+\_\+t suggested\+\_\+size, uv\+\_\+buf\+\_\+t $\ast$buf)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a464ca59196f9763002965ed9ef5314c0}{on\+\_\+server\+\_\+recv}} (uv\+\_\+udp\+\_\+t $\ast$handle, ssize\+\_\+t nread, const uv\+\_\+buf\+\_\+t $\ast$buf, const struct sockaddr $\ast$addr, unsigned flags)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__udp_8c_ad38fae1498224776c64cde1c64d89de9}{parse\+\_\+udp\+\_\+address}} (const char $\ast$address, char $\ast$$\ast$host, int $\ast$port)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__udp_8c_aff90527caed493099f17b5b62326644b}{udp\+\_\+connect}} (void $\ast$impl\+\_\+ptr, const char $\ast$address)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a96e78f6b1a2938c0847bac2a2dad3385}{udp\+\_\+disconnect}} (void $\ast$impl\+\_\+ptr)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__udp_8c_a40f3f8486381b7d2bdab5e0793dcca49}{udp\+\_\+free}} (void $\ast$impl\+\_\+ptr)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__udp_8c_a8f48f6ee36b31b380e7ca78e613e72b0}{udp\+\_\+listen}} (void $\ast$impl\+\_\+ptr, const char $\ast$address)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__udp_8c_a9828851cdb423331fd139fc7cf48bcd6}{udp\+\_\+send}} (void $\ast$impl\+\_\+ptr, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__udp_8c_a37c121caed5bec7d40420e5c0b5dac0d}{udp\+\_\+send\+\_\+to}} (void $\ast$impl\+\_\+ptr, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$target)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+static const \mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{uvbus\+\_\+transport\+\_\+vtable\+\_\+t}} \mbox{\hyperlink{uvbus__transport__udp_8c_a76e1bcc8601d9c0ae9b786dad9feb8d0}{udp\+\_\+vtable}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvbus__transport__udp_8c_ae49d756117003afa8a21e3f0b146475b}\label{uvbus__transport__udp_8c_ae49d756117003afa8a21e3f0b146475b}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!uvbus\_udp\_client\_t@{uvbus\_udp\_client\_t}}
+\index{uvbus\_udp\_client\_t@{uvbus\_udp\_client\_t}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{uvbus\_udp\_client\_t}{uvbus\_udp\_client\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvbus__udp__client}{uvbus\+\_\+udp\+\_\+client}} \mbox{\hyperlink{uvbus__transport__udp_8c_ae49d756117003afa8a21e3f0b146475b}{uvbus\+\_\+udp\+\_\+client\+\_\+t}}}
+
+UVBus UDP Transport Implementation 
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00013}{13}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a9ebe7952e8d6ad1e4806f04d0bd67086}\label{uvbus__transport__udp_8c_a9ebe7952e8d6ad1e4806f04d0bd67086}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!uvbus\_udp\_server\_t@{uvbus\_udp\_server\_t}}
+\index{uvbus\_udp\_server\_t@{uvbus\_udp\_server\_t}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{uvbus\_udp\_server\_t}{uvbus\_udp\_server\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvbus__udp__server}{uvbus\+\_\+udp\+\_\+server}} \mbox{\hyperlink{uvbus__transport__udp_8c_a9ebe7952e8d6ad1e4806f04d0bd67086}{uvbus\+\_\+udp\+\_\+server\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00014}{14}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a2055660fb7349d59db63bbb75cdad85f}\label{uvbus__transport__udp_8c_a2055660fb7349d59db63bbb75cdad85f}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!create\_udp\_transport@{create\_udp\_transport}}
+\index{create\_udp\_transport@{create\_udp\_transport}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{create\_udp\_transport()}{create\_udp\_transport()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_adc46d9173e0b80030fd5ab616466d33c}{uvbus\+\_\+transport\+\_\+t}} $\ast$ create\+\_\+udp\+\_\+transport (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}}}]{type,  }\item[{uv\+\_\+loop\+\_\+t $\ast$}]{loop }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00431}{431}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00431                                                                                       \{}
+\DoxyCodeLine{00432     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}));}
+\DoxyCodeLine{00433     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00434         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00435     \}}
+\DoxyCodeLine{00436     }
+\DoxyCodeLine{00437     memset(transport, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}));}
+\DoxyCodeLine{00438     transport-\/>\mbox{\hyperlink{structuvbus__transport_ae864e2a968309893ec61736cfc290471}{type}} = type;}
+\DoxyCodeLine{00439     transport-\/>\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}} = loop;}
+\DoxyCodeLine{00440     transport-\/>\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}} = \&\mbox{\hyperlink{uvbus__transport__udp_8c_a76e1bcc8601d9c0ae9b786dad9feb8d0}{udp\_vtable}};}
+\DoxyCodeLine{00441     }
+\DoxyCodeLine{00442     \textcolor{keywordflow}{return} transport;}
+\DoxyCodeLine{00443 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00142}{uvbus\+\_\+transport\+::loop}}, \mbox{\hyperlink{uvbus_8h_source_l00141}{uvbus\+\_\+transport\+::type}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00164}{udp\+\_\+vtable}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvbus_8h_source_l00160}{uvbus\+\_\+transport\+::vtable}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00103}{create\+\_\+transport()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a5d40578880eeeb2be10a1157e9da1bbe}\label{uvbus__transport__udp_8c_a5d40578880eeeb2be10a1157e9da1bbe}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!on\_client\_alloc@{on\_client\_alloc}}
+\index{on\_client\_alloc@{on\_client\_alloc}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{on\_client\_alloc()}{on\_client\_alloc()}}
+{\footnotesize\ttfamily static void on\+\_\+client\+\_\+alloc (\begin{DoxyParamCaption}\item[{uv\+\_\+handle\+\_\+t $\ast$}]{handle,  }\item[{size\+\_\+t}]{suggested\+\_\+size,  }\item[{uv\+\_\+buf\+\_\+t $\ast$}]{buf }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00140}{140}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00140                                                                                        \{}
+\DoxyCodeLine{00141     buf-\/>base = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(UVBUS\_MAX\_BUFFER\_SIZE);}
+\DoxyCodeLine{00142     \textcolor{keywordflow}{if} (buf-\/>base) \{}
+\DoxyCodeLine{00143         buf-\/>len = UVBUS\_MAX\_BUFFER\_SIZE;}
+\DoxyCodeLine{00144     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00145         buf-\/>len = 0;}
+\DoxyCodeLine{00146     \}}
+\DoxyCodeLine{00147 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_aa98e79ac96f2806e57845ca0d083dae0}\label{uvbus__transport__udp_8c_aa98e79ac96f2806e57845ca0d083dae0}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!on\_client\_recv@{on\_client\_recv}}
+\index{on\_client\_recv@{on\_client\_recv}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{on\_client\_recv()}{on\_client\_recv()}}
+{\footnotesize\ttfamily static void on\+\_\+client\+\_\+recv (\begin{DoxyParamCaption}\item[{uv\+\_\+udp\+\_\+t $\ast$}]{handle,  }\item[{ssize\+\_\+t}]{nread,  }\item[{const uv\+\_\+buf\+\_\+t $\ast$}]{buf,  }\item[{const struct sockaddr $\ast$}]{addr,  }\item[{unsigned}]{flags }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00117}{117}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00118                                                                         \{}
+\DoxyCodeLine{00119     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)handle-\/>data;}
+\DoxyCodeLine{00120     }
+\DoxyCodeLine{00121     if (nread < 0) \{}
+\DoxyCodeLine{00122         \textcolor{keywordflow}{if} (nread != UV\_EOF) \{}
+\DoxyCodeLine{00123             \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}}) \{}
+\DoxyCodeLine{00124                 transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}}(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}}, uv\_strerror(nread), transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00125             \}}
+\DoxyCodeLine{00126         \}}
+\DoxyCodeLine{00127         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(buf-\/>base);}
+\DoxyCodeLine{00128         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00129     \}}
+\DoxyCodeLine{00130     }
+\DoxyCodeLine{00131     \textcolor{keywordflow}{if} (nread > 0 \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}}) \{}
+\DoxyCodeLine{00132         \textcolor{comment}{/* Client mode: pass NULL for client context */}}
+\DoxyCodeLine{00133         transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}}((\textcolor{keyword}{const} uint8\_t*)buf-\/>base, nread, NULL, transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00134     \}}
+\DoxyCodeLine{00135     }
+\DoxyCodeLine{00136     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(buf-\/>base);}
+\DoxyCodeLine{00137 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00153}{uvbus\+\_\+transport\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus_8h_source_l00152}{uvbus\+\_\+transport\+::error\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00149}{uvbus\+\_\+transport\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a10ad14f6993fac66edbf5d2f6a75aa62}\label{uvbus__transport__udp_8c_a10ad14f6993fac66edbf5d2f6a75aa62}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!on\_send@{on\_send}}
+\index{on\_send@{on\_send}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{on\_send()}{on\_send()}}
+{\footnotesize\ttfamily static void on\+\_\+send (\begin{DoxyParamCaption}\item[{uv\+\_\+udp\+\_\+send\+\_\+t $\ast$}]{req,  }\item[{int}]{status }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00150}{150}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00150                                                     \{}
+\DoxyCodeLine{00151     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req-\/>data);}
+\DoxyCodeLine{00152     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req);}
+\DoxyCodeLine{00153 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{udp\+\_\+send()}}, and \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00373}{udp\+\_\+send\+\_\+to()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a3a6e3c6f3690ccabaf601c829181e1d5}\label{uvbus__transport__udp_8c_a3a6e3c6f3690ccabaf601c829181e1d5}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!on\_server\_alloc@{on\_server\_alloc}}
+\index{on\_server\_alloc@{on\_server\_alloc}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{on\_server\_alloc()}{on\_server\_alloc()}}
+{\footnotesize\ttfamily static void on\+\_\+server\+\_\+alloc (\begin{DoxyParamCaption}\item[{uv\+\_\+handle\+\_\+t $\ast$}]{handle,  }\item[{size\+\_\+t}]{suggested\+\_\+size,  }\item[{uv\+\_\+buf\+\_\+t $\ast$}]{buf }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00107}{107}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00107                                                                                        \{}
+\DoxyCodeLine{00108     buf-\/>base = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(UVBUS\_MAX\_BUFFER\_SIZE);}
+\DoxyCodeLine{00109     \textcolor{keywordflow}{if} (buf-\/>base) \{}
+\DoxyCodeLine{00110         buf-\/>len = UVBUS\_MAX\_BUFFER\_SIZE;}
+\DoxyCodeLine{00111     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00112         buf-\/>len = 0;}
+\DoxyCodeLine{00113     \}}
+\DoxyCodeLine{00114 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{udp\+\_\+listen()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a464ca59196f9763002965ed9ef5314c0}\label{uvbus__transport__udp_8c_a464ca59196f9763002965ed9ef5314c0}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!on\_server\_recv@{on\_server\_recv}}
+\index{on\_server\_recv@{on\_server\_recv}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{on\_server\_recv()}{on\_server\_recv()}}
+{\footnotesize\ttfamily static void on\+\_\+server\+\_\+recv (\begin{DoxyParamCaption}\item[{uv\+\_\+udp\+\_\+t $\ast$}]{handle,  }\item[{ssize\+\_\+t}]{nread,  }\item[{const uv\+\_\+buf\+\_\+t $\ast$}]{buf,  }\item[{const struct sockaddr $\ast$}]{addr,  }\item[{unsigned}]{flags }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00078}{78}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00079                                                                         \{}
+\DoxyCodeLine{00080     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)handle-\/>data;}
+\DoxyCodeLine{00081     }
+\DoxyCodeLine{00082     if (nread < 0) \{}
+\DoxyCodeLine{00083         \textcolor{keywordflow}{if} (nread != UV\_EOF) \{}
+\DoxyCodeLine{00084             \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}}) \{}
+\DoxyCodeLine{00085                 transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}}(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}}, uv\_strerror(nread), transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00086             \}}
+\DoxyCodeLine{00087         \}}
+\DoxyCodeLine{00088         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(buf-\/>base);}
+\DoxyCodeLine{00089         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00090     \}}
+\DoxyCodeLine{00091     }
+\DoxyCodeLine{00092     \textcolor{keywordflow}{if} (nread > 0 \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}}) \{}
+\DoxyCodeLine{00093         \textcolor{comment}{/* Copy the client address to use as client context */}}
+\DoxyCodeLine{00094         \textcolor{keyword}{struct }sockaddr\_storage* addr\_copy = (\textcolor{keyword}{struct }sockaddr\_storage*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\textcolor{keyword}{struct} sockaddr\_storage));}
+\DoxyCodeLine{00095         \textcolor{keywordflow}{if} (addr\_copy) \{}
+\DoxyCodeLine{00096             memcpy(addr\_copy, addr, \textcolor{keyword}{sizeof}(\textcolor{keyword}{struct} sockaddr\_storage));}
+\DoxyCodeLine{00097             transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}}((\textcolor{keyword}{const} uint8\_t*)buf-\/>base, nread, addr\_copy, transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00098         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00099             transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}}((\textcolor{keyword}{const} uint8\_t*)buf-\/>base, nread, NULL, transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00100         \}}
+\DoxyCodeLine{00101     \}}
+\DoxyCodeLine{00102     }
+\DoxyCodeLine{00103     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(buf-\/>base);}
+\DoxyCodeLine{00104 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00153}{uvbus\+\_\+transport\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus_8h_source_l00152}{uvbus\+\_\+transport\+::error\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00149}{uvbus\+\_\+transport\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{udp\+\_\+listen()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_ad38fae1498224776c64cde1c64d89de9}\label{uvbus__transport__udp_8c_ad38fae1498224776c64cde1c64d89de9}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!parse\_udp\_address@{parse\_udp\_address}}
+\index{parse\_udp\_address@{parse\_udp\_address}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{parse\_udp\_address()}{parse\_udp\_address()}}
+{\footnotesize\ttfamily static int parse\+\_\+udp\+\_\+address (\begin{DoxyParamCaption}\item[{const char $\ast$}]{address,  }\item[{char $\ast$$\ast$}]{host,  }\item[{int $\ast$}]{port }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00045}{45}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00045                                                                           \{}
+\DoxyCodeLine{00046     \textcolor{keywordflow}{if} (!address || !host || !port) \{}
+\DoxyCodeLine{00047         \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00048     \}}
+\DoxyCodeLine{00049     }
+\DoxyCodeLine{00050     \textcolor{comment}{/* Skip protocol prefix */}}
+\DoxyCodeLine{00051     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* addr\_start = address;}
+\DoxyCodeLine{00052     \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}udp://"{}}, 6) == 0) \{}
+\DoxyCodeLine{00053         addr\_start += 6;}
+\DoxyCodeLine{00054     \}}
+\DoxyCodeLine{00055     }
+\DoxyCodeLine{00056     \textcolor{comment}{/* Find port separator */}}
+\DoxyCodeLine{00057     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* colon = strrchr(addr\_start, \textcolor{charliteral}{':'});}
+\DoxyCodeLine{00058     \textcolor{keywordflow}{if} (!colon) \{}
+\DoxyCodeLine{00059         \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00060     \}}
+\DoxyCodeLine{00061     }
+\DoxyCodeLine{00062     \textcolor{comment}{/* Extract host */}}
+\DoxyCodeLine{00063     \textcolor{keywordtype}{size\_t} host\_len = colon -\/ addr\_start;}
+\DoxyCodeLine{00064     *host = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(host\_len + 1);}
+\DoxyCodeLine{00065     \textcolor{keywordflow}{if} (!*host) \{}
+\DoxyCodeLine{00066         \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00067     \}}
+\DoxyCodeLine{00068     memcpy(*host, addr\_start, host\_len);}
+\DoxyCodeLine{00069     (*host)[host\_len] = \textcolor{charliteral}{'\(\backslash\)0'};}
+\DoxyCodeLine{00070     }
+\DoxyCodeLine{00071     \textcolor{comment}{/* Extract port */}}
+\DoxyCodeLine{00072     *port = atoi(colon + 1);}
+\DoxyCodeLine{00073     }
+\DoxyCodeLine{00074     \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00075 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, and \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{udp\+\_\+listen()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_aff90527caed493099f17b5b62326644b}\label{uvbus__transport__udp_8c_aff90527caed493099f17b5b62326644b}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_connect@{udp\_connect}}
+\index{udp\_connect@{udp\_connect}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_connect()}{udp\_connect()}}
+{\footnotesize\ttfamily static int udp\+\_\+connect (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{235}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00235                                                             \{}
+\DoxyCodeLine{00236     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00237     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00238         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00239     \}}
+\DoxyCodeLine{00240     }
+\DoxyCodeLine{00241     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00242         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00243     \}}
+\DoxyCodeLine{00244     }
+\DoxyCodeLine{00245     \textcolor{comment}{/* Parse address */}}
+\DoxyCodeLine{00246     \textcolor{keywordtype}{char}* host = NULL;}
+\DoxyCodeLine{00247     \textcolor{keywordtype}{int} port = 0;}
+\DoxyCodeLine{00248     \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvbus__transport__udp_8c_ad38fae1498224776c64cde1c64d89de9}{parse\_udp\_address}}(address, \&host, \&port) != 0) \{}
+\DoxyCodeLine{00249         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00250     \}}
+\DoxyCodeLine{00251     }
+\DoxyCodeLine{00252     \textcolor{comment}{/* Create client */}}
+\DoxyCodeLine{00253     \mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}* client = (\mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}));}
+\DoxyCodeLine{00254     \textcolor{keywordflow}{if} (!client) \{}
+\DoxyCodeLine{00255         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(host);}
+\DoxyCodeLine{00256         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00257     \}}
+\DoxyCodeLine{00258     }
+\DoxyCodeLine{00259     memset(client, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}));}
+\DoxyCodeLine{00260     client-\/>\mbox{\hyperlink{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}{host}} = host;}
+\DoxyCodeLine{00261     client-\/>\mbox{\hyperlink{structuvbus__udp__client_ace81db3fe531d8520e8a89ecd1d7f1f1}{port}} = port;}
+\DoxyCodeLine{00262     client-\/>\mbox{\hyperlink{structuvbus__udp__client_a7d8a2c3775348d4e6314a3620d34ed83}{parent\_transport}} = transport;}
+\DoxyCodeLine{00263     }
+\DoxyCodeLine{00264     \textcolor{comment}{/* Initialize UDP handle */}}
+\DoxyCodeLine{00265     uv\_udp\_init(transport-\/>\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}}, \&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}});}
+\DoxyCodeLine{00266     client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}.data = transport;}
+\DoxyCodeLine{00267     }
+\DoxyCodeLine{00268     \textcolor{comment}{/* Set up server address */}}
+\DoxyCodeLine{00269     uv\_ip4\_addr(host, port, \&client-\/>\mbox{\hyperlink{structuvbus__udp__client_acd2b08e709f9c2cd9f3cd85d9500ac04}{server\_addr}});}
+\DoxyCodeLine{00270     }
+\DoxyCodeLine{00271     \textcolor{comment}{/* Bind to local address (random port) */}}
+\DoxyCodeLine{00272     \textcolor{keyword}{struct }sockaddr\_in local\_addr;}
+\DoxyCodeLine{00273     uv\_ip4\_addr(\textcolor{stringliteral}{"{}0.0.0.0"{}}, 0, \&local\_addr);}
+\DoxyCodeLine{00274     \textcolor{keywordflow}{if} (uv\_udp\_bind(\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, (\textcolor{keyword}{const} \textcolor{keyword}{struct} sockaddr*)\&local\_addr, 0) != 0) \{}
+\DoxyCodeLine{00275         uv\_close((uv\_handle\_t*)\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00276         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}{host}});}
+\DoxyCodeLine{00277         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{00278         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00279     \}}
+\DoxyCodeLine{00280     }
+\DoxyCodeLine{00281     \textcolor{comment}{/* Start receiving */}}
+\DoxyCodeLine{00282     \textcolor{keywordflow}{if} (uv\_udp\_recv\_start(\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, \mbox{\hyperlink{uvbus__transport__udp_8c_a5d40578880eeeb2be10a1157e9da1bbe}{on\_client\_alloc}}, \mbox{\hyperlink{uvbus__transport__udp_8c_aa98e79ac96f2806e57845ca0d083dae0}{on\_client\_recv}}) != 0) \{}
+\DoxyCodeLine{00283         uv\_close((uv\_handle\_t*)\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00284         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}{host}});}
+\DoxyCodeLine{00285         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{00286         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00287     \}}
+\DoxyCodeLine{00288     }
+\DoxyCodeLine{00289     client-\/>\mbox{\hyperlink{structuvbus__udp__client_ab2fff0a4a32537d535fa05b334e3f641}{is\_connected}} = 1;}
+\DoxyCodeLine{00290     transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}-\/>\mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{is\_active}} = 1;}
+\DoxyCodeLine{00291     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 1;}
+\DoxyCodeLine{00292     transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}} = (\textcolor{keywordtype}{void}*)client;}
+\DoxyCodeLine{00293     }
+\DoxyCodeLine{00294     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}}) \{}
+\DoxyCodeLine{00295         transport-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}}(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}, transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00296     \}}
+\DoxyCodeLine{00297     }
+\DoxyCodeLine{00298     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00299 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00153}{uvbus\+\_\+transport\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus_8h_source_l00150}{uvbus\+\_\+transport\+::connect\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00022}{uvbus\+\_\+udp\+\_\+client\+::host}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00179}{uvbus\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00020}{uvbus\+\_\+udp\+\_\+client\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00142}{uvbus\+\_\+transport\+::loop}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00140}{on\+\_\+client\+\_\+alloc()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00117}{on\+\_\+client\+\_\+recv()}}, \mbox{\hyperlink{uvbus_8h_source_l00146}{uvbus\+\_\+transport\+::parent\+\_\+bus}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00029}{uvbus\+\_\+udp\+\_\+client\+::parent\+\_\+transport}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00045}{parse\+\_\+udp\+\_\+address()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00023}{uvbus\+\_\+udp\+\_\+client\+::port}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00019}{uvbus\+\_\+udp\+\_\+client\+::server\+\_\+addr}}, \mbox{\hyperlink{uvbus_8h_source_l00167}{uvbus\+\_\+transport\+::udp\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00018}{uvbus\+\_\+udp\+\_\+client\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a96e78f6b1a2938c0847bac2a2dad3385}\label{uvbus__transport__udp_8c_a96e78f6b1a2938c0847bac2a2dad3385}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_disconnect@{udp\_disconnect}}
+\index{udp\_disconnect@{udp\_disconnect}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_disconnect()}{udp\_disconnect()}}
+{\footnotesize\ttfamily static void udp\+\_\+disconnect (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00302}{302}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00302                                            \{}
+\DoxyCodeLine{00303     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00304     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00305         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00306     \}}
+\DoxyCodeLine{00307     }
+\DoxyCodeLine{00308     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}}) \{}
+\DoxyCodeLine{00309         \mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}* server = (\mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}};}
+\DoxyCodeLine{00310         \textcolor{comment}{/* Close UDP handle */}}
+\DoxyCodeLine{00311         uv\_close((uv\_handle\_t*)\&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00312         }
+\DoxyCodeLine{00313         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server-\/>\mbox{\hyperlink{structuvbus__udp__server_a1568cacf8256e2c4da50354fc953781b}{host}});}
+\DoxyCodeLine{00314         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server);}
+\DoxyCodeLine{00315         transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}} = NULL;}
+\DoxyCodeLine{00316     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}}) \{}
+\DoxyCodeLine{00317         \mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}* client = (\mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}};}
+\DoxyCodeLine{00318         \textcolor{comment}{/* Close UDP handle */}}
+\DoxyCodeLine{00319         uv\_close((uv\_handle\_t*)\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00320         }
+\DoxyCodeLine{00321         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}{host}});}
+\DoxyCodeLine{00322         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{00323         transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}} = NULL;}
+\DoxyCodeLine{00324     \}}
+\DoxyCodeLine{00325     }
+\DoxyCodeLine{00326     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 0;}
+\DoxyCodeLine{00327 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00022}{uvbus\+\_\+udp\+\_\+client\+::host}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00036}{uvbus\+\_\+udp\+\_\+server\+::host}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00167}{uvbus\+\_\+transport\+::udp\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00018}{uvbus\+\_\+udp\+\_\+client\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00034}{uvbus\+\_\+udp\+\_\+server\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus_8h_source_l00166}{uvbus\+\_\+transport\+::udp\+\_\+server}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00415}{udp\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a40f3f8486381b7d2bdab5e0793dcca49}\label{uvbus__transport__udp_8c_a40f3f8486381b7d2bdab5e0793dcca49}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_free@{udp\_free}}
+\index{udp\_free@{udp\_free}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_free()}{udp\_free()}}
+{\footnotesize\ttfamily static void udp\+\_\+free (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00415}{415}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00415                                      \{}
+\DoxyCodeLine{00416     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00417     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00418         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00419     \}}
+\DoxyCodeLine{00420     }
+\DoxyCodeLine{00421     \mbox{\hyperlink{uvbus__transport__udp_8c_a96e78f6b1a2938c0847bac2a2dad3385}{udp\_disconnect}}(transport);}
+\DoxyCodeLine{00422     }
+\DoxyCodeLine{00423     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}}) \{}
+\DoxyCodeLine{00424         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(transport-\/>\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}});}
+\DoxyCodeLine{00425     \}}
+\DoxyCodeLine{00426     }
+\DoxyCodeLine{00427     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(transport);}
+\DoxyCodeLine{00428 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00143}{uvbus\+\_\+transport\+::address}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00302}{udp\+\_\+disconnect()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a8f48f6ee36b31b380e7ca78e613e72b0}\label{uvbus__transport__udp_8c_a8f48f6ee36b31b380e7ca78e613e72b0}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_listen@{udp\_listen}}
+\index{udp\_listen@{udp\_listen}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_listen()}{udp\_listen()}}
+{\footnotesize\ttfamily static int udp\+\_\+listen (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{174}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00174                                                            \{}
+\DoxyCodeLine{00175     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00176     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00177         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00178     \}}
+\DoxyCodeLine{00179     }
+\DoxyCodeLine{00180     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00181         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00182     \}}
+\DoxyCodeLine{00183     }
+\DoxyCodeLine{00184     \textcolor{comment}{/* Parse address */}}
+\DoxyCodeLine{00185     \textcolor{keywordtype}{char}* host = NULL;}
+\DoxyCodeLine{00186     \textcolor{keywordtype}{int} port = 0;}
+\DoxyCodeLine{00187     \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvbus__transport__udp_8c_ad38fae1498224776c64cde1c64d89de9}{parse\_udp\_address}}(address, \&host, \&port) != 0) \{}
+\DoxyCodeLine{00188         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00189     \}}
+\DoxyCodeLine{00190     }
+\DoxyCodeLine{00191     \textcolor{comment}{/* Create server */}}
+\DoxyCodeLine{00192     \mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}* server = (\mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}));}
+\DoxyCodeLine{00193     \textcolor{keywordflow}{if} (!server) \{}
+\DoxyCodeLine{00194         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(host);}
+\DoxyCodeLine{00195         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00196     \}}
+\DoxyCodeLine{00197     }
+\DoxyCodeLine{00198     memset(server, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}));}
+\DoxyCodeLine{00199     server-\/>\mbox{\hyperlink{structuvbus__udp__server_a1568cacf8256e2c4da50354fc953781b}{host}} = host;}
+\DoxyCodeLine{00200     server-\/>\mbox{\hyperlink{structuvbus__udp__server_aba3c4f9770d298ac0a021792d03c2232}{port}} = port;}
+\DoxyCodeLine{00201     server-\/>\mbox{\hyperlink{structuvbus__udp__server_abd90ae3fe321f825c1d874ca0c426def}{parent\_transport}} = transport;}
+\DoxyCodeLine{00202     }
+\DoxyCodeLine{00203     \textcolor{comment}{/* Initialize UDP handle */}}
+\DoxyCodeLine{00204     uv\_udp\_init(transport-\/>\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}}, \&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}});}
+\DoxyCodeLine{00205     server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}.data = transport;}
+\DoxyCodeLine{00206     }
+\DoxyCodeLine{00207     \textcolor{comment}{/* Bind to address */}}
+\DoxyCodeLine{00208     \textcolor{keyword}{struct }sockaddr\_in addr;}
+\DoxyCodeLine{00209     uv\_ip4\_addr(host, port, \&addr);}
+\DoxyCodeLine{00210     }
+\DoxyCodeLine{00211     \textcolor{keywordflow}{if} (uv\_udp\_bind(\&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, (\textcolor{keyword}{const} \textcolor{keyword}{struct} sockaddr*)\&addr, 0) != 0) \{}
+\DoxyCodeLine{00212         uv\_close((uv\_handle\_t*)\&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00213         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server-\/>\mbox{\hyperlink{structuvbus__udp__server_a1568cacf8256e2c4da50354fc953781b}{host}});}
+\DoxyCodeLine{00214         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server);}
+\DoxyCodeLine{00215         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00216     \}}
+\DoxyCodeLine{00217     }
+\DoxyCodeLine{00218     \textcolor{comment}{/* Start receiving */}}
+\DoxyCodeLine{00219     \textcolor{keywordflow}{if} (uv\_udp\_recv\_start(\&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, \mbox{\hyperlink{uvbus__transport__udp_8c_a3a6e3c6f3690ccabaf601c829181e1d5}{on\_server\_alloc}}, \mbox{\hyperlink{uvbus__transport__udp_8c_a464ca59196f9763002965ed9ef5314c0}{on\_server\_recv}}) != 0) \{}
+\DoxyCodeLine{00220         uv\_close((uv\_handle\_t*)\&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, NULL);}
+\DoxyCodeLine{00221         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server-\/>\mbox{\hyperlink{structuvbus__udp__server_a1568cacf8256e2c4da50354fc953781b}{host}});}
+\DoxyCodeLine{00222         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(server);}
+\DoxyCodeLine{00223         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00224     \}}
+\DoxyCodeLine{00225     }
+\DoxyCodeLine{00226     server-\/>\mbox{\hyperlink{structuvbus__udp__server_a739fa0129b2844df54d48f4e2b69bf34}{is\_listening}} = 1;}
+\DoxyCodeLine{00227     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 1;}
+\DoxyCodeLine{00228     transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}-\/>\mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{is\_active}} = 1;}
+\DoxyCodeLine{00229     transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}} = (\textcolor{keywordtype}{void}*)server;}
+\DoxyCodeLine{00230     }
+\DoxyCodeLine{00231     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00232 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00036}{uvbus\+\_\+udp\+\_\+server\+::host}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00179}{uvbus\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00038}{uvbus\+\_\+udp\+\_\+server\+::is\+\_\+listening}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00142}{uvbus\+\_\+transport\+::loop}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00107}{on\+\_\+server\+\_\+alloc()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00078}{on\+\_\+server\+\_\+recv()}}, \mbox{\hyperlink{uvbus_8h_source_l00146}{uvbus\+\_\+transport\+::parent\+\_\+bus}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00041}{uvbus\+\_\+udp\+\_\+server\+::parent\+\_\+transport}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00045}{parse\+\_\+udp\+\_\+address()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00037}{uvbus\+\_\+udp\+\_\+server\+::port}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00034}{uvbus\+\_\+udp\+\_\+server\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus_8h_source_l00166}{uvbus\+\_\+transport\+::udp\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a9828851cdb423331fd139fc7cf48bcd6}\label{uvbus__transport__udp_8c_a9828851cdb423331fd139fc7cf48bcd6}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_send@{udp\_send}}
+\index{udp\_send@{udp\_send}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_send()}{udp\_send()}}
+{\footnotesize\ttfamily static int udp\+\_\+send (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{330}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00330                                                                       \{}
+\DoxyCodeLine{00331     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00332     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00333         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00334     \}}
+\DoxyCodeLine{00335     }
+\DoxyCodeLine{00336     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}}) \{}
+\DoxyCodeLine{00337         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\_ERROR\_NOT\_CONNECTED}};}
+\DoxyCodeLine{00338     \}}
+\DoxyCodeLine{00339     }
+\DoxyCodeLine{00340     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00341         \textcolor{comment}{/* UDP server doesn't broadcast like TCP -\/ needs target */}}
+\DoxyCodeLine{00342         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00343     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00344         \mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}* client = (\mbox{\hyperlink{structuvbus__udp__client}{uvbus\_udp\_client\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}};}
+\DoxyCodeLine{00345         \textcolor{comment}{/* Client send to server */}}
+\DoxyCodeLine{00346         uv\_udp\_send\_t* req = (uv\_udp\_send\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(uv\_udp\_send\_t));}
+\DoxyCodeLine{00347         \textcolor{keywordflow}{if} (!req) \{}
+\DoxyCodeLine{00348             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00349         \}}
+\DoxyCodeLine{00350         }
+\DoxyCodeLine{00351         uint8\_t* data\_copy = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(size);}
+\DoxyCodeLine{00352         \textcolor{keywordflow}{if} (!data\_copy) \{}
+\DoxyCodeLine{00353             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req);}
+\DoxyCodeLine{00354             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00355         \}}
+\DoxyCodeLine{00356         memcpy(data\_copy, data, size);}
+\DoxyCodeLine{00357         }
+\DoxyCodeLine{00358         uv\_buf\_t buf = uv\_buf\_init((\textcolor{keywordtype}{char}*)data\_copy, size);}
+\DoxyCodeLine{00359         req-\/>data = data\_copy;}
+\DoxyCodeLine{00360         }
+\DoxyCodeLine{00361         \textcolor{keywordflow}{if} (uv\_udp\_send(req, \&client-\/>\mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\_handle}}, \&buf, 1, }
+\DoxyCodeLine{00362                         (\textcolor{keyword}{const} \textcolor{keyword}{struct} sockaddr*)\&client-\/>\mbox{\hyperlink{structuvbus__udp__client_acd2b08e709f9c2cd9f3cd85d9500ac04}{server\_addr}}, \mbox{\hyperlink{uvbus__transport__udp_8c_a10ad14f6993fac66edbf5d2f6a75aa62}{on\_send}}) != 0) \{}
+\DoxyCodeLine{00363             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data\_copy);}
+\DoxyCodeLine{00364             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req);}
+\DoxyCodeLine{00365             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00366         \}}
+\DoxyCodeLine{00367     \}}
+\DoxyCodeLine{00368     }
+\DoxyCodeLine{00369     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00370 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00150}{on\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00019}{uvbus\+\_\+udp\+\_\+client\+::server\+\_\+addr}}, \mbox{\hyperlink{uvbus_8h_source_l00167}{uvbus\+\_\+transport\+::udp\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00018}{uvbus\+\_\+udp\+\_\+client\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00043}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a37c121caed5bec7d40420e5c0b5dac0d}\label{uvbus__transport__udp_8c_a37c121caed5bec7d40420e5c0b5dac0d}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_send\_to@{udp\_send\_to}}
+\index{udp\_send\_to@{udp\_send\_to}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_send\_to()}{udp\_send\_to()}}
+{\footnotesize\ttfamily static int udp\+\_\+send\+\_\+to (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{void $\ast$}]{target }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00373}{373}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00373                                                                                        \{}
+\DoxyCodeLine{00374     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00375     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00376         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00377     \}}
+\DoxyCodeLine{00378     }
+\DoxyCodeLine{00379     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00380         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00381     \}}
+\DoxyCodeLine{00382     }
+\DoxyCodeLine{00383     \mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}* server = (\mbox{\hyperlink{structuvbus__udp__server}{uvbus\_udp\_server\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}};}
+\DoxyCodeLine{00384     \textcolor{keyword}{struct} sockaddr\_in* addr = (\textcolor{keyword}{struct} sockaddr\_in*)target;}
+\DoxyCodeLine{00385     \textcolor{keywordflow}{if} (!addr) \{}
+\DoxyCodeLine{00386         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00387     \}}
+\DoxyCodeLine{00388     }
+\DoxyCodeLine{00389     uv\_udp\_send\_t* req = (uv\_udp\_send\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(uv\_udp\_send\_t));}
+\DoxyCodeLine{00390     \textcolor{keywordflow}{if} (!req) \{}
+\DoxyCodeLine{00391         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00392     \}}
+\DoxyCodeLine{00393     }
+\DoxyCodeLine{00394     uint8\_t* data\_copy = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(size);}
+\DoxyCodeLine{00395     \textcolor{keywordflow}{if} (!data\_copy) \{}
+\DoxyCodeLine{00396         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req);}
+\DoxyCodeLine{00397         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00398     \}}
+\DoxyCodeLine{00399     memcpy(data\_copy, data, size);}
+\DoxyCodeLine{00400     }
+\DoxyCodeLine{00401     uv\_buf\_t buf = uv\_buf\_init((\textcolor{keywordtype}{char}*)data\_copy, size);}
+\DoxyCodeLine{00402     req-\/>data = data\_copy;}
+\DoxyCodeLine{00403     }
+\DoxyCodeLine{00404     \textcolor{keywordflow}{if} (uv\_udp\_send(req, \&server-\/>\mbox{\hyperlink{structuvbus__udp__server_a172f3a91acd006308156b42700bfab94}{udp\_handle}}, \&buf, 1, }
+\DoxyCodeLine{00405                     (\textcolor{keyword}{const} \textcolor{keyword}{struct} sockaddr*)addr, \mbox{\hyperlink{uvbus__transport__udp_8c_a10ad14f6993fac66edbf5d2f6a75aa62}{on\_send}}) != 0) \{}
+\DoxyCodeLine{00406         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data\_copy);}
+\DoxyCodeLine{00407         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req);}
+\DoxyCodeLine{00408         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}};}
+\DoxyCodeLine{00409     \}}
+\DoxyCodeLine{00410     }
+\DoxyCodeLine{00411     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00412 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00150}{on\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00034}{uvbus\+\_\+udp\+\_\+server\+::udp\+\_\+handle}}, \mbox{\hyperlink{uvbus_8h_source_l00166}{uvbus\+\_\+transport\+::udp\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00045}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{uvbus__transport__udp_8c_a76e1bcc8601d9c0ae9b786dad9feb8d0}\label{uvbus__transport__udp_8c_a76e1bcc8601d9c0ae9b786dad9feb8d0}} 
+\index{uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}!udp\_vtable@{udp\_vtable}}
+\index{udp\_vtable@{udp\_vtable}!uvbus\_transport\_udp.c@{uvbus\_transport\_udp.c}}
+\doxysubsubsection{\texorpdfstring{udp\_vtable}{udp\_vtable}}
+{\footnotesize\ttfamily const \mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{uvbus\+\_\+transport\+\_\+vtable\+\_\+t}} udp\+\_\+vtable\hspace{0.3cm}{\ttfamily [static]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{= \{}
+\DoxyCodeLine{    .listen = \mbox{\hyperlink{uvbus__transport__udp_8c_a8f48f6ee36b31b380e7ca78e613e72b0}{udp\_listen}},}
+\DoxyCodeLine{    .connect = \mbox{\hyperlink{uvbus__transport__udp_8c_aff90527caed493099f17b5b62326644b}{udp\_connect}},}
+\DoxyCodeLine{    .disconnect = \mbox{\hyperlink{uvbus__transport__udp_8c_a96e78f6b1a2938c0847bac2a2dad3385}{udp\_disconnect}},}
+\DoxyCodeLine{    .send = \mbox{\hyperlink{uvbus__transport__udp_8c_a9828851cdb423331fd139fc7cf48bcd6}{udp\_send}},}
+\DoxyCodeLine{    .send\_to = \mbox{\hyperlink{uvbus__transport__udp_8c_a37c121caed5bec7d40420e5c0b5dac0d}{udp\_send\_to}},}
+\DoxyCodeLine{    .free = \mbox{\hyperlink{uvbus__transport__udp_8c_a40f3f8486381b7d2bdab5e0793dcca49}{udp\_free}}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00164}{164}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00431}{create\+\_\+udp\+\_\+transport()}}.
+

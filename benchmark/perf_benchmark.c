@@ -114,10 +114,6 @@ static struct timespec g_server_start_time;  /* Server start time for throughput
 void on_signal(int signum) {
     (void)signum;
     g_shutdown_requested = 1;
-    /* Stop server event loop if running in server mode */
-    if (g_server_loop) {
-        uv_stop(g_server_loop);
-    }
 }
 
 /* Handler for Add operation */
@@ -602,6 +598,12 @@ void* thread_func(void* arg) {
     return NULL;
 }
 
+/* Function declarations for broadcast mode */
+static void run_publisher_mode(const char* address, int num_threads, int publishers_per_thread, 
+                               int batch_size, int test_duration_ms);
+static void run_subscriber_mode(const char* address, int num_threads, int subscribers_per_thread, 
+                                int test_duration_ms);
+
 void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int test_duration_ms, int low_latency) {
     atomic_int total_responses = 0;
     atomic_int total_failures = 0;
@@ -686,13 +688,15 @@ void run_server_mode(const char* address) {
     
     /* Create server */
     g_server = uvrpc_server_create(config);
-    uvrpc_config_free(config);  /* Free config after server creation */
     
     if (!g_server) {
         fprintf(stderr, "Failed to create server\n");
+        uvrpc_config_free(config);
         uv_loop_close(&loop);
         return;
     }
+    
+    uvrpc_config_free(config);  /* Free config after successful server creation */
     
     /* Register handlers manually */
     uvrpc_server_register(g_server, "Add", benchmark_add_handler, NULL);
@@ -702,7 +706,6 @@ void run_server_mode(const char* address) {
     if (ret != UVRPC_OK) {
         fprintf(stderr, "Failed to start server: %d\n", ret);
         uvrpc_server_free(g_server);
-        uvrpc_config_free(config);
         uv_loop_close(&loop);
         return;
     }
@@ -808,10 +811,37 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     client = uvrpc_client_create(config);
     uvrpc_config_free(config);  /* Free config after client creation */
     
+    if (!client) {
+        fprintf(stderr, "Failed to create client\n");
+        uv_loop_close(&loop);
+        return;
+    }
+    
     /* Allocate latency tracking arrays */
     g_latency_state.start_times = malloc(iterations * sizeof(struct timespec));
+    if (!g_latency_state.start_times) {
+        fprintf(stderr, "Failed to allocate start_times array\n");
+        uv_loop_close(&loop);
+        return;
+    }
+    
     g_latency_state.end_times = malloc(iterations * sizeof(struct timespec));
+    if (!g_latency_state.end_times) {
+        fprintf(stderr, "Failed to allocate end_times array\n");
+        free(g_latency_state.start_times);
+        uv_loop_close(&loop);
+        return;
+    }
+    
     g_latency_state.received = calloc(iterations, sizeof(int));
+    if (!g_latency_state.received) {
+        fprintf(stderr, "Failed to allocate received array\n");
+        free(g_latency_state.start_times);
+        free(g_latency_state.end_times);
+        uv_loop_close(&loop);
+        return;
+    }
+    
     g_latency_state.total = iterations;
     
     struct timespec start, end;
@@ -868,11 +898,14 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
         low_latency ? UVRPC_PERF_LOW_LATENCY : UVRPC_PERF_HIGH_THROUGHPUT);
     
     uvrpc_client_t* client = uvrpc_client_create(config);
-    uvrpc_config_free(config);  /* Free config after client creation */
     
     if (!client) {
+        uvrpc_config_free(config);
+        uv_loop_close(&loop);
         exit(1);
     }
+    
+    uvrpc_config_free(config);  /* Free config after successful client creation */
     
     if (uvrpc_client_connect(client) != UVRPC_OK) {
         fprintf(stderr, "[FORK CLIENT %d-%d] Failed to connect\n", loop_idx, client_idx);
@@ -930,13 +963,20 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
     /* Update shared memory */
     if (g_shared_stats) {
         int idx = loop_idx * MAX_CLIENTS + client_idx;
-        g_shared_stats[idx].pid = getpid();
-        g_shared_stats[idx].loop_idx = loop_idx;
-        g_shared_stats[idx].client_idx = client_idx;
-        g_shared_stats[idx].completed = completed;
-        g_shared_stats[idx].errors = errors;
-        g_shared_stats[idx].latency_us = 
-            (end.tv_sec - start.tv_sec) * 1000000LL + (end.tv_usec - start.tv_usec);
+        int total_clients = MAX_PROCESSES * MAX_CLIENTS;
+        
+        if (idx >= total_clients) {
+            fprintf(stderr, "[FORK CLIENT %d-%d] Invalid index %d >= %d\n", 
+                    loop_idx, client_idx, idx, total_clients);
+        } else {
+            g_shared_stats[idx].pid = getpid();
+            g_shared_stats[idx].loop_idx = loop_idx;
+            g_shared_stats[idx].client_idx = client_idx;
+            g_shared_stats[idx].completed = completed;
+            g_shared_stats[idx].errors = errors;
+            g_shared_stats[idx].latency_us = 
+                (end.tv_sec - start.tv_sec) * 1000000LL + (end.tv_usec - start.tv_usec);
+        }
     }
     
     uvrpc_client_disconnect(client);
@@ -954,13 +994,18 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
     int total_clients = num_loops * clients_per_loop;
     g_shm_size = total_clients * sizeof(client_stats_t);
     
-    g_shm_fd = shm_open(g_shm_name, O_CREAT | O_RDWR, 0666);
+    g_shm_fd = shm_open(g_shm_name, O_CREAT | O_RDWR, 0600);
     if (g_shm_fd == -1) {
         perror("shm_open");
         return;
     }
     
-    ftruncate(g_shm_fd, g_shm_size);
+    if (ftruncate(g_shm_fd, g_shm_size) == -1) {
+        perror("ftruncate");
+        close(g_shm_fd);
+        shm_unlink(g_shm_name);
+        return;
+    }
     
     g_shared_stats = mmap(NULL, g_shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, g_shm_fd, 0);
     if (g_shared_stats == MAP_FAILED) {
@@ -1028,40 +1073,47 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
 
 void print_usage(const char* prog_name) {
     printf("UVRPC Unified Benchmark\n\n");
-    printf("Usage: %s [options]\n\n", prog_name);
+    printf("Usage: %s [mode] [options]\n\n", prog_name);
+    printf("Modes:\n");
+    printf("  --server          Run in server mode (for SERVER_CLIENT mode)\n");
+    printf("  --publisher      Run in publisher mode (for BROADCAST mode)\n");
+    printf("  --subscriber     Run in subscriber mode (for BROADCAST mode)\n\n");
     printf("Options:\n");
-    printf("  -a <address>      Server address (default: tcp://127.0.0.1:5555)\n");
+    printf("  -a <address>      Server/Publisher address (default: tcp://127.0.0.1:5555)\n");
     printf("  -t <threads>      Number of threads/processes (default: 1)\n");
     printf("  -c <clients>      Clients per thread/process (default: 1)\n");
+    printf("  -p <publishers>   Publishers per thread/process (for BROADCAST mode, default: 1)\n");
+    printf("  -s <subscribers>  Subscribers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
     printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
     printf("  --fork            Use fork mode instead of threads (for multi-process testing)\n");
-    printf("  --server          Run in server mode\n");
     printf("  --server-timeout <ms> Server auto-shutdown timeout (default: 0, no timeout)\n");
     printf("  -h                Show this help\n\n");
-    printf("Modes:\n");
-    printf("  Server mode: Starts a performance-optimized server\n");
-    printf("  Client mode: Runs benchmark tests against a server\n\n");
+    printf("Communication Types:\n");
+    printf("  SERVER_CLIENT: Request-Response RPC (default)\n");
+    printf("  BROADCAST:    Publisher-Subscriber (use --publisher or --subscriber)\n\n");
     printf("Test Methods:\n");
     printf("  Throughput test: Runs for specified duration, measures maximum ops/s\n");
     printf("  Latency test: Measures request-response latency with percentiles\n\n");
     printf("Examples:\n");
-    printf("  # Start server\n");
+    printf("  # Start server (SERVER_CLIENT mode)\n");
     printf("  %s --server -a tcp://127.0.0.1:5000\n\n", prog_name);
-    printf("  # Single client throughput test (1 second)\n");
+    printf("  # Single client throughput test\n");
     printf("  %s -a tcp://127.0.0.1:5000 -b 100\n\n", prog_name);
-    printf("  # Multi-client throughput test (10 clients, 5 seconds)\n");
-    printf("  %s -a tcp://127.0.0.1:5000 -c 10 -b 100 -d 5000\n\n", prog_name);
-    printf("  # Multi-thread test (5 threads, 2 clients each, 3 seconds)\n");
+    printf("  # Multi-thread test (5 threads, 2 clients each)\n");
     printf("  %s -a tcp://127.0.0.1:5000 -t 5 -c 2 -b 50 -d 3000\n\n", prog_name);
-    printf("  # Multi-process test with fork (4 processes, 5 clients each)\n");
+    printf("  # Multi-process test with fork\n");
     printf("  %s -a tcp://127.0.0.1:5000 -t 4 -c 5 --fork\n\n", prog_name);
+    printf("  # Start publisher (BROADCAST mode)\n");
+    printf("  %s --publisher -a udp://127.0.0.1:6000 -p 3 -b 20 -d 5000\n\n", prog_name);
+    printf("  # Start subscriber (BROADCAST mode)\n");
+    printf("  %s --subscriber -a udp://127.0.0.1:6000 -s 5 -d 5000\n\n", prog_name);
+    printf("  # Multi-publisher test (BROADCAST mode)\n");
+    printf("  %s --publisher -a udp://127.0.0.1:6000 -t 3 -p 2 -b 10 -d 3000\n\n", prog_name);
     printf("  # Latency test\n");
     printf("  %s -a tcp://127.0.0.1:5000 --latency\n\n", prog_name);
-    printf("  # Low latency mode\n");
-    printf("  %s -a tcp://127.0.0.1:5000 -l\n\n", prog_name);
 }
 
 int main(int argc, char** argv) {
@@ -1086,12 +1138,16 @@ int main(int argc, char** argv) {
     const char* address = "tcp://127.0.0.1:5555";
     int num_threads = 1;
     int clients_per_thread = 1;
+    int publishers_per_thread = 1;
+    int subscribers_per_thread = 1;
     int concurrency = 100;
     int test_duration_ms = 1000;  /* Default: 1 second */
     int low_latency = 0;
     int latency_mode = 0;
     int fork_mode = 0;
     int server_mode = 0;
+    int publisher_mode = 0;
+    int subscriber_mode = 0;
     int server_timeout_ms = 0;  /* Default: no timeout */
 
     /* Parse all arguments */
@@ -1102,6 +1158,10 @@ int main(int argc, char** argv) {
             num_threads = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-c") == 0 && i + 1 < argc) {
             clients_per_thread = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
+            publishers_per_thread = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-s") == 0 && i + 1 < argc) {
+            subscribers_per_thread = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-b") == 0 && i + 1 < argc) {
             concurrency = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
@@ -1114,6 +1174,10 @@ int main(int argc, char** argv) {
             fork_mode = 1;
         } else if (strcmp(argv[i], "--server") == 0) {
             server_mode = 1;
+        } else if (strcmp(argv[i], "--publisher") == 0) {
+            publisher_mode = 1;
+        } else if (strcmp(argv[i], "--subscriber") == 0) {
+            subscriber_mode = 1;
         } else if (strcmp(argv[i], "--server-timeout") == 0 && i + 1 < argc) {
             server_timeout_ms = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-h") == 0) {
@@ -1127,20 +1191,42 @@ int main(int argc, char** argv) {
     printf("Performance Mode: %s\n", low_latency ? "Low Latency" : "High Throughput");
     printf("Press Ctrl+C to stop the benchmark\n");
     
+    /* Handle different modes */
     if (server_mode) {
         g_server_timeout_ms = server_timeout_ms;  /* Set global timeout */
+        printf("Mode: Server (SERVER_CLIENT)\n\n");
         run_server_mode(address);
         _exit(0);
     }
     
+    if (publisher_mode) {
+        int total_publishers = num_threads * publishers_per_thread;
+        printf("Mode: Publisher (BROADCAST)\n");
+        printf("Total publishers: %d\n", total_publishers);
+        printf("Test duration: %.1f seconds\n\n", test_duration_ms / 1000.0);
+        run_publisher_mode(address, num_threads, publishers_per_thread, concurrency, test_duration_ms);
+        _exit(0);
+    }
+    
+    if (subscriber_mode) {
+        int total_subscribers = num_threads * subscribers_per_thread;
+        printf("Mode: Subscriber (BROADCAST)\n");
+        printf("Total subscribers: %d\n", total_subscribers);
+        printf("Test duration: %.1f seconds\n\n", test_duration_ms / 1000.0);
+        run_subscriber_mode(address, num_threads, subscribers_per_thread, test_duration_ms);
+        _exit(0);
+    }
+    
+    /* Default: SERVER_CLIENT mode */
     if (latency_mode) {
+        printf("Mode: Client (SERVER_CLIENT)\n");
         printf("Test Mode: Latency\n\n");
         run_latency_test(address, 1000, low_latency);
     } else {
         int total_clients = num_threads * clients_per_thread;
         
         if (fork_mode) {
-            printf("Mode: Fork (Multi-Process)\n");
+            printf("Mode: Client (SERVER_CLIENT) - Fork (Multi-Process)\n");
             printf("Loops/Processes: %d\n", num_threads);
             printf("Clients per loop: %d\n", clients_per_thread);
             printf("Total clients: %d\n", total_clients);
@@ -1148,7 +1234,7 @@ int main(int argc, char** argv) {
             
             run_fork_mode(address, num_threads, clients_per_thread, test_duration_ms, low_latency);
         } else {
-            printf("Mode: Thread (Shared Loop)\n");
+            printf("Mode: Client (SERVER_CLIENT) - Thread (Shared Loop)\n");
             printf("Threads: %d\n", num_threads);
             printf("Clients per thread: %d\n", clients_per_thread);
             printf("Total clients: %d\n", total_clients);
@@ -1167,4 +1253,279 @@ int main(int argc, char** argv) {
     _exit(0);
     
     return 0;
+}
+
+/* ==================== BROADCAST MODE FUNCTIONS ==================== */
+
+/* Publisher callback */
+static void publish_callback(int status, void* ctx) {
+    (void)ctx;
+    if (status != UVRPC_OK) {
+        atomic_fetch_add(&g_response_sum, 1);  /* Count as error */
+    }
+}
+
+/* Publisher thread context */
+typedef struct {
+    int thread_id;
+    int num_publishers;
+    int batch_size;
+    int test_duration_ms;
+    const char* address;
+    atomic_int* total_messages;
+    atomic_int* total_bytes;
+} publisher_thread_context_t;
+
+/* Timer callback for publisher test duration */
+static void publisher_timer_callback(uv_timer_t* handle) {
+    int* done = (int*)handle->data;
+    *done = 1;
+}
+
+/* Publisher thread function */
+static void* publisher_thread_func(void* arg) {
+    publisher_thread_context_t* ctx = (publisher_thread_context_t*)arg;
+    
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    uvrpc_publisher_t** publishers = (uvrpc_publisher_t**)malloc(sizeof(uvrpc_publisher_t*) * ctx->num_publishers);
+    if (!publishers) {
+        return NULL;
+    }
+    
+    /* Create publishers */
+    for (int i = 0; i < ctx->num_publishers; i++) {
+        uvrpc_config_t* config = uvrpc_config_new();
+        uvrpc_config_set_loop(config, &loop);
+        uvrpc_config_set_address(config, ctx->address);
+        uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
+        
+        publishers[i] = uvrpc_publisher_create(config);
+        uvrpc_config_free(config);
+        
+        if (!publishers[i]) {
+            fprintf(stderr, "Failed to create publisher %d in thread %d\n", i, ctx->thread_id);
+            continue;
+        }
+        
+        if (uvrpc_publisher_start(publishers[i]) != UVRPC_OK) {
+            fprintf(stderr, "Failed to start publisher %d in thread %d\n", i, ctx->thread_id);
+            uvrpc_publisher_free(publishers[i]);
+            publishers[i] = NULL;
+            continue;
+        }
+    }
+    
+    /* Prepare message */
+    const char* message = "UVRPC Broadcast Benchmark Message";
+    size_t msg_size = strlen(message);
+    
+    /* Timer for test duration */
+    int done = 0;
+    uv_timer_t timer;
+    uv_timer_init(&loop, &timer);
+    timer.data = &done;
+    uv_timer_start(&timer, publisher_timer_callback, ctx->test_duration_ms, 0);
+    
+    /* Publish messages */
+    while (!done) {
+        for (int i = 0; i < ctx->num_publishers; i++) {
+            if (!publishers[i]) continue;
+            
+            for (int j = 0; j < ctx->batch_size; j++) {
+                uvrpc_publisher_publish(publishers[i], "benchmark_topic", 
+                                       (const uint8_t*)message, msg_size, 
+                                       publish_callback, NULL);
+                atomic_fetch_add(ctx->total_messages, 1);
+                atomic_fetch_add(ctx->total_bytes, (int)msg_size);
+            }
+        }
+        
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    
+    /* Cleanup */
+    uv_close((uv_handle_t*)&timer, NULL);
+    for (int i = 0; i < ctx->num_publishers; i++) {
+        if (publishers[i]) {
+            uvrpc_publisher_stop(publishers[i]);
+            uvrpc_publisher_free(publishers[i]);
+        }
+    }
+    free(publishers);
+    
+    /* Drain event loop */
+    for (int i = 0; i < 10; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    uv_loop_close(&loop);
+    
+    return NULL;
+}
+
+/* Run publisher mode */
+static void run_publisher_mode(const char* address, int num_threads, int publishers_per_thread, 
+                               int batch_size, int test_duration_ms) {
+    pthread_t* threads = (pthread_t*)malloc(sizeof(pthread_t) * num_threads);
+    publisher_thread_context_t* contexts = (publisher_thread_context_t*)malloc(sizeof(publisher_thread_context_t) * num_threads);
+    
+    atomic_int total_messages = 0;
+    atomic_int total_bytes = 0;
+    
+    /* Start publisher threads */
+    for (int i = 0; i < num_threads; i++) {
+        contexts[i].thread_id = i;
+        contexts[i].num_publishers = publishers_per_thread;
+        contexts[i].batch_size = batch_size;
+        contexts[i].test_duration_ms = test_duration_ms;
+        contexts[i].address = address;
+        contexts[i].total_messages = &total_messages;
+        contexts[i].total_bytes = &total_bytes;
+        
+        pthread_create(&threads[i], NULL, publisher_thread_func, &contexts[i]);
+    }
+    
+    /* Wait for all threads */
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    
+    /* Print results */
+    double duration_sec = test_duration_ms / 1000.0;
+    int messages_sent = atomic_load(&total_messages);
+    int bytes_sent = atomic_load(&total_bytes);
+    
+    printf("\n=== Publisher Results ===\n");
+    printf("Messages sent: %d\n", messages_sent);
+    printf("Bytes sent: %d\n", bytes_sent);
+    printf("Throughput: %.0f msgs/s\n", messages_sent / duration_sec);
+    printf("Bandwidth: %.2f MB/s\n", (bytes_sent / 1024.0 / 1024.0) / duration_sec);
+    
+    free(threads);
+    free(contexts);
+}
+
+/* Subscriber callback */
+static void subscribe_callback(const char* topic, const uint8_t* data, size_t size, void* ctx) {
+    (void)topic;
+    (void)data;
+    
+    publisher_thread_context_t* pub_ctx = (publisher_thread_context_t*)ctx;
+    atomic_fetch_add(pub_ctx->total_messages, 1);
+    atomic_fetch_add(pub_ctx->total_bytes, (int)size);
+}
+
+/* Subscriber thread function */
+static void* subscriber_thread_func(void* arg) {
+    publisher_thread_context_t* ctx = (publisher_thread_context_t*)arg;
+    
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    int num_subscribers = ctx->num_publishers;  /* Reuse this field for subscribers */
+    uvrpc_subscriber_t** subscribers = (uvrpc_subscriber_t**)malloc(sizeof(uvrpc_subscriber_t*) * num_subscribers);
+    if (!subscribers) {
+        return NULL;
+    }
+    
+    /* Create subscribers */
+    for (int i = 0; i < num_subscribers; i++) {
+        uvrpc_config_t* config = uvrpc_config_new();
+        uvrpc_config_set_loop(config, &loop);
+        uvrpc_config_set_address(config, ctx->address);
+        uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
+        
+        subscribers[i] = uvrpc_subscriber_create(config);
+        uvrpc_config_free(config);
+        
+        if (!subscribers[i]) {
+            fprintf(stderr, "Failed to create subscriber %d in thread %d\n", i, ctx->thread_id);
+            continue;
+        }
+        
+        if (uvrpc_subscriber_connect(subscribers[i]) != UVRPC_OK) {
+            fprintf(stderr, "Failed to connect subscriber %d in thread %d\n", i, ctx->thread_id);
+            uvrpc_subscriber_free(subscribers[i]);
+            subscribers[i] = NULL;
+            continue;
+        }
+        
+        if (uvrpc_subscriber_subscribe(subscribers[i], "benchmark_topic", 
+                                       subscribe_callback, ctx) != UVRPC_OK) {
+            fprintf(stderr, "Failed to subscribe %d in thread %d\n", i, ctx->thread_id);
+        }
+    }
+    
+    /* Timer for test duration */
+    int done = 0;
+    uv_timer_t timer;
+    uv_timer_init(&loop, &timer);
+    timer.data = &done;
+    uv_timer_start(&timer, publisher_timer_callback, ctx->test_duration_ms, 0);
+    
+    /* Run event loop */
+    while (!done) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    
+    /* Cleanup */
+    uv_close((uv_handle_t*)&timer, NULL);
+    for (int i = 0; i < num_subscribers; i++) {
+        if (subscribers[i]) {
+            uvrpc_subscriber_unsubscribe(subscribers[i], "benchmark_topic");
+            uvrpc_subscriber_disconnect(subscribers[i]);
+            uvrpc_subscriber_free(subscribers[i]);
+        }
+    }
+    free(subscribers);
+    
+    /* Drain event loop */
+    for (int i = 0; i < 10; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    uv_loop_close(&loop);
+    
+    return NULL;
+}
+
+/* Run subscriber mode */
+static void run_subscriber_mode(const char* address, int num_threads, int subscribers_per_thread, 
+                                int test_duration_ms) {
+    pthread_t* threads = (pthread_t*)malloc(sizeof(pthread_t) * num_threads);
+    publisher_thread_context_t* contexts = (publisher_thread_context_t*)malloc(sizeof(publisher_thread_context_t) * num_threads);
+    
+    atomic_int total_messages = 0;
+    atomic_int total_bytes = 0;
+    
+    /* Start subscriber threads */
+    for (int i = 0; i < num_threads; i++) {
+        contexts[i].thread_id = i;
+        contexts[i].num_publishers = subscribers_per_thread;  /* Reuse for subscribers */
+        contexts[i].test_duration_ms = test_duration_ms;
+        contexts[i].address = address;
+        contexts[i].total_messages = &total_messages;
+        contexts[i].total_bytes = &total_bytes;
+        
+        pthread_create(&threads[i], NULL, subscriber_thread_func, &contexts[i]);
+    }
+    
+    /* Wait for all threads */
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    
+    /* Print results */
+    double duration_sec = test_duration_ms / 1000.0;
+    int messages_received = atomic_load(&total_messages);
+    int bytes_received = atomic_load(&total_bytes);
+    
+    printf("\n=== Subscriber Results ===\n");
+    printf("Messages received: %d\n", messages_received);
+    printf("Bytes received: %d\n", bytes_received);
+    printf("Throughput: %.0f msgs/s\n", messages_received / duration_sec);
+    printf("Bandwidth: %.2f MB/s\n", (bytes_received / 1024.0 / 1024.0) / duration_sec);
+    
+    free(threads);
+    free(contexts);
 }

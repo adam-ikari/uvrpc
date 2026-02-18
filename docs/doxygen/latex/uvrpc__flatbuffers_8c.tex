@@ -1,0 +1,396 @@
+\hypertarget{uvrpc__flatbuffers_8c}{}\doxysection{src/uvrpc\+\_\+flatbuffers.c File Reference}
+\label{uvrpc__flatbuffers_8c}\index{src/uvrpc\_flatbuffers.c@{src/uvrpc\_flatbuffers.c}}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a00dc6679904a0df25134739e641863d2}{uvrpc\+\_\+decode\+\_\+error}} (const uint8\+\_\+t $\ast$data, size\+\_\+t size, uint32\+\_\+t $\ast$out\+\_\+msgid, int32\+\_\+t $\ast$out\+\_\+error\+\_\+code, char $\ast$$\ast$out\+\_\+error\+\_\+message)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a51728496dc77e78129676ed44fd83922}{uvrpc\+\_\+decode\+\_\+request}} (const uint8\+\_\+t $\ast$data, size\+\_\+t size, uint32\+\_\+t $\ast$out\+\_\+msgid, char $\ast$$\ast$out\+\_\+method, const uint8\+\_\+t $\ast$$\ast$out\+\_\+params, size\+\_\+t $\ast$out\+\_\+params\+\_\+size)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_af563d0083169450f94fcea4815342dd4}{uvrpc\+\_\+decode\+\_\+response}} (const uint8\+\_\+t $\ast$data, size\+\_\+t size, uint32\+\_\+t $\ast$out\+\_\+msgid, const uint8\+\_\+t $\ast$$\ast$out\+\_\+result, size\+\_\+t $\ast$out\+\_\+result\+\_\+size)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a041eebfa6429de1ec7e035a53cb14e59}{uvrpc\+\_\+encode\+\_\+error}} (uint32\+\_\+t msgid, int32\+\_\+t error\+\_\+code, const char $\ast$error\+\_\+message, uint8\+\_\+t $\ast$$\ast$out\+\_\+data, size\+\_\+t $\ast$out\+\_\+size)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a35b5e5bb78223c22e4159434a6ee8fcb}{uvrpc\+\_\+encode\+\_\+request}} (uint32\+\_\+t msgid, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, uint8\+\_\+t $\ast$$\ast$out\+\_\+data, size\+\_\+t $\ast$out\+\_\+size)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a978c34d8fcb3413cca2f439364f654b3}{uvrpc\+\_\+encode\+\_\+response}} (uint32\+\_\+t msgid, const uint8\+\_\+t $\ast$result, size\+\_\+t result\+\_\+size, uint8\+\_\+t $\ast$$\ast$out\+\_\+data, size\+\_\+t $\ast$out\+\_\+size)
+\item 
+void \mbox{\hyperlink{uvrpc__flatbuffers_8c_a4fc2e6f1667f0a8451003be86428f01c}{uvrpc\+\_\+free\+\_\+decoded}} (char $\ast$method\+\_\+or\+\_\+error)
+\item 
+int \mbox{\hyperlink{uvrpc__flatbuffers_8c_a978abede3b2489ad7ee853129366cd60}{uvrpc\+\_\+get\+\_\+frame\+\_\+type}} (const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a00dc6679904a0df25134739e641863d2}\label{uvrpc__flatbuffers_8c_a00dc6679904a0df25134739e641863d2}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_decode\_error@{uvrpc\_decode\_error}}
+\index{uvrpc\_decode\_error@{uvrpc\_decode\_error}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_decode\_error()}{uvrpc\_decode\_error()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+decode\+\_\+error (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{uint32\+\_\+t $\ast$}]{out\+\_\+msgid,  }\item[{int32\+\_\+t $\ast$}]{out\+\_\+error\+\_\+code,  }\item[{char $\ast$$\ast$}]{out\+\_\+error\+\_\+message }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00186}{186}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00187                                                                                                \{}
+\DoxyCodeLine{00188     \textcolor{keywordflow}{if} (!data || !out\_msgid || !out\_error\_code || !out\_error\_message) \{}
+\DoxyCodeLine{00189         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00190     \}}
+\DoxyCodeLine{00191 }
+\DoxyCodeLine{00192     uvrpc\_RpcFrame\_table\_t frame = uvrpc\_RpcFrame\_as\_root(data);}
+\DoxyCodeLine{00193 }
+\DoxyCodeLine{00194     \textcolor{keywordflow}{if} (!frame) \{}
+\DoxyCodeLine{00195         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00196     \}}
+\DoxyCodeLine{00197 }
+\DoxyCodeLine{00198     *out\_msgid = uvrpc\_RpcFrame\_msgid(frame);}
+\DoxyCodeLine{00199 }
+\DoxyCodeLine{00200     flatbuffers\_uint8\_vec\_t params = uvrpc\_RpcFrame\_params(frame);}
+\DoxyCodeLine{00201     \textcolor{keywordflow}{if} (!params || flatbuffers\_uint8\_vec\_len(params) < 5) \{}
+\DoxyCodeLine{00202         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00203     \}}
+\DoxyCodeLine{00204 }
+\DoxyCodeLine{00205     \textcolor{comment}{/* Unpack error code and message */}}
+\DoxyCodeLine{00206     \textcolor{keywordtype}{size\_t} params\_size = flatbuffers\_uint8\_vec\_len(params);}
+\DoxyCodeLine{00207     *out\_error\_code = ((int32\_t)params[0] << 24) |}
+\DoxyCodeLine{00208                       ((int32\_t)params[1] << 16) |}
+\DoxyCodeLine{00209                       ((int32\_t)params[2] << 8) |}
+\DoxyCodeLine{00210                       params[3];}
+\DoxyCodeLine{00211 }
+\DoxyCodeLine{00212     \textcolor{keywordflow}{if} (params\_size > 5) \{}
+\DoxyCodeLine{00213         *out\_error\_message = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}((\textcolor{keywordtype}{char}*)(params + 4));}
+\DoxyCodeLine{00214     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00215         *out\_error\_message = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(\textcolor{stringliteral}{"{}"{}});}
+\DoxyCodeLine{00216     \}}
+\DoxyCodeLine{00217 }
+\DoxyCodeLine{00218     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00219 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a51728496dc77e78129676ed44fd83922}\label{uvrpc__flatbuffers_8c_a51728496dc77e78129676ed44fd83922}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_decode\_request@{uvrpc\_decode\_request}}
+\index{uvrpc\_decode\_request@{uvrpc\_decode\_request}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_decode\_request()}{uvrpc\_decode\_request()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+decode\+\_\+request (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{uint32\+\_\+t $\ast$}]{out\+\_\+msgid,  }\item[{char $\ast$$\ast$}]{out\+\_\+method,  }\item[{const uint8\+\_\+t $\ast$$\ast$}]{out\+\_\+params,  }\item[{size\+\_\+t $\ast$}]{out\+\_\+params\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00078}{78}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00080                                                                               \{}
+\DoxyCodeLine{00081     \textcolor{keywordflow}{if} (!data || !out\_msgid || !out\_method || !out\_params || !out\_params\_size) \{}
+\DoxyCodeLine{00082         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00083     \}}
+\DoxyCodeLine{00084 }
+\DoxyCodeLine{00085     uvrpc\_RpcFrame\_table\_t frame = uvrpc\_RpcFrame\_as\_root(data);}
+\DoxyCodeLine{00086 }
+\DoxyCodeLine{00087     \textcolor{keywordflow}{if} (!frame) \{}
+\DoxyCodeLine{00088         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00089     \}}
+\DoxyCodeLine{00090 }
+\DoxyCodeLine{00091     *out\_msgid = uvrpc\_RpcFrame\_msgid(frame);}
+\DoxyCodeLine{00092 }
+\DoxyCodeLine{00093     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method = uvrpc\_RpcFrame\_method(frame);}
+\DoxyCodeLine{00094     \textcolor{keywordflow}{if} (method) \{}
+\DoxyCodeLine{00095         *out\_method = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(method);}
+\DoxyCodeLine{00096     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00097         *out\_method = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(\textcolor{stringliteral}{"{}"{}});}
+\DoxyCodeLine{00098     \}}
+\DoxyCodeLine{00099 }
+\DoxyCodeLine{00100     flatbuffers\_uint8\_vec\_t params = uvrpc\_RpcFrame\_params(frame);}
+\DoxyCodeLine{00101     \textcolor{keywordflow}{if} (params) \{}
+\DoxyCodeLine{00102         *out\_params = params;}
+\DoxyCodeLine{00103         *out\_params\_size = flatbuffers\_uint8\_vec\_len(params);}
+\DoxyCodeLine{00104     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00105         *out\_params = NULL;}
+\DoxyCodeLine{00106         *out\_params\_size = 0;}
+\DoxyCodeLine{00107     \}}
+\DoxyCodeLine{00108 }
+\DoxyCodeLine{00109     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00110 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_af563d0083169450f94fcea4815342dd4}\label{uvrpc__flatbuffers_8c_af563d0083169450f94fcea4815342dd4}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_decode\_response@{uvrpc\_decode\_response}}
+\index{uvrpc\_decode\_response@{uvrpc\_decode\_response}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_decode\_response()}{uvrpc\_decode\_response()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+decode\+\_\+response (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{uint32\+\_\+t $\ast$}]{out\+\_\+msgid,  }\item[{const uint8\+\_\+t $\ast$$\ast$}]{out\+\_\+result,  }\item[{size\+\_\+t $\ast$}]{out\+\_\+result\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00113}{113}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00115                                                                                \{}
+\DoxyCodeLine{00116     \textcolor{keywordflow}{if} (!data || !out\_msgid || !out\_result || !out\_result\_size) \{}
+\DoxyCodeLine{00117         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00118     \}}
+\DoxyCodeLine{00119     }
+\DoxyCodeLine{00120     uvrpc\_RpcFrame\_table\_t frame = uvrpc\_RpcFrame\_as\_root(data);}
+\DoxyCodeLine{00121     }
+\DoxyCodeLine{00122     \textcolor{keywordflow}{if} (!frame) \{}
+\DoxyCodeLine{00123         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00124     \}}
+\DoxyCodeLine{00125     }
+\DoxyCodeLine{00126     *out\_msgid = uvrpc\_RpcFrame\_msgid(frame);}
+\DoxyCodeLine{00127     }
+\DoxyCodeLine{00128     flatbuffers\_uint8\_vec\_t result = uvrpc\_RpcFrame\_params(frame);}
+\DoxyCodeLine{00129     \textcolor{keywordflow}{if} (result) \{}
+\DoxyCodeLine{00130         *out\_result = result;}
+\DoxyCodeLine{00131         *out\_result\_size = flatbuffers\_uint8\_vec\_len(result);}
+\DoxyCodeLine{00132     \}}
+\DoxyCodeLine{00133     }
+\DoxyCodeLine{00134     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00135 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a041eebfa6429de1ec7e035a53cb14e59}\label{uvrpc__flatbuffers_8c_a041eebfa6429de1ec7e035a53cb14e59}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_encode\_error@{uvrpc\_encode\_error}}
+\index{uvrpc\_encode\_error@{uvrpc\_encode\_error}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_encode\_error()}{uvrpc\_encode\_error()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+encode\+\_\+error (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{msgid,  }\item[{int32\+\_\+t}]{error\+\_\+code,  }\item[{const char $\ast$}]{error\+\_\+message,  }\item[{uint8\+\_\+t $\ast$$\ast$}]{out\+\_\+data,  }\item[{size\+\_\+t $\ast$}]{out\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00138}{138}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00139                                                              \{}
+\DoxyCodeLine{00140     \textcolor{keywordflow}{if} (!out\_data || !out\_size) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00141 }
+\DoxyCodeLine{00142     flatcc\_builder\_t builder;}
+\DoxyCodeLine{00143     flatcc\_builder\_init(\&builder);}
+\DoxyCodeLine{00144 }
+\DoxyCodeLine{00145     \textcolor{comment}{/* Serialize error info: [error\_code (4 bytes), error\_message (null-\/terminated string)] */}}
+\DoxyCodeLine{00146     \textcolor{keywordtype}{size\_t} error\_data\_size = 4 + (error\_message ? strlen(error\_message) + 1 : 1);}
+\DoxyCodeLine{00147     uint8\_t* error\_data = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(error\_data\_size);}
+\DoxyCodeLine{00148     \textcolor{keywordflow}{if} (!error\_data) \{}
+\DoxyCodeLine{00149         flatcc\_builder\_clear(\&builder);}
+\DoxyCodeLine{00150         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00151     \}}
+\DoxyCodeLine{00152 }
+\DoxyCodeLine{00153     \textcolor{comment}{/* Pack error code and message */}}
+\DoxyCodeLine{00154     error\_data[0] = (error\_code >> 24) \& 0xFF;}
+\DoxyCodeLine{00155     error\_data[1] = (error\_code >> 16) \& 0xFF;}
+\DoxyCodeLine{00156     error\_data[2] = (error\_code >> 8) \& 0xFF;}
+\DoxyCodeLine{00157     error\_data[3] = error\_code \& 0xFF;}
+\DoxyCodeLine{00158     \textcolor{keywordflow}{if} (error\_message) \{}
+\DoxyCodeLine{00159         memcpy(error\_data + 4, error\_message, strlen(error\_message) + 1);}
+\DoxyCodeLine{00160     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00161         error\_data[4] = \textcolor{charliteral}{'\(\backslash\)0'};}
+\DoxyCodeLine{00162     \}}
+\DoxyCodeLine{00163 }
+\DoxyCodeLine{00164     flatbuffers\_uint8\_vec\_ref\_t params\_ref = flatbuffers\_uint8\_vec\_create(\&builder, error\_data, error\_data\_size);}
+\DoxyCodeLine{00165     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(error\_data);}
+\DoxyCodeLine{00166 }
+\DoxyCodeLine{00167     \textcolor{comment}{/* type: 0 = request, 1 = response, 2 = notification, 3 = error */}}
+\DoxyCodeLine{00168     uint8\_t type = 3;}
+\DoxyCodeLine{00169 }
+\DoxyCodeLine{00170     uvrpc\_RpcFrame\_start\_as\_root(\&builder);}
+\DoxyCodeLine{00171     uvrpc\_RpcFrame\_type\_add(\&builder, type);}
+\DoxyCodeLine{00172     uvrpc\_RpcFrame\_msgid\_add(\&builder, msgid);}
+\DoxyCodeLine{00173     uvrpc\_RpcFrame\_params\_add(\&builder, params\_ref);}
+\DoxyCodeLine{00174     uvrpc\_RpcFrame\_end\_as\_root(\&builder);}
+\DoxyCodeLine{00175 }
+\DoxyCodeLine{00176     \textcolor{keywordtype}{void}* buf = flatcc\_builder\_finalize\_buffer(\&builder, out\_size);}
+\DoxyCodeLine{00177     \textcolor{keywordflow}{if} (buf) \{}
+\DoxyCodeLine{00178         *out\_data = buf;}
+\DoxyCodeLine{00179     \}}
+\DoxyCodeLine{00180 }
+\DoxyCodeLine{00181     flatcc\_builder\_clear(\&builder);}
+\DoxyCodeLine{00182     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00183 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a35b5e5bb78223c22e4159434a6ee8fcb}\label{uvrpc__flatbuffers_8c_a35b5e5bb78223c22e4159434a6ee8fcb}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_encode\_request@{uvrpc\_encode\_request}}
+\index{uvrpc\_encode\_request@{uvrpc\_encode\_request}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_encode\_request()}{uvrpc\_encode\_request()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+encode\+\_\+request (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{msgid,  }\item[{const char $\ast$}]{method,  }\item[{const uint8\+\_\+t $\ast$}]{params,  }\item[{size\+\_\+t}]{params\+\_\+size,  }\item[{uint8\+\_\+t $\ast$$\ast$}]{out\+\_\+data,  }\item[{size\+\_\+t $\ast$}]{out\+\_\+size }\end{DoxyParamCaption})}
+
+UVRPC Frame Encoding/\+Decoding Implementation 
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00014}{14}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00016                                                                \{}
+\DoxyCodeLine{00017     \textcolor{keywordflow}{if} (!out\_data || !out\_size) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00018 }
+\DoxyCodeLine{00019     flatcc\_builder\_t builder;}
+\DoxyCodeLine{00020     flatcc\_builder\_init(\&builder);}
+\DoxyCodeLine{00021 }
+\DoxyCodeLine{00022     flatbuffers\_uint8\_vec\_ref\_t params\_ref = 0;}
+\DoxyCodeLine{00023     \textcolor{keywordflow}{if} (params \&\& params\_size > 0) \{}
+\DoxyCodeLine{00024         params\_ref = flatbuffers\_uint8\_vec\_create(\&builder, params, params\_size);}
+\DoxyCodeLine{00025     \}}
+\DoxyCodeLine{00026 }
+\DoxyCodeLine{00027     \textcolor{comment}{/* type: 0 = request, 1 = response, 2 = notification, 3 = error */}}
+\DoxyCodeLine{00028     uint8\_t type = 0;}
+\DoxyCodeLine{00029 }
+\DoxyCodeLine{00030     uvrpc\_RpcFrame\_start\_as\_root(\&builder);}
+\DoxyCodeLine{00031     uvrpc\_RpcFrame\_type\_add(\&builder, type);}
+\DoxyCodeLine{00032     uvrpc\_RpcFrame\_msgid\_add(\&builder, msgid);}
+\DoxyCodeLine{00033     uvrpc\_RpcFrame\_method\_add(\&builder, flatbuffers\_string\_create\_str(\&builder, method));}
+\DoxyCodeLine{00034     uvrpc\_RpcFrame\_params\_add(\&builder, params\_ref);}
+\DoxyCodeLine{00035     uvrpc\_RpcFrame\_end\_as\_root(\&builder);}
+\DoxyCodeLine{00036 }
+\DoxyCodeLine{00037     \textcolor{keywordtype}{void}* buf = flatcc\_builder\_finalize\_buffer(\&builder, out\_size);}
+\DoxyCodeLine{00038     \textcolor{keywordflow}{if} (buf) \{}
+\DoxyCodeLine{00039         *out\_data = buf;}
+\DoxyCodeLine{00040     \}}
+\DoxyCodeLine{00041 }
+\DoxyCodeLine{00042     flatcc\_builder\_clear(\&builder);}
+\DoxyCodeLine{00043     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00044 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a978c34d8fcb3413cca2f439364f654b3}\label{uvrpc__flatbuffers_8c_a978c34d8fcb3413cca2f439364f654b3}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_encode\_response@{uvrpc\_encode\_response}}
+\index{uvrpc\_encode\_response@{uvrpc\_encode\_response}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_encode\_response()}{uvrpc\_encode\_response()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+encode\+\_\+response (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{msgid,  }\item[{const uint8\+\_\+t $\ast$}]{result,  }\item[{size\+\_\+t}]{result\+\_\+size,  }\item[{uint8\+\_\+t $\ast$$\ast$}]{out\+\_\+data,  }\item[{size\+\_\+t $\ast$}]{out\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00047}{47}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00048                                                                 \{}
+\DoxyCodeLine{00049     \textcolor{keywordflow}{if} (!out\_data || !out\_size) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00050 }
+\DoxyCodeLine{00051     flatcc\_builder\_t builder;}
+\DoxyCodeLine{00052     flatcc\_builder\_init(\&builder);}
+\DoxyCodeLine{00053 }
+\DoxyCodeLine{00054     flatbuffers\_uint8\_vec\_ref\_t result\_ref = 0;}
+\DoxyCodeLine{00055     \textcolor{keywordflow}{if} (result \&\& result\_size > 0) \{}
+\DoxyCodeLine{00056         result\_ref = flatbuffers\_uint8\_vec\_create(\&builder, result, result\_size);}
+\DoxyCodeLine{00057     \}}
+\DoxyCodeLine{00058 }
+\DoxyCodeLine{00059     \textcolor{comment}{/* type: 0 = request, 1 = response, 2 = notification, 3 = error */}}
+\DoxyCodeLine{00060     uint8\_t type = 1;}
+\DoxyCodeLine{00061 }
+\DoxyCodeLine{00062     uvrpc\_RpcFrame\_start\_as\_root(\&builder);}
+\DoxyCodeLine{00063     uvrpc\_RpcFrame\_type\_add(\&builder, type);}
+\DoxyCodeLine{00064     uvrpc\_RpcFrame\_msgid\_add(\&builder, msgid);}
+\DoxyCodeLine{00065     uvrpc\_RpcFrame\_params\_add(\&builder, result\_ref);}
+\DoxyCodeLine{00066     uvrpc\_RpcFrame\_end\_as\_root(\&builder);}
+\DoxyCodeLine{00067 }
+\DoxyCodeLine{00068     \textcolor{keywordtype}{void}* buf = flatcc\_builder\_finalize\_buffer(\&builder, out\_size);}
+\DoxyCodeLine{00069     \textcolor{keywordflow}{if} (buf) \{}
+\DoxyCodeLine{00070         *out\_data = buf;}
+\DoxyCodeLine{00071     \}}
+\DoxyCodeLine{00072 }
+\DoxyCodeLine{00073     flatcc\_builder\_clear(\&builder);}
+\DoxyCodeLine{00074     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00075 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a4fc2e6f1667f0a8451003be86428f01c}\label{uvrpc__flatbuffers_8c_a4fc2e6f1667f0a8451003be86428f01c}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_free\_decoded@{uvrpc\_free\_decoded}}
+\index{uvrpc\_free\_decoded@{uvrpc\_free\_decoded}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_free\_decoded()}{uvrpc\_free\_decoded()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+free\+\_\+decoded (\begin{DoxyParamCaption}\item[{char $\ast$}]{method\+\_\+or\+\_\+error }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00236}{236}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00236                                                \{}
+\DoxyCodeLine{00237     \textcolor{keywordflow}{if} (method\_or\_error) \{}
+\DoxyCodeLine{00238         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(method\_or\_error);}
+\DoxyCodeLine{00239     \}}
+\DoxyCodeLine{00240 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__flatbuffers_8c_a978abede3b2489ad7ee853129366cd60}\label{uvrpc__flatbuffers_8c_a978abede3b2489ad7ee853129366cd60}} 
+\index{uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}!uvrpc\_get\_frame\_type@{uvrpc\_get\_frame\_type}}
+\index{uvrpc\_get\_frame\_type@{uvrpc\_get\_frame\_type}!uvrpc\_flatbuffers.c@{uvrpc\_flatbuffers.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_get\_frame\_type()}{uvrpc\_get\_frame\_type()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+get\+\_\+frame\+\_\+type (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00222}{222}} of file \mbox{\hyperlink{uvrpc__flatbuffers_8c_source}{uvrpc\+\_\+flatbuffers.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00222                                                            \{}
+\DoxyCodeLine{00223     \textcolor{keywordflow}{if} (!data || size < 4) \{}
+\DoxyCodeLine{00224         \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00225     \}}
+\DoxyCodeLine{00226 }
+\DoxyCodeLine{00227     uvrpc\_RpcFrame\_table\_t frame = uvrpc\_RpcFrame\_as\_root(data);}
+\DoxyCodeLine{00228     \textcolor{keywordflow}{if} (!frame) \{}
+\DoxyCodeLine{00229         \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00230     \}}
+\DoxyCodeLine{00231 }
+\DoxyCodeLine{00232     \textcolor{keywordflow}{return} (\textcolor{keywordtype}{int})uvrpc\_RpcFrame\_type(frame);}
+\DoxyCodeLine{00233 \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}.
+

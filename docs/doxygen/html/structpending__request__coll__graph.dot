@@ -1,0 +1,13 @@
+digraph "pending_request"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="pending_request",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip=" "];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" generation\nmsgid" ,fontname="Helvetica"];
+  Node2 [label="uint32_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" client_stream" ,fontname="Helvetica"];
+  Node3 [label="uv_stream_t *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" in_use" ,fontname="Helvetica"];
+  Node4 [label="int",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+}

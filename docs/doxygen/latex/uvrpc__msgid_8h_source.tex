@@ -1,0 +1,36 @@
+\hypertarget{uvrpc__msgid_8h_source}{}\doxysection{uvrpc\+\_\+msgid.\+h}
+\label{uvrpc__msgid_8h_source}\index{src/uvrpc\_msgid.h@{src/uvrpc\_msgid.h}}
+\mbox{\hyperlink{uvrpc__msgid_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00011}00011 \textcolor{preprocessor}{\#ifndef UVRPC\_MSGID\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00012}00012 \textcolor{preprocessor}{\#define UVRPC\_MSGID\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00013}00013 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00014}00014 \textcolor{preprocessor}{\#include <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00015}00015 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00016}00016 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00017}00017 \textcolor{keyword}{extern} \textcolor{stringliteral}{"{}C"{}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00018}00018 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00019}00019 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00020}00020 \textcolor{comment}{/* Message ID context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00021}\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{00021}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\{}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00022}\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{00022}}     uint32\_t \mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}};     \textcolor{comment}{/* Next sequence number */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00023}00023 \} \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00024}00024 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00025}00025 \textcolor{comment}{/* Create message ID context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00026}00026 \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* \mbox{\hyperlink{uvrpc__msgid_8h_a119dfc4c63541db6b7550315be6a5ede}{uvrpc\_msgid\_ctx\_new}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00027}00027 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__msgid_8h_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\_msgid\_ctx\_free}}(\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00028}00028 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00029}00029 \textcolor{comment}{/* Set initial sequence number (for multi-\/client scenarios) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00030}00030 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__msgid_8h_a73aeadc5b317a416049ec636873fbc5e}{uvrpc\_msgid\_ctx\_set\_start}}(\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* ctx, uint32\_t start\_seq);}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00031}00031 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00032}00032 \textcolor{comment}{/* Generate next message ID (32-\/bit) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00033}00033 uint32\_t \mbox{\hyperlink{uvrpc__msgid_8h_a932e18db85429d253aeb248bbc2effcc}{uvrpc\_msgid\_next}}(\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00034}00034 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00035}00035 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00036}00036 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00037}00037 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00038}00038 }
+\DoxyCodeLine{\Hypertarget{uvrpc__msgid_8h_source_l00039}00039 \textcolor{preprocessor}{\#endif }\textcolor{comment}{/* UVRPC\_MSGID\_H */}\textcolor{preprocessor}{}}
+
+\end{DoxyCode}

@@ -1,0 +1,125 @@
+\hypertarget{uvrpc__config_8c_source}{}\doxysection{uvrpc\+\_\+config.\+c}
+\label{uvrpc__config_8c_source}\index{src/uvrpc\_config.c@{src/uvrpc\_config.c}}
+\mbox{\hyperlink{uvrpc__config_8c}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00013}00013 \textcolor{preprocessor}{\#include "{}../include/uvrpc.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00014}00014 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00015}00015 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00016}00016 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00017}00017 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00018}\mbox{\hyperlink{group__ConfigAPI_gab2674a1d45c5780fc4f0141473b79013}{00018}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gab2674a1d45c5780fc4f0141473b79013}{uvrpc\_config\_new}}(\textcolor{keywordtype}{void}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00019}00019     \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config = (\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00020}00020     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00021}00021 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00022}00022     config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00023}00023     config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00024}00024     config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\_TRANSPORT\_TCP}};  \textcolor{comment}{/* Default to TCP */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00025}00025     config-\/>\mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\_mode}} = \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}{UVRPC\_PERF\_LOW\_LATENCY}};  \textcolor{comment}{/* Default to low latency */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00026}00026     config-\/>\mbox{\hyperlink{structuvrpc__config_af659be884a080549286ec71d45d313ea}{pool\_size}} = UVRPC\_DEFAULT\_POOL\_SIZE;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00027}00027     config-\/>\mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{max\_concurrent}} = UVRPC\_MAX\_CONCURRENT\_REQUESTS;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00028}00028     config-\/>\mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\_pending\_callbacks}} = UVRPC\_MAX\_PENDING\_CALLBACKS;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00029}00029     config-\/>\mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{timeout\_ms}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00030}00030     config-\/>\mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\_offset}} = 0;  \textcolor{comment}{/* Default: 0 = auto-\/assign */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00031}00031 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00032}00032     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00033}00033 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00034}00034 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00035}\mbox{\hyperlink{group__ConfigAPI_ga02b1d0002541d4ef0d8699225f8e5fe3}{00035}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ConfigAPI_ga02b1d0002541d4ef0d8699225f8e5fe3}{uvrpc\_config\_free}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00036}00036     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00037}00037 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00038}00038     \textcolor{keywordflow}{if} (config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00039}00039         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00040}00040     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00041}00041 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00042}00042     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00043}00043 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00044}00044 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00045}\mbox{\hyperlink{group__ConfigAPI_gae89a78f07bd36c36e2ac460b52b28d4e}{00045}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gae89a78f07bd36c36e2ac460b52b28d4e}{uvrpc\_config\_set\_loop}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uv\_loop\_t* loop) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00046}00046     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00047}00047     config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} = loop;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00048}00048     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00049}00049 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00050}00050 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00051}\mbox{\hyperlink{group__ConfigAPI_gacf6214d1d2df49c284074b1bd7450775}{00051}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gacf6214d1d2df49c284074b1bd7450775}{uvrpc\_config\_set\_address}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* address) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00052}00052     \textcolor{keywordflow}{if} (!config || !address) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00053}00053 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00054}00054     \textcolor{keywordflow}{if} (config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00055}00055         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00056}00056     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00057}00057 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00058}00058     config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(address);}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00059}00059     \textcolor{keywordflow}{if} (!config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00060}00060         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00061}00061     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00062}00062 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00063}00063     \textcolor{comment}{/* Auto-\/detect transport type from address prefix */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00064}00064     \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}inproc://"{}}, 9) == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00065}00065         config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{UVRPC\_TRANSPORT\_INPROC}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00066}00066     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}ipc://"{}}, 6) == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00067}00067         config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{UVRPC\_TRANSPORT\_IPC}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00068}00068     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}tcp://"{}}, 6) == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00069}00069         config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\_TRANSPORT\_TCP}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00070}00070     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}udp://"{}}, 6) == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00071}00071         config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{UVRPC\_TRANSPORT\_UDP}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00072}00072     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00073}00073     \textcolor{comment}{/* For addresses without prefix, keep the current/transport default */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00074}00074 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00075}00075     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00076}00076 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00077}00077 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00078}\mbox{\hyperlink{group__ConfigAPI_ga51256091cf9b945507076d8eff291d9f}{00078}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga51256091cf9b945507076d8eff291d9f}{uvrpc\_config\_set\_transport}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\_transport\_type}} transport) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00079}00079     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00080}00080     config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}} = transport;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00081}00081     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00082}00082 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00083}00083 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00084}\mbox{\hyperlink{group__ConfigAPI_gac16cff3c468c837f91580fadc28761d9}{00084}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gac16cff3c468c837f91580fadc28761d9}{uvrpc\_config\_set\_comm\_type}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\_comm\_type\_t}} comm\_type) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00085}00085     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00086}00086     config-\/>\mbox{\hyperlink{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}{comm\_type}} = comm\_type;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00087}00087     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00088}00088 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00089}00089 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00090}\mbox{\hyperlink{group__ConfigAPI_ga24aae189500f97db9a448503613f8f90}{00090}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga24aae189500f97db9a448503613f8f90}{uvrpc\_config\_set\_performance\_mode}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}} mode) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00091}00091     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00092}00092     config-\/>\mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\_mode}} = mode;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00093}00093     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00094}00094 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00095}00095 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00096}\mbox{\hyperlink{group__ConfigAPI_ga2937d9ba73c21a566f1503f0dfb16d5b}{00096}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga2937d9ba73c21a566f1503f0dfb16d5b}{uvrpc\_config\_set\_pool\_size}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} pool\_size) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00097}00097     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00098}00098     config-\/>\mbox{\hyperlink{structuvrpc__config_af659be884a080549286ec71d45d313ea}{pool\_size}} = (pool\_size > 0) ? pool\_size : UVRPC\_DEFAULT\_POOL\_SIZE;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00099}00099     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00100}00100 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00101}00101 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00102}\mbox{\hyperlink{group__ConfigAPI_gad39a2be1a6038a7afebe848b67e0724e}{00102}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gad39a2be1a6038a7afebe848b67e0724e}{uvrpc\_config\_set\_max\_concurrent}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} max\_concurrent) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00103}00103     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00104}00104     config-\/>\mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{max\_concurrent}} = (max\_concurrent > 0) ? max\_concurrent : UVRPC\_MAX\_CONCURRENT\_REQUESTS;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00105}00105     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00106}00106 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00107}00107 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00108}\mbox{\hyperlink{group__ConfigAPI_ga9a3059095b78bcacc4c15c1ce94bd4f5}{00108}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga9a3059095b78bcacc4c15c1ce94bd4f5}{uvrpc\_config\_set\_max\_pending\_callbacks}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} max\_pending) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00109}00109     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00110}00110     \textcolor{comment}{/* Validate that max\_pending is a power of 2 */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00111}00111     \textcolor{keywordflow}{if} (max\_pending > 0 \&\& (max\_pending \& (max\_pending -\/ 1)) == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00112}00112         config-\/>\mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\_pending\_callbacks}} = max\_pending;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00113}00113     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00114}00114         \textcolor{comment}{/* Use default value if invalid */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00115}00115         config-\/>\mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\_pending\_callbacks}} = UVRPC\_MAX\_PENDING\_CALLBACKS;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00116}00116     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00117}00117     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00118}00118 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00119}00119 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00120}\mbox{\hyperlink{group__ConfigAPI_ga9573301e91541787c8fa39eb4c0b9cb7}{00120}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga9573301e91541787c8fa39eb4c0b9cb7}{uvrpc\_config\_set\_timeout}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uint64\_t timeout\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00121}00121     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00122}00122     config-\/>\mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{timeout\_ms}} = timeout\_ms;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00123}00123     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00124}00124 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00125}00125 }
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00126}\mbox{\hyperlink{group__ConfigAPI_ga1c648405d875cd146ae52e58cb5021e0}{00126}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga1c648405d875cd146ae52e58cb5021e0}{uvrpc\_config\_set\_msgid\_offset}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uint32\_t msgid\_offset) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00127}00127     \textcolor{keywordflow}{if} (!config) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00128}00128     config-\/>\mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\_offset}} = msgid\_offset;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00129}00129     \textcolor{keywordflow}{return} config;}
+\DoxyCodeLine{\Hypertarget{uvrpc__config_8c_source_l00130}00130 \}}
+
+\end{DoxyCode}

@@ -1,0 +1,235 @@
+\hypertarget{structuvrpc__config}{}\doxysection{uvrpc\+\_\+config Struct Reference}
+\label{structuvrpc__config}\index{uvrpc\_config@{uvrpc\_config}}
+
+
+UVRPC configuration structure.  
+
+
+
+
+{\ttfamily \#include $<$uvrpc.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+config\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}
+\begin{DoxyCompactList}\small\item\em Server or client address (required) \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\+\_\+comm\+\_\+type\+\_\+t}} \mbox{\hyperlink{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}{comm\+\_\+type}}
+\begin{DoxyCompactList}\small\item\em Communication type (SERVER\+\_\+\+CLIENT or BROADCAST) \end{DoxyCompactList}\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}}
+\begin{DoxyCompactList}\small\item\em libuv event loop (required) \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{max\+\_\+concurrent}}
+\begin{DoxyCompactList}\small\item\em Max concurrent requests (default\+: UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+REQUESTS) \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\+\_\+pending\+\_\+callbacks}}
+\begin{DoxyCompactList}\small\item\em Max pending callbacks in ring buffer (default\+: UVRPC\+\_\+\+MAX\+\_\+\+PENDING\+\_\+\+CALLBACKS) \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\+\_\+offset}}
+\begin{DoxyCompactList}\small\item\em Message ID offset for multi-\/instance isolation (default\+: 0 = auto) \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} \mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\+\_\+mode}}
+\begin{DoxyCompactList}\small\item\em Performance mode (LOW\+\_\+\+LATENCY or HIGH\+\_\+\+THROUGHPUT) \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{structuvrpc__config_af659be884a080549286ec71d45d313ea}{pool\+\_\+size}}
+\begin{DoxyCompactList}\small\item\em Connection pool size (default\+: UVRPC\+\_\+\+DEFAULT\+\_\+\+POOL\+\_\+\+SIZE) \end{DoxyCompactList}\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{timeout\+\_\+ms}}
+\begin{DoxyCompactList}\small\item\em Default timeout in milliseconds (default\+: 0 = no timeout) \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\+\_\+transport\+\_\+type}} \mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}}
+\begin{DoxyCompactList}\small\item\em Transport type (TCP/\+UDP/\+IPC/\+INPROC) \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC configuration structure. 
+
+Contains all configuration parameters for creating UVRPC servers and clients. All fields have sensible defaults; use configuration functions to set values. 
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00258}{258}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}\label{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}} 
+\index{uvrpc\_config@{uvrpc\_config}!address@{address}}
+\index{address@{address}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{address}{address}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+config\+::address}
+
+
+
+Server or client address (required) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00260}{260}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00035}{uvrpc\+\_\+config\+\_\+free()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00051}{uvrpc\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}\label{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}} 
+\index{uvrpc\_config@{uvrpc\_config}!comm\_type@{comm\_type}}
+\index{comm\_type@{comm\_type}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{comm\_type}{comm\_type}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\+\_\+comm\+\_\+type\+\_\+t}} uvrpc\+\_\+config\+::comm\+\_\+type}
+
+
+
+Communication type (SERVER\+\_\+\+CLIENT or BROADCAST) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00262}{262}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__config_8c_source_l00084}{uvrpc\+\_\+config\+\_\+set\+\_\+comm\+\_\+type()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}\label{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}} 
+\index{uvrpc\_config@{uvrpc\_config}!loop@{loop}}
+\index{loop@{loop}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvrpc\+\_\+config\+::loop}
+
+
+
+libuv event loop (required) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00259}{259}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00045}{uvrpc\+\_\+config\+\_\+set\+\_\+loop()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}\label{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}} 
+\index{uvrpc\_config@{uvrpc\_config}!max\_concurrent@{max\_concurrent}}
+\index{max\_concurrent@{max\_concurrent}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{max\_concurrent}{max\_concurrent}}
+{\footnotesize\ttfamily int uvrpc\+\_\+config\+::max\+\_\+concurrent}
+
+
+
+Max concurrent requests (default\+: UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+REQUESTS) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00265}{265}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__config_8c_source_l00102}{uvrpc\+\_\+config\+\_\+set\+\_\+max\+\_\+concurrent()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}\label{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}} 
+\index{uvrpc\_config@{uvrpc\_config}!max\_pending\_callbacks@{max\_pending\_callbacks}}
+\index{max\_pending\_callbacks@{max\_pending\_callbacks}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{max\_pending\_callbacks}{max\_pending\_callbacks}}
+{\footnotesize\ttfamily int uvrpc\+\_\+config\+::max\+\_\+pending\+\_\+callbacks}
+
+
+
+Max pending callbacks in ring buffer (default\+: UVRPC\+\_\+\+MAX\+\_\+\+PENDING\+\_\+\+CALLBACKS) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00266}{266}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00108}{uvrpc\+\_\+config\+\_\+set\+\_\+max\+\_\+pending\+\_\+callbacks()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}\label{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}} 
+\index{uvrpc\_config@{uvrpc\_config}!msgid\_offset@{msgid\_offset}}
+\index{msgid\_offset@{msgid\_offset}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{msgid\_offset}{msgid\_offset}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+config\+::msgid\+\_\+offset}
+
+
+
+Message ID offset for multi-\/instance isolation (default\+: 0 = auto) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00268}{268}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__config_8c_source_l00126}{uvrpc\+\_\+config\+\_\+set\+\_\+msgid\+\_\+offset()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}\label{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}} 
+\index{uvrpc\_config@{uvrpc\_config}!performance\_mode@{performance\_mode}}
+\index{performance\_mode@{performance\_mode}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{performance\_mode}{performance\_mode}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} uvrpc\+\_\+config\+::performance\+\_\+mode}
+
+
+
+Performance mode (LOW\+\_\+\+LATENCY or HIGH\+\_\+\+THROUGHPUT) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00263}{263}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__config_8c_source_l00090}{uvrpc\+\_\+config\+\_\+set\+\_\+performance\+\_\+mode()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_af659be884a080549286ec71d45d313ea}\label{structuvrpc__config_af659be884a080549286ec71d45d313ea}} 
+\index{uvrpc\_config@{uvrpc\_config}!pool\_size@{pool\_size}}
+\index{pool\_size@{pool\_size}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{pool\_size}{pool\_size}}
+{\footnotesize\ttfamily int uvrpc\+\_\+config\+::pool\+\_\+size}
+
+
+
+Connection pool size (default\+: UVRPC\+\_\+\+DEFAULT\+\_\+\+POOL\+\_\+\+SIZE) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00264}{264}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__config_8c_source_l00096}{uvrpc\+\_\+config\+\_\+set\+\_\+pool\+\_\+size()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}\label{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}} 
+\index{uvrpc\_config@{uvrpc\_config}!timeout\_ms@{timeout\_ms}}
+\index{timeout\_ms@{timeout\_ms}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{timeout\_ms}{timeout\_ms}}
+{\footnotesize\ttfamily uint64\+\_\+t uvrpc\+\_\+config\+::timeout\+\_\+ms}
+
+
+
+Default timeout in milliseconds (default\+: 0 = no timeout) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00267}{267}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__config_8c_source_l00120}{uvrpc\+\_\+config\+\_\+set\+\_\+timeout()}}.
+
+\mbox{\Hypertarget{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}\label{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}} 
+\index{uvrpc\_config@{uvrpc\_config}!transport@{transport}}
+\index{transport@{transport}!uvrpc\_config@{uvrpc\_config}}
+\doxysubsubsection{\texorpdfstring{transport}{transport}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\+\_\+transport\+\_\+type}} uvrpc\+\_\+config\+::transport}
+
+
+
+Transport type (TCP/\+UDP/\+IPC/\+INPROC) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00261}{261}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00051}{uvrpc\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00078}{uvrpc\+\_\+config\+\_\+set\+\_\+transport()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc_8h}{uvrpc.\+h}}\end{DoxyCompactItemize}

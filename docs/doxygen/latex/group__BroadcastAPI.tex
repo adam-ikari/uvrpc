@@ -1,0 +1,630 @@
+\hypertarget{group__BroadcastAPI}{}\doxysection{Broadcast API}
+\label{group__BroadcastAPI}\index{Broadcast API@{Broadcast API}}
+
+
+Functions for publish-\/subscribe messaging.  
+
+
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}{uvrpc\+\_\+publisher\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}{uvrpc\+\_\+publisher\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Free the publisher. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}{uvrpc\+\_\+publisher\+\_\+publish}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher, const char $\ast$topic, const uint8\+\_\+t $\ast$data, size\+\_\+t size, \mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\+\_\+publish\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Publish a message to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}{uvrpc\+\_\+publisher\+\_\+start}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Start the publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}{uvrpc\+\_\+publisher\+\_\+stop}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Stop the publisher. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{uvrpc\+\_\+subscriber\+\_\+connect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Connect subscriber to publisher. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{uvrpc\+\_\+subscriber\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\+\_\+subscriber\+\_\+disconnect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Disconnect subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{uvrpc\+\_\+subscriber\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Free the subscriber. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{uvrpc\+\_\+subscriber\+\_\+subscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic, \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Subscribe to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{uvrpc\+\_\+subscriber\+\_\+unsubscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic)
+\begin{DoxyCompactList}\small\item\em Unsubscribe from a topic. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for publish-\/subscribe messaging. 
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}\label{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_publisher\_create@{uvrpc\_publisher\_create}}
+\index{uvrpc\_publisher\_create@{uvrpc\_publisher\_create}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_create()}{uvrpc\_publisher\_create()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$ uvrpc\+\_\+publisher\+\_\+create (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$}]{config }\end{DoxyParamCaption})}
+
+
+
+Create a new publisher. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & Configuration structure \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+New publisher instance, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{31}} of file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00031                                                                   \{}
+\DoxyCodeLine{00032     \textcolor{keywordflow}{if} (!config || !config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} || !config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00033 }
+\DoxyCodeLine{00034     \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* publisher = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}));}
+\DoxyCodeLine{00035     \textcolor{keywordflow}{if} (!publisher) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00036 }
+\DoxyCodeLine{00037     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a10caccedd196560010e05178c45adcb7}{loop}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}};}
+\DoxyCodeLine{00038     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{00039     \textcolor{keywordflow}{if} (!publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}}) \{}
+\DoxyCodeLine{00040         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher);}
+\DoxyCodeLine{00041         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00042     \}}
+\DoxyCodeLine{00043 }
+\DoxyCodeLine{00044     \textcolor{comment}{/* Convert uvrpc\_transport\_type to uvbus\_transport\_type\_t */}}
+\DoxyCodeLine{00045     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a9ca998f701d5ec3a25513e5b6a7c30f4}{transport\_type}} = (\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}})config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}};}
+\DoxyCodeLine{00046     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a59014b0ba4102c3a68b59a66d2f0123d}{is\_running}} = 0;}
+\DoxyCodeLine{00047 }
+\DoxyCodeLine{00048     \textcolor{comment}{/* Create uvbus config */}}
+\DoxyCodeLine{00049     \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* bus\_config = \mbox{\hyperlink{uvbus_8h_afdf4cbd411257359186f6a842a7ca881}{uvbus\_config\_new}}();}
+\DoxyCodeLine{00050     \textcolor{keywordflow}{if} (!bus\_config) \{}
+\DoxyCodeLine{00051         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}});}
+\DoxyCodeLine{00052         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher);}
+\DoxyCodeLine{00053         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00054     \}}
+\DoxyCodeLine{00055 }
+\DoxyCodeLine{00056     \mbox{\hyperlink{uvbus_8h_afd32cbd35cc2efd347230ec84a45394d}{uvbus\_config\_set\_loop}}(bus\_config, publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a10caccedd196560010e05178c45adcb7}{loop}});}
+\DoxyCodeLine{00057     \mbox{\hyperlink{uvbus_8h_aa61fe1a2bad717d81e2c07baf8823c28}{uvbus\_config\_set\_transport}}(bus\_config, publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a9ca998f701d5ec3a25513e5b6a7c30f4}{transport\_type}});}
+\DoxyCodeLine{00058     \mbox{\hyperlink{uvbus_8h_a710a8ee1b3c23442a5e1d379406c8af9}{uvbus\_config\_set\_address}}(bus\_config, publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}});}
+\DoxyCodeLine{00059 }
+\DoxyCodeLine{00060     \textcolor{comment}{/* Create uvbus server (broadcast publisher) */}}
+\DoxyCodeLine{00061     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}} = \mbox{\hyperlink{uvbus_8h_ada15a768df6c8f95930ccda8228ee2c3}{uvbus\_server\_new}}(bus\_config);}
+\DoxyCodeLine{00062     \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{00063 }
+\DoxyCodeLine{00064     \textcolor{keywordflow}{if} (!publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}}) \{}
+\DoxyCodeLine{00065         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}});}
+\DoxyCodeLine{00066         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher);}
+\DoxyCodeLine{00067         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00068     \}}
+\DoxyCodeLine{00069 }
+\DoxyCodeLine{00070     \textcolor{keywordflow}{return} publisher;}
+\DoxyCodeLine{00071 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00260}{uvrpc\+\_\+config\+::address}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00024}{uvrpc\+\_\+publisher\+::address}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00027}{uvrpc\+\_\+publisher\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc_8h_source_l00259}{uvrpc\+\_\+config\+::loop}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00023}{uvrpc\+\_\+publisher\+::loop}}, \mbox{\hyperlink{uvrpc_8h_source_l00261}{uvrpc\+\_\+config\+::transport}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00026}{uvrpc\+\_\+publisher\+::transport\+\_\+type}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00025}{uvrpc\+\_\+publisher\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00039}{uvbus\+\_\+config\+\_\+free()}}, \mbox{\hyperlink{uvbus_8c_source_l00026}{uvbus\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00057}{uvbus\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvbus_8c_source_l00045}{uvbus\+\_\+config\+\_\+set\+\_\+loop()}}, \mbox{\hyperlink{uvbus_8c_source_l00051}{uvbus\+\_\+config\+\_\+set\+\_\+transport()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}\label{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_publisher\_free@{uvrpc\_publisher\_free}}
+\index{uvrpc\_publisher\_free@{uvrpc\_publisher\_free}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_free()}{uvrpc\_publisher\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+publisher\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$}]{publisher }\end{DoxyParamCaption})}
+
+
+
+Free the publisher. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em publisher} & Publisher instance \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__publisher_8c_source_l00096}{96}} of file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00096                                                         \{}
+\DoxyCodeLine{00097     \textcolor{keywordflow}{if} (!publisher) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00098 }
+\DoxyCodeLine{00099     \mbox{\hyperlink{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}{uvrpc\_publisher\_stop}}(publisher);}
+\DoxyCodeLine{00100 }
+\DoxyCodeLine{00101     \textcolor{comment}{/* Free uvbus */}}
+\DoxyCodeLine{00102     \textcolor{keywordflow}{if} (publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}}) \{}
+\DoxyCodeLine{00103         \mbox{\hyperlink{uvbus_8h_a46fd342d85cab0698182c7bce87d58bb}{uvbus\_free}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}});}
+\DoxyCodeLine{00104     \}}
+\DoxyCodeLine{00105 }
+\DoxyCodeLine{00106     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}});}
+\DoxyCodeLine{00107     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(publisher);}
+\DoxyCodeLine{00108 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__publisher_8c_source_l00024}{uvrpc\+\_\+publisher\+::address}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00025}{uvrpc\+\_\+publisher\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00345}{uvbus\+\_\+free()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__publisher_8c_source_l00090}{uvrpc\+\_\+publisher\+\_\+stop()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}\label{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_publisher\_publish@{uvrpc\_publisher\_publish}}
+\index{uvrpc\_publisher\_publish@{uvrpc\_publisher\_publish}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_publish()}{uvrpc\_publisher\_publish()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+publisher\+\_\+publish (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$}]{publisher,  }\item[{const char $\ast$}]{topic,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{\mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\+\_\+publish\+\_\+callback\+\_\+t}}}]{callback,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+
+
+Publish a message to a topic. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em publisher} & Publisher instance \\
+\hline
+{\em topic} & Topic name \\
+\hline
+{\em data} & Message data \\
+\hline
+{\em size} & Data size \\
+\hline
+{\em callback} & Publish callback \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__publisher_8c_source_l00111}{111}} of file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00113                                                                            \{}
+\DoxyCodeLine{00114     \textcolor{keywordflow}{if} (!publisher || !topic) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00115 }
+\DoxyCodeLine{00116     \textcolor{keywordflow}{if} (!publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a59014b0ba4102c3a68b59a66d2f0123d}{is\_running}}) \{}
+\DoxyCodeLine{00117         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00118     \}}
+\DoxyCodeLine{00119 }
+\DoxyCodeLine{00120     \textcolor{comment}{/* Encode broadcast message: [topic\_len, topic, data\_len, data] */}}
+\DoxyCodeLine{00121     \textcolor{keywordtype}{size\_t} topic\_len = strlen(topic);}
+\DoxyCodeLine{00122     \textcolor{keywordtype}{size\_t} total\_size = 4 + topic\_len + 4 + size;}
+\DoxyCodeLine{00123 }
+\DoxyCodeLine{00124     uint8\_t* msg = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(total\_size);}
+\DoxyCodeLine{00125     \textcolor{keywordflow}{if} (!msg) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00126 }
+\DoxyCodeLine{00127     uint8\_t* p = msg;}
+\DoxyCodeLine{00128 }
+\DoxyCodeLine{00129     \textcolor{comment}{/* Topic length (4 bytes little-\/endian for consistency with FlatBuffers) */}}
+\DoxyCodeLine{00130     *(uint32\_t*)p = (uint32\_t)topic\_len;}
+\DoxyCodeLine{00131     p += 4;}
+\DoxyCodeLine{00132 }
+\DoxyCodeLine{00133     \textcolor{comment}{/* Topic */}}
+\DoxyCodeLine{00134     memcpy(p, topic, topic\_len);}
+\DoxyCodeLine{00135     p += topic\_len;}
+\DoxyCodeLine{00136 }
+\DoxyCodeLine{00137     \textcolor{comment}{/* Data length (4 bytes little-\/endian) */}}
+\DoxyCodeLine{00138     *(uint32\_t*)p = (uint32\_t)size;}
+\DoxyCodeLine{00139     p += 4;}
+\DoxyCodeLine{00140 }
+\DoxyCodeLine{00141     \textcolor{comment}{/* Data */}}
+\DoxyCodeLine{00142     \textcolor{keywordflow}{if} (data \&\& size > 0) \{}
+\DoxyCodeLine{00143         memcpy(p, data, size);}
+\DoxyCodeLine{00144     \}}
+\DoxyCodeLine{00145 }
+\DoxyCodeLine{00146     \textcolor{comment}{/* Send message */}}
+\DoxyCodeLine{00147     \textcolor{keywordflow}{if} (publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}}) \{}
+\DoxyCodeLine{00148         \mbox{\hyperlink{uvbus_8h_a88f0c325cbde89e0a83bb2fd2403538f}{uvbus\_client\_send}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}}, msg, total\_size);}
+\DoxyCodeLine{00149     \}}
+\DoxyCodeLine{00150 }
+\DoxyCodeLine{00151     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(msg);}
+\DoxyCodeLine{00152 }
+\DoxyCodeLine{00153     \textcolor{comment}{/* Call callback */}}
+\DoxyCodeLine{00154     \textcolor{keywordflow}{if} (callback) \{}
+\DoxyCodeLine{00155         callback(\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}, ctx);}
+\DoxyCodeLine{00156     \}}
+\DoxyCodeLine{00157 }
+\DoxyCodeLine{00158     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00159 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__publisher_8c_source_l00027}{uvrpc\+\_\+publisher\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00025}{uvrpc\+\_\+publisher\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00309}{uvbus\+\_\+client\+\_\+send()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}\label{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_publisher\_start@{uvrpc\_publisher\_start}}
+\index{uvrpc\_publisher\_start@{uvrpc\_publisher\_start}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_start()}{uvrpc\_publisher\_start()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+publisher\+\_\+start (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$}]{publisher }\end{DoxyParamCaption})}
+
+
+
+Start the publisher. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em publisher} & Publisher instance \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__publisher_8c_source_l00074}{74}} of file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00074                                                         \{}
+\DoxyCodeLine{00075     \textcolor{keywordflow}{if} (!publisher || !publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00076 }
+\DoxyCodeLine{00077     \textcolor{keywordflow}{if} (publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a59014b0ba4102c3a68b59a66d2f0123d}{is\_running}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00078 }
+\DoxyCodeLine{00079     \textcolor{comment}{/* Broadcast doesn't need a receive callback */}}
+\DoxyCodeLine{00080     \textcolor{keywordtype}{int} rv = \mbox{\hyperlink{uvbus_8h_a30faabd1a57fc5094f1e19de7f51d3be}{uvbus\_listen}}(publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a5270cc8dc81eb297a43fae2a8b1ad24b}{uvbus}});}
+\DoxyCodeLine{00081     \textcolor{keywordflow}{if} (rv != \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}};}
+\DoxyCodeLine{00082 }
+\DoxyCodeLine{00083     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a59014b0ba4102c3a68b59a66d2f0123d}{is\_running}} = 1;}
+\DoxyCodeLine{00084     printf(\textcolor{stringliteral}{"{}Publisher started on \%s\(\backslash\)n"{}}, publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_ae4502dc31f8b0c94137baeab6ac45ce7}{address}});}
+\DoxyCodeLine{00085 }
+\DoxyCodeLine{00086     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00087 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__publisher_8c_source_l00024}{uvrpc\+\_\+publisher\+::address}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00027}{uvrpc\+\_\+publisher\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00025}{uvrpc\+\_\+publisher\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00198}{uvbus\+\_\+listen()}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00049}{UVRPC\+\_\+\+ERROR\+\_\+\+TRANSPORT}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}\label{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_publisher\_stop@{uvrpc\_publisher\_stop}}
+\index{uvrpc\_publisher\_stop@{uvrpc\_publisher\_stop}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_stop()}{uvrpc\_publisher\_stop()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+publisher\+\_\+stop (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$}]{publisher }\end{DoxyParamCaption})}
+
+
+
+Stop the publisher. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em publisher} & Publisher instance \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__publisher_8c_source_l00090}{90}} of file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00090                                                         \{}
+\DoxyCodeLine{00091     \textcolor{keywordflow}{if} (!publisher) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00092     publisher-\/>\mbox{\hyperlink{structuvrpc__publisher_a59014b0ba4102c3a68b59a66d2f0123d}{is\_running}} = 0;}
+\DoxyCodeLine{00093 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__publisher_8c_source_l00027}{uvrpc\+\_\+publisher\+::is\+\_\+running}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__publisher_8c_source_l00096}{uvrpc\+\_\+publisher\+\_\+free()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}\label{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_connect@{uvrpc\_subscriber\_connect}}
+\index{uvrpc\_subscriber\_connect@{uvrpc\_subscriber\_connect}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_connect()}{uvrpc\_subscriber\_connect()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+subscriber\+\_\+connect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$}]{subscriber }\end{DoxyParamCaption})}
+
+
+
+Connect subscriber to publisher. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em subscriber} & Subscriber instance \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00154}{154}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00154                                                              \{}
+\DoxyCodeLine{00155     \textcolor{keywordflow}{if} (!subscriber || !subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00156 }
+\DoxyCodeLine{00157     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00158 }
+\DoxyCodeLine{00159     \textcolor{keywordtype}{int} rv = \mbox{\hyperlink{uvbus_8h_a1a80668fb14970a4a36a5bb26f3640c0}{uvbus\_connect}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{00160     \textcolor{keywordflow}{if} (rv != 0) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}};}
+\DoxyCodeLine{00161 }
+\DoxyCodeLine{00162     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00163 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00035}{uvrpc\+\_\+subscriber\+::is\+\_\+connected}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00033}{uvrpc\+\_\+subscriber\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00258}{uvbus\+\_\+connect()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00049}{UVRPC\+\_\+\+ERROR\+\_\+\+TRANSPORT}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}\label{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_create@{uvrpc\_subscriber\_create}}
+\index{uvrpc\_subscriber\_create@{uvrpc\_subscriber\_create}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_create()}{uvrpc\_subscriber\_create()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$ uvrpc\+\_\+subscriber\+\_\+create (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$}]{config }\end{DoxyParamCaption})}
+
+
+
+Create a new subscriber. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & Configuration structure \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+New subscriber instance, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{108}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00108                                                                     \{}
+\DoxyCodeLine{00109     \textcolor{keywordflow}{if} (!config || !config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} || !config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00110 }
+\DoxyCodeLine{00111     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}));}
+\DoxyCodeLine{00112     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00113 }
+\DoxyCodeLine{00114     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}};}
+\DoxyCodeLine{00115     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{00116     \textcolor{keywordflow}{if} (!subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}}) \{}
+\DoxyCodeLine{00117         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{00118         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00119     \}}
+\DoxyCodeLine{00120 }
+\DoxyCodeLine{00121     \textcolor{comment}{/* Convert uvrpc\_transport\_type to uvbus\_transport\_type\_t */}}
+\DoxyCodeLine{00122     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\_type}} = (\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}})config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}};}
+\DoxyCodeLine{00123     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = 0;}
+\DoxyCodeLine{00124     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}} = NULL;}
+\DoxyCodeLine{00125 }
+\DoxyCodeLine{00126     \textcolor{comment}{/* Create uvbus config */}}
+\DoxyCodeLine{00127     \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* bus\_config = \mbox{\hyperlink{uvbus_8h_afdf4cbd411257359186f6a842a7ca881}{uvbus\_config\_new}}();}
+\DoxyCodeLine{00128     \textcolor{keywordflow}{if} (!bus\_config) \{}
+\DoxyCodeLine{00129         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{00130         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{00131         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00132     \}}
+\DoxyCodeLine{00133 }
+\DoxyCodeLine{00134     \mbox{\hyperlink{uvbus_8h_afd32cbd35cc2efd347230ec84a45394d}{uvbus\_config\_set\_loop}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}});}
+\DoxyCodeLine{00135     \mbox{\hyperlink{uvbus_8h_aa61fe1a2bad717d81e2c07baf8823c28}{uvbus\_config\_set\_transport}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\_type}});}
+\DoxyCodeLine{00136     \mbox{\hyperlink{uvbus_8h_a710a8ee1b3c23442a5e1d379406c8af9}{uvbus\_config\_set\_address}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{00137     \mbox{\hyperlink{uvbus_8h_a1bcbc82ae667fa41e4eac2869c698643}{uvbus\_config\_set\_recv\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}{subscriber\_recv\_callback}}, subscriber);}
+\DoxyCodeLine{00138     \mbox{\hyperlink{uvbus_8h_ab5987b867a5ffafca5579db5b8e7b632}{uvbus\_config\_set\_connect\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}{subscriber\_connect\_callback}}, subscriber);}
+\DoxyCodeLine{00139 }
+\DoxyCodeLine{00140     \textcolor{comment}{/* Create uvbus client (broadcast subscriber) */}}
+\DoxyCodeLine{00141     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}} = \mbox{\hyperlink{uvbus_8h_a64931dfcbf8405bf85e61eeaa6ebc296}{uvbus\_client\_new}}(bus\_config);}
+\DoxyCodeLine{00142     \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{00143 }
+\DoxyCodeLine{00144     \textcolor{keywordflow}{if} (!subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{00145         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{00146         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{00147         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00148     \}}
+\DoxyCodeLine{00149 }
+\DoxyCodeLine{00150     \textcolor{keywordflow}{return} subscriber;}
+\DoxyCodeLine{00151 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00260}{uvrpc\+\_\+config\+::address}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00032}{uvrpc\+\_\+subscriber\+::address}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00035}{uvrpc\+\_\+subscriber\+::is\+\_\+connected}}, \mbox{\hyperlink{uvrpc_8h_source_l00259}{uvrpc\+\_\+config\+::loop}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00031}{uvrpc\+\_\+subscriber\+::loop}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00098}{subscriber\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00040}{subscriber\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{uvrpc\+\_\+subscriber\+::subscriptions}}, \mbox{\hyperlink{uvrpc_8h_source_l00261}{uvrpc\+\_\+config\+::transport}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00034}{uvrpc\+\_\+subscriber\+::transport\+\_\+type}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00033}{uvrpc\+\_\+subscriber\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00039}{uvbus\+\_\+config\+\_\+free()}}, \mbox{\hyperlink{uvbus_8c_source_l00026}{uvbus\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00057}{uvbus\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvbus_8c_source_l00070}{uvbus\+\_\+config\+\_\+set\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00045}{uvbus\+\_\+config\+\_\+set\+\_\+loop()}}, \mbox{\hyperlink{uvbus_8c_source_l00063}{uvbus\+\_\+config\+\_\+set\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00051}{uvbus\+\_\+config\+\_\+set\+\_\+transport()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}\label{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_disconnect@{uvrpc\_subscriber\_disconnect}}
+\index{uvrpc\_subscriber\_disconnect@{uvrpc\_subscriber\_disconnect}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_disconnect()}{uvrpc\_subscriber\_disconnect()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+subscriber\+\_\+disconnect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$}]{subscriber }\end{DoxyParamCaption})}
+
+
+
+Disconnect subscriber. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em subscriber} & Subscriber instance \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00166}{166}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00166                                                                  \{}
+\DoxyCodeLine{00167     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00168 }
+\DoxyCodeLine{00169     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{00170         \mbox{\hyperlink{uvbus_8h_a655383b40dc228452016695950ccfac1}{uvbus\_disconnect}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{00171     \}}
+\DoxyCodeLine{00172 }
+\DoxyCodeLine{00173     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = 0;}
+\DoxyCodeLine{00174 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00035}{uvrpc\+\_\+subscriber\+::is\+\_\+connected}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00033}{uvrpc\+\_\+subscriber\+::uvbus}}, and \mbox{\hyperlink{uvbus_8c_source_l00296}{uvbus\+\_\+disconnect()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{uvrpc\+\_\+subscriber\+\_\+free()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}\label{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_free@{uvrpc\_subscriber\_free}}
+\index{uvrpc\_subscriber\_free@{uvrpc\_subscriber\_free}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_free()}{uvrpc\_subscriber\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+subscriber\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$}]{subscriber }\end{DoxyParamCaption})}
+
+
+
+Free the subscriber. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em subscriber} & Subscriber instance \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{177}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00177                                                            \{}
+\DoxyCodeLine{00178     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00179 }
+\DoxyCodeLine{00180     \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\_subscriber\_disconnect}}(subscriber);}
+\DoxyCodeLine{00181 }
+\DoxyCodeLine{00182     \textcolor{comment}{/* Free uvbus */}}
+\DoxyCodeLine{00183     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{00184         \mbox{\hyperlink{uvbus_8h_a46fd342d85cab0698182c7bce87d58bb}{uvbus\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{00185     \}}
+\DoxyCodeLine{00186 }
+\DoxyCodeLine{00187     \textcolor{comment}{/* Free subscriptions */}}
+\DoxyCodeLine{00188     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry, *tmp;}
+\DoxyCodeLine{00189     HASH\_ITER(hh, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry, tmp) \{}
+\DoxyCodeLine{00190         HASH\_DEL(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry);}
+\DoxyCodeLine{00191         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}});}
+\DoxyCodeLine{00192         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{00193     \}}
+\DoxyCodeLine{00194 }
+\DoxyCodeLine{00195     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{00196     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{00197 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00032}{uvrpc\+\_\+subscriber\+::address}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{uvrpc\+\_\+subscriber\+::subscriptions}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00023}{subscription\+\_\+entry\+::topic}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00033}{uvrpc\+\_\+subscriber\+::uvbus}}, \mbox{\hyperlink{uvbus_8c_source_l00345}{uvbus\+\_\+free()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00166}{uvrpc\+\_\+subscriber\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}\label{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_subscribe@{uvrpc\_subscriber\_subscribe}}
+\index{uvrpc\_subscriber\_subscribe@{uvrpc\_subscriber\_subscribe}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_subscribe()}{uvrpc\_subscriber\_subscribe()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+subscriber\+\_\+subscribe (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$}]{subscriber,  }\item[{const char $\ast$}]{topic,  }\item[{\mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t}}}]{callback,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+
+
+Subscribe to a topic. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em subscriber} & Subscriber instance \\
+\hline
+{\em topic} & Topic name \\
+\hline
+{\em callback} & Subscription callback \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00200}{200}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00201                                                                                  \{}
+\DoxyCodeLine{00202     \textcolor{keywordflow}{if} (!subscriber || !topic || !callback) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00203 }
+\DoxyCodeLine{00204     \textcolor{comment}{/* Check if already subscribed */}}
+\DoxyCodeLine{00205     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{00206     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{00207     \textcolor{keywordflow}{if} (entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}}; \textcolor{comment}{/* Already subscribed */}}
+\DoxyCodeLine{00208 }
+\DoxyCodeLine{00209     \textcolor{comment}{/* Create new subscription */}}
+\DoxyCodeLine{00210     entry = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}));}
+\DoxyCodeLine{00211     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00212 }
+\DoxyCodeLine{00213     entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(topic);}
+\DoxyCodeLine{00214     \textcolor{keywordflow}{if} (!entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}}) \{}
+\DoxyCodeLine{00215         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{00216         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00217     \}}
+\DoxyCodeLine{00218     entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}} = callback;}
+\DoxyCodeLine{00219     entry-\/>\mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{ctx}} = ctx;}
+\DoxyCodeLine{00220 }
+\DoxyCodeLine{00221     HASH\_ADD\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{00222 }
+\DoxyCodeLine{00223     printf(\textcolor{stringliteral}{"{}Subscribed to topic: \%s\(\backslash\)n"{}}, topic);}
+\DoxyCodeLine{00224 }
+\DoxyCodeLine{00225     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00226 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00024}{subscription\+\_\+entry\+::callback}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00025}{subscription\+\_\+entry\+::ctx}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{uvrpc\+\_\+subscriber\+::subscriptions}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00023}{subscription\+\_\+entry\+::topic}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}\label{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}} 
+\index{Broadcast API@{Broadcast API}!uvrpc\_subscriber\_unsubscribe@{uvrpc\_subscriber\_unsubscribe}}
+\index{uvrpc\_subscriber\_unsubscribe@{uvrpc\_subscriber\_unsubscribe}!Broadcast API@{Broadcast API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_unsubscribe()}{uvrpc\_subscriber\_unsubscribe()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+subscriber\+\_\+unsubscribe (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$}]{subscriber,  }\item[{const char $\ast$}]{topic }\end{DoxyParamCaption})}
+
+
+
+Unsubscribe from a topic. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em subscriber} & Subscriber instance \\
+\hline
+{\em topic} & Topic name \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00229}{229}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00229                                                                                     \{}
+\DoxyCodeLine{00230     \textcolor{keywordflow}{if} (!subscriber || !topic) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00231 }
+\DoxyCodeLine{00232     \textcolor{comment}{/* Find subscription */}}
+\DoxyCodeLine{00233     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{00234     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{00235     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}}; \textcolor{comment}{/* Not subscribed */}}
+\DoxyCodeLine{00236 }
+\DoxyCodeLine{00237     \textcolor{comment}{/* Remove subscription */}}
+\DoxyCodeLine{00238     HASH\_DEL(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry);}
+\DoxyCodeLine{00239     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}});}
+\DoxyCodeLine{00240     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{00241 }
+\DoxyCodeLine{00242     printf(\textcolor{stringliteral}{"{}Unsubscribed from topic: \%s\(\backslash\)n"{}}, topic);}
+\DoxyCodeLine{00243 }
+\DoxyCodeLine{00244     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00245 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{uvrpc\+\_\+subscriber\+::subscriptions}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00023}{subscription\+\_\+entry\+::topic}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+

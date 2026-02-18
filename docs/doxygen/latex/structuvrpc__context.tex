@@ -1,0 +1,127 @@
+\hypertarget{structuvrpc__context}{}\doxysection{uvrpc\+\_\+context Struct Reference}
+\label{structuvrpc__context}\index{uvrpc\_context@{uvrpc\_context}}
+
+
+Universal context structure for server and client.  
+
+
+
+
+{\ttfamily \#include $<$uvrpc.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+context\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\+\_\+context\+\_\+cleanup\+\_\+t}} \mbox{\hyperlink{structuvrpc__context_a1136b9e99f6f2b4fe81f4597599a8fbf}{cleanup}}
+\begin{DoxyCompactList}\small\item\em Optional cleanup callback. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__context_a7bf5eac8dfe31f5d694f0b2c64e0a64d}{cleanup\+\_\+data}}
+\begin{DoxyCompactList}\small\item\em Data passed to cleanup callback. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__context_aedb9ed5f972a21ce81e09ea496ec338e}{data}}
+\begin{DoxyCompactList}\small\item\em User-\/defined data. \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__context_a2638891efb1b172d1195e7684f117f96}{flags}}
+\begin{DoxyCompactList}\small\item\em Context flags (reserved for future use) \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__context_a573870d953c5fdc8ae65647829296cb3}{reserved}}
+\begin{DoxyCompactList}\small\item\em Reserved for future use. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Universal context structure for server and client. 
+
+Provides a way to attach user-\/defined data to server or client instances with automatic cleanup support. 
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00141}{141}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__context_a1136b9e99f6f2b4fe81f4597599a8fbf}\label{structuvrpc__context_a1136b9e99f6f2b4fe81f4597599a8fbf}} 
+\index{uvrpc\_context@{uvrpc\_context}!cleanup@{cleanup}}
+\index{cleanup@{cleanup}!uvrpc\_context@{uvrpc\_context}}
+\doxysubsubsection{\texorpdfstring{cleanup}{cleanup}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\+\_\+context\+\_\+cleanup\+\_\+t}} uvrpc\+\_\+context\+::cleanup}
+
+
+
+Optional cleanup callback. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00143}{143}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__context_8c_source_l00040}{uvrpc\+\_\+context\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__context_8c_source_l00028}{uvrpc\+\_\+context\+\_\+new\+\_\+with\+\_\+cleanup()}}.
+
+\mbox{\Hypertarget{structuvrpc__context_a7bf5eac8dfe31f5d694f0b2c64e0a64d}\label{structuvrpc__context_a7bf5eac8dfe31f5d694f0b2c64e0a64d}} 
+\index{uvrpc\_context@{uvrpc\_context}!cleanup\_data@{cleanup\_data}}
+\index{cleanup\_data@{cleanup\_data}!uvrpc\_context@{uvrpc\_context}}
+\doxysubsubsection{\texorpdfstring{cleanup\_data}{cleanup\_data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+context\+::cleanup\+\_\+data}
+
+
+
+Data passed to cleanup callback. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00144}{144}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__context_8c_source_l00040}{uvrpc\+\_\+context\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__context_8c_source_l00028}{uvrpc\+\_\+context\+\_\+new\+\_\+with\+\_\+cleanup()}}.
+
+\mbox{\Hypertarget{structuvrpc__context_aedb9ed5f972a21ce81e09ea496ec338e}\label{structuvrpc__context_aedb9ed5f972a21ce81e09ea496ec338e}} 
+\index{uvrpc\_context@{uvrpc\_context}!data@{data}}
+\index{data@{data}!uvrpc\_context@{uvrpc\_context}}
+\doxysubsubsection{\texorpdfstring{data}{data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+context\+::data}
+
+
+
+User-\/defined data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00142}{142}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__context_8c_source_l00040}{uvrpc\+\_\+context\+\_\+free()}}, \mbox{\hyperlink{uvrpc__context_8c_source_l00051}{uvrpc\+\_\+context\+\_\+get\+\_\+data()}}, and \mbox{\hyperlink{uvrpc__context_8c_source_l00019}{uvrpc\+\_\+context\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvrpc__context_a2638891efb1b172d1195e7684f117f96}\label{structuvrpc__context_a2638891efb1b172d1195e7684f117f96}} 
+\index{uvrpc\_context@{uvrpc\_context}!flags@{flags}}
+\index{flags@{flags}!uvrpc\_context@{uvrpc\_context}}
+\doxysubsubsection{\texorpdfstring{flags}{flags}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+context\+::flags}
+
+
+
+Context flags (reserved for future use) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00145}{145}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{structuvrpc__context_a573870d953c5fdc8ae65647829296cb3}\label{structuvrpc__context_a573870d953c5fdc8ae65647829296cb3}} 
+\index{uvrpc\_context@{uvrpc\_context}!reserved@{reserved}}
+\index{reserved@{reserved}!uvrpc\_context@{uvrpc\_context}}
+\doxysubsubsection{\texorpdfstring{reserved}{reserved}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+context\+::reserved}
+
+
+
+Reserved for future use. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00146}{146}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc_8h}{uvrpc.\+h}}\end{DoxyCompactItemize}

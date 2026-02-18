@@ -1,3 +1,15 @@
+/**
+ * @file uvbus.c
+ * @brief UVBus Transport Abstraction Implementation
+ * 
+ * Provides a unified abstraction layer for various transport protocols
+ * (TCP, UDP, IPC, INPROC) built on top of libuv.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
+ */
+
 #include "../include/uvbus.h"
 #include "../include/uvrpc_allocator.h"
 #include <string.h>

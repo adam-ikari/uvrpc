@@ -1,0 +1,132 @@
+\hypertarget{structuvbus__udp__client}{}\doxysection{uvbus\+\_\+udp\+\_\+client Struct Reference}
+\label{structuvbus__udp__client}\index{uvbus\_udp\_client@{uvbus\_udp\_client}}
+
+
+Collaboration diagram for uvbus\+\_\+udp\+\_\+client\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}{host}}
+\item 
+int \mbox{\hyperlink{structuvbus__udp__client_ab2fff0a4a32537d535fa05b334e3f641}{is\+\_\+connected}}
+\item 
+void $\ast$ \mbox{\hyperlink{structuvbus__udp__client_a7d8a2c3775348d4e6314a3620d34ed83}{parent\+\_\+transport}}
+\item 
+int \mbox{\hyperlink{structuvbus__udp__client_ace81db3fe531d8520e8a89ecd1d7f1f1}{port}}
+\item 
+uint8\+\_\+t \mbox{\hyperlink{structuvbus__udp__client_a7fa2d7d48cec001fd99ff58bf6c0ff6f}{read\+\_\+buffer}} \mbox{[}65536\mbox{]}
+\item 
+struct sockaddr\+\_\+in \mbox{\hyperlink{structuvbus__udp__client_acd2b08e709f9c2cd9f3cd85d9500ac04}{server\+\_\+addr}}
+\item 
+uv\+\_\+udp\+\_\+t \mbox{\hyperlink{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}{udp\+\_\+handle}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00017}{17}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}\label{structuvbus__udp__client_a264e2a20338c5426e9a8ce2e6454578b}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!host@{host}}
+\index{host@{host}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{host}{host}}
+{\footnotesize\ttfamily char$\ast$ uvbus\+\_\+udp\+\_\+client\+::host}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00022}{22}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, and \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00302}{udp\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_ab2fff0a4a32537d535fa05b334e3f641}\label{structuvbus__udp__client_ab2fff0a4a32537d535fa05b334e3f641}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!is\_connected@{is\_connected}}
+\index{is\_connected@{is\_connected}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{is\_connected}{is\_connected}}
+{\footnotesize\ttfamily int uvbus\+\_\+udp\+\_\+client\+::is\+\_\+connected}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00020}{20}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_a7d8a2c3775348d4e6314a3620d34ed83}\label{structuvbus__udp__client_a7d8a2c3775348d4e6314a3620d34ed83}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!parent\_transport@{parent\_transport}}
+\index{parent\_transport@{parent\_transport}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{parent\_transport}{parent\_transport}}
+{\footnotesize\ttfamily void$\ast$ uvbus\+\_\+udp\+\_\+client\+::parent\+\_\+transport}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00029}{29}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_ace81db3fe531d8520e8a89ecd1d7f1f1}\label{structuvbus__udp__client_ace81db3fe531d8520e8a89ecd1d7f1f1}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!port@{port}}
+\index{port@{port}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{port}{port}}
+{\footnotesize\ttfamily int uvbus\+\_\+udp\+\_\+client\+::port}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00023}{23}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_a7fa2d7d48cec001fd99ff58bf6c0ff6f}\label{structuvbus__udp__client_a7fa2d7d48cec001fd99ff58bf6c0ff6f}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!read\_buffer@{read\_buffer}}
+\index{read\_buffer@{read\_buffer}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{read\_buffer}{read\_buffer}}
+{\footnotesize\ttfamily uint8\+\_\+t uvbus\+\_\+udp\+\_\+client\+::read\+\_\+buffer\mbox{[}65536\mbox{]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00026}{26}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_acd2b08e709f9c2cd9f3cd85d9500ac04}\label{structuvbus__udp__client_acd2b08e709f9c2cd9f3cd85d9500ac04}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!server\_addr@{server\_addr}}
+\index{server\_addr@{server\_addr}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{server\_addr}{server\_addr}}
+{\footnotesize\ttfamily struct sockaddr\+\_\+in uvbus\+\_\+udp\+\_\+client\+::server\+\_\+addr}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00019}{19}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, and \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{udp\+\_\+send()}}.
+
+\mbox{\Hypertarget{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}\label{structuvbus__udp__client_a34955aff30b4c2f3fde2b439a1847ca1}} 
+\index{uvbus\_udp\_client@{uvbus\_udp\_client}!udp\_handle@{udp\_handle}}
+\index{udp\_handle@{udp\_handle}!uvbus\_udp\_client@{uvbus\_udp\_client}}
+\doxysubsubsection{\texorpdfstring{udp\_handle}{udp\_handle}}
+{\footnotesize\ttfamily uv\+\_\+udp\+\_\+t uvbus\+\_\+udp\+\_\+client\+::udp\+\_\+handle}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00018}{18}} of file \mbox{\hyperlink{uvbus__transport__udp_8c_source}{uvbus\+\_\+transport\+\_\+udp.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00302}{udp\+\_\+disconnect()}}, and \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{udp\+\_\+send()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvbus__transport__udp_8c}{uvbus\+\_\+transport\+\_\+udp.\+c}}\end{DoxyCompactItemize}

@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['inproc_5fadd_5fclient_0',['inproc_add_client',['../uvbus__transport__inproc_8c.html#a5f609b9870cccf295bb75a91b12038b6',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fadd_5fendpoint_1',['inproc_add_endpoint',['../uvbus__transport__inproc_8c.html#afb54c35f43c05e1dc8b04eaa30f15854',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fconnect_2',['inproc_connect',['../uvbus__transport__inproc_8c.html#a351122c5977018620be44b9ba4bd8c63',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fdisconnect_3',['inproc_disconnect',['../uvbus__transport__inproc_8c.html#a5fb8cdbe5c58ec7782a58ed56c25068e',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5ffind_5fendpoint_4',['inproc_find_endpoint',['../uvbus__transport__inproc_8c.html#ac272bc28a898bf291b0b2fdf675fa959',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5ffree_5',['inproc_free',['../uvbus__transport__inproc_8c.html#ab5e5a91b7e1cdd006136cc7548fadf45',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5flisten_6',['inproc_listen',['../uvbus__transport__inproc_8c.html#a5eb9bc5cd6d1c6b0ccc026cc6e7d3ad6',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fremove_5fclient_7',['inproc_remove_client',['../uvbus__transport__inproc_8c.html#a1ae478dde4a5b10afbbf4aff88a09322',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fremove_5fendpoint_8',['inproc_remove_endpoint',['../uvbus__transport__inproc_8c.html#a44017d424513d50d8d8847846bbcfbba',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fsend_9',['inproc_send',['../uvbus__transport__inproc_8c.html#aaed76faaa5f86fe394fda75a39803b65',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fsend_5fto_10',['inproc_send_to',['../uvbus__transport__inproc_8c.html#a8c05b60b12406f47e2f06b29237b1c7b',1,'uvbus_transport_inproc.c']]],
+  ['inproc_5fsend_5fto_5fall_11',['inproc_send_to_all',['../uvbus__transport__inproc_8c.html#a54a1d2777e815fda579af0f45c4afcef',1,'uvbus_transport_inproc.c']]],
+  ['ipc_5fconnect_12',['ipc_connect',['../uvbus__transport__ipc_8c.html#abe292c7dde1d57a414b06e24d93282f7',1,'uvbus_transport_ipc.c']]],
+  ['ipc_5fdisconnect_13',['ipc_disconnect',['../uvbus__transport__ipc_8c.html#afbb47c6ad26eb01ff7bf4858111fc6c2',1,'uvbus_transport_ipc.c']]],
+  ['ipc_5ffree_14',['ipc_free',['../uvbus__transport__ipc_8c.html#a4baa8629aa5d5c43fed0cc0c7386d9d0',1,'uvbus_transport_ipc.c']]],
+  ['ipc_5flisten_15',['ipc_listen',['../uvbus__transport__ipc_8c.html#ac14ffc2e8d145954609c3e7e4cbea19e',1,'uvbus_transport_ipc.c']]],
+  ['ipc_5fsend_16',['ipc_send',['../uvbus__transport__ipc_8c.html#a03e845d1944a089d4a297aae04d51753',1,'uvbus_transport_ipc.c']]],
+  ['ipc_5fsend_5fto_17',['ipc_send_to',['../uvbus__transport__ipc_8c.html#a8dbed48e7d9fb261b85556f8f6fc3d35',1,'uvbus_transport_ipc.c']]]
+];

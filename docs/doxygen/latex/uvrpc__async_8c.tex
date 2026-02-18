@@ -1,0 +1,1115 @@
+\hypertarget{uvrpc__async_8c}{}\doxysection{src/uvrpc\+\_\+async.c File Reference}
+\label{uvrpc__async_8c}\index{src/uvrpc\_async.c@{src/uvrpc\_async.c}}
+
+
+UVRPC Async/\+Await Implementation.  
+
+
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structretry__context}{retry\+\_\+context}}
+\item 
+struct \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\+\_\+async\+\_\+ctx}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef struct \mbox{\hyperlink{structretry__context}{retry\+\_\+context}} \mbox{\hyperlink{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}{retry\+\_\+context\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}{all\+\_\+timeout\+\_\+callback}} (uv\+\_\+timer\+\_\+t $\ast$handle)
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}{any\+\_\+timeout\+\_\+callback}} (uv\+\_\+timer\+\_\+t $\ast$handle)
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}{async\+\_\+response\+\_\+callback}} (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp, void $\ast$ctx)
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\+\_\+callback}} (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp, void $\ast$ctx)
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\+\_\+delay\+\_\+callback}} (uv\+\_\+timer\+\_\+t $\ast$handle)
+\item 
+static void \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\+\_\+callback}} (uv\+\_\+timer\+\_\+t $\ast$handle)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a1bd67863159e4e483f67e3d12630172a}{uvrpc\+\_\+async\+\_\+all}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$$\ast$clients, const char $\ast$$\ast$methods, const uint8\+\_\+t $\ast$$\ast$params\+\_\+array, size\+\_\+t $\ast$params\+\_\+sizes, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$$\ast$results, int count, uint64\+\_\+t timeout\+\_\+ms)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a7e9365313fb062aa8fc25a3fb66ec4ad}{uvrpc\+\_\+async\+\_\+any}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$$\ast$clients, const char $\ast$$\ast$methods, const uint8\+\_\+t $\ast$$\ast$params\+\_\+array, size\+\_\+t $\ast$params\+\_\+sizes, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$result, int $\ast$completed\+\_\+index, int count, uint64\+\_\+t timeout\+\_\+ms)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a4d01657ac868616b45b3f33d0efefce1}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvrpc__async_8c_af0c1200e839eaa96975912b923cf0b10}{uvrpc\+\_\+async\+\_\+ctx\+\_\+free}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\item 
+\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ \mbox{\hyperlink{uvrpc__async_8c_af5e67db8b81c9cf743d65ad8622e4bee}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new}} (uv\+\_\+loop\+\_\+t $\ast$loop)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a1fd4943221a9e9c2bdbf0fad59164d1f}{uvrpc\+\_\+async\+\_\+exec}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, uint64\+\_\+t timeout\+\_\+ms)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_af2e3697c363a1a60119ed1000abd8e67}{uvrpc\+\_\+async\+\_\+get\+\_\+pending\+\_\+count}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\+\_\+async\+\_\+result\+\_\+free}} (\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$result)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_aeffa2c4e2c7f66e7475a17e1f91178c8}{uvrpc\+\_\+async\+\_\+retry}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$result, int max\+\_\+retries, uint64\+\_\+t retry\+\_\+delay\+\_\+ms)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_acea12dde7221383d381b48410b38cd1f}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$result, int max\+\_\+retries, uint64\+\_\+t initial\+\_\+delay\+\_\+ms, double backoff\+\_\+multiplier)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a2b8a26081ebe35ccfc5cb6489bbadedd}{uvrpc\+\_\+async\+\_\+timeout}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$result, uint64\+\_\+t timeout\+\_\+ms)
+\item 
+int \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\+\_\+client\+\_\+call\+\_\+async}} (\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ctx, \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$result)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC Async/\+Await Implementation. 
+
+Provides coroutine-\/like async/await syntax using libuv and setjmp/longjmp.
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+
+
+Definition in file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}\label{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!retry\_context\_t@{retry\_context\_t}}
+\index{retry\_context\_t@{retry\_context\_t}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{retry\_context\_t}{retry\_context\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structretry__context}{retry\+\_\+context}} \mbox{\hyperlink{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}{retry\+\_\+context\+\_\+t}}}
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}\label{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!all\_timeout\_callback@{all\_timeout\_callback}}
+\index{all\_timeout\_callback@{all\_timeout\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{all\_timeout\_callback()}{all\_timeout\_callback()}}
+{\footnotesize\ttfamily static void all\+\_\+timeout\+\_\+callback (\begin{DoxyParamCaption}\item[{uv\+\_\+timer\+\_\+t $\ast$}]{handle }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00286}{286}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00286                                                      \{}
+\DoxyCodeLine{00287     \textcolor{keywordtype}{int}* timed\_out = (\textcolor{keywordtype}{int}*)handle-\/>data;}
+\DoxyCodeLine{00288     *timed\_out = 1;}
+\DoxyCodeLine{00289 \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}\label{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!any\_timeout\_callback@{any\_timeout\_callback}}
+\index{any\_timeout\_callback@{any\_timeout\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{any\_timeout\_callback()}{any\_timeout\_callback()}}
+{\footnotesize\ttfamily static void any\+\_\+timeout\+\_\+callback (\begin{DoxyParamCaption}\item[{uv\+\_\+timer\+\_\+t $\ast$}]{handle }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00364}{364}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00364                                                      \{}
+\DoxyCodeLine{00365     \textcolor{keywordtype}{int}* timed\_out = (\textcolor{keywordtype}{int}*)handle-\/>data;}
+\DoxyCodeLine{00366     *timed\_out = 1;}
+\DoxyCodeLine{00367 \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}\label{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!async\_response\_callback@{async\_response\_callback}}
+\index{async\_response\_callback@{async\_response\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{async\_response\_callback()}{async\_response\_callback()}}
+{\footnotesize\ttfamily static void async\+\_\+response\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$}]{resp,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{74}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00074                                                                        \{}
+\DoxyCodeLine{00075     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)ctx;}
+\DoxyCodeLine{00076     }
+\DoxyCodeLine{00077     \textcolor{keywordflow}{if} (async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} < 0 || async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} >= UVRPC\_MAX\_ASYNC\_CALLS) \{}
+\DoxyCodeLine{00078         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00079     \}}
+\DoxyCodeLine{00080     }
+\DoxyCodeLine{00081     \textcolor{comment}{/* Store result */}}
+\DoxyCodeLine{00082     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* result = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}));}
+\DoxyCodeLine{00083     \textcolor{keywordflow}{if} (!result) \{}
+\DoxyCodeLine{00084         longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}});}
+\DoxyCodeLine{00085     \}}
+\DoxyCodeLine{00086     }
+\DoxyCodeLine{00087     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}{status}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}};}
+\DoxyCodeLine{00088     result-\/>\mbox{\hyperlink{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}{msgid}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}};}
+\DoxyCodeLine{00089     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}};}
+\DoxyCodeLine{00090     result-\/>\mbox{\hyperlink{structuvrpc__async__result_afad95aa99a8982fb81c0da99b466927e}{user\_data}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}};}
+\DoxyCodeLine{00091     }
+\DoxyCodeLine{00092     \textcolor{keywordflow}{if} (resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} \&\& resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} > 0) \{}
+\DoxyCodeLine{00093         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{00094         \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{00095             memcpy(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{00096             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}};}
+\DoxyCodeLine{00097         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00098             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{00099         \}}
+\DoxyCodeLine{00100     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00101         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = NULL;}
+\DoxyCodeLine{00102         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{00103     \}}
+\DoxyCodeLine{00104     }
+\DoxyCodeLine{00105     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}}] = result;}
+\DoxyCodeLine{00106     }
+\DoxyCodeLine{00107     \textcolor{comment}{/* Jump back to continue execution */}}
+\DoxyCodeLine{00108     longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}});}
+\DoxyCodeLine{00109 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00059}{uvrpc\+\_\+async\+\_\+ctx\+::current\+\_\+call}}, \mbox{\hyperlink{uvrpc_8h_source_l00296}{uvrpc\+\_\+response\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00061}{uvrpc\+\_\+async\+\_\+result\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00055}{uvrpc\+\_\+async\+\_\+ctx\+::jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc_8h_source_l00295}{uvrpc\+\_\+response\+::msgid}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00060}{uvrpc\+\_\+async\+\_\+result\+::msgid}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results}}, \mbox{\hyperlink{uvrpc_8h_source_l00298}{uvrpc\+\_\+response\+::result}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00062}{uvrpc\+\_\+async\+\_\+result\+::result}}, \mbox{\hyperlink{uvrpc_8h_source_l00299}{uvrpc\+\_\+response\+::result\+\_\+size}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00063}{uvrpc\+\_\+async\+\_\+result\+::result\+\_\+size}}, \mbox{\hyperlink{uvrpc_8h_source_l00294}{uvrpc\+\_\+response\+::status}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00059}{uvrpc\+\_\+async\+\_\+result\+::status}}, \mbox{\hyperlink{uvrpc_8h_source_l00300}{uvrpc\+\_\+response\+::user\+\_\+data}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00064}{uvrpc\+\_\+async\+\_\+result\+::user\+\_\+data}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}\label{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!concurrent\_callback@{concurrent\_callback}}
+\index{concurrent\_callback@{concurrent\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{concurrent\_callback()}{concurrent\_callback()}}
+{\footnotesize\ttfamily static void concurrent\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$}]{resp,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{250}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00250                                                                    \{}
+\DoxyCodeLine{00251     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)ctx;}
+\DoxyCodeLine{00252     \textcolor{keywordtype}{int} index = (int)(intptr\_t)resp-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}};}
+\DoxyCodeLine{00253     }
+\DoxyCodeLine{00254     \textcolor{comment}{/* Store result */}}
+\DoxyCodeLine{00255     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* result = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}));}
+\DoxyCodeLine{00256     \textcolor{keywordflow}{if} (!result) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00257     }
+\DoxyCodeLine{00258     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}{status}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}};}
+\DoxyCodeLine{00259     result-\/>\mbox{\hyperlink{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}{msgid}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}};}
+\DoxyCodeLine{00260     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}};}
+\DoxyCodeLine{00261     }
+\DoxyCodeLine{00262     \textcolor{keywordflow}{if} (resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} \&\& resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} > 0) \{}
+\DoxyCodeLine{00263         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{00264         \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{00265             memcpy(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{00266             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}};}
+\DoxyCodeLine{00267         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00268             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{00269         \}}
+\DoxyCodeLine{00270     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00271         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = NULL;}
+\DoxyCodeLine{00272         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{00273     \}}
+\DoxyCodeLine{00274     }
+\DoxyCodeLine{00275     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[index] = result;}
+\DoxyCodeLine{00276     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}}++;}
+\DoxyCodeLine{00277     }
+\DoxyCodeLine{00278     \textcolor{comment}{/* For any() -\/ jump back immediately */}}
+\DoxyCodeLine{00279     \textcolor{keywordflow}{if} (!async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} \&\& async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} >= 1) \{}
+\DoxyCodeLine{00280         async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 1;}
+\DoxyCodeLine{00281         longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\_jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}});}
+\DoxyCodeLine{00282     \}}
+\DoxyCodeLine{00283 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00069}{uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+completed}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00070}{uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00066}{uvrpc\+\_\+async\+\_\+ctx\+::completed\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00068}{uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+results}}, \mbox{\hyperlink{uvrpc_8h_source_l00296}{uvrpc\+\_\+response\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00061}{uvrpc\+\_\+async\+\_\+result\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc_8h_source_l00295}{uvrpc\+\_\+response\+::msgid}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00060}{uvrpc\+\_\+async\+\_\+result\+::msgid}}, \mbox{\hyperlink{uvrpc_8h_source_l00298}{uvrpc\+\_\+response\+::result}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00062}{uvrpc\+\_\+async\+\_\+result\+::result}}, \mbox{\hyperlink{uvrpc_8h_source_l00299}{uvrpc\+\_\+response\+::result\+\_\+size}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00063}{uvrpc\+\_\+async\+\_\+result\+::result\+\_\+size}}, \mbox{\hyperlink{uvrpc_8h_source_l00294}{uvrpc\+\_\+response\+::status}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00059}{uvrpc\+\_\+async\+\_\+result\+::status}}, \mbox{\hyperlink{uvrpc_8h_source_l00300}{uvrpc\+\_\+response\+::user\+\_\+data}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}\label{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!retry\_delay\_callback@{retry\_delay\_callback}}
+\index{retry\_delay\_callback@{retry\_delay\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{retry\_delay\_callback()}{retry\_delay\_callback()}}
+{\footnotesize\ttfamily static void retry\+\_\+delay\+\_\+callback (\begin{DoxyParamCaption}\item[{uv\+\_\+timer\+\_\+t $\ast$}]{handle }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{39}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00039                                                      \{}
+\DoxyCodeLine{00040     \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = (\mbox{\hyperlink{structretry__context}{retry\_context\_t}}*)handle-\/>data;}
+\DoxyCodeLine{00041 }
+\DoxyCodeLine{00042     \textcolor{comment}{/* Retry the call */}}
+\DoxyCodeLine{00043     \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}},}
+\DoxyCodeLine{00044                            retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}});}
+\DoxyCodeLine{00045 }
+\DoxyCodeLine{00046     \textcolor{comment}{/* Cleanup retry context */}}
+\DoxyCodeLine{00047     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{00048     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{00049     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{00050 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00026}{retry\+\_\+context\+::client}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00034}{retry\+\_\+context\+::ctx}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00027}{retry\+\_\+context\+::method}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00028}{retry\+\_\+context\+::params}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00029}{retry\+\_\+context\+::params\+\_\+size}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00030}{retry\+\_\+context\+::result}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}\label{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!timeout\_callback@{timeout\_callback}}
+\index{timeout\_callback@{timeout\_callback}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{timeout\_callback()}{timeout\_callback()}}
+{\footnotesize\ttfamily static void timeout\+\_\+callback (\begin{DoxyParamCaption}\item[{uv\+\_\+timer\+\_\+t $\ast$}]{handle }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00112}{112}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00112                                                  \{}
+\DoxyCodeLine{00113     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)handle-\/>data;}
+\DoxyCodeLine{00114     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 1;}
+\DoxyCodeLine{00115     longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}});}
+\DoxyCodeLine{00116 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00055}{uvrpc\+\_\+async\+\_\+ctx\+::jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}}, and \mbox{\hyperlink{uvrpc_8h_source_l00048}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a1bd67863159e4e483f67e3d12630172a}\label{uvrpc__async_8c_a1bd67863159e4e483f67e3d12630172a}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_all@{uvrpc\_async\_all}}
+\index{uvrpc\_async\_all@{uvrpc\_async\_all}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_all()}{uvrpc\_async\_all()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+all (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$$\ast$}]{clients,  }\item[{const char $\ast$$\ast$}]{methods,  }\item[{const uint8\+\_\+t $\ast$$\ast$}]{params\+\_\+array,  }\item[{size\+\_\+t $\ast$}]{params\+\_\+sizes,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$$\ast$}]{results,  }\item[{int}]{count,  }\item[{uint64\+\_\+t}]{timeout\+\_\+ms }\end{DoxyParamCaption})}
+
+Execute multiple async calls concurrently and wait for all to complete (Promise.\+all) 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+{\em clients} & array of RPC clients \\
+\hline
+{\em methods} & array of method names \\
+\hline
+{\em params\+\_\+array} & array of parameters \\
+\hline
+{\em params\+\_\+sizes} & array of parameter sizes \\
+\hline
+{\em results} & output array of results (caller must free each result) \\
+\hline
+{\em count} & number of calls \\
+\hline
+{\em timeout\+\_\+ms} & timeout in milliseconds (0 for no timeout) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT on timeout 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{292}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00299                                           \{}
+\DoxyCodeLine{00300     \textcolor{keywordflow}{if} (!ctx || !clients || !methods || !params\_array || !params\_sizes || !results) \{}
+\DoxyCodeLine{00301         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00302     \}}
+\DoxyCodeLine{00303     }
+\DoxyCodeLine{00304     \textcolor{keywordflow}{if} (count <= 0 || count > UVRPC\_MAX\_CONCURRENT\_CALLS) \{}
+\DoxyCodeLine{00305         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00306     \}}
+\DoxyCodeLine{00307     }
+\DoxyCodeLine{00308     \textcolor{comment}{/* Initialize concurrent state */}}
+\DoxyCodeLine{00309     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\_count}} = count;}
+\DoxyCodeLine{00310     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} = 0;}
+\DoxyCodeLine{00311     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 0;}
+\DoxyCodeLine{00312     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00313         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{00314     \}}
+\DoxyCodeLine{00315     }
+\DoxyCodeLine{00316     \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{00317     uv\_timer\_t timeout\_timer;}
+\DoxyCodeLine{00318     \textcolor{keywordtype}{int} timed\_out = 0;}
+\DoxyCodeLine{00319     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00320         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&timeout\_timer);}
+\DoxyCodeLine{00321         timeout\_timer.data = \&timed\_out;}
+\DoxyCodeLine{00322         uv\_timer\_start(\&timeout\_timer, \mbox{\hyperlink{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}{all\_timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{00323     \}}
+\DoxyCodeLine{00324     }
+\DoxyCodeLine{00325     \textcolor{comment}{/* Start all concurrent calls */}}
+\DoxyCodeLine{00326     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00327         \mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp\_wrapper = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}));}
+\DoxyCodeLine{00328         resp\_wrapper-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}} = (\textcolor{keywordtype}{void}*)(intptr\_t)i;}
+\DoxyCodeLine{00329         }
+\DoxyCodeLine{00330         \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(clients[i], methods[i], params\_array[i], params\_sizes[i],}
+\DoxyCodeLine{00331                           \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\_callback}}, ctx);}
+\DoxyCodeLine{00332     \}}
+\DoxyCodeLine{00333     }
+\DoxyCodeLine{00334     \textcolor{comment}{/* Wait for all to complete */}}
+\DoxyCodeLine{00335     \textcolor{keywordflow}{while} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} < count \&\& !timed\_out) \{}
+\DoxyCodeLine{00336         uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{00337     \}}
+\DoxyCodeLine{00338     }
+\DoxyCodeLine{00339     \textcolor{comment}{/* Stop timeout */}}
+\DoxyCodeLine{00340     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00341         uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{00342         uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{00343     \}}
+\DoxyCodeLine{00344     }
+\DoxyCodeLine{00345     \textcolor{keywordflow}{if} (timed\_out) \{}
+\DoxyCodeLine{00346         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00347     \}}
+\DoxyCodeLine{00348     }
+\DoxyCodeLine{00349     \textcolor{comment}{/* Allocate results array */}}
+\DoxyCodeLine{00350     *results = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}*) * count);}
+\DoxyCodeLine{00351     \textcolor{keywordflow}{if} (!*results) \{}
+\DoxyCodeLine{00352         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00353     \}}
+\DoxyCodeLine{00354     }
+\DoxyCodeLine{00355     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00356         (*results)[i] = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i];}
+\DoxyCodeLine{00357         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{00358     \}}
+\DoxyCodeLine{00359     }
+\DoxyCodeLine{00360     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00361 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00286}{all\+\_\+timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00069}{uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+completed}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00066}{uvrpc\+\_\+async\+\_\+ctx\+::completed\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00065}{uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00068}{uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+results}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc_8h_source_l00300}{uvrpc\+\_\+response\+::user\+\_\+data}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00502}{uvrpc\+\_\+client\+\_\+call()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvrpc_8h_source_l00048}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a7e9365313fb062aa8fc25a3fb66ec4ad}\label{uvrpc__async_8c_a7e9365313fb062aa8fc25a3fb66ec4ad}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_any@{uvrpc\_async\_any}}
+\index{uvrpc\_async\_any@{uvrpc\_async\_any}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_any()}{uvrpc\_async\_any()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+any (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$$\ast$}]{clients,  }\item[{const char $\ast$$\ast$}]{methods,  }\item[{const uint8\+\_\+t $\ast$$\ast$}]{params\+\_\+array,  }\item[{size\+\_\+t $\ast$}]{params\+\_\+sizes,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$}]{result,  }\item[{int $\ast$}]{completed\+\_\+index,  }\item[{int}]{count,  }\item[{uint64\+\_\+t}]{timeout\+\_\+ms }\end{DoxyParamCaption})}
+
+Execute multiple async calls concurrently and wait for any to complete (Promise.\+any) 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+{\em clients} & array of RPC clients \\
+\hline
+{\em methods} & array of method names \\
+\hline
+{\em params\+\_\+array} & array of parameters \\
+\hline
+{\em params\+\_\+sizes} & array of parameter sizes \\
+\hline
+{\em result} & output result (caller must free) \\
+\hline
+{\em completed\+\_\+index} & index of the completed call \\
+\hline
+{\em count} & number of calls \\
+\hline
+{\em timeout\+\_\+ms} & timeout in milliseconds (0 for no timeout) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT on timeout 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{370}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00378                                           \{}
+\DoxyCodeLine{00379     \textcolor{keywordflow}{if} (!ctx || !clients || !methods || !params\_array || !params\_sizes || !result) \{}
+\DoxyCodeLine{00380         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00381     \}}
+\DoxyCodeLine{00382     }
+\DoxyCodeLine{00383     \textcolor{keywordflow}{if} (count <= 0 || count > UVRPC\_MAX\_CONCURRENT\_CALLS) \{}
+\DoxyCodeLine{00384         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00385     \}}
+\DoxyCodeLine{00386     }
+\DoxyCodeLine{00387     \textcolor{comment}{/* Initialize concurrent state */}}
+\DoxyCodeLine{00388     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\_count}} = count;}
+\DoxyCodeLine{00389     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} = 0;}
+\DoxyCodeLine{00390     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 0;}
+\DoxyCodeLine{00391     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00392         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{00393     \}}
+\DoxyCodeLine{00394     }
+\DoxyCodeLine{00395     \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{00396     uv\_timer\_t timeout\_timer;}
+\DoxyCodeLine{00397     \textcolor{keywordtype}{int} timed\_out = 0;}
+\DoxyCodeLine{00398     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00399         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&timeout\_timer);}
+\DoxyCodeLine{00400         timeout\_timer.data = \&timed\_out;}
+\DoxyCodeLine{00401         uv\_timer\_start(\&timeout\_timer, \mbox{\hyperlink{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}{any\_timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{00402     \}}
+\DoxyCodeLine{00403     }
+\DoxyCodeLine{00404     \textcolor{comment}{/* Set jump point */}}
+\DoxyCodeLine{00405     \textcolor{keywordtype}{int} jump\_status = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\_jmp\_buf}});}
+\DoxyCodeLine{00406     }
+\DoxyCodeLine{00407     \textcolor{keywordflow}{if} (jump\_status == 0) \{}
+\DoxyCodeLine{00408         \textcolor{comment}{/* Start all concurrent calls */}}
+\DoxyCodeLine{00409         \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00410             \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(clients[i], methods[i], params\_array[i], params\_sizes[i],}
+\DoxyCodeLine{00411                               \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\_callback}}, ctx);}
+\DoxyCodeLine{00412         \}}
+\DoxyCodeLine{00413         }
+\DoxyCodeLine{00414         \textcolor{comment}{/* Wait for any to complete */}}
+\DoxyCodeLine{00415         \textcolor{keywordflow}{while} (!ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} \&\& !timed\_out) \{}
+\DoxyCodeLine{00416             uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{00417         \}}
+\DoxyCodeLine{00418         }
+\DoxyCodeLine{00419         \textcolor{comment}{/* Check if timeout occurred */}}
+\DoxyCodeLine{00420         \textcolor{keywordflow}{if} (timed\_out) \{}
+\DoxyCodeLine{00421             \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00422                 uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{00423                 uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{00424             \}}
+\DoxyCodeLine{00425             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00426         \}}
+\DoxyCodeLine{00427         }
+\DoxyCodeLine{00428         \textcolor{comment}{/* Shouldn't reach here normally */}}
+\DoxyCodeLine{00429         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00430     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00431         \textcolor{comment}{/* Jumped back from callback or timeout */}}
+\DoxyCodeLine{00432         }
+\DoxyCodeLine{00433         \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00434             uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{00435             uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{00436         \}}
+\DoxyCodeLine{00437         }
+\DoxyCodeLine{00438         \textcolor{keywordflow}{if} (jump\_status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}}) \{}
+\DoxyCodeLine{00439             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00440         \}}
+\DoxyCodeLine{00441         }
+\DoxyCodeLine{00442         \textcolor{comment}{/* Find completed result */}}
+\DoxyCodeLine{00443         \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{00444             \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i]) \{}
+\DoxyCodeLine{00445                 *result = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i];}
+\DoxyCodeLine{00446                 *completed\_index = i;}
+\DoxyCodeLine{00447                 ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{00448                 \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00449             \}}
+\DoxyCodeLine{00450         \}}
+\DoxyCodeLine{00451         }
+\DoxyCodeLine{00452         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00453     \}}
+\DoxyCodeLine{00454 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00069}{uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+completed}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00070}{uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00364}{any\+\_\+timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00066}{uvrpc\+\_\+async\+\_\+ctx\+::completed\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00065}{uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00068}{uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+results}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00502}{uvrpc\+\_\+client\+\_\+call()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00048}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a4d01657ac868616b45b3f33d0efefce1}\label{uvrpc__async_8c_a4d01657ac868616b45b3f33d0efefce1}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_cancel\_all@{uvrpc\_async\_cancel\_all}}
+\index{uvrpc\_async\_cancel\_all@{uvrpc\_async\_cancel\_all}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_cancel\_all()}{uvrpc\_async\_cancel\_all()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+cancel\+\_\+all (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+Cancel pending async operations 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{611}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00611                                                    \{}
+\DoxyCodeLine{00612     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00613 }
+\DoxyCodeLine{00614     \textcolor{comment}{/* Stop timeout timer if running */}}
+\DoxyCodeLine{00615     \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0 \&\& !uv\_is\_closing((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}})) \{}
+\DoxyCodeLine{00616         uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{00617         uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{00618     \}}
+\DoxyCodeLine{00619 }
+\DoxyCodeLine{00620     \textcolor{comment}{/* Free all pending results */}}
+\DoxyCodeLine{00621     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{00622         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]) \{}
+\DoxyCodeLine{00623             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]);}
+\DoxyCodeLine{00624             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] = NULL;}
+\DoxyCodeLine{00625         \}}
+\DoxyCodeLine{00626     \}}
+\DoxyCodeLine{00627 }
+\DoxyCodeLine{00628     \textcolor{comment}{/* Reset state */}}
+\DoxyCodeLine{00629     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\_count}} = 0;}
+\DoxyCodeLine{00630     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{00631     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 0;}
+\DoxyCodeLine{00632 }
+\DoxyCodeLine{00633     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00634 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00057}{uvrpc\+\_\+async\+\_\+ctx\+::call\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00059}{uvrpc\+\_\+async\+\_\+ctx\+::current\+\_\+call}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00056}{uvrpc\+\_\+async\+\_\+ctx\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00061}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+timer}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_af0c1200e839eaa96975912b923cf0b10}\label{uvrpc__async_8c_af0c1200e839eaa96975912b923cf0b10}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_ctx\_free@{uvrpc\_async\_ctx\_free}}
+\index{uvrpc\_async\_ctx\_free@{uvrpc\_async\_ctx\_free}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_ctx\_free()}{uvrpc\_async\_ctx\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+async\+\_\+ctx\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+Free async context 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00137}{137}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00137                                                   \{}
+\DoxyCodeLine{00138     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00139     }
+\DoxyCodeLine{00140     \textcolor{comment}{/* Free pending results */}}
+\DoxyCodeLine{00141     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{00142         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]) \{}
+\DoxyCodeLine{00143             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]);}
+\DoxyCodeLine{00144             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] = NULL;}
+\DoxyCodeLine{00145         \}}
+\DoxyCodeLine{00146     \}}
+\DoxyCodeLine{00147     }
+\DoxyCodeLine{00148     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(ctx);}
+\DoxyCodeLine{00149 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_af5e67db8b81c9cf743d65ad8622e4bee}\label{uvrpc__async_8c_af5e67db8b81c9cf743d65ad8622e4bee}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_ctx\_new@{uvrpc\_async\_ctx\_new}}
+\index{uvrpc\_async\_ctx\_new@{uvrpc\_async\_ctx\_new}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_ctx\_new()}{uvrpc\_async\_ctx\_new()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ uvrpc\+\_\+async\+\_\+ctx\+\_\+new (\begin{DoxyParamCaption}\item[{uv\+\_\+loop\+\_\+t $\ast$}]{loop }\end{DoxyParamCaption})}
+
+Create async context 
+\begin{DoxyParams}{Parameters}
+{\em loop} & libuv event loop \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+async context 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{119}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00119                                                         \{}
+\DoxyCodeLine{00120     \textcolor{keywordflow}{if} (!loop) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00121     }
+\DoxyCodeLine{00122     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}));}
+\DoxyCodeLine{00123     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00124     }
+\DoxyCodeLine{00125     memset(ctx, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}));}
+\DoxyCodeLine{00126     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}} = loop;}
+\DoxyCodeLine{00127     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 0;}
+\DoxyCodeLine{00128     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\_count}} = 0;}
+\DoxyCodeLine{00129     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{00130     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} = 0;}
+\DoxyCodeLine{00131     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{00132     }
+\DoxyCodeLine{00133     \textcolor{keywordflow}{return} ctx;}
+\DoxyCodeLine{00134 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00057}{uvrpc\+\_\+async\+\_\+ctx\+::call\+\_\+count}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00059}{uvrpc\+\_\+async\+\_\+ctx\+::current\+\_\+call}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00056}{uvrpc\+\_\+async\+\_\+ctx\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a1fd4943221a9e9c2bdbf0fad59164d1f}\label{uvrpc__async_8c_a1fd4943221a9e9c2bdbf0fad59164d1f}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_exec@{uvrpc\_async\_exec}}
+\index{uvrpc\_async\_exec@{uvrpc\_async\_exec}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_exec()}{uvrpc\_async\_exec()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+exec (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{uint64\+\_\+t}]{timeout\+\_\+ms }\end{DoxyParamCaption})}
+
+Execute async block 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+{\em timeout\+\_\+ms} & timeout in milliseconds (0 for no timeout) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{152}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00152                                                                   \{}
+\DoxyCodeLine{00153     \textcolor{keywordflow}{if} (!ctx || ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00154     }
+\DoxyCodeLine{00155     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 1;}
+\DoxyCodeLine{00156     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} = timeout\_ms;}
+\DoxyCodeLine{00157     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{00158     }
+\DoxyCodeLine{00159     \textcolor{comment}{/* Start timeout timer if specified */}}
+\DoxyCodeLine{00160     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00161         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{00162         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}.data = ctx;}
+\DoxyCodeLine{00163         uv\_timer\_start(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{00164     \}}
+\DoxyCodeLine{00165     }
+\DoxyCodeLine{00166     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00167 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00056}{uvrpc\+\_\+async\+\_\+ctx\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00112}{timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00061}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+timer}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_af2e3697c363a1a60119ed1000abd8e67}\label{uvrpc__async_8c_af2e3697c363a1a60119ed1000abd8e67}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_get\_pending\_count@{uvrpc\_async\_get\_pending\_count}}
+\index{uvrpc\_async\_get\_pending\_count@{uvrpc\_async\_get\_pending\_count}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_get\_pending\_count()}{uvrpc\_async\_get\_pending\_count()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+get\+\_\+pending\+\_\+count (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+Get number of pending async operations 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+number of pending operations 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00637}{637}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00637                                                           \{}
+\DoxyCodeLine{00638     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00639 }
+\DoxyCodeLine{00640     \textcolor{keywordtype}{int} count = 0;}
+\DoxyCodeLine{00641     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{00642         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] != NULL) \{}
+\DoxyCodeLine{00643             count++;}
+\DoxyCodeLine{00644         \}}
+\DoxyCodeLine{00645     \}}
+\DoxyCodeLine{00646     \textcolor{keywordflow}{return} count;}
+\DoxyCodeLine{00647 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}\label{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_result\_free@{uvrpc\_async\_result\_free}}
+\index{uvrpc\_async\_result\_free@{uvrpc\_async\_result\_free}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_result\_free()}{uvrpc\_async\_result\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+async\+\_\+result\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$}]{result }\end{DoxyParamCaption})}
+
+Free async result 
+\begin{DoxyParams}{Parameters}
+{\em result} & result to free \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{239}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00239                                                            \{}
+\DoxyCodeLine{00240     \textcolor{keywordflow}{if} (!result) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00241     }
+\DoxyCodeLine{00242     \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{00243         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}});}
+\DoxyCodeLine{00244     \}}
+\DoxyCodeLine{00245     }
+\DoxyCodeLine{00246     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(result);}
+\DoxyCodeLine{00247 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8h_source_l00062}{uvrpc\+\_\+async\+\_\+result\+::result}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00137}{uvrpc\+\_\+async\+\_\+ctx\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_aeffa2c4e2c7f66e7475a17e1f91178c8}\label{uvrpc__async_8c_aeffa2c4e2c7f66e7475a17e1f91178c8}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_retry@{uvrpc\_async\_retry}}
+\index{uvrpc\_async\_retry@{uvrpc\_async\_retry}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_retry()}{uvrpc\_async\_retry()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+retry (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$}]{client,  }\item[{const char $\ast$}]{method,  }\item[{const uint8\+\_\+t $\ast$}]{params,  }\item[{size\+\_\+t}]{params\+\_\+size,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$}]{result,  }\item[{int}]{max\+\_\+retries,  }\item[{uint64\+\_\+t}]{retry\+\_\+delay\+\_\+ms }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{457}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00460                                                                  \{}
+\DoxyCodeLine{00461     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{00462         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00463     \}}
+\DoxyCodeLine{00464     }
+\DoxyCodeLine{00465     \textcolor{keywordflow}{if} (max\_retries < 0) max\_retries = 3;}
+\DoxyCodeLine{00466     }
+\DoxyCodeLine{00467     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} attempt = 0; attempt <= max\_retries; attempt++) \{}
+\DoxyCodeLine{00468         \textcolor{keywordtype}{int} status = \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{00469         }
+\DoxyCodeLine{00470         \textcolor{keywordflow}{if} (status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} \&\& *result \&\& (*result)-\/>error\_code == 0) \{}
+\DoxyCodeLine{00471             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00472         \}}
+\DoxyCodeLine{00473         }
+\DoxyCodeLine{00474         \textcolor{keywordflow}{if} (*result) \{}
+\DoxyCodeLine{00475             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(*result);}
+\DoxyCodeLine{00476             *result = NULL;}
+\DoxyCodeLine{00477         \}}
+\DoxyCodeLine{00478         }
+\DoxyCodeLine{00479         \textcolor{keywordflow}{if} (attempt < max\_retries \&\& retry\_delay\_ms > 0) \{}
+\DoxyCodeLine{00480             \textcolor{comment}{/* Non-\/blocking delay using timer -\/ return to caller, retry will be triggered by timer */}}
+\DoxyCodeLine{00481             \textcolor{comment}{/* Store retry context for timer callback */}}
+\DoxyCodeLine{00482             \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structretry__context}{retry\_context\_t}}));}
+\DoxyCodeLine{00483             \textcolor{keywordflow}{if} (!retry\_ctx) \{}
+\DoxyCodeLine{00484                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00485             \}}
+\DoxyCodeLine{00486             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}} = client;}
+\DoxyCodeLine{00487             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(method);}
+\DoxyCodeLine{00488             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(params\_size);}
+\DoxyCodeLine{00489             \textcolor{keywordflow}{if} (!retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} || !retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}) \{}
+\DoxyCodeLine{00490                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{00491                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{00492                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{00493                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00494             \}}
+\DoxyCodeLine{00495             memcpy(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, params, params\_size);}
+\DoxyCodeLine{00496             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}} = params\_size;}
+\DoxyCodeLine{00497             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}} = result;}
+\DoxyCodeLine{00498             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}} = attempt;}
+\DoxyCodeLine{00499             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\_retries}} = max\_retries;}
+\DoxyCodeLine{00500             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\_delay\_ms}} = retry\_delay\_ms;}
+\DoxyCodeLine{00501             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}} = ctx;}
+\DoxyCodeLine{00502             }
+\DoxyCodeLine{00503             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}});}
+\DoxyCodeLine{00504             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}.data = retry\_ctx;}
+\DoxyCodeLine{00505             uv\_timer\_start(\&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}, \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\_delay\_callback}}, retry\_delay\_ms, 0);}
+\DoxyCodeLine{00506             }
+\DoxyCodeLine{00507             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};  \textcolor{comment}{/* Will retry via timer */}}
+\DoxyCodeLine{00508         \}}
+\DoxyCodeLine{00509     \}}
+\DoxyCodeLine{00510     }
+\DoxyCodeLine{00511     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00512 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00031}{retry\+\_\+context\+::attempt}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00026}{retry\+\_\+context\+::client}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00034}{retry\+\_\+context\+::ctx}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00061}{uvrpc\+\_\+async\+\_\+result\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00032}{retry\+\_\+context\+::max\+\_\+retries}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00027}{retry\+\_\+context\+::method}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00028}{retry\+\_\+context\+::params}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00029}{retry\+\_\+context\+::params\+\_\+size}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00030}{retry\+\_\+context\+::result}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00033}{retry\+\_\+context\+::retry\+\_\+delay\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00035}{retry\+\_\+context\+::timer}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_acea12dde7221383d381b48410b38cd1f}\label{uvrpc__async_8c_acea12dde7221383d381b48410b38cd1f}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_retry\_with\_backoff@{uvrpc\_async\_retry\_with\_backoff}}
+\index{uvrpc\_async\_retry\_with\_backoff@{uvrpc\_async\_retry\_with\_backoff}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_retry\_with\_backoff()}{uvrpc\_async\_retry\_with\_backoff()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$}]{client,  }\item[{const char $\ast$}]{method,  }\item[{const uint8\+\_\+t $\ast$}]{params,  }\item[{size\+\_\+t}]{params\+\_\+size,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$}]{result,  }\item[{int}]{max\+\_\+retries,  }\item[{uint64\+\_\+t}]{initial\+\_\+delay\+\_\+ms,  }\item[{double}]{backoff\+\_\+multiplier }\end{DoxyParamCaption})}
+
+Execute async call with retry and exponential backoff (Promise.\+retry) 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+{\em client} & RPC client \\
+\hline
+{\em method} & method name \\
+\hline
+{\em params} & request parameters \\
+\hline
+{\em params\+\_\+size} & parameter size \\
+\hline
+{\em result} & output result pointer \\
+\hline
+{\em max\+\_\+retries} & maximum number of retries \\
+\hline
+{\em initial\+\_\+delay\+\_\+ms} & initial delay between retries in milliseconds \\
+\hline
+{\em backoff\+\_\+multiplier} & multiplier for exponential backoff (e.\+g., 2.\+0) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, error code on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{548}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00552                                                               \{}
+\DoxyCodeLine{00553     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{00554         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00555     \}}
+\DoxyCodeLine{00556 }
+\DoxyCodeLine{00557     \textcolor{keywordflow}{if} (max\_retries < 0) max\_retries = 3;}
+\DoxyCodeLine{00558     \textcolor{keywordflow}{if} (initial\_delay\_ms == 0) initial\_delay\_ms = 100;}
+\DoxyCodeLine{00559     \textcolor{keywordflow}{if} (backoff\_multiplier < 1.0) backoff\_multiplier = 2.0;}
+\DoxyCodeLine{00560 }
+\DoxyCodeLine{00561     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} attempt = 0; attempt <= max\_retries; attempt++) \{}
+\DoxyCodeLine{00562         \textcolor{keywordtype}{int} status = \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{00563 }
+\DoxyCodeLine{00564         \textcolor{keywordflow}{if} (status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} \&\& *result \&\& (*result)-\/>error\_code == 0) \{}
+\DoxyCodeLine{00565             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00566         \}}
+\DoxyCodeLine{00567 }
+\DoxyCodeLine{00568         \textcolor{keywordflow}{if} (*result) \{}
+\DoxyCodeLine{00569             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(*result);}
+\DoxyCodeLine{00570             *result = NULL;}
+\DoxyCodeLine{00571         \}}
+\DoxyCodeLine{00572 }
+\DoxyCodeLine{00573         \textcolor{keywordflow}{if} (attempt < max\_retries) \{}
+\DoxyCodeLine{00574             \textcolor{comment}{/* Calculate delay with exponential backoff */}}
+\DoxyCodeLine{00575             uint64\_t delay\_ms = (uint64\_t)(initial\_delay\_ms * pow(backoff\_multiplier, attempt));}
+\DoxyCodeLine{00576 }
+\DoxyCodeLine{00577             \textcolor{comment}{/* Non-\/blocking delay using timer */}}
+\DoxyCodeLine{00578             \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structretry__context}{retry\_context\_t}}));}
+\DoxyCodeLine{00579             \textcolor{keywordflow}{if} (!retry\_ctx) \{}
+\DoxyCodeLine{00580                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00581             \}}
+\DoxyCodeLine{00582             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}} = client;}
+\DoxyCodeLine{00583             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(method);}
+\DoxyCodeLine{00584             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(params\_size);}
+\DoxyCodeLine{00585             \textcolor{keywordflow}{if} (!retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} || !retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}) \{}
+\DoxyCodeLine{00586                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{00587                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{00588                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{00589                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00590             \}}
+\DoxyCodeLine{00591             memcpy(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, params, params\_size);}
+\DoxyCodeLine{00592             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}} = params\_size;}
+\DoxyCodeLine{00593             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}} = result;}
+\DoxyCodeLine{00594             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}} = attempt;}
+\DoxyCodeLine{00595             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\_retries}} = max\_retries;}
+\DoxyCodeLine{00596             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\_delay\_ms}} = delay\_ms;}
+\DoxyCodeLine{00597             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}} = ctx;}
+\DoxyCodeLine{00598 }
+\DoxyCodeLine{00599             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}});}
+\DoxyCodeLine{00600             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}.data = retry\_ctx;}
+\DoxyCodeLine{00601             uv\_timer\_start(\&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}, \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\_delay\_callback}}, delay\_ms, 0);}
+\DoxyCodeLine{00602 }
+\DoxyCodeLine{00603             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};  \textcolor{comment}{/* Will retry via timer */}}
+\DoxyCodeLine{00604         \}}
+\DoxyCodeLine{00605     \}}
+\DoxyCodeLine{00606 }
+\DoxyCodeLine{00607     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00608 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00031}{retry\+\_\+context\+::attempt}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00026}{retry\+\_\+context\+::client}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00034}{retry\+\_\+context\+::ctx}}, \mbox{\hyperlink{uvrpc__async_8h_source_l00061}{uvrpc\+\_\+async\+\_\+result\+::error\+\_\+code}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00032}{retry\+\_\+context\+::max\+\_\+retries}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00027}{retry\+\_\+context\+::method}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00028}{retry\+\_\+context\+::params}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00029}{retry\+\_\+context\+::params\+\_\+size}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00030}{retry\+\_\+context\+::result}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00033}{retry\+\_\+context\+::retry\+\_\+delay\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00035}{retry\+\_\+context\+::timer}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a2b8a26081ebe35ccfc5cb6489bbadedd}\label{uvrpc__async_8c_a2b8a26081ebe35ccfc5cb6489bbadedd}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_async\_timeout@{uvrpc\_async\_timeout}}
+\index{uvrpc\_async\_timeout@{uvrpc\_async\_timeout}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_async\_timeout()}{uvrpc\_async\_timeout()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+timeout (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$}]{client,  }\item[{const char $\ast$}]{method,  }\item[{const uint8\+\_\+t $\ast$}]{params,  }\item[{size\+\_\+t}]{params\+\_\+size,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$}]{result,  }\item[{uint64\+\_\+t}]{timeout\+\_\+ms }\end{DoxyParamCaption})}
+
+Execute async call with timeout (Promise.\+timeout) 
+\begin{DoxyParams}{Parameters}
+{\em ctx} & async context \\
+\hline
+{\em client} & RPC client \\
+\hline
+{\em method} & method name \\
+\hline
+{\em params} & request parameters \\
+\hline
+{\em params\+\_\+size} & parameter size \\
+\hline
+{\em result} & output result pointer \\
+\hline
+{\em timeout\+\_\+ms} & timeout in milliseconds \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success, UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT on timeout 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{515}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00518                                               \{}
+\DoxyCodeLine{00519     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{00520         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00521     \}}
+\DoxyCodeLine{00522     }
+\DoxyCodeLine{00523     \textcolor{comment}{/* Start the call */}}
+\DoxyCodeLine{00524     \textcolor{keywordtype}{int} started = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}});}
+\DoxyCodeLine{00525     }
+\DoxyCodeLine{00526     \textcolor{keywordflow}{if} (started == 0) \{}
+\DoxyCodeLine{00527         \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{00528         \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{00529             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{00530             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}.data = ctx;}
+\DoxyCodeLine{00531             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{00532             uv\_timer\_start(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{00533         \}}
+\DoxyCodeLine{00534 }
+\DoxyCodeLine{00535         \textcolor{comment}{/* Make the call */}}
+\DoxyCodeLine{00536         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{00537     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00538         \textcolor{comment}{/* Jumped from timeout */}}
+\DoxyCodeLine{00539         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0) \{}
+\DoxyCodeLine{00540             uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{00541             uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{00542         \}}
+\DoxyCodeLine{00543         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00544     \}}
+\DoxyCodeLine{00545 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00055}{uvrpc\+\_\+async\+\_\+ctx\+::jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00112}{timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00061}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+timer}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvrpc_8h_source_l00048}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}}.
+
+\mbox{\Hypertarget{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}\label{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}} 
+\index{uvrpc\_async.c@{uvrpc\_async.c}!uvrpc\_client\_call\_async@{uvrpc\_client\_call\_async}}
+\index{uvrpc\_client\_call\_async@{uvrpc\_client\_call\_async}!uvrpc\_async.c@{uvrpc\_async.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_client\_call\_async()}{uvrpc\_client\_call\_async()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+\_\+call\+\_\+async (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$}]{client,  }\item[{const char $\ast$}]{method,  }\item[{const uint8\+\_\+t $\ast$}]{params,  }\item[{size\+\_\+t}]{params\+\_\+size,  }\item[{\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$}]{result }\end{DoxyParamCaption})}
+
+Client call with async/await This function should be called within UVRPC\+\_\+\+ASYNC block 
+\begin{DoxyParams}{Parameters}
+{\em client} & RPC client \\
+\hline
+{\em method} & method name \\
+\hline
+{\em params} & request parameters \\
+\hline
+{\em params\+\_\+size} & parameter size \\
+\hline
+{\em result} & output result pointer \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVRPC\+\_\+\+OK on success 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{170}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00172                                                                                 \{}
+\DoxyCodeLine{00173     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{00174         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00175     \}}
+\DoxyCodeLine{00176     }
+\DoxyCodeLine{00177     \textcolor{keywordflow}{if} (!ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}}) \{}
+\DoxyCodeLine{00178         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{00179     \}}
+\DoxyCodeLine{00180     }
+\DoxyCodeLine{00181     \textcolor{comment}{/* Find free slot for result */}}
+\DoxyCodeLine{00182     \textcolor{keywordtype}{int} slot = -\/1;}
+\DoxyCodeLine{00183     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{00184         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] == NULL) \{}
+\DoxyCodeLine{00185             slot = i;}
+\DoxyCodeLine{00186             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00187         \}}
+\DoxyCodeLine{00188     \}}
+\DoxyCodeLine{00189     }
+\DoxyCodeLine{00190     \textcolor{keywordflow}{if} (slot < 0) \{}
+\DoxyCodeLine{00191         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00192     \}}
+\DoxyCodeLine{00193     }
+\DoxyCodeLine{00194     \textcolor{comment}{/* Set current call index */}}
+\DoxyCodeLine{00195     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = slot;}
+\DoxyCodeLine{00196     }
+\DoxyCodeLine{00197     \textcolor{comment}{/* Save jump point */}}
+\DoxyCodeLine{00198     \textcolor{keywordtype}{int} jump\_status = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}});}
+\DoxyCodeLine{00199     }
+\DoxyCodeLine{00200     \textcolor{keywordflow}{if} (jump\_status == 0) \{}
+\DoxyCodeLine{00201         \textcolor{comment}{/* First call: make RPC request */}}
+\DoxyCodeLine{00202         \textcolor{keywordtype}{int} call\_status = \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(client, method, params, params\_size,}
+\DoxyCodeLine{00203                                              \mbox{\hyperlink{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}{async\_response\_callback}}, ctx);}
+\DoxyCodeLine{00204         \textcolor{keywordflow}{if} (call\_status != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{00205             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{00206             \textcolor{keywordflow}{return} call\_status;}
+\DoxyCodeLine{00207         \}}
+\DoxyCodeLine{00208         }
+\DoxyCodeLine{00209         \textcolor{comment}{/* Run event loop to wait for response */}}
+\DoxyCodeLine{00210         \textcolor{keywordflow}{while} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot] == NULL \&\& !ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}}) \{}
+\DoxyCodeLine{00211             uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{00212         \}}
+\DoxyCodeLine{00213         }
+\DoxyCodeLine{00214         \textcolor{comment}{/* This shouldn't happen, but handle it */}}
+\DoxyCodeLine{00215         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{00216         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00217     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00218         \textcolor{comment}{/* Jump back from callback */}}
+\DoxyCodeLine{00219         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{00220         }
+\DoxyCodeLine{00221         \textcolor{keywordflow}{if} (jump\_status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}}) \{}
+\DoxyCodeLine{00222             \textcolor{comment}{/* Handle timeout */}}
+\DoxyCodeLine{00223             \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0) \{}
+\DoxyCodeLine{00224                 uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{00225                 uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{00226             \}}
+\DoxyCodeLine{00227             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{00228         \}}
+\DoxyCodeLine{00229         }
+\DoxyCodeLine{00230         \textcolor{comment}{/* Return result */}}
+\DoxyCodeLine{00231         *result = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot];}
+\DoxyCodeLine{00232         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot] = NULL;}
+\DoxyCodeLine{00233         }
+\DoxyCodeLine{00234         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{00235     \}}
+\DoxyCodeLine{00236 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00059}{uvrpc\+\_\+async\+\_\+ctx\+::current\+\_\+call}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00056}{uvrpc\+\_\+async\+\_\+ctx\+::is\+\_\+running}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00055}{uvrpc\+\_\+async\+\_\+ctx\+::jmp\+\_\+buf}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{uvrpc\+\_\+async\+\_\+ctx\+::loop}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00061}{uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+timer}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00502}{uvrpc\+\_\+client\+\_\+call()}}, \mbox{\hyperlink{uvrpc_8h_source_l00044}{UVRPC\+\_\+\+ERROR}}, \mbox{\hyperlink{uvrpc_8h_source_l00045}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvrpc_8h_source_l00046}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvrpc_8h_source_l00048}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}.
+

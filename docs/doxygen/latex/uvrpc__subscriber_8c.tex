@@ -1,0 +1,178 @@
+\hypertarget{uvrpc__subscriber_8c}{}\doxysection{src/uvrpc\+\_\+subscriber.c File Reference}
+\label{uvrpc__subscriber_8c}\index{src/uvrpc\_subscriber.c@{src/uvrpc\_subscriber.c}}
+
+
+UVRPC Subscriber (Broadcast) Implementation.  
+
+
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structsubscription__entry}{subscription\+\_\+entry}}
+\item 
+struct \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\+\_\+subscriber}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef struct \mbox{\hyperlink{structsubscription__entry}{subscription\+\_\+entry}} \mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{subscription\+\_\+entry\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \mbox{\hyperlink{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}{subscriber\+\_\+connect\+\_\+callback}} (int status, void $\ast$ctx)
+\item 
+static void \mbox{\hyperlink{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}{subscriber\+\_\+recv\+\_\+callback}} (const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$client\+\_\+ctx, void $\ast$server\+\_\+ctx)
+\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{uvrpc\+\_\+subscriber\+\_\+connect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Connect subscriber to publisher. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{uvrpc\+\_\+subscriber\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\+\_\+subscriber\+\_\+disconnect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Disconnect subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{uvrpc\+\_\+subscriber\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Free the subscriber. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{uvrpc\+\_\+subscriber\+\_\+subscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic, \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Subscribe to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{uvrpc\+\_\+subscriber\+\_\+unsubscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic)
+\begin{DoxyCompactList}\small\item\em Unsubscribe from a topic. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC Subscriber (Broadcast) Implementation. 
+
+Zero threads, Zero locks, Zero global variables All I/O managed by libuv event loop
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+
+
+Definition in file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}\label{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}} 
+\index{uvrpc\_subscriber.c@{uvrpc\_subscriber.c}!subscription\_entry\_t@{subscription\_entry\_t}}
+\index{subscription\_entry\_t@{subscription\_entry\_t}!uvrpc\_subscriber.c@{uvrpc\_subscriber.c}}
+\doxysubsubsection{\texorpdfstring{subscription\_entry\_t}{subscription\_entry\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structsubscription__entry}{subscription\+\_\+entry}} \mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{subscription\+\_\+entry\+\_\+t}}}
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}\label{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}} 
+\index{uvrpc\_subscriber.c@{uvrpc\_subscriber.c}!subscriber\_connect\_callback@{subscriber\_connect\_callback}}
+\index{subscriber\_connect\_callback@{subscriber\_connect\_callback}!uvrpc\_subscriber.c@{uvrpc\_subscriber.c}}
+\doxysubsubsection{\texorpdfstring{subscriber\_connect\_callback()}{subscriber\_connect\_callback()}}
+{\footnotesize\ttfamily static void subscriber\+\_\+connect\+\_\+callback (\begin{DoxyParamCaption}\item[{int}]{status,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00098}{98}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00098                                                                \{}
+\DoxyCodeLine{00099     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = (\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}*)ctx;}
+\DoxyCodeLine{00100     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = (status == 0);}
+\DoxyCodeLine{00101 }
+\DoxyCodeLine{00102     \textcolor{keywordflow}{if} (status != 0) \{}
+\DoxyCodeLine{00103         fprintf(stderr, \textcolor{stringliteral}{"{}Subscriber connection failed: \%d\(\backslash\)n"{}}, status);}
+\DoxyCodeLine{00104     \}}
+\DoxyCodeLine{00105 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00035}{uvrpc\+\_\+subscriber\+::is\+\_\+connected}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+\mbox{\Hypertarget{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}\label{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}} 
+\index{uvrpc\_subscriber.c@{uvrpc\_subscriber.c}!subscriber\_recv\_callback@{subscriber\_recv\_callback}}
+\index{subscriber\_recv\_callback@{subscriber\_recv\_callback}!uvrpc\_subscriber.c@{uvrpc\_subscriber.c}}
+\doxysubsubsection{\texorpdfstring{subscriber\_recv\_callback()}{subscriber\_recv\_callback()}}
+{\footnotesize\ttfamily static void subscriber\+\_\+recv\+\_\+callback (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{void $\ast$}]{client\+\_\+ctx,  }\item[{void $\ast$}]{server\+\_\+ctx }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00040}{40}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00040                                                                                                            \{}
+\DoxyCodeLine{00041     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = (\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}*)server\_ctx;}
+\DoxyCodeLine{00042 }
+\DoxyCodeLine{00043     \textcolor{keywordflow}{if} (size < 8) \{}
+\DoxyCodeLine{00044         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00045     \}}
+\DoxyCodeLine{00046 }
+\DoxyCodeLine{00047     uint8\_t* p = (uint8\_t*)data;}
+\DoxyCodeLine{00048 }
+\DoxyCodeLine{00049     \textcolor{comment}{/* Parse topic length (little-\/endian for consistency with FlatBuffers) */}}
+\DoxyCodeLine{00050     uint32\_t topic\_len = *(uint32\_t*)p;}
+\DoxyCodeLine{00051     p += 4;}
+\DoxyCodeLine{00052 }
+\DoxyCodeLine{00053     \textcolor{keywordflow}{if} (size < 8 + topic\_len) \{}
+\DoxyCodeLine{00054         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00055     \}}
+\DoxyCodeLine{00056 }
+\DoxyCodeLine{00057     \textcolor{comment}{/* Extract topic */}}
+\DoxyCodeLine{00058     \textcolor{keywordtype}{char}* topic = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(topic\_len + 1);}
+\DoxyCodeLine{00059     \textcolor{keywordflow}{if} (!topic) \{}
+\DoxyCodeLine{00060         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00061     \}}
+\DoxyCodeLine{00062     memcpy(topic, p, topic\_len);}
+\DoxyCodeLine{00063     topic[topic\_len] = \textcolor{charliteral}{'\(\backslash\)0'};}
+\DoxyCodeLine{00064     p += topic\_len;}
+\DoxyCodeLine{00065 }
+\DoxyCodeLine{00066     \textcolor{comment}{/* Parse data length (little-\/endian) */}}
+\DoxyCodeLine{00067     uint32\_t data\_size = *(uint32\_t*)p;}
+\DoxyCodeLine{00068     p += 4;}
+\DoxyCodeLine{00069 }
+\DoxyCodeLine{00070     \textcolor{keywordflow}{if} (size < 8 + topic\_len + data\_size) \{}
+\DoxyCodeLine{00071         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(topic);}
+\DoxyCodeLine{00072         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00073     \}}
+\DoxyCodeLine{00074 }
+\DoxyCodeLine{00075     \textcolor{comment}{/* Find subscription for this topic */}}
+\DoxyCodeLine{00076     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{00077     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{00078 }
+\DoxyCodeLine{00079     \textcolor{keywordflow}{if} (entry \&\& entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}}) \{}
+\DoxyCodeLine{00080         \textcolor{comment}{/* Call callback with the data */}}
+\DoxyCodeLine{00081         uint8\_t* data\_copy = NULL;}
+\DoxyCodeLine{00082         \textcolor{keywordflow}{if} (data\_size > 0) \{}
+\DoxyCodeLine{00083             data\_copy = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(data\_size);}
+\DoxyCodeLine{00084             \textcolor{keywordflow}{if} (data\_copy) \{}
+\DoxyCodeLine{00085                 memcpy(data\_copy, p, data\_size);}
+\DoxyCodeLine{00086             \}}
+\DoxyCodeLine{00087         \}}
+\DoxyCodeLine{00088 }
+\DoxyCodeLine{00089         entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}}(topic, data\_copy, data\_size, entry-\/>\mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{ctx}});}
+\DoxyCodeLine{00090 }
+\DoxyCodeLine{00091         \textcolor{keywordflow}{if} (data\_copy) \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data\_copy);}
+\DoxyCodeLine{00092     \}}
+\DoxyCodeLine{00093 }
+\DoxyCodeLine{00094     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(topic);}
+\DoxyCodeLine{00095 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00024}{subscription\+\_\+entry\+::callback}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00025}{subscription\+\_\+entry\+::ctx}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{uvrpc\+\_\+subscriber\+::subscriptions}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+

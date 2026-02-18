@@ -1,0 +1,178 @@
+\hypertarget{structuvrpc__response}{}\doxysection{uvrpc\+\_\+response Struct Reference}
+\label{structuvrpc__response}\index{uvrpc\_response@{uvrpc\_response}}
+
+
+RPC response structure (client-\/side)  
+
+
+
+
+{\ttfamily \#include $<$uvrpc.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+response\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int32\+\_\+t \mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\+\_\+code}}
+\begin{DoxyCompactList}\small\item\em RPC error code (0 for success) \end{DoxyCompactList}\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}{error\+\_\+message}}
+\begin{DoxyCompactList}\small\item\em Error message (if error\+\_\+code != 0) \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}}
+\begin{DoxyCompactList}\small\item\em Message ID matching the request. \end{DoxyCompactList}\item 
+uint8\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}}
+\begin{DoxyCompactList}\small\item\em Response result data (valid only during callback) \end{DoxyCompactList}\item 
+size\+\_\+t \mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\+\_\+size}}
+\begin{DoxyCompactList}\small\item\em Size of result buffer. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}}
+\begin{DoxyCompactList}\small\item\em Response status (0 for success) \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\+\_\+data}}
+\begin{DoxyCompactList}\small\item\em User-\/defined data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+RPC response structure (client-\/side) 
+
+Represents a response received from the server. \begin{DoxyWarning}{Warning}
+The result pointer is only valid during the callback. 
+\end{DoxyWarning}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00293}{293}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}\label{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}} 
+\index{uvrpc\_response@{uvrpc\_response}!error\_code@{error\_code}}
+\index{error\_code@{error\_code}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{error\_code}{error\_code}}
+{\footnotesize\ttfamily int32\+\_\+t uvrpc\+\_\+response\+::error\+\_\+code}
+
+
+
+RPC error code (0 for success) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00296}{296}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}\label{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}} 
+\index{uvrpc\_response@{uvrpc\_response}!error\_message@{error\_message}}
+\index{error\_message@{error\_message}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{error\_message}{error\_message}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+response\+::error\+\_\+message}
+
+
+
+Error message (if error\+\_\+code != 0) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00297}{297}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}\label{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}} 
+\index{uvrpc\_response@{uvrpc\_response}!msgid@{msgid}}
+\index{msgid@{msgid}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{msgid}{msgid}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+response\+::msgid}
+
+
+
+Message ID matching the request. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00295}{295}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a3969f497758135051175c666bf7f0474}\label{structuvrpc__response_a3969f497758135051175c666bf7f0474}} 
+\index{uvrpc\_response@{uvrpc\_response}!result@{result}}
+\index{result@{result}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{result}{result}}
+{\footnotesize\ttfamily uint8\+\_\+t$\ast$ uvrpc\+\_\+response\+::result}
+
+
+
+Response result data (valid only during callback) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00298}{298}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}\label{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}} 
+\index{uvrpc\_response@{uvrpc\_response}!result\_size@{result\_size}}
+\index{result\_size@{result\_size}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{result\_size}{result\_size}}
+{\footnotesize\ttfamily size\+\_\+t uvrpc\+\_\+response\+::result\+\_\+size}
+
+
+
+Size of result buffer. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00299}{299}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}\label{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}} 
+\index{uvrpc\_response@{uvrpc\_response}!status@{status}}
+\index{status@{status}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{status}{status}}
+{\footnotesize\ttfamily int uvrpc\+\_\+response\+::status}
+
+
+
+Response status (0 for success) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00294}{294}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}\label{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}} 
+\index{uvrpc\_response@{uvrpc\_response}!user\_data@{user\_data}}
+\index{user\_data@{user\_data}!uvrpc\_response@{uvrpc\_response}}
+\doxysubsubsection{\texorpdfstring{user\_data}{user\_data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+response\+::user\+\_\+data}
+
+
+
+User-\/defined data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00300}{300}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc_8h}{uvrpc.\+h}}\end{DoxyCompactItemize}

@@ -1,0 +1,260 @@
+\hypertarget{structuvrpc__async__ctx}{}\doxysection{uvrpc\+\_\+async\+\_\+ctx Struct Reference}
+\label{structuvrpc__async__ctx}\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+
+
+Collaboration diagram for uvrpc\+\_\+async\+\_\+ctx\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\+\_\+completed}}
+\item 
+\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\+\_\+buf}} \mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\+\_\+jmp\+\_\+buf}}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\+\_\+count}}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\+\_\+count}}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\+\_\+count}}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a7a47145a16a1dbb9478070171d6defe9}{concurrent\+\_\+indices}} \mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+CALLS\mbox{]}
+\item 
+\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\+\_\+results}} \mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+CALLS\mbox{]}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\+\_\+call}}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\+\_\+running}}
+\item 
+jmp\+\_\+buf \mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\+\_\+buf}}
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}
+\item 
+\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\+\_\+results}} \mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+ASYNC\+\_\+\+CALLS\mbox{]}
+\item 
+int \mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\+\_\+out}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\+\_\+ms}}
+\item 
+uv\+\_\+timer\+\_\+t \mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\+\_\+timer}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00053}{53}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}\label{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!any\_completed@{any\_completed}}
+\index{any\_completed@{any\_completed}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{any\_completed}{any\_completed}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+completed}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00069}{69}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}\label{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!any\_jmp\_buf@{any\_jmp\_buf}}
+\index{any\_jmp\_buf@{any\_jmp\_buf}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{any\_jmp\_buf}{any\_jmp\_buf}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\+\_\+buf}} uvrpc\+\_\+async\+\_\+ctx\+::any\+\_\+jmp\+\_\+buf}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00070}{70}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}\label{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!call\_count@{call\_count}}
+\index{call\_count@{call\_count}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{call\_count}{call\_count}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::call\+\_\+count}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00057}{57}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}\label{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!completed\_count@{completed\_count}}
+\index{completed\_count@{completed\_count}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{completed\_count}{completed\_count}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::completed\+\_\+count}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00066}{66}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}\label{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!concurrent\_count@{concurrent\_count}}
+\index{concurrent\_count@{concurrent\_count}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{concurrent\_count}{concurrent\_count}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+count}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00065}{65}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a7a47145a16a1dbb9478070171d6defe9}\label{structuvrpc__async__ctx_a7a47145a16a1dbb9478070171d6defe9}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!concurrent\_indices@{concurrent\_indices}}
+\index{concurrent\_indices@{concurrent\_indices}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{concurrent\_indices}{concurrent\_indices}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+indices\mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+CALLS\mbox{]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00067}{67}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}\label{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!concurrent\_results@{concurrent\_results}}
+\index{concurrent\_results@{concurrent\_results}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{concurrent\_results}{concurrent\_results}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}}$\ast$ uvrpc\+\_\+async\+\_\+ctx\+::concurrent\+\_\+results\mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+CONCURRENT\+\_\+\+CALLS\mbox{]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00068}{68}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}\label{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!current\_call@{current\_call}}
+\index{current\_call@{current\_call}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{current\_call}{current\_call}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::current\+\_\+call}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00059}{59}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}\label{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!is\_running@{is\_running}}
+\index{is\_running@{is\_running}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{is\_running}{is\_running}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::is\+\_\+running}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00056}{56}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}\label{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!jmp\_buf@{jmp\_buf}}
+\index{jmp\_buf@{jmp\_buf}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{jmp\_buf}{jmp\_buf}}
+{\footnotesize\ttfamily jmp\+\_\+buf uvrpc\+\_\+async\+\_\+ctx\+::jmp\+\_\+buf}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00055}{55}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00112}{timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}\label{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!loop@{loop}}
+\index{loop@{loop}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvrpc\+\_\+async\+\_\+ctx\+::loop}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00054}{54}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00370}{uvrpc\+\_\+async\+\_\+any()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}\label{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!pending\_results@{pending\_results}}
+\index{pending\_results@{pending\_results}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{pending\_results}{pending\_results}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}}$\ast$ uvrpc\+\_\+async\+\_\+ctx\+::pending\+\_\+results\mbox{[}UVRPC\+\_\+\+MAX\+\_\+\+ASYNC\+\_\+\+CALLS\mbox{]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00058}{58}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00137}{uvrpc\+\_\+async\+\_\+ctx\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00637}{uvrpc\+\_\+async\+\_\+get\+\_\+pending\+\_\+count()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}\label{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!timed\_out@{timed\_out}}
+\index{timed\_out@{timed\_out}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{timed\_out}{timed\_out}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+ctx\+::timed\+\_\+out}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00062}{62}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00112}{timeout\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}\label{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!timeout\_ms@{timeout\_ms}}
+\index{timeout\_ms@{timeout\_ms}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{timeout\_ms}{timeout\_ms}}
+{\footnotesize\ttfamily uint64\+\_\+t uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+ms}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00060}{60}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}\label{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}} 
+\index{uvrpc\_async\_ctx@{uvrpc\_async\_ctx}!timeout\_timer@{timeout\_timer}}
+\index{timeout\_timer@{timeout\_timer}!uvrpc\_async\_ctx@{uvrpc\_async\_ctx}}
+\doxysubsubsection{\texorpdfstring{timeout\_timer}{timeout\_timer}}
+{\footnotesize\ttfamily uv\+\_\+timer\+\_\+t uvrpc\+\_\+async\+\_\+ctx\+::timeout\+\_\+timer}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00061}{61}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00611}{uvrpc\+\_\+async\+\_\+cancel\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00152}{uvrpc\+\_\+async\+\_\+exec()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00515}{uvrpc\+\_\+async\+\_\+timeout()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00170}{uvrpc\+\_\+client\+\_\+call\+\_\+async()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvrpc__async_8c}{uvrpc\+\_\+async.\+c}}\end{DoxyCompactItemize}

@@ -1,0 +1,240 @@
+\hypertarget{uvrpc__subscriber_8c_source}{}\doxysection{uvrpc\+\_\+subscriber.\+c}
+\label{uvrpc__subscriber_8c_source}\index{src/uvrpc\_subscriber.c@{src/uvrpc\_subscriber.c}}
+\mbox{\hyperlink{uvrpc__subscriber_8c}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00013}00013 \textcolor{preprocessor}{\#include "{}../include/uvrpc.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00014}00014 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00015}00015 \textcolor{preprocessor}{\#include "{}../include/uvbus.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00016}00016 \textcolor{preprocessor}{\#include <uthash.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00017}00017 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00018}00018 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00019}00019 \textcolor{preprocessor}{\#include <stdio.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00020}00020 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00021}00021 \textcolor{comment}{/* Subscription entry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00022}\mbox{\hyperlink{structsubscription__entry}{00022}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structsubscription__entry}{subscription\_entry}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00023}\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{00023}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00024}\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{00024}}     \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\_subscribe\_callback\_t}} \mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00025}\mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{00025}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{ctx}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00026}\mbox{\hyperlink{structsubscription__entry_aa604a01fd612c8074947fa594eed0179}{00026}}     UT\_hash\_handle \mbox{\hyperlink{structsubscription__entry_aa604a01fd612c8074947fa594eed0179}{hh}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00027}\mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{00027}} \} \mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{subscription\_entry\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00028}00028 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00029}00029 \textcolor{comment}{/* Subscriber structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00030}\mbox{\hyperlink{structuvrpc__subscriber}{00030}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00031}\mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{00031}}     uv\_loop\_t* \mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00032}\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{00032}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00033}\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{00033}}     \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00034}\mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{00034}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} \mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\_type}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00035}\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{00035}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00036}\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{00036}}     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* \mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00037}00037 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00038}00038 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00039}00039 \textcolor{comment}{/* Transport receive callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00040}\mbox{\hyperlink{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}{00040}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}{subscriber\_recv\_callback}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* client\_ctx, \textcolor{keywordtype}{void}* server\_ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00041}00041     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = (\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}*)server\_ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00042}00042 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00043}00043     \textcolor{keywordflow}{if} (size < 8) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00044}00044         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00045}00045     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00046}00046 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00047}00047     uint8\_t* p = (uint8\_t*)data;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00048}00048 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00049}00049     \textcolor{comment}{/* Parse topic length (little-\/endian for consistency with FlatBuffers) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00050}00050     uint32\_t topic\_len = *(uint32\_t*)p;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00051}00051     p += 4;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00052}00052 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00053}00053     \textcolor{keywordflow}{if} (size < 8 + topic\_len) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00054}00054         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00055}00055     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00056}00056 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00057}00057     \textcolor{comment}{/* Extract topic */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00058}00058     \textcolor{keywordtype}{char}* topic = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(topic\_len + 1);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00059}00059     \textcolor{keywordflow}{if} (!topic) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00060}00060         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00061}00061     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00062}00062     memcpy(topic, p, topic\_len);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00063}00063     topic[topic\_len] = \textcolor{charliteral}{'\(\backslash\)0'};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00064}00064     p += topic\_len;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00065}00065 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00066}00066     \textcolor{comment}{/* Parse data length (little-\/endian) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00067}00067     uint32\_t data\_size = *(uint32\_t*)p;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00068}00068     p += 4;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00069}00069 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00070}00070     \textcolor{keywordflow}{if} (size < 8 + topic\_len + data\_size) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00071}00071         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00072}00072         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00073}00073     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00074}00074 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00075}00075     \textcolor{comment}{/* Find subscription for this topic */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00076}00076     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00077}00077     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00078}00078 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00079}00079     \textcolor{keywordflow}{if} (entry \&\& entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00080}00080         \textcolor{comment}{/* Call callback with the data */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00081}00081         uint8\_t* data\_copy = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00082}00082         \textcolor{keywordflow}{if} (data\_size > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00083}00083             data\_copy = (uint8\_t*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(data\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00084}00084             \textcolor{keywordflow}{if} (data\_copy) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00085}00085                 memcpy(data\_copy, p, data\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00086}00086             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00087}00087         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00088}00088 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00089}00089         entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}}(topic, data\_copy, data\_size, entry-\/>\mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00090}00090 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00091}00091         \textcolor{keywordflow}{if} (data\_copy) \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data\_copy);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00092}00092     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00093}00093 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00094}00094     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00095}00095 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00096}00096 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00097}00097 \textcolor{comment}{/* Connect callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00098}\mbox{\hyperlink{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}{00098}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}{subscriber\_connect\_callback}}(\textcolor{keywordtype}{int} status, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00099}00099     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = (\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}*)ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00100}00100     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = (status == 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00101}00101 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00102}00102     \textcolor{keywordflow}{if} (status != 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00103}00103         fprintf(stderr, \textcolor{stringliteral}{"{}Subscriber connection failed: \%d\(\backslash\)n"{}}, status);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00104}00104     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00105}00105 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00106}00106 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00107}00107 \textcolor{comment}{/* Create subscriber */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00108}\mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{00108}} \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* \mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{uvrpc\_subscriber\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00109}00109     \textcolor{keywordflow}{if} (!config || !config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} || !config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00110}00110 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00111}00111     \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00112}00112     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00113}00113 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00114}00114     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00115}00115     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00116}00116     \textcolor{keywordflow}{if} (!subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00117}00117         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00118}00118         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00119}00119     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00120}00120 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00121}00121     \textcolor{comment}{/* Convert uvrpc\_transport\_type to uvbus\_transport\_type\_t */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00122}00122     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\_type}} = (\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}})config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00123}00123     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00124}00124     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00125}00125 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00126}00126     \textcolor{comment}{/* Create uvbus config */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00127}00127     \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* bus\_config = \mbox{\hyperlink{uvbus_8h_afdf4cbd411257359186f6a842a7ca881}{uvbus\_config\_new}}();}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00128}00128     \textcolor{keywordflow}{if} (!bus\_config) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00129}00129         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00130}00130         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00131}00131         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00132}00132     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00133}00133 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00134}00134     \mbox{\hyperlink{uvbus_8h_afd32cbd35cc2efd347230ec84a45394d}{uvbus\_config\_set\_loop}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00135}00135     \mbox{\hyperlink{uvbus_8h_aa61fe1a2bad717d81e2c07baf8823c28}{uvbus\_config\_set\_transport}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\_type}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00136}00136     \mbox{\hyperlink{uvbus_8h_a710a8ee1b3c23442a5e1d379406c8af9}{uvbus\_config\_set\_address}}(bus\_config, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00137}00137     \mbox{\hyperlink{uvbus_8h_a1bcbc82ae667fa41e4eac2869c698643}{uvbus\_config\_set\_recv\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__subscriber_8c_a327ffd619a85cc65ca9966376986311a}{subscriber\_recv\_callback}}, subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00138}00138     \mbox{\hyperlink{uvbus_8h_ab5987b867a5ffafca5579db5b8e7b632}{uvbus\_config\_set\_connect\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__subscriber_8c_a91dbf0923143069de872daf21e419362}{subscriber\_connect\_callback}}, subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00139}00139 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00140}00140     \textcolor{comment}{/* Create uvbus client (broadcast subscriber) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00141}00141     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}} = \mbox{\hyperlink{uvbus_8h_a64931dfcbf8405bf85e61eeaa6ebc296}{uvbus\_client\_new}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00142}00142     \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00143}00143 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00144}00144     \textcolor{keywordflow}{if} (!subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00145}00145         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00146}00146         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00147}00147         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00148}00148     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00149}00149 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00150}00150     \textcolor{keywordflow}{return} subscriber;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00151}00151 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00152}00152 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00153}00153 \textcolor{comment}{/* Connect to publisher */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00154}\mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{00154}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{uvrpc\_subscriber\_connect}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00155}00155     \textcolor{keywordflow}{if} (!subscriber || !subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00156}00156 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00157}00157     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00158}00158 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00159}00159     \textcolor{keywordtype}{int} rv = \mbox{\hyperlink{uvbus_8h_a1a80668fb14970a4a36a5bb26f3640c0}{uvbus\_connect}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00160}00160     \textcolor{keywordflow}{if} (rv != 0) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00161}00161 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00162}00162     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00163}00163 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00164}00164 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00165}00165 \textcolor{comment}{/* Disconnect from publisher */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00166}\mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{00166}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\_subscriber\_disconnect}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00167}00167     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00168}00168 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00169}00169     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00170}00170         \mbox{\hyperlink{uvbus_8h_a655383b40dc228452016695950ccfac1}{uvbus\_disconnect}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00171}00171     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00172}00172 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00173}00173     subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\_connected}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00174}00174 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00175}00175 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00176}00176 \textcolor{comment}{/* Free subscriber */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00177}\mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{00177}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{uvrpc\_subscriber\_free}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00178}00178     \textcolor{keywordflow}{if} (!subscriber) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00179}00179 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00180}00180     \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\_subscriber\_disconnect}}(subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00181}00181 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00182}00182     \textcolor{comment}{/* Free uvbus */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00183}00183     \textcolor{keywordflow}{if} (subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00184}00184         \mbox{\hyperlink{uvbus_8h_a46fd342d85cab0698182c7bce87d58bb}{uvbus\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00185}00185     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00186}00186 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00187}00187     \textcolor{comment}{/* Free subscriptions */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00188}00188     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry, *tmp;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00189}00189     HASH\_ITER(hh, subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry, tmp) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00190}00190         HASH\_DEL(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00191}00191         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00192}00192         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00193}00193     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00194}00194 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00195}00195     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00196}00196     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00197}00197 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00198}00198 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00199}00199 \textcolor{comment}{/* Subscribe to topic */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00200}\mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{00200}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{uvrpc\_subscriber\_subscribe}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic,}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00201}00201                                  \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\_subscribe\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00202}00202     \textcolor{keywordflow}{if} (!subscriber || !topic || !callback) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00203}00203 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00204}00204     \textcolor{comment}{/* Check if already subscribed */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00205}00205     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00206}00206     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00207}00207     \textcolor{keywordflow}{if} (entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}}; \textcolor{comment}{/* Already subscribed */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00208}00208 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00209}00209     \textcolor{comment}{/* Create new subscription */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00210}00210     entry = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00211}00211     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00212}00212 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00213}00213     entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00214}00214     \textcolor{keywordflow}{if} (!entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00215}00215         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00216}00216         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00217}00217     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00218}00218     entry-\/>\mbox{\hyperlink{structsubscription__entry_a9433ce37710d2ae84dade780fd891ea2}{callback}} = callback;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00219}00219     entry-\/>\mbox{\hyperlink{structsubscription__entry_a551562448156173e98752e1ab8dfc7f6}{ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00220}00220 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00221}00221     HASH\_ADD\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00222}00222 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00223}00223     printf(\textcolor{stringliteral}{"{}Subscribed to topic: \%s\(\backslash\)n"{}}, topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00224}00224 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00225}00225     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00226}00226 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00227}00227 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00228}00228 \textcolor{comment}{/* Unsubscribe from topic */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00229}\mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{00229}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{uvrpc\_subscriber\_unsubscribe}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00230}00230     \textcolor{keywordflow}{if} (!subscriber || !topic) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00231}00231 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00232}00232     \textcolor{comment}{/* Find subscription */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00233}00233     \mbox{\hyperlink{structsubscription__entry}{subscription\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00234}00234     HASH\_FIND\_STR(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, topic, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00235}00235     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}}; \textcolor{comment}{/* Not subscribed */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00236}00236 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00237}00237     \textcolor{comment}{/* Remove subscription */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00238}00238     HASH\_DEL(subscriber-\/>\mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00239}00239     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry-\/>\mbox{\hyperlink{structsubscription__entry_a7f252a818cbec9526f817d041f71a3f3}{topic}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00240}00240     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00241}00241 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00242}00242     printf(\textcolor{stringliteral}{"{}Unsubscribed from topic: \%s\(\backslash\)n"{}}, topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00243}00243 }
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00244}00244     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__subscriber_8c_source_l00245}00245 \}}
+
+\end{DoxyCode}

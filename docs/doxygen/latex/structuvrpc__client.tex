@@ -1,0 +1,340 @@
+\hypertarget{structuvrpc__client}{}\doxysection{uvrpc\+\_\+client Struct Reference}
+\label{structuvrpc__client}\index{uvrpc\_client@{uvrpc\_client}}
+
+
+Collaboration diagram for uvrpc\+\_\+client\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}{batch\+\_\+size}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}{batching\+\_\+enabled}}
+\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}{ctx}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\+\_\+concurrent}}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a1be250c11ea20831d204e1ef80b84737}{in\+\_\+callback}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\+\_\+connected}}
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}{loop}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}{max\+\_\+batch\+\_\+size}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\+\_\+concurrent}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\+\_\+pending\+\_\+callbacks}}
+\item 
+int \mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\+\_\+retries}}
+\item 
+\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\+\_\+ctx}}
+\item 
+\mbox{\hyperlink{uvrpc__client_8c_a58e06cf77abc45d36956579a4a535ae6}{pending\+\_\+callback\+\_\+t}} $\ast$$\ast$ \mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\+\_\+callbacks}}
+\item 
+\mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} \mbox{\hyperlink{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}{performance\+\_\+mode}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}{timeout\+\_\+ms}}
+\item 
+\mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\+\_\+connect\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\+\_\+connect\+\_\+callback}}
+\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{user\+\_\+connect\+\_\+ctx}}
+\item 
+\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00029}{29}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}\label{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}} 
+\index{uvrpc\_client@{uvrpc\_client}!address@{address}}
+\index{address@{address}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{address}{address}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+client\+::address}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00031}{31}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}\label{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}} 
+\index{uvrpc\_client@{uvrpc\_client}!batch\_size@{batch\_size}}
+\index{batch\_size@{batch\_size}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{batch\_size}{batch\_size}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::batch\+\_\+size}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00057}{57}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}\label{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}} 
+\index{uvrpc\_client@{uvrpc\_client}!batching\_enabled@{batching\_enabled}}
+\index{batching\_enabled@{batching\_enabled}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{batching\_enabled}{batching\_enabled}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::batching\+\_\+enabled}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00056}{56}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}\label{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}} 
+\index{uvrpc\_client@{uvrpc\_client}!ctx@{ctx}}
+\index{ctx@{ctx}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{ctx}{ctx}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}}$\ast$ uvrpc\+\_\+client\+::ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00039}{39}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00418}{uvrpc\+\_\+client\+\_\+get\+\_\+context()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00411}{uvrpc\+\_\+client\+\_\+set\+\_\+context()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}\label{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}} 
+\index{uvrpc\_client@{uvrpc\_client}!current\_concurrent@{current\_concurrent}}
+\index{current\_concurrent@{current\_concurrent}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{current\_concurrent}{current\_concurrent}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::current\+\_\+concurrent}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00052}{52}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00552}{uvrpc\+\_\+client\+\_\+get\+\_\+pending\+\_\+count()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}\label{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}} 
+\index{uvrpc\_client@{uvrpc\_client}!generation@{generation}}
+\index{generation@{generation}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{generation}{generation}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+client\+::generation}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00048}{48}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a1be250c11ea20831d204e1ef80b84737}\label{structuvrpc__client_a1be250c11ea20831d204e1ef80b84737}} 
+\index{uvrpc\_client@{uvrpc\_client}!in\_callback@{in\_callback}}
+\index{in\_callback@{in\_callback}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{in\_callback}{in\_callback}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::in\+\_\+callback}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00036}{36}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}\label{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}} 
+\index{uvrpc\_client@{uvrpc\_client}!is\_connected@{is\_connected}}
+\index{is\_connected@{is\_connected}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{is\_connected}{is\_connected}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::is\+\_\+connected}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00033}{33}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00065}{client\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00312}{uvrpc\+\_\+client\+\_\+connect()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00358}{uvrpc\+\_\+client\+\_\+disconnect()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}\label{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}} 
+\index{uvrpc\_client@{uvrpc\_client}!loop@{loop}}
+\index{loop@{loop}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvrpc\+\_\+client\+::loop}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00030}{30}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00405}{uvrpc\+\_\+client\+\_\+get\+\_\+loop()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}\label{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}} 
+\index{uvrpc\_client@{uvrpc\_client}!max\_batch\_size@{max\_batch\_size}}
+\index{max\_batch\_size@{max\_batch\_size}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{max\_batch\_size}{max\_batch\_size}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::max\+\_\+batch\+\_\+size}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00058}{58}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}\label{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}} 
+\index{uvrpc\_client@{uvrpc\_client}!max\_concurrent@{max\_concurrent}}
+\index{max\_concurrent@{max\_concurrent}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{max\_concurrent}{max\_concurrent}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::max\+\_\+concurrent}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00051}{51}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00545}{uvrpc\+\_\+client\+\_\+set\+\_\+max\+\_\+concurrent()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}\label{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}} 
+\index{uvrpc\_client@{uvrpc\_client}!max\_pending\_callbacks@{max\_pending\_callbacks}}
+\index{max\_pending\_callbacks@{max\_pending\_callbacks}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{max\_pending\_callbacks}{max\_pending\_callbacks}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::max\+\_\+pending\+\_\+callbacks}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00047}{47}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}\label{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}} 
+\index{uvrpc\_client@{uvrpc\_client}!max\_retries@{max\_retries}}
+\index{max\_retries@{max\_retries}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{max\_retries}{max\_retries}}
+{\footnotesize\ttfamily int uvrpc\+\_\+client\+::max\+\_\+retries}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00061}{61}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00502}{uvrpc\+\_\+client\+\_\+call()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00431}{uvrpc\+\_\+client\+\_\+get\+\_\+max\+\_\+retries()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00423}{uvrpc\+\_\+client\+\_\+set\+\_\+max\+\_\+retries()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a241a38a59c683cb191953386b453294e}\label{structuvrpc__client_a241a38a59c683cb191953386b453294e}} 
+\index{uvrpc\_client@{uvrpc\_client}!msgid\_ctx@{msgid\_ctx}}
+\index{msgid\_ctx@{msgid\_ctx}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{msgid\_ctx}{msgid\_ctx}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}}$\ast$ uvrpc\+\_\+client\+::msgid\+\_\+ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00034}{34}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}\label{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}} 
+\index{uvrpc\_client@{uvrpc\_client}!pending\_callbacks@{pending\_callbacks}}
+\index{pending\_callbacks@{pending\_callbacks}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{pending\_callbacks}{pending\_callbacks}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__client_8c_a58e06cf77abc45d36956579a4a535ae6}{pending\+\_\+callback\+\_\+t}}$\ast$$\ast$ uvrpc\+\_\+client\+::pending\+\_\+callbacks}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00046}{46}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}\label{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}} 
+\index{uvrpc\_client@{uvrpc\_client}!performance\_mode@{performance\_mode}}
+\index{performance\_mode@{performance\_mode}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{performance\_mode}{performance\_mode}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} uvrpc\+\_\+client\+::performance\+\_\+mode}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00035}{35}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}\label{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}} 
+\index{uvrpc\_client@{uvrpc\_client}!timeout\_ms@{timeout\_ms}}
+\index{timeout\_ms@{timeout\_ms}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{timeout\_ms}{timeout\_ms}}
+{\footnotesize\ttfamily uint64\+\_\+t uvrpc\+\_\+client\+::timeout\+\_\+ms}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00053}{53}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}\label{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}} 
+\index{uvrpc\_client@{uvrpc\_client}!user\_connect\_callback@{user\_connect\_callback}}
+\index{user\_connect\_callback@{user\_connect\_callback}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{user\_connect\_callback}{user\_connect\_callback}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\+\_\+connect\+\_\+callback\+\_\+t}} uvrpc\+\_\+client\+::user\+\_\+connect\+\_\+callback}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00042}{42}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00065}{client\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}\label{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}} 
+\index{uvrpc\_client@{uvrpc\_client}!user\_connect\_ctx@{user\_connect\_ctx}}
+\index{user\_connect\_ctx@{user\_connect\_ctx}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{user\_connect\_ctx}{user\_connect\_ctx}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+client\+::user\+\_\+connect\+\_\+ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00043}{43}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00065}{client\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}\label{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}} 
+\index{uvrpc\_client@{uvrpc\_client}!uvbus@{uvbus}}
+\index{uvbus@{uvbus}!uvrpc\_client@{uvrpc\_client}}
+\doxysubsubsection{\texorpdfstring{uvbus}{uvbus}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}}$\ast$ uvrpc\+\_\+client\+::uvbus}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00032}{32}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00312}{uvrpc\+\_\+client\+\_\+connect()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00358}{uvrpc\+\_\+client\+\_\+disconnect()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvrpc__client_8c}{uvrpc\+\_\+client.\+c}}\end{DoxyCompactItemize}

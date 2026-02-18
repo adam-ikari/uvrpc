@@ -1,0 +1,168 @@
+\hypertarget{structinproc__endpoint}{}\doxysection{inproc\+\_\+endpoint Struct Reference}
+\label{structinproc__endpoint}\index{inproc\_endpoint@{inproc\_endpoint}}
+
+
+Collaboration diagram for inproc\+\_\+endpoint\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$ \mbox{\hyperlink{structinproc__endpoint_ae62fbf3042a260273030c44b6a815785}{callback\+\_\+ctx}}
+\item 
+int \mbox{\hyperlink{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}{client\+\_\+capacity}}
+\item 
+int \mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\+\_\+count}}
+\item 
+void $\ast$$\ast$ \mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}
+\item 
+\mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structinproc__endpoint_a316f2bf6dd36b4f2f41500393b48b2e1}{error\+\_\+cb}}
+\item 
+char $\ast$ \mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}}
+\item 
+struct \mbox{\hyperlink{structinproc__endpoint}{inproc\+\_\+endpoint}} $\ast$ \mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}}
+\item 
+\mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}{recv\+\_\+cb}}
+\item 
+void $\ast$ \mbox{\hyperlink{structinproc__endpoint_acdfeedeaa8cd7e302f7e15c46651423a}{server\+\_\+transport}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00016}{16}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structinproc__endpoint_ae62fbf3042a260273030c44b6a815785}\label{structinproc__endpoint_ae62fbf3042a260273030c44b6a815785}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!callback\_ctx@{callback\_ctx}}
+\index{callback\_ctx@{callback\_ctx}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{callback\_ctx}{callback\_ctx}}
+{\footnotesize\ttfamily void$\ast$ inproc\+\_\+endpoint\+::callback\+\_\+ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00027}{27}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00343}{inproc\+\_\+send()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}\label{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!client\_capacity@{client\_capacity}}
+\index{client\_capacity@{client\_capacity}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{client\_capacity}{client\_capacity}}
+{\footnotesize\ttfamily int inproc\+\_\+endpoint\+::client\+\_\+capacity}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00021}{21}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a68e96d908707509a0407a27621c98076}\label{structinproc__endpoint_a68e96d908707509a0407a27621c98076}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!client\_count@{client\_count}}
+\index{client\_count@{client\_count}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{client\_count}{client\_count}}
+{\footnotesize\ttfamily int inproc\+\_\+endpoint\+::client\+\_\+count}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{20}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00119}{inproc\+\_\+remove\+\_\+client()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}\label{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!clients@{clients}}
+\index{clients@{clients}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{clients}{clients}}
+{\footnotesize\ttfamily void$\ast$$\ast$ inproc\+\_\+endpoint\+::clients}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{19}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00119}{inproc\+\_\+remove\+\_\+client()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a316f2bf6dd36b4f2f41500393b48b2e1}\label{structinproc__endpoint_a316f2bf6dd36b4f2f41500393b48b2e1}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!error\_cb@{error\_cb}}
+\index{error\_cb@{error\_cb}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{error\_cb}{error\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} inproc\+\_\+endpoint\+::error\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00026}{26}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}\label{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!name@{name}}
+\index{name@{name}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily char$\ast$ inproc\+\_\+endpoint\+::name}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{17}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}\label{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!next@{next}}
+\index{next@{next}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{next}{next}}
+{\footnotesize\ttfamily struct \mbox{\hyperlink{structinproc__endpoint}{inproc\+\_\+endpoint}}$\ast$ inproc\+\_\+endpoint\+::next}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00022}{22}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}\label{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!recv\_cb@{recv\_cb}}
+\index{recv\_cb@{recv\_cb}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{recv\_cb}{recv\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} inproc\+\_\+endpoint\+::recv\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00025}{25}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00343}{inproc\+\_\+send()}}.
+
+\mbox{\Hypertarget{structinproc__endpoint_acdfeedeaa8cd7e302f7e15c46651423a}\label{structinproc__endpoint_acdfeedeaa8cd7e302f7e15c46651423a}} 
+\index{inproc\_endpoint@{inproc\_endpoint}!server\_transport@{server\_transport}}
+\index{server\_transport@{server\_transport}!inproc\_endpoint@{inproc\_endpoint}}
+\doxysubsubsection{\texorpdfstring{server\_transport}{server\_transport}}
+{\footnotesize\ttfamily void$\ast$ inproc\+\_\+endpoint\+::server\+\_\+transport}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00018}{18}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvbus__transport__inproc_8c}{uvbus\+\_\+transport\+\_\+inproc.\+c}}\end{DoxyCompactItemize}

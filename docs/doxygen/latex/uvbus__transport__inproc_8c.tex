@@ -1,0 +1,759 @@
+\hypertarget{uvbus__transport__inproc_8c}{}\doxysection{src/uvbus\+\_\+transport\+\_\+inproc.c File Reference}
+\label{uvbus__transport__inproc_8c}\index{src/uvbus\_transport\_inproc.c@{src/uvbus\_transport\_inproc.c}}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structinproc__client}{inproc\+\_\+client}}
+\item 
+struct \mbox{\hyperlink{structinproc__endpoint}{inproc\+\_\+endpoint}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef struct \mbox{\hyperlink{structinproc__client}{inproc\+\_\+client}} \mbox{\hyperlink{uvbus__transport__inproc_8c_ab9afe33507dd171104fd76d6e5a71691}{inproc\+\_\+client\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structinproc__endpoint}{inproc\+\_\+endpoint}} \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvbus_8h_adc46d9173e0b80030fd5ab616466d33c}{uvbus\+\_\+transport\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__transport__inproc_8c_a15be4c50bc0928853840499fc4a6a095}{create\+\_\+inproc\+\_\+transport}} (\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} type, uv\+\_\+loop\+\_\+t $\ast$loop)
+\item 
+static unsigned int \mbox{\hyperlink{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}{hash\+\_\+string}} (const char $\ast$str)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_a5f609b9870cccf295bb75a91b12038b6}{inproc\+\_\+add\+\_\+client}} (\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$endpoint, void $\ast$client)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_afb54c35f43c05e1dc8b04eaa30f15854}{inproc\+\_\+add\+\_\+endpoint}} (\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$endpoint)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__inproc_8c_a351122c5977018620be44b9ba4bd8c63}{inproc\+\_\+connect}} (void $\ast$impl\+\_\+ptr, const char $\ast$address)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_a5fb8cdbe5c58ec7782a58ed56c25068e}{inproc\+\_\+disconnect}} (void $\ast$impl\+\_\+ptr)
+\item 
+static \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__transport__inproc_8c_ac272bc28a898bf291b0b2fdf675fa959}{inproc\+\_\+find\+\_\+endpoint}} (const char $\ast$name)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_ab5e5a91b7e1cdd006136cc7548fadf45}{inproc\+\_\+free}} (void $\ast$impl\+\_\+ptr)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__inproc_8c_a5eb9bc5cd6d1c6b0ccc026cc6e7d3ad6}{inproc\+\_\+listen}} (void $\ast$impl\+\_\+ptr, const char $\ast$address)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_a1ae478dde4a5b10afbbf4aff88a09322}{inproc\+\_\+remove\+\_\+client}} (\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$endpoint, void $\ast$client)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_a44017d424513d50d8d8847846bbcfbba}{inproc\+\_\+remove\+\_\+endpoint}} (\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$endpoint)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__inproc_8c_aaed76faaa5f86fe394fda75a39803b65}{inproc\+\_\+send}} (void $\ast$impl\+\_\+ptr, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\item 
+static int \mbox{\hyperlink{uvbus__transport__inproc_8c_a8c05b60b12406f47e2f06b29237b1c7b}{inproc\+\_\+send\+\_\+to}} (void $\ast$impl\+\_\+ptr, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$target)
+\item 
+static void \mbox{\hyperlink{uvbus__transport__inproc_8c_a54a1d2777e815fda579af0f45c4afcef}{inproc\+\_\+send\+\_\+to\+\_\+all}} (\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$endpoint, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+static \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}{g\+\_\+endpoint\+\_\+hash}} \mbox{[}UVBUS\+\_\+\+HASH\+\_\+\+TABLE\+\_\+\+SIZE\mbox{]} = \{NULL\}
+\item 
+static \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__transport__inproc_8c_a98b8c15397ea55ad505f33ad27390c9d}{g\+\_\+endpoint\+\_\+list}} = NULL
+\item 
+static pthread\+\_\+mutex\+\_\+t \mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\+\_\+endpoint\+\_\+mutex}} = PTHREAD\+\_\+\+MUTEX\+\_\+\+INITIALIZER
+\item 
+static const \mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{uvbus\+\_\+transport\+\_\+vtable\+\_\+t}} \mbox{\hyperlink{uvbus__transport__inproc_8c_a2df24cb663b4b0ff2ff5d7e1eb5d2b02}{inproc\+\_\+vtable}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_ab9afe33507dd171104fd76d6e5a71691}\label{uvbus__transport__inproc_8c_ab9afe33507dd171104fd76d6e5a71691}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_client\_t@{inproc\_client\_t}}
+\index{inproc\_client\_t@{inproc\_client\_t}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_client\_t}{inproc\_client\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structinproc__client}{inproc\+\_\+client}} \mbox{\hyperlink{uvbus__transport__inproc_8c_ab9afe33507dd171104fd76d6e5a71691}{inproc\+\_\+client\+\_\+t}}}
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}\label{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_endpoint\_t@{inproc\_endpoint\_t}}
+\index{inproc\_endpoint\_t@{inproc\_endpoint\_t}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_endpoint\_t}{inproc\_endpoint\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structinproc__endpoint}{inproc\+\_\+endpoint}} \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}}}
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a15be4c50bc0928853840499fc4a6a095}\label{uvbus__transport__inproc_8c_a15be4c50bc0928853840499fc4a6a095}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!create\_inproc\_transport@{create\_inproc\_transport}}
+\index{create\_inproc\_transport@{create\_inproc\_transport}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{create\_inproc\_transport()}{create\_inproc\_transport()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_adc46d9173e0b80030fd5ab616466d33c}{uvbus\+\_\+transport\+\_\+t}} $\ast$ create\+\_\+inproc\+\_\+transport (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}}}]{type,  }\item[{uv\+\_\+loop\+\_\+t $\ast$}]{loop }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00414}{414}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00414                                                                                          \{}
+\DoxyCodeLine{00415     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}));}
+\DoxyCodeLine{00416     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00417         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00418     \}}
+\DoxyCodeLine{00419     }
+\DoxyCodeLine{00420     memset(transport, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}));}
+\DoxyCodeLine{00421     transport-\/>\mbox{\hyperlink{structuvbus__transport_ae864e2a968309893ec61736cfc290471}{type}} = type;}
+\DoxyCodeLine{00422     transport-\/>\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}} = loop;}
+\DoxyCodeLine{00423     transport-\/>\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}} = \&\mbox{\hyperlink{uvbus__transport__inproc_8c_a2df24cb663b4b0ff2ff5d7e1eb5d2b02}{inproc\_vtable}};}
+\DoxyCodeLine{00424     }
+\DoxyCodeLine{00425     \textcolor{keywordflow}{return} transport;}
+\DoxyCodeLine{00426 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00174}{inproc\+\_\+vtable}}, \mbox{\hyperlink{uvbus_8h_source_l00142}{uvbus\+\_\+transport\+::loop}}, \mbox{\hyperlink{uvbus_8h_source_l00141}{uvbus\+\_\+transport\+::type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvbus_8h_source_l00160}{uvbus\+\_\+transport\+::vtable}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00103}{create\+\_\+transport()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}\label{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!hash\_string@{hash\_string}}
+\index{hash\_string@{hash\_string}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{hash\_string()}{hash\_string()}}
+{\footnotesize\ttfamily static unsigned int hash\+\_\+string (\begin{DoxyParamCaption}\item[{const char $\ast$}]{str }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00050}{50}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00050                                                  \{}
+\DoxyCodeLine{00051     \textcolor{keywordtype}{unsigned} \textcolor{keywordtype}{int} hash = 5381;}
+\DoxyCodeLine{00052     \textcolor{keywordtype}{int} c;}
+\DoxyCodeLine{00053     \textcolor{keywordflow}{while} ((c = *str++)) \{}
+\DoxyCodeLine{00054         hash = ((hash << 5) + hash) + c;}
+\DoxyCodeLine{00055     \}}
+\DoxyCodeLine{00056     \textcolor{keywordflow}{return} hash \% UVBUS\_HASH\_TABLE\_SIZE;}
+\DoxyCodeLine{00057 \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a5f609b9870cccf295bb75a91b12038b6}\label{uvbus__transport__inproc_8c_a5f609b9870cccf295bb75a91b12038b6}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_add\_client@{inproc\_add\_client}}
+\index{inproc\_add\_client@{inproc\_add\_client}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_add\_client()}{inproc\_add\_client()}}
+{\footnotesize\ttfamily static void inproc\+\_\+add\+\_\+client (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$}]{endpoint,  }\item[{void $\ast$}]{client }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{104}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00104                                                                          \{}
+\DoxyCodeLine{00105     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00106     \textcolor{keywordflow}{if} (endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}} >= endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}{client\_capacity}}) \{}
+\DoxyCodeLine{00107         endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}{client\_capacity}} *= 2;}
+\DoxyCodeLine{00108         endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}} = (\textcolor{keywordtype}{void}**)\mbox{\hyperlink{group__AllocatorAPI_ga70713f720aa0e303f43627beac48b91a}{uvrpc\_realloc}}(}
+\DoxyCodeLine{00109             endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}, }
+\DoxyCodeLine{00110             \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*) * endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}{client\_capacity}}}
+\DoxyCodeLine{00111         );}
+\DoxyCodeLine{00112     \}}
+\DoxyCodeLine{00113     }
+\DoxyCodeLine{00114     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}}++] = client;}
+\DoxyCodeLine{00115     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00116 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00021}{inproc\+\_\+endpoint\+::client\+\_\+capacity}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{inproc\+\_\+endpoint\+::client\+\_\+count}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{inproc\+\_\+endpoint\+::clients}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00152}{uvrpc\+\_\+realloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00239}{inproc\+\_\+connect()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_afb54c35f43c05e1dc8b04eaa30f15854}\label{uvbus__transport__inproc_8c_afb54c35f43c05e1dc8b04eaa30f15854}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_add\_endpoint@{inproc\_add\_endpoint}}
+\index{inproc\_add\_endpoint@{inproc\_add\_endpoint}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_add\_endpoint()}{inproc\_add\_endpoint()}}
+{\footnotesize\ttfamily static void inproc\+\_\+add\+\_\+endpoint (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$}]{endpoint }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{78}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00078                                                              \{}
+\DoxyCodeLine{00079     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00080     \textcolor{keywordtype}{unsigned} \textcolor{keywordtype}{int} hash = \mbox{\hyperlink{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}{hash\_string}}(endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}});}
+\DoxyCodeLine{00081     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}} = \mbox{\hyperlink{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}{g\_endpoint\_hash}}[hash];}
+\DoxyCodeLine{00082     \mbox{\hyperlink{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}{g\_endpoint\_hash}}[hash] = endpoint;}
+\DoxyCodeLine{00083     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00084 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00047}{g\+\_\+endpoint\+\_\+hash}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00050}{hash\+\_\+string()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{inproc\+\_\+endpoint\+::name}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00022}{inproc\+\_\+endpoint\+::next}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a351122c5977018620be44b9ba4bd8c63}\label{uvbus__transport__inproc_8c_a351122c5977018620be44b9ba4bd8c63}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_connect@{inproc\_connect}}
+\index{inproc\_connect@{inproc\_connect}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_connect()}{inproc\_connect()}}
+{\footnotesize\ttfamily static int inproc\+\_\+connect (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00239}{239}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00239                                                                \{}
+\DoxyCodeLine{00240     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00241     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00242         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00243     \}}
+\DoxyCodeLine{00244     }
+\DoxyCodeLine{00245     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00246         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00247     \}}
+\DoxyCodeLine{00248     }
+\DoxyCodeLine{00249     \textcolor{comment}{/* Skip protocol prefix */}}
+\DoxyCodeLine{00250     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* name = address;}
+\DoxyCodeLine{00251     \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}inproc://"{}}, 9) == 0) \{}
+\DoxyCodeLine{00252         name += 9;}
+\DoxyCodeLine{00253     \}}
+\DoxyCodeLine{00254     }
+\DoxyCodeLine{00255     \textcolor{comment}{/* Find endpoint */}}
+\DoxyCodeLine{00256     \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = \mbox{\hyperlink{uvbus__transport__inproc_8c_ac272bc28a898bf291b0b2fdf675fa959}{inproc\_find\_endpoint}}(name);}
+\DoxyCodeLine{00257     \textcolor{keywordflow}{if} (!endpoint) \{}
+\DoxyCodeLine{00258         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{UVBUS\_ERROR\_NOT\_FOUND}};}
+\DoxyCodeLine{00259     \}}
+\DoxyCodeLine{00260     }
+\DoxyCodeLine{00261     \textcolor{comment}{/* Create client */}}
+\DoxyCodeLine{00262     \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}));}
+\DoxyCodeLine{00263     \textcolor{keywordflow}{if} (!client) \{}
+\DoxyCodeLine{00264         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00265     \}}
+\DoxyCodeLine{00266     }
+\DoxyCodeLine{00267     client-\/>\mbox{\hyperlink{structinproc__client_a677a91ed378614aae8993aa595a0d0c2}{server\_endpoint}} = endpoint;}
+\DoxyCodeLine{00268     client-\/>\mbox{\hyperlink{structinproc__client_a857c085ba00a1f704dd883f633c0a2fb}{client\_transport}} = transport;}
+\DoxyCodeLine{00269     client-\/>\mbox{\hyperlink{structinproc__client_a0c96f1a6a5c328d94a490b960bc058c3}{is\_active}} = 1;}
+\DoxyCodeLine{00270     }
+\DoxyCodeLine{00271     \textcolor{comment}{/* Set client's own callbacks */}}
+\DoxyCodeLine{00272     client-\/>\mbox{\hyperlink{structinproc__client_a8c3b6ea0466680a3092e8c8dd52c011e}{recv\_cb}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}};}
+\DoxyCodeLine{00273     client-\/>\mbox{\hyperlink{structinproc__client_aab4b628b6690cb6db5d911b787a52049}{error\_cb}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}};}
+\DoxyCodeLine{00274     client-\/>\mbox{\hyperlink{structinproc__client_a9e23fd68abc2d24df9722bba1fd39a4b}{callback\_ctx}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}};}
+\DoxyCodeLine{00275     }
+\DoxyCodeLine{00276     \textcolor{comment}{/* Add to endpoint */}}
+\DoxyCodeLine{00277     \mbox{\hyperlink{uvbus__transport__inproc_8c_a5f609b9870cccf295bb75a91b12038b6}{inproc\_add\_client}}(endpoint, client);}
+\DoxyCodeLine{00278     }
+\DoxyCodeLine{00279     transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}} = (\textcolor{keywordtype}{void}*)client;}
+\DoxyCodeLine{00280     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 1;}
+\DoxyCodeLine{00281     }
+\DoxyCodeLine{00282     \textcolor{comment}{/* Set bus as active */}}
+\DoxyCodeLine{00283     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}) \{}
+\DoxyCodeLine{00284         transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}-\/>\mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{is\_active}} = 1;}
+\DoxyCodeLine{00285     \}}
+\DoxyCodeLine{00286     }
+\DoxyCodeLine{00287     printf(\textcolor{stringliteral}{"{}[INPROC CONNECT] connect\_cb=\%p, callback\_ctx=\%p\(\backslash\)n"{}}, }
+\DoxyCodeLine{00288            (\textcolor{keywordtype}{void}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}}, (\textcolor{keywordtype}{void}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00289     fflush(stdout);}
+\DoxyCodeLine{00290     }
+\DoxyCodeLine{00291     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}}) \{}
+\DoxyCodeLine{00292         printf(\textcolor{stringliteral}{"{}[INPROC CONNECT] Calling connect\_cb...\(\backslash\)n"{}});}
+\DoxyCodeLine{00293         fflush(stdout);}
+\DoxyCodeLine{00294         transport-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}}(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}, transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}});}
+\DoxyCodeLine{00295         printf(\textcolor{stringliteral}{"{}[INPROC CONNECT] connect\_cb returned\(\backslash\)n"{}});}
+\DoxyCodeLine{00296         fflush(stdout);}
+\DoxyCodeLine{00297     \}}
+\DoxyCodeLine{00298     }
+\DoxyCodeLine{00299     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00300 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00153}{uvbus\+\_\+transport\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00039}{inproc\+\_\+client\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00033}{inproc\+\_\+client\+::client\+\_\+transport}}, \mbox{\hyperlink{uvbus_8h_source_l00150}{uvbus\+\_\+transport\+::connect\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00152}{uvbus\+\_\+transport\+::error\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00038}{inproc\+\_\+client\+::error\+\_\+cb}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, \mbox{\hyperlink{uvbus_8h_source_l00171}{uvbus\+\_\+transport\+::inproc\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus_8h_source_l00179}{uvbus\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00034}{inproc\+\_\+client\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00146}{uvbus\+\_\+transport\+::parent\+\_\+bus}}, \mbox{\hyperlink{uvbus_8h_source_l00149}{uvbus\+\_\+transport\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00037}{inproc\+\_\+client\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00032}{inproc\+\_\+client\+::server\+\_\+endpoint}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00047}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a5fb8cdbe5c58ec7782a58ed56c25068e}\label{uvbus__transport__inproc_8c_a5fb8cdbe5c58ec7782a58ed56c25068e}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_disconnect@{inproc\_disconnect}}
+\index{inproc\_disconnect@{inproc\_disconnect}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_disconnect()}{inproc\_disconnect()}}
+{\footnotesize\ttfamily static void inproc\+\_\+disconnect (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{303}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00303                                               \{}
+\DoxyCodeLine{00304     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00305     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00306         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00307     \}}
+\DoxyCodeLine{00308     }
+\DoxyCodeLine{00309     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}}) \{}
+\DoxyCodeLine{00310         \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = (\mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}};}
+\DoxyCodeLine{00311         \textcolor{comment}{/* Remove endpoint from global list */}}
+\DoxyCodeLine{00312         \mbox{\hyperlink{uvbus__transport__inproc_8c_a44017d424513d50d8d8847846bbcfbba}{inproc\_remove\_endpoint}}(endpoint);}
+\DoxyCodeLine{00313         }
+\DoxyCodeLine{00314         \textcolor{comment}{/* Free all clients */}}
+\DoxyCodeLine{00315         \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}}; i++) \{}
+\DoxyCodeLine{00316             \textcolor{keywordflow}{if} (endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[i]) \{}
+\DoxyCodeLine{00317                 \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[i];}
+\DoxyCodeLine{00318                 client-\/>\mbox{\hyperlink{structinproc__client_a0c96f1a6a5c328d94a490b960bc058c3}{is\_active}} = 0;}
+\DoxyCodeLine{00319             \}}
+\DoxyCodeLine{00320         \}}
+\DoxyCodeLine{00321         }
+\DoxyCodeLine{00322         \textcolor{comment}{/* Free endpoint */}}
+\DoxyCodeLine{00323         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}});}
+\DoxyCodeLine{00324         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}});}
+\DoxyCodeLine{00325         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(endpoint);}
+\DoxyCodeLine{00326         transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}} = NULL;}
+\DoxyCodeLine{00327     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}}) \{}
+\DoxyCodeLine{00328         \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}};}
+\DoxyCodeLine{00329         \textcolor{comment}{/* Remove from endpoint */}}
+\DoxyCodeLine{00330         if (client-\/>\mbox{\hyperlink{structinproc__client_a677a91ed378614aae8993aa595a0d0c2}{server\_endpoint}}) \{}
+\DoxyCodeLine{00331             \mbox{\hyperlink{uvbus__transport__inproc_8c_a1ae478dde4a5b10afbbf4aff88a09322}{inproc\_remove\_client}}(client-\/>\mbox{\hyperlink{structinproc__client_a677a91ed378614aae8993aa595a0d0c2}{server\_endpoint}}, client);}
+\DoxyCodeLine{00332         \}}
+\DoxyCodeLine{00333         }
+\DoxyCodeLine{00334         client-\/>\mbox{\hyperlink{structinproc__client_a0c96f1a6a5c328d94a490b960bc058c3}{is\_active}} = 0;}
+\DoxyCodeLine{00335         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{00336         transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}} = NULL;}
+\DoxyCodeLine{00337     \}}
+\DoxyCodeLine{00338     }
+\DoxyCodeLine{00339     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 0;}
+\DoxyCodeLine{00340 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{inproc\+\_\+endpoint\+::client\+\_\+count}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{inproc\+\_\+endpoint\+::clients}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00171}{uvbus\+\_\+transport\+::inproc\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00119}{inproc\+\_\+remove\+\_\+client()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus_8h_source_l00170}{uvbus\+\_\+transport\+::inproc\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00034}{inproc\+\_\+client\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{inproc\+\_\+endpoint\+::name}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00032}{inproc\+\_\+client\+::server\+\_\+endpoint}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00398}{inproc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_ac272bc28a898bf291b0b2fdf675fa959}\label{uvbus__transport__inproc_8c_ac272bc28a898bf291b0b2fdf675fa959}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_find\_endpoint@{inproc\_find\_endpoint}}
+\index{inproc\_find\_endpoint@{inproc\_find\_endpoint}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_find\_endpoint()}{inproc\_find\_endpoint()}}
+{\footnotesize\ttfamily static \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$ inproc\+\_\+find\+\_\+endpoint (\begin{DoxyParamCaption}\item[{const char $\ast$}]{name }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{60}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00060                                                                  \{}
+\DoxyCodeLine{00061     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00062     \textcolor{keywordtype}{unsigned} \textcolor{keywordtype}{int} hash = \mbox{\hyperlink{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}{hash\_string}}(name);}
+\DoxyCodeLine{00063     \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = \mbox{\hyperlink{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}{g\_endpoint\_hash}}[hash];}
+\DoxyCodeLine{00064     }
+\DoxyCodeLine{00065     \textcolor{keywordflow}{while} (endpoint) \{}
+\DoxyCodeLine{00066         \textcolor{keywordflow}{if} (strcmp(endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}}, name) == 0) \{}
+\DoxyCodeLine{00067             pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00068             \textcolor{keywordflow}{return} endpoint;}
+\DoxyCodeLine{00069         \}}
+\DoxyCodeLine{00070         endpoint = endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}};}
+\DoxyCodeLine{00071     \}}
+\DoxyCodeLine{00072     }
+\DoxyCodeLine{00073     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00074     \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00075 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00047}{g\+\_\+endpoint\+\_\+hash}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00050}{hash\+\_\+string()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{inproc\+\_\+endpoint\+::name}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00022}{inproc\+\_\+endpoint\+::next}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00239}{inproc\+\_\+connect()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_ab5e5a91b7e1cdd006136cc7548fadf45}\label{uvbus__transport__inproc_8c_ab5e5a91b7e1cdd006136cc7548fadf45}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_free@{inproc\_free}}
+\index{inproc\_free@{inproc\_free}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_free()}{inproc\_free()}}
+{\footnotesize\ttfamily static void inproc\+\_\+free (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00398}{398}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00398                                         \{}
+\DoxyCodeLine{00399     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00400     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00401         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00402     \}}
+\DoxyCodeLine{00403     }
+\DoxyCodeLine{00404     \mbox{\hyperlink{uvbus__transport__inproc_8c_a5fb8cdbe5c58ec7782a58ed56c25068e}{inproc\_disconnect}}(transport);}
+\DoxyCodeLine{00405     }
+\DoxyCodeLine{00406     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}}) \{}
+\DoxyCodeLine{00407         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(transport-\/>\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}});}
+\DoxyCodeLine{00408     \}}
+\DoxyCodeLine{00409     }
+\DoxyCodeLine{00410     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(transport);}
+\DoxyCodeLine{00411 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00143}{uvbus\+\_\+transport\+::address}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a5eb9bc5cd6d1c6b0ccc026cc6e7d3ad6}\label{uvbus__transport__inproc_8c_a5eb9bc5cd6d1c6b0ccc026cc6e7d3ad6}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_listen@{inproc\_listen}}
+\index{inproc\_listen@{inproc\_listen}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_listen()}{inproc\_listen()}}
+{\footnotesize\ttfamily static int inproc\+\_\+listen (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{184}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00184                                                               \{}
+\DoxyCodeLine{00185     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00186     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00187         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00188     \}}
+\DoxyCodeLine{00189     }
+\DoxyCodeLine{00190     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00191         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00192     \}}
+\DoxyCodeLine{00193     }
+\DoxyCodeLine{00194     \textcolor{comment}{/* Skip protocol prefix */}}
+\DoxyCodeLine{00195     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* name = address;}
+\DoxyCodeLine{00196     \textcolor{keywordflow}{if} (strncmp(address, \textcolor{stringliteral}{"{}inproc://"{}}, 9) == 0) \{}
+\DoxyCodeLine{00197         name += 9;}
+\DoxyCodeLine{00198     \}}
+\DoxyCodeLine{00199     }
+\DoxyCodeLine{00200     \textcolor{comment}{/* Check if endpoint already exists */}}
+\DoxyCodeLine{00201     \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = \mbox{\hyperlink{uvbus__transport__inproc_8c_ac272bc28a898bf291b0b2fdf675fa959}{inproc\_find\_endpoint}}(name);}
+\DoxyCodeLine{00202     \textcolor{keywordflow}{if} (endpoint) \{}
+\DoxyCodeLine{00203         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}{UVBUS\_ERROR\_ALREADY\_EXISTS}};}
+\DoxyCodeLine{00204     \}}
+\DoxyCodeLine{00205     }
+\DoxyCodeLine{00206     \textcolor{comment}{/* Create endpoint */}}
+\DoxyCodeLine{00207     endpoint = (\mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}));}
+\DoxyCodeLine{00208     \textcolor{keywordflow}{if} (!endpoint) \{}
+\DoxyCodeLine{00209         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{00210     \}}
+\DoxyCodeLine{00211     }
+\DoxyCodeLine{00212     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(name);}
+\DoxyCodeLine{00213     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_acdfeedeaa8cd7e302f7e15c46651423a}{server\_transport}} = transport;}
+\DoxyCodeLine{00214     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}} = (\textcolor{keywordtype}{void}**)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*) * UVBUS\_INITIAL\_CLIENT\_CAPACITY);}
+\DoxyCodeLine{00215     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a6cad1ac4a13269fceff1f070b05c92da}{client\_capacity}} = UVBUS\_INITIAL\_CLIENT\_CAPACITY;}
+\DoxyCodeLine{00216     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}} = 0;}
+\DoxyCodeLine{00217     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}} = NULL;}
+\DoxyCodeLine{00218     }
+\DoxyCodeLine{00219     \textcolor{comment}{/* Set callbacks */}}
+\DoxyCodeLine{00220     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}{recv\_cb}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}};}
+\DoxyCodeLine{00221     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a316f2bf6dd36b4f2f41500393b48b2e1}{error\_cb}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}};}
+\DoxyCodeLine{00222     endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_ae62fbf3042a260273030c44b6a815785}{callback\_ctx}} = transport-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}};}
+\DoxyCodeLine{00223     }
+\DoxyCodeLine{00224     \textcolor{comment}{/* Add to global list */}}
+\DoxyCodeLine{00225     \mbox{\hyperlink{uvbus__transport__inproc_8c_afb54c35f43c05e1dc8b04eaa30f15854}{inproc\_add\_endpoint}}(endpoint);}
+\DoxyCodeLine{00226     }
+\DoxyCodeLine{00227     transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}} = (\textcolor{keywordtype}{void}*)endpoint;}
+\DoxyCodeLine{00228     transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} = 1;}
+\DoxyCodeLine{00229     }
+\DoxyCodeLine{00230     \textcolor{comment}{/* Set bus as active */}}
+\DoxyCodeLine{00231     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}) \{}
+\DoxyCodeLine{00232         transport-\/>\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}}-\/>\mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{is\_active}} = 1;}
+\DoxyCodeLine{00233     \}}
+\DoxyCodeLine{00234     }
+\DoxyCodeLine{00235     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00236 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus_8h_source_l00153}{uvbus\+\_\+transport\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00027}{inproc\+\_\+endpoint\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00021}{inproc\+\_\+endpoint\+::client\+\_\+capacity}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{inproc\+\_\+endpoint\+::client\+\_\+count}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{inproc\+\_\+endpoint\+::clients}}, \mbox{\hyperlink{uvbus_8h_source_l00152}{uvbus\+\_\+transport\+::error\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00026}{inproc\+\_\+endpoint\+::error\+\_\+cb}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus_8h_source_l00170}{uvbus\+\_\+transport\+::inproc\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00179}{uvbus\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{inproc\+\_\+endpoint\+::name}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00022}{inproc\+\_\+endpoint\+::next}}, \mbox{\hyperlink{uvbus_8h_source_l00146}{uvbus\+\_\+transport\+::parent\+\_\+bus}}, \mbox{\hyperlink{uvbus_8h_source_l00149}{uvbus\+\_\+transport\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00025}{inproc\+\_\+endpoint\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00018}{inproc\+\_\+endpoint\+::server\+\_\+transport}}, \mbox{\hyperlink{uvbus_8h_source_l00046}{UVBUS\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+EXISTS}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00042}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a1ae478dde4a5b10afbbf4aff88a09322}\label{uvbus__transport__inproc_8c_a1ae478dde4a5b10afbbf4aff88a09322}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_remove\_client@{inproc\_remove\_client}}
+\index{inproc\_remove\_client@{inproc\_remove\_client}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_remove\_client()}{inproc\_remove\_client()}}
+{\footnotesize\ttfamily static void inproc\+\_\+remove\+\_\+client (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$}]{endpoint,  }\item[{void $\ast$}]{client }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00119}{119}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00119                                                                             \{}
+\DoxyCodeLine{00120     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00121     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}}; i++) \{}
+\DoxyCodeLine{00122         \textcolor{keywordflow}{if} (endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[i] == client) \{}
+\DoxyCodeLine{00123             \textcolor{comment}{/* Shift remaining clients */}}
+\DoxyCodeLine{00124             \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} j = i; j < endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}} -\/ 1; j++) \{}
+\DoxyCodeLine{00125                 endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[j] = endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}[j + 1];}
+\DoxyCodeLine{00126             \}}
+\DoxyCodeLine{00127             endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}}-\/-\/;}
+\DoxyCodeLine{00128             pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00129             \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00130         \}}
+\DoxyCodeLine{00131     \}}
+\DoxyCodeLine{00132     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00133 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{inproc\+\_\+endpoint\+::client\+\_\+count}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{inproc\+\_\+endpoint\+::clients}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a44017d424513d50d8d8847846bbcfbba}\label{uvbus__transport__inproc_8c_a44017d424513d50d8d8847846bbcfbba}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_remove\_endpoint@{inproc\_remove\_endpoint}}
+\index{inproc\_remove\_endpoint@{inproc\_remove\_endpoint}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_remove\_endpoint()}{inproc\_remove\_endpoint()}}
+{\footnotesize\ttfamily static void inproc\+\_\+remove\+\_\+endpoint (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$}]{endpoint }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{87}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00087                                                                 \{}
+\DoxyCodeLine{00088     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00089     \textcolor{keywordtype}{unsigned} \textcolor{keywordtype}{int} hash = \mbox{\hyperlink{uvbus__transport__inproc_8c_a0b43c3cfe751a75e57bc337fb41fd211}{hash\_string}}(endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a64be6eac1890ce8c5f07d4650b8d1a17}{name}});}
+\DoxyCodeLine{00090     \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}** ptr = \&\mbox{\hyperlink{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}{g\_endpoint\_hash}}[hash];}
+\DoxyCodeLine{00091     }
+\DoxyCodeLine{00092     \textcolor{keywordflow}{while} (*ptr) \{}
+\DoxyCodeLine{00093         \textcolor{keywordflow}{if} (*ptr == endpoint) \{}
+\DoxyCodeLine{00094             *ptr = endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}};}
+\DoxyCodeLine{00095             pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00096             \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00097         \}}
+\DoxyCodeLine{00098         ptr = \&(*ptr)-\/>\mbox{\hyperlink{structinproc__endpoint_a0217a92ecbde6ed52358e2bc7b7ee27e}{next}};}
+\DoxyCodeLine{00099     \}}
+\DoxyCodeLine{00100     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00101 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00047}{g\+\_\+endpoint\+\_\+hash}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00050}{hash\+\_\+string()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00017}{inproc\+\_\+endpoint\+::name}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00022}{inproc\+\_\+endpoint\+::next}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_aaed76faaa5f86fe394fda75a39803b65}\label{uvbus__transport__inproc_8c_aaed76faaa5f86fe394fda75a39803b65}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_send@{inproc\_send}}
+\index{inproc\_send@{inproc\_send}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_send()}{inproc\_send()}}
+{\footnotesize\ttfamily static int inproc\+\_\+send (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00343}{343}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00343                                                                          \{}
+\DoxyCodeLine{00344     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00345     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00346         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00347     \}}
+\DoxyCodeLine{00348     }
+\DoxyCodeLine{00349     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}}) \{}
+\DoxyCodeLine{00350         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\_ERROR\_NOT\_CONNECTED}};}
+\DoxyCodeLine{00351     \}}
+\DoxyCodeLine{00352     }
+\DoxyCodeLine{00353     \textcolor{keywordflow}{if} (transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}}) \{}
+\DoxyCodeLine{00354         \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = (\mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}};}
+\DoxyCodeLine{00355         \textcolor{comment}{/* Broadcast to all clients */}}
+\DoxyCodeLine{00356         \mbox{\hyperlink{uvbus__transport__inproc_8c_a54a1d2777e815fda579af0f45c4afcef}{inproc\_send\_to\_all}}(endpoint, data, size);}
+\DoxyCodeLine{00357     \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} \&\& transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}}) \{}
+\DoxyCodeLine{00358         \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)transport-\/>\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}}.\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}};}
+\DoxyCodeLine{00359         if (client-\/>\mbox{\hyperlink{structinproc__client_a677a91ed378614aae8993aa595a0d0c2}{server\_endpoint}}) \{}
+\DoxyCodeLine{00360             \textcolor{comment}{/* Send to server */}}
+\DoxyCodeLine{00361             \mbox{\hyperlink{structinproc__endpoint}{inproc\_endpoint\_t}}* endpoint = client-\/>\mbox{\hyperlink{structinproc__client_a677a91ed378614aae8993aa595a0d0c2}{server\_endpoint}};}
+\DoxyCodeLine{00362             \textcolor{keywordflow}{if} (endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}{recv\_cb}}) \{}
+\DoxyCodeLine{00363                 \textcolor{comment}{/* Pass client as client\_ctx, and server context as server\_ctx */}}
+\DoxyCodeLine{00364                 endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a927c5becf8ebad0a1a15c8478ee21166}{recv\_cb}}(data, size, client, endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_ae62fbf3042a260273030c44b6a815785}{callback\_ctx}});}
+\DoxyCodeLine{00365             \}}
+\DoxyCodeLine{00366         \}}
+\DoxyCodeLine{00367     \}}
+\DoxyCodeLine{00368     }
+\DoxyCodeLine{00369     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00370 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00027}{inproc\+\_\+endpoint\+::callback\+\_\+ctx}}, \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{uvbus\+\_\+transport\+::impl}}, \mbox{\hyperlink{uvbus_8h_source_l00171}{uvbus\+\_\+transport\+::inproc\+\_\+client}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}, \mbox{\hyperlink{uvbus_8h_source_l00170}{uvbus\+\_\+transport\+::inproc\+\_\+server}}, \mbox{\hyperlink{uvbus_8h_source_l00157}{uvbus\+\_\+transport\+::is\+\_\+connected}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00025}{inproc\+\_\+endpoint\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00032}{inproc\+\_\+client\+::server\+\_\+endpoint}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, \mbox{\hyperlink{uvbus_8h_source_l00043}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED}}, and \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a8c05b60b12406f47e2f06b29237b1c7b}\label{uvbus__transport__inproc_8c_a8c05b60b12406f47e2f06b29237b1c7b}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_send\_to@{inproc\_send\_to}}
+\index{inproc\_send\_to@{inproc\_send\_to}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_send\_to()}{inproc\_send\_to()}}
+{\footnotesize\ttfamily static int inproc\+\_\+send\+\_\+to (\begin{DoxyParamCaption}\item[{void $\ast$}]{impl\+\_\+ptr,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{void $\ast$}]{target }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00373}{373}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00373                                                                                           \{}
+\DoxyCodeLine{00374     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* transport = (\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}*)impl\_ptr;}
+\DoxyCodeLine{00375     \textcolor{keywordflow}{if} (!transport) \{}
+\DoxyCodeLine{00376         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00377     \}}
+\DoxyCodeLine{00378     }
+\DoxyCodeLine{00379     \textcolor{keywordflow}{if} (!transport-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}}) \{}
+\DoxyCodeLine{00380         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00381     \}}
+\DoxyCodeLine{00382     }
+\DoxyCodeLine{00383     \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)target;}
+\DoxyCodeLine{00384     \textcolor{keywordflow}{if} (!client || !client-\/>\mbox{\hyperlink{structinproc__client_a0c96f1a6a5c328d94a490b960bc058c3}{is\_active}}) \{}
+\DoxyCodeLine{00385         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00386     \}}
+\DoxyCodeLine{00387     }
+\DoxyCodeLine{00388     \textcolor{comment}{/* Call the client's callback, not the server's callback */}}
+\DoxyCodeLine{00389     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structinproc__client_a8c3b6ea0466680a3092e8c8dd52c011e}{recv\_cb}}) \{}
+\DoxyCodeLine{00390         \textcolor{comment}{/* Pass client as client\_ctx, and client's callback\_ctx as server\_ctx */}}
+\DoxyCodeLine{00391         client-\/>\mbox{\hyperlink{structinproc__client_a8c3b6ea0466680a3092e8c8dd52c011e}{recv\_cb}}(data, size, client, client-\/>\mbox{\hyperlink{structinproc__client_a9e23fd68abc2d24df9722bba1fd39a4b}{callback\_ctx}});}
+\DoxyCodeLine{00392     \}}
+\DoxyCodeLine{00393     }
+\DoxyCodeLine{00394     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}};}
+\DoxyCodeLine{00395 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00039}{inproc\+\_\+client\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00034}{inproc\+\_\+client\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus_8h_source_l00156}{uvbus\+\_\+transport\+::is\+\_\+server}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00037}{inproc\+\_\+client\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvbus_8h_source_l00041}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}}, and \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a54a1d2777e815fda579af0f45c4afcef}\label{uvbus__transport__inproc_8c_a54a1d2777e815fda579af0f45c4afcef}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_send\_to\_all@{inproc\_send\_to\_all}}
+\index{inproc\_send\_to\_all@{inproc\_send\_to\_all}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_send\_to\_all()}{inproc\_send\_to\_all()}}
+{\footnotesize\ttfamily static void inproc\+\_\+send\+\_\+to\+\_\+all (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}} $\ast$}]{endpoint,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{136}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00137                                                            \{}
+\DoxyCodeLine{00138     pthread\_mutex\_lock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00139     \textcolor{comment}{/* Copy client count to avoid holding lock during callbacks */}}
+\DoxyCodeLine{00140     \textcolor{keywordtype}{int} client\_count = endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a68e96d908707509a0407a27621c98076}{client\_count}};}
+\DoxyCodeLine{00141     \textcolor{keywordtype}{void}** clients = (\textcolor{keywordtype}{void}**)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*) * client\_count);}
+\DoxyCodeLine{00142     \textcolor{keywordflow}{if} (clients) \{}
+\DoxyCodeLine{00143         memcpy(clients, endpoint-\/>\mbox{\hyperlink{structinproc__endpoint_a5e923785d68ebcb77325afb3e4689e17}{clients}}, \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{void}*) * client\_count);}
+\DoxyCodeLine{00144     \}}
+\DoxyCodeLine{00145     pthread\_mutex\_unlock(\&\mbox{\hyperlink{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}{g\_endpoint\_mutex}});}
+\DoxyCodeLine{00146     }
+\DoxyCodeLine{00147     \textcolor{keywordflow}{if} (!clients) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00148     }
+\DoxyCodeLine{00149     \textcolor{comment}{/* Trigger callbacks without holding the lock */}}
+\DoxyCodeLine{00150     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < client\_count; i++) \{}
+\DoxyCodeLine{00151         \mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}* client = (\mbox{\hyperlink{structinproc__client}{inproc\_client\_t}}*)clients[i];}
+\DoxyCodeLine{00152         \textcolor{keywordflow}{if} (client \&\& client-\/>\mbox{\hyperlink{structinproc__client_a0c96f1a6a5c328d94a490b960bc058c3}{is\_active}}) \{}
+\DoxyCodeLine{00153             \textcolor{comment}{/* Use client's own callback instead of endpoint's */}}
+\DoxyCodeLine{00154             \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structinproc__client_a8c3b6ea0466680a3092e8c8dd52c011e}{recv\_cb}}) \{}
+\DoxyCodeLine{00155                 \textcolor{comment}{/* Pass client as client\_ctx, and server context (if any) as server\_ctx */}}
+\DoxyCodeLine{00156                 \textcolor{comment}{/* For INPROC, client-\/>callback\_ctx is the server context */}}
+\DoxyCodeLine{00157                 client-\/>\mbox{\hyperlink{structinproc__client_a8c3b6ea0466680a3092e8c8dd52c011e}{recv\_cb}}(data, size, client, client-\/>\mbox{\hyperlink{structinproc__client_a9e23fd68abc2d24df9722bba1fd39a4b}{callback\_ctx}});}
+\DoxyCodeLine{00158             \}}
+\DoxyCodeLine{00159         \}}
+\DoxyCodeLine{00160     \}}
+\DoxyCodeLine{00161     }
+\DoxyCodeLine{00162     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(clients);}
+\DoxyCodeLine{00163 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00039}{inproc\+\_\+client\+::callback\+\_\+ctx}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00020}{inproc\+\_\+endpoint\+::client\+\_\+count}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00019}{inproc\+\_\+endpoint\+::clients}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{g\+\_\+endpoint\+\_\+mutex}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00034}{inproc\+\_\+client\+::is\+\_\+active}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00037}{inproc\+\_\+client\+::recv\+\_\+cb}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00343}{inproc\+\_\+send()}}.
+
+
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}\label{uvbus__transport__inproc_8c_a18c8fea685e5649cb848b68b6cd70582}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!g\_endpoint\_hash@{g\_endpoint\_hash}}
+\index{g\_endpoint\_hash@{g\_endpoint\_hash}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{g\_endpoint\_hash}{g\_endpoint\_hash}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}}$\ast$ g\+\_\+endpoint\+\_\+hash\mbox{[}UVBUS\+\_\+\+HASH\+\_\+\+TABLE\+\_\+\+SIZE\mbox{]} = \{NULL\}\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00047}{47}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a98b8c15397ea55ad505f33ad27390c9d}\label{uvbus__transport__inproc_8c_a98b8c15397ea55ad505f33ad27390c9d}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!g\_endpoint\_list@{g\_endpoint\_list}}
+\index{g\_endpoint\_list@{g\_endpoint\_list}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{g\_endpoint\_list}{g\_endpoint\_list}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus__transport__inproc_8c_a6413beea5d3fbf2fbb2cb2602b036aaa}{inproc\+\_\+endpoint\+\_\+t}}$\ast$ g\+\_\+endpoint\+\_\+list = NULL\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00043}{43}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}\label{uvbus__transport__inproc_8c_a463694c368b1e0523506ef1e975bc944}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!g\_endpoint\_mutex@{g\_endpoint\_mutex}}
+\index{g\_endpoint\_mutex@{g\_endpoint\_mutex}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{g\_endpoint\_mutex}{g\_endpoint\_mutex}}
+{\footnotesize\ttfamily pthread\+\_\+mutex\+\_\+t g\+\_\+endpoint\+\_\+mutex = PTHREAD\+\_\+\+MUTEX\+\_\+\+INITIALIZER\hspace{0.3cm}{\ttfamily [static]}}
+
+UVBus INPROC Transport Implementation (In-\/\+Process) 
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00013}{13}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00078}{inproc\+\_\+add\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00060}{inproc\+\_\+find\+\_\+endpoint()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00119}{inproc\+\_\+remove\+\_\+client()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00087}{inproc\+\_\+remove\+\_\+endpoint()}}, and \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}.
+
+\mbox{\Hypertarget{uvbus__transport__inproc_8c_a2df24cb663b4b0ff2ff5d7e1eb5d2b02}\label{uvbus__transport__inproc_8c_a2df24cb663b4b0ff2ff5d7e1eb5d2b02}} 
+\index{uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}!inproc\_vtable@{inproc\_vtable}}
+\index{inproc\_vtable@{inproc\_vtable}!uvbus\_transport\_inproc.c@{uvbus\_transport\_inproc.c}}
+\doxysubsubsection{\texorpdfstring{inproc\_vtable}{inproc\_vtable}}
+{\footnotesize\ttfamily const \mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{uvbus\+\_\+transport\+\_\+vtable\+\_\+t}} inproc\+\_\+vtable\hspace{0.3cm}{\ttfamily [static]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{= \{}
+\DoxyCodeLine{    .listen = \mbox{\hyperlink{uvbus__transport__inproc_8c_a5eb9bc5cd6d1c6b0ccc026cc6e7d3ad6}{inproc\_listen}},}
+\DoxyCodeLine{    .connect = \mbox{\hyperlink{uvbus__transport__inproc_8c_a351122c5977018620be44b9ba4bd8c63}{inproc\_connect}},}
+\DoxyCodeLine{    .disconnect = \mbox{\hyperlink{uvbus__transport__inproc_8c_a5fb8cdbe5c58ec7782a58ed56c25068e}{inproc\_disconnect}},}
+\DoxyCodeLine{    .send = \mbox{\hyperlink{uvbus__transport__inproc_8c_aaed76faaa5f86fe394fda75a39803b65}{inproc\_send}},}
+\DoxyCodeLine{    .send\_to = \mbox{\hyperlink{uvbus__transport__inproc_8c_a8c05b60b12406f47e2f06b29237b1c7b}{inproc\_send\_to}},}
+\DoxyCodeLine{    .free = \mbox{\hyperlink{uvbus__transport__inproc_8c_ab5e5a91b7e1cdd006136cc7548fadf45}{inproc\_free}}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00174}{174}} of file \mbox{\hyperlink{uvbus__transport__inproc_8c_source}{uvbus\+\_\+transport\+\_\+inproc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00414}{create\+\_\+inproc\+\_\+transport()}}.
+

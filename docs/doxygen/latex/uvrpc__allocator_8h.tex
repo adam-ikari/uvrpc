@@ -1,0 +1,212 @@
+\hypertarget{uvrpc__allocator_8h}{}\doxysection{include/uvrpc\+\_\+allocator.h File Reference}
+\label{uvrpc__allocator_8h}\index{include/uvrpc\_allocator.h@{include/uvrpc\_allocator.h}}
+
+
+UVRPC Memory Allocator.  
+
+
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structuvrpc__custom__allocator__t}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Custom allocator interface. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef void $\ast$($\ast$ \mbox{\hyperlink{uvrpc__allocator_8h_a5f852a766fc083d1098b463af9074acf}{uvrpc\+\_\+alloc\+\_\+fn}}) (size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Custom allocator function type -\/ alloc. \end{DoxyCompactList}\item 
+typedef void $\ast$($\ast$ \mbox{\hyperlink{uvrpc__allocator_8h_a9d2690555c530e6cf966a216de176dd6}{uvrpc\+\_\+calloc\+\_\+fn}}) (size\+\_\+t count, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Custom allocator function type -\/ calloc. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc__allocator_8h_a984199b3f9f3d105c99f7fec7c154b7e}{uvrpc\+\_\+free\+\_\+fn}}) (void $\ast$ptr)
+\begin{DoxyCompactList}\small\item\em Custom allocator function type -\/ free. \end{DoxyCompactList}\item 
+typedef void $\ast$($\ast$ \mbox{\hyperlink{uvrpc__allocator_8h_a559a63192284607bc7bce937a7faa465}{uvrpc\+\_\+realloc\+\_\+fn}}) (void $\ast$ptr, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Custom allocator function type -\/ realloc. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} \{ \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}} = 0
+, \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}} = 1
+, \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}} = 2
+ \}
+\begin{DoxyCompactList}\small\item\em Allocator type enumeration. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\+\_\+alloc}} (size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocate memory. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_gab5e5aa03a23833151f56f0ef75f20ff0}{uvrpc\+\_\+allocator\+\_\+cleanup}} (void)
+\begin{DoxyCompactList}\small\item\em Cleanup allocator resources. \end{DoxyCompactList}\item 
+const char $\ast$ \mbox{\hyperlink{group__AllocatorAPI_gaec44abf1ab643754a37c5eb9b10572fa}{uvrpc\+\_\+allocator\+\_\+get\+\_\+name}} (void)
+\begin{DoxyCompactList}\small\item\em Get current allocator name. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} \mbox{\hyperlink{group__AllocatorAPI_gaf311dc4ee4adac6ac9dedefeba4d89d5}{uvrpc\+\_\+allocator\+\_\+get\+\_\+type}} (void)
+\begin{DoxyCompactList}\small\item\em Get current allocator type. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_gaf419a912d024bb4b8acf2dce18b28db3}{uvrpc\+\_\+allocator\+\_\+init}} (\mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} type, const \mbox{\hyperlink{structuvrpc__custom__allocator__t}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t}} $\ast$custom)
+\begin{DoxyCompactList}\small\item\em Initialize allocator (runtime selection) \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\+\_\+calloc}} (size\+\_\+t count, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocate zero-\/initialized memory. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\+\_\+free}} (void $\ast$ptr)
+\begin{DoxyCompactList}\small\item\em Free memory. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga70713f720aa0e303f43627beac48b91a}{uvrpc\+\_\+realloc}} (void $\ast$ptr, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Reallocate memory. \end{DoxyCompactList}\item 
+char $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\+\_\+strdup}} (const char $\ast$s)
+\begin{DoxyCompactList}\small\item\em Duplicate a string. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC Memory Allocator. 
+
+Provides a flexible memory allocation interface supporting three modes\+:
+\begin{DoxyItemize}
+\item system\+: Uses standard malloc/free (best compatibility)
+\item mimalloc\+: Uses mimalloc high-\/performance allocator (default)
+\item custom\+: Uses user-\/provided custom allocator
+\end{DoxyItemize}
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+1.\+0
+\end{DoxyVersion}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2026 @license MIT License 
+\end{DoxyCopyright}
+
+
+Definition in file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvrpc__allocator_8h_a5f852a766fc083d1098b463af9074acf}\label{uvrpc__allocator_8h_a5f852a766fc083d1098b463af9074acf}} 
+\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!uvrpc\_alloc\_fn@{uvrpc\_alloc\_fn}}
+\index{uvrpc\_alloc\_fn@{uvrpc\_alloc\_fn}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_alloc\_fn}{uvrpc\_alloc\_fn}}
+{\footnotesize\ttfamily typedef void $\ast$($\ast$ uvrpc\+\_\+alloc\+\_\+fn) (size\+\_\+t size)}
+
+
+
+Custom allocator function type -\/ alloc. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em size} & Size to allocate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to allocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00044}{44}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+\mbox{\Hypertarget{uvrpc__allocator_8h_a9d2690555c530e6cf966a216de176dd6}\label{uvrpc__allocator_8h_a9d2690555c530e6cf966a216de176dd6}} 
+\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!uvrpc\_calloc\_fn@{uvrpc\_calloc\_fn}}
+\index{uvrpc\_calloc\_fn@{uvrpc\_calloc\_fn}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_calloc\_fn}{uvrpc\_calloc\_fn}}
+{\footnotesize\ttfamily typedef void $\ast$($\ast$ uvrpc\+\_\+calloc\+\_\+fn) (size\+\_\+t count, size\+\_\+t size)}
+
+
+
+Custom allocator function type -\/ calloc. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em count} & Number of elements \\
+\hline
+{\em size} & Size of each element \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to allocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00053}{53}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+\mbox{\Hypertarget{uvrpc__allocator_8h_a984199b3f9f3d105c99f7fec7c154b7e}\label{uvrpc__allocator_8h_a984199b3f9f3d105c99f7fec7c154b7e}} 
+\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!uvrpc\_free\_fn@{uvrpc\_free\_fn}}
+\index{uvrpc\_free\_fn@{uvrpc\_free\_fn}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_free\_fn}{uvrpc\_free\_fn}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+free\+\_\+fn) (void $\ast$ptr)}
+
+
+
+Custom allocator function type -\/ free. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to free \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00069}{69}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+\mbox{\Hypertarget{uvrpc__allocator_8h_a559a63192284607bc7bce937a7faa465}\label{uvrpc__allocator_8h_a559a63192284607bc7bce937a7faa465}} 
+\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!uvrpc\_realloc\_fn@{uvrpc\_realloc\_fn}}
+\index{uvrpc\_realloc\_fn@{uvrpc\_realloc\_fn}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_realloc\_fn}{uvrpc\_realloc\_fn}}
+{\footnotesize\ttfamily typedef void $\ast$($\ast$ uvrpc\+\_\+realloc\+\_\+fn) (void $\ast$ptr, size\+\_\+t size)}
+
+
+
+Custom allocator function type -\/ realloc. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to reallocate \\
+\hline
+{\em size} & New size \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to reallocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00062}{62}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}\label{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}} 
+\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!uvrpc\_allocator\_type\_t@{uvrpc\_allocator\_type\_t}}
+\index{uvrpc\_allocator\_type\_t@{uvrpc\_allocator\_type\_t}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_allocator\_type\_t}{uvrpc\_allocator\_type\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}}}
+
+
+
+Allocator type enumeration. 
+
+Defines the available memory allocator types. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ALLOCATOR\_SYSTEM@{UVRPC\_ALLOCATOR\_SYSTEM}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!UVRPC\_ALLOCATOR\_SYSTEM@{UVRPC\_ALLOCATOR\_SYSTEM}}}\mbox{\Hypertarget{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}\label{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}} 
+UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM&System malloc/free. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ALLOCATOR\_MIMALLOC@{UVRPC\_ALLOCATOR\_MIMALLOC}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!UVRPC\_ALLOCATOR\_MIMALLOC@{UVRPC\_ALLOCATOR\_MIMALLOC}}}\mbox{\Hypertarget{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}\label{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}} 
+UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC&Mimalloc (default) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ALLOCATOR\_CUSTOM@{UVRPC\_ALLOCATOR\_CUSTOM}!uvrpc\_allocator.h@{uvrpc\_allocator.h}}\index{uvrpc\_allocator.h@{uvrpc\_allocator.h}!UVRPC\_ALLOCATOR\_CUSTOM@{UVRPC\_ALLOCATOR\_CUSTOM}}}\mbox{\Hypertarget{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}\label{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}} 
+UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM&User-\/defined allocator. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00032}{32}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00032              \{}
+\DoxyCodeLine{00033     \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}} = 0,   }
+\DoxyCodeLine{00034     \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}} = 1, }
+\DoxyCodeLine{00035     \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}} = 2    }
+\DoxyCodeLine{00036 \} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\_allocator\_type\_t}};}
+
+\end{DoxyCode}

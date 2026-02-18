@@ -1,0 +1,629 @@
+\hypertarget{uvrpc__client_8c_source}{}\doxysection{uvrpc\+\_\+client.\+c}
+\label{uvrpc__client_8c_source}\index{src/uvrpc\_client.c@{src/uvrpc\_client.c}}
+\mbox{\hyperlink{uvrpc__client_8c}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00013}00013 \textcolor{preprocessor}{\#include "{}../include/uvrpc.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00014}00014 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00015}00015 \textcolor{preprocessor}{\#include "{}\mbox{\hyperlink{uvrpc__flatbuffers_8h}{uvrpc\_flatbuffers.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00016}00016 \textcolor{preprocessor}{\#include "{}\mbox{\hyperlink{uvrpc__msgid_8h}{uvrpc\_msgid.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00017}00017 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00018}00018 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00019}00019 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00020}00020 \textcolor{comment}{/* Pending callback -\/ using direct indexing ring buffer */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00021}\mbox{\hyperlink{structpending__callback}{00021}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structpending__callback}{pending\_callback}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00022}\mbox{\hyperlink{structpending__callback_a2025a84ee85c64cc6ae3118b97c850a1}{00022}}     uint32\_t \mbox{\hyperlink{structpending__callback_a2025a84ee85c64cc6ae3118b97c850a1}{msgid}};          \textcolor{comment}{/* Message ID for validation */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00023}\mbox{\hyperlink{structpending__callback_aa651a86e28430b8c8f6a803ae02c9a2e}{00023}}     uint32\_t \mbox{\hyperlink{structpending__callback_aa651a86e28430b8c8f6a803ae02c9a2e}{generation}};     \textcolor{comment}{/* Generation counter to detect stale entries */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00024}\mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{00024}}     \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} \mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00025}\mbox{\hyperlink{structpending__callback_ad0dd8bce2c867fae8245efd96754d64b}{00025}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structpending__callback_ad0dd8bce2c867fae8245efd96754d64b}{ctx}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00026}\mbox{\hyperlink{uvrpc__client_8c_a58e06cf77abc45d36956579a4a535ae6}{00026}} \} \mbox{\hyperlink{uvrpc__client_8c_a58e06cf77abc45d36956579a4a535ae6}{pending\_callback\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00027}00027 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00028}00028 \textcolor{comment}{/* Client structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00029}\mbox{\hyperlink{structuvrpc__client}{00029}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00030}\mbox{\hyperlink{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}{00030}}     uv\_loop\_t* \mbox{\hyperlink{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00031}\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{00031}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00032}\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{00032}}     \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00033}\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{00033}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00034}\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{00034}}     \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* \mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}};  \textcolor{comment}{/* Message ID generator */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00035}\mbox{\hyperlink{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}{00035}}     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}} \mbox{\hyperlink{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}{performance\_mode}};  \textcolor{comment}{/* Performance mode: low latency vs high throughput */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00036}\mbox{\hyperlink{structuvrpc__client_a1be250c11ea20831d204e1ef80b84737}{00036}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a1be250c11ea20831d204e1ef80b84737}{in\_callback}};  \textcolor{comment}{/* Flag to prevent re-\/entry into callbacks */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00037}00037 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00038}00038     \textcolor{comment}{/* User-\/defined context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00039}\mbox{\hyperlink{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}{00039}}     \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}{ctx}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00040}00040 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00041}00041     \textcolor{comment}{/* User connect callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00042}\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{00042}}     \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\_connect\_callback\_t}} \mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00043}\mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{00043}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{user\_connect\_ctx}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00044}00044 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00045}00045     \textcolor{comment}{/* Pending callbacks ring buffer (dynamically allocated based on config) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00046}\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{00046}}     \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}** \mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00047}\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{00047}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}};  \textcolor{comment}{/* Size of ring buffer (must be power of 2) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00048}\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{00048}}     uint32\_t \mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}};  \textcolor{comment}{/* Generation counter to detect stale entries */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00049}00049 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00050}00050     \textcolor{comment}{/* Concurrency control */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00051}\mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{00051}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\_concurrent}};         \textcolor{comment}{/* Max concurrent requests */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00052}\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{00052}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}};     \textcolor{comment}{/* Current pending request count */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00053}\mbox{\hyperlink{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}{00053}}     uint64\_t \mbox{\hyperlink{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}{timeout\_ms}};        \textcolor{comment}{/* Default timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00054}00054 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00055}00055     \textcolor{comment}{/* Batch processing */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00056}\mbox{\hyperlink{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}{00056}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}{batching\_enabled}};       \textcolor{comment}{/* Enable request batching */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00057}\mbox{\hyperlink{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}{00057}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}{batch\_size}};             \textcolor{comment}{/* Current batch size */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00058}\mbox{\hyperlink{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}{00058}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}{max\_batch\_size}};         \textcolor{comment}{/* Max batch size before flush */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00059}00059 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00060}00060     \textcolor{comment}{/* Retry configuration */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00061}\mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{00061}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\_retries}};            \textcolor{comment}{/* Maximum retry attempts (default: 0 = no retry) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00062}00062 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00063}00063 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00064}00064 \textcolor{comment}{/* Transport connect callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00065}\mbox{\hyperlink{uvrpc__client_8c_a7ce15eabfef2abbe73267eda9cd0bb76}{00065}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__client_8c_a7ce15eabfef2abbe73267eda9cd0bb76}{client\_connect\_callback}}(\textcolor{keywordtype}{int} status, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00066}00066     \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client = (\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}*)ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00067}00067     client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}} = (status == 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00068}00068     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00069}00069     \textcolor{comment}{/* Call user's connect callback if provided */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00070}00070     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00071}00071         \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\_connect\_callback\_t}} cb = client-\/>\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00072}00072         client-\/>\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00073}00073         cb(status, client-\/>\mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{user\_connect\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00074}00074     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00075}00075     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00076}00076     \textcolor{keywordflow}{if} (status != 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00077}00077         fprintf(stderr, \textcolor{stringliteral}{"{}Client connection failed: \%d\(\backslash\)n"{}}, status);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00078}00078     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00079}00079 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00080}00080 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00081}00081 \textcolor{comment}{/* Transport receive callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00082}\mbox{\hyperlink{uvrpc__client_8c_a9776df4de45728a0226ead2bb7617589}{00082}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__client_8c_a9776df4de45728a0226ead2bb7617589}{client\_recv\_callback}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* client\_ctx, \textcolor{keywordtype}{void}* server\_ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00083}00083     (void)client\_ctx;  \textcolor{comment}{/* Not used for client mode */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00084}00084     \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client = (\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}*)server\_ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00085}00085 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00086}00086     \textcolor{keywordflow}{if} (!client || !client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00087}00087         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00088}00088         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00089}00089     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00090}00090 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00091}00091     \textcolor{comment}{/* Get frame type */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00092}00092     \textcolor{keywordtype}{int} frame\_type = \mbox{\hyperlink{uvrpc__flatbuffers_8c_a978abede3b2489ad7ee853129366cd60}{uvrpc\_get\_frame\_type}}(data, size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00093}00093     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00094}00094     \textcolor{keywordflow}{if} (frame\_type < 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00095}00095         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00096}00096         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00097}00097     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00098}00098 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00099}00099     uint32\_t msgid;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00100}00100 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00101}00101     \textcolor{keywordflow}{if} (frame\_type == 3) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00102}00102         \textcolor{comment}{/* Decode error frame */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00103}00103         int32\_t error\_code = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00104}00104         \textcolor{keywordtype}{char}* error\_message = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00105}00105 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00106}00106         \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__flatbuffers_8c_a00dc6679904a0df25134739e641863d2}{uvrpc\_decode\_error}}(data, size, \&msgid, \&error\_code, \&error\_message) != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00107}00107             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00108}00108             \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00109}00109         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00110}00110 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00111}00111         \textcolor{comment}{/* Find pending callback using direct indexing with bitmask */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00112}00112         uint32\_t idx = msgid \& (client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}} -\/ 1);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00113}00113         \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}* pending = client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx];}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00114}00114 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00115}00115         \textcolor{comment}{/* Check if callback exists and matches msgid and generation */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00116}00116         \textcolor{keywordflow}{if} (pending \&\& pending-\/>msgid == msgid \&\& pending-\/>generation == client-\/>\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00117}00117             \textcolor{comment}{/* Create error response structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00118}00118             \mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}} resp;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00119}00119             resp.\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}} = \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00120}00120             resp.\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}} = msgid;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00121}00121             resp.\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}} = error\_code;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00122}00122             resp.\mbox{\hyperlink{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}{error\_message}} = error\_message;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00123}00123             resp.\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00124}00124             resp.\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00125}00125             resp.\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00126}00126 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00127}00127             \textcolor{comment}{/* Remove from ring buffer before calling callback (to avoid re-\/entry) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00128}00128             client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00129}00129 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00130}00130             \textcolor{comment}{/* Call callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00131}00131             \textcolor{keywordflow}{if} (pending-\/>callback) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00132}00132                 pending-\/>\mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{callback}}(\&resp, pending-\/>ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00133}00133             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00134}00134 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00135}00135             \textcolor{comment}{/* Free error message */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00136}00136             \textcolor{keywordflow}{if} (error\_message) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00137}00137                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(error\_message);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00138}00138             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00139}00139 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00140}00140             \textcolor{comment}{/* Free pending callback structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00141}00141             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(pending);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00142}00142         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00143}00143 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00144}00144         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00145}00145         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00146}00146     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00147}00147 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00148}00148     \textcolor{comment}{/* Decode response frame */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00149}00149     \textcolor{keyword}{const} uint8\_t* result = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00150}00150     \textcolor{keywordtype}{size\_t} result\_size = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00151}00151 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00152}00152     \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__flatbuffers_8c_af563d0083169450f94fcea4815342dd4}{uvrpc\_decode\_response}}(data, size, \&msgid, \&result, \&result\_size) != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00153}00153         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00154}00154         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00155}00155     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00156}00156 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00157}00157     \textcolor{comment}{/* Find pending callback using direct indexing with bitmask */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00158}00158     uint32\_t idx = msgid \& (client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}} -\/ 1);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00159}00159     \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}* pending = client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx];}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00160}00160     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00161}00161     \textcolor{comment}{/* Check if callback exists and matches msgid and generation */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00162}00162     \textcolor{keywordflow}{if} (pending \&\& pending-\/>msgid == msgid \&\& pending-\/>generation == client-\/>\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00163}00163         \textcolor{comment}{/* Create response structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00164}00164         \mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}} resp;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00165}00165         resp.\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}} = \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00166}00166         resp.\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}} = msgid;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00167}00167         resp.\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00168}00168         resp.\mbox{\hyperlink{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}{error\_message}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00169}00169 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00170}00170         \textcolor{comment}{/* Copy result data to avoid use-\/after-\/free */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00171}00171         uint8\_t* result\_copy = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00172}00172         \textcolor{keywordflow}{if} (result \&\& result\_size > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00173}00173             result\_copy = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(result\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00174}00174             \textcolor{keywordflow}{if} (result\_copy) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00175}00175                 memcpy(result\_copy, result, result\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00176}00176             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00177}00177         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00178}00178         resp.\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} = result\_copy;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00179}00179         resp.\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} = result\_size;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00180}00180         resp.\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00181}00181 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00182}00182         \textcolor{comment}{/* Remove from ring buffer before calling callback (to avoid re-\/entry) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00183}00183         client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00184}00184 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00185}00185         \textcolor{comment}{/* Call callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00186}00186         \textcolor{keywordflow}{if} (pending-\/>callback) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00187}00187             pending-\/>\mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{callback}}(\&resp, pending-\/>ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00188}00188         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00189}00189 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00190}00190         \textcolor{comment}{/* Free copied result AFTER callback returns */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00191}00191         \textcolor{keywordflow}{if} (result\_copy) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00192}00192             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(result\_copy);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00193}00193         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00194}00194 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00195}00195         \textcolor{comment}{/* Free pending callback structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00196}00196         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(pending);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00197}00197 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00198}00198         \textcolor{comment}{/* Decrease concurrent count */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00199}00199             client-\/>\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}}-\/-\/;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00200}00200             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00201}00201         }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00202}00202             \textcolor{comment}{/* NOTE: data is freed by the transport layer (uvbus\_transport\_tcp.c:181)}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00203}00203 \textcolor{comment}{             * after the callback returns. Do NOT free it here to avoid double free. */}\}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00204}00204 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00205}00205 \textcolor{comment}{/* Create client */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00206}\mbox{\hyperlink{group__ClientAPI_gac6ae0fa0576a1917661a711feef6abca}{00206}} \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* \mbox{\hyperlink{group__ClientAPI_gac6ae0fa0576a1917661a711feef6abca}{uvrpc\_client\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00207}00207     \textcolor{keywordflow}{if} (!config || !config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}} || !config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}}) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00208}00208 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00209}00209     \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00210}00210     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00211}00211 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00212}00212     client-\/>\mbox{\hyperlink{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}{loop}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00213}00213     client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(config-\/>\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00214}00214     \textcolor{keywordflow}{if} (!client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00215}00215         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00216}00216         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00217}00217     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00218}00218     client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00219}00219     client-\/>\mbox{\hyperlink{structuvrpc__client_accaf1415ded9a5dd0bd8f97243b1efaa}{performance\_mode}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\_mode}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00220}00220     client-\/>\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00221}00221     client-\/>\mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{user\_connect\_ctx}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00222}00222 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00223}00223     \textcolor{comment}{/* Initialize concurrency control */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00224}00224     client-\/>\mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\_concurrent}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{max\_concurrent}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00225}00225     client-\/>\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00226}00226     client-\/>\mbox{\hyperlink{structuvrpc__client_a61e74946681eefa59bca938bf8fec4b9}{timeout\_ms}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{timeout\_ms}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00227}00227 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00228}00228     \textcolor{comment}{/* Initialize ring buffer with runtime size */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00229}00229     client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}} = config-\/>\mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\_pending\_callbacks}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00230}00230     client-\/>\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00231}00231     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00232}00232     \textcolor{comment}{/* Allocate ring buffer array */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00233}00233     client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}} = (\mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}**)\mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00234}00234         client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}}, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}*));}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00235}00235     \textcolor{keywordflow}{if} (!client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00236}00236         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00237}00237         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00238}00238         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00239}00239     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00240}00240 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00241}00241     \textcolor{comment}{/* Initialize batch processing */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00242}00242     client-\/>\mbox{\hyperlink{structuvrpc__client_af50bc4bbf564e978f51f3167590506df}{batching\_enabled}} = (config-\/>\mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\_mode}} == \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}{UVRPC\_PERF\_HIGH\_THROUGHPUT}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00243}00243     client-\/>\mbox{\hyperlink{structuvrpc__client_abcc91036f8f0fc8b92618610bd65263b}{batch\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00244}00244     client-\/>\mbox{\hyperlink{structuvrpc__client_a6137d16d1f7e2c3399106241b2908ec3}{max\_batch\_size}} = 100;  \textcolor{comment}{/* Default batch size */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00245}00245 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00246}00246     \textcolor{comment}{/* Initialize retry configuration */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00247}00247     client-\/>\mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\_retries}} = 0;  \textcolor{comment}{/* Default: no retry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00248}00248 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00249}00249     \textcolor{comment}{/* Create message ID generator with unique offset from config */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00250}00250     client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}} = \mbox{\hyperlink{uvrpc__msgid_8c_a119dfc4c63541db6b7550315be6a5ede}{uvrpc\_msgid\_ctx\_new}}();}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00251}00251     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00252}00252         \textcolor{comment}{/* Use msgid\_offset from config if set, otherwise use default offset */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00253}00253         uint32\_t offset = (config-\/>\mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\_offset}} > 0) ? config-\/>\mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\_offset}} : 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00254}00254         \mbox{\hyperlink{uvrpc__msgid_8c_a73aeadc5b317a416049ec636873fbc5e}{uvrpc\_msgid\_ctx\_set\_start}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}}, offset);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00255}00255     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00256}00256 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00257}00257     \textcolor{comment}{/* Create UVBus configuration */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00258}00258     \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* bus\_config = \mbox{\hyperlink{uvbus_8h_afdf4cbd411257359186f6a842a7ca881}{uvbus\_config\_new}}();}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00259}00259     \textcolor{keywordflow}{if} (!bus\_config) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00260}00260         \mbox{\hyperlink{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\_msgid\_ctx\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00261}00261         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00262}00262         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00263}00263         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00264}00264     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00265}00265     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00266}00266     \mbox{\hyperlink{uvbus_8h_afd32cbd35cc2efd347230ec84a45394d}{uvbus\_config\_set\_loop}}(bus\_config, config-\/>\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00267}00267     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00268}00268     \textcolor{comment}{/* Map UVRPC transport type to UVBus transport type */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00269}00269     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} uvbus\_type;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00270}00270     \textcolor{keywordflow}{switch} (config-\/>\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00271}00271         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\_TRANSPORT\_TCP}}:}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00272}00272             uvbus\_type = \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\_TRANSPORT\_TCP}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00273}00273             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00274}00274         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{UVRPC\_TRANSPORT\_UDP}}:}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00275}00275             uvbus\_type = \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{UVBUS\_TRANSPORT\_UDP}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00276}00276             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00277}00277         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{UVRPC\_TRANSPORT\_IPC}}:}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00278}00278             uvbus\_type = \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{UVBUS\_TRANSPORT\_IPC}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00279}00279             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00280}00280         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{UVRPC\_TRANSPORT\_INPROC}}:}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00281}00281             uvbus\_type = \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{UVBUS\_TRANSPORT\_INPROC}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00282}00282             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00283}00283         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00284}00284             \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00285}00285             \mbox{\hyperlink{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\_msgid\_ctx\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00286}00286             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00287}00287             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00288}00288             \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00289}00289     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00290}00290     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00291}00291     \mbox{\hyperlink{uvbus_8h_aa61fe1a2bad717d81e2c07baf8823c28}{uvbus\_config\_set\_transport}}(bus\_config, uvbus\_type);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00292}00292     \mbox{\hyperlink{uvbus_8h_a710a8ee1b3c23442a5e1d379406c8af9}{uvbus\_config\_set\_address}}(bus\_config, client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00293}00293     \mbox{\hyperlink{uvbus_8h_a1bcbc82ae667fa41e4eac2869c698643}{uvbus\_config\_set\_recv\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__client_8c_a9776df4de45728a0226ead2bb7617589}{client\_recv\_callback}}, client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00294}00294     \mbox{\hyperlink{uvbus_8h_ab5987b867a5ffafca5579db5b8e7b632}{uvbus\_config\_set\_connect\_callback}}(bus\_config, \mbox{\hyperlink{uvrpc__client_8c_a7ce15eabfef2abbe73267eda9cd0bb76}{client\_connect\_callback}}, client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00295}00295     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00296}00296     \textcolor{comment}{/* Create UVBus client */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00297}00297     client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}} = \mbox{\hyperlink{uvbus_8h_a64931dfcbf8405bf85e61eeaa6ebc296}{uvbus\_client\_new}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00298}00298     \textcolor{keywordflow}{if} (!client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00299}00299         \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00300}00300         \mbox{\hyperlink{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\_msgid\_ctx\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00301}00301         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00302}00302         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00303}00303         \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00304}00304     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00305}00305     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00306}00306     \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(bus\_config);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00307}00307 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00308}00308     \textcolor{keywordflow}{return} client;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00309}00309 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00310}00310 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00311}00311 \textcolor{comment}{/* Connect to server */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00312}\mbox{\hyperlink{group__ClientAPI_ga6bbddb4ed697561628f473190beb0778}{00312}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6bbddb4ed697561628f473190beb0778}{uvrpc\_client\_connect}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00313}00313     \textcolor{keywordflow}{if} (!client || !client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00314}00314     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00315}00315     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00316}00316     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00317}00317     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} err = \mbox{\hyperlink{uvbus_8h_a1a80668fb14970a4a36a5bb26f3640c0}{uvbus\_connect}}(client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00318}00318     \textcolor{keywordflow}{if} (err != \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00319}00319         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00320}00320     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00321}00321     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00322}00322     \textcolor{comment}{/* Note: is\_connected will be set in the async callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00323}00323     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00324}00324 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00325}00325 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00326}00326 \textcolor{comment}{/* Connect to server with callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00327}\mbox{\hyperlink{group__ClientAPI_ga50b3c9e4d78f8c5f7212ac423a232aa7}{00327}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga50b3c9e4d78f8c5f7212ac423a232aa7}{uvrpc\_client\_connect\_with\_callback}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00328}00328                                          \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\_connect\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00329}00329     \textcolor{keywordflow}{if} (!client || !client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00330}00330     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00331}00331     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00332}00332     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00333}00333     \textcolor{comment}{/* Store user callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00334}00334     client-\/>\mbox{\hyperlink{structuvrpc__client_afc30cab80268f2e18b464520bfe54fbf}{user\_connect\_callback}} = callback;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00335}00335     client-\/>\mbox{\hyperlink{structuvrpc__client_ad90ec3b4aeddd389243b157aec063b52}{user\_connect\_ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00336}00336     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00337}00337     \textcolor{comment}{/* Update UVBus config and transport callbacks */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00338}00338     \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{structuvbus}{uvbus}} = client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00339}00339     \mbox{\hyperlink{structuvbus}{uvbus}}-\/>\mbox{\hyperlink{structuvbus_a27c03e912da4609d7ca35ea823a2ec5d}{config}}.\mbox{\hyperlink{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}{connect\_cb}} = \mbox{\hyperlink{uvrpc__client_8c_a7ce15eabfef2abbe73267eda9cd0bb76}{client\_connect\_callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00340}00340     \mbox{\hyperlink{structuvbus}{uvbus}}-\/>\mbox{\hyperlink{structuvbus_a27c03e912da4609d7ca35ea823a2ec5d}{config}}.\mbox{\hyperlink{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}{callback\_ctx}} = client;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00341}00341     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00342}00342     \textcolor{comment}{/* Also update transport callbacks directly for INPROC */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00343}00343     \textcolor{keywordflow}{if} (\mbox{\hyperlink{structuvbus}{uvbus}}-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00344}00344         \mbox{\hyperlink{structuvbus}{uvbus}}-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}} = \mbox{\hyperlink{uvrpc__client_8c_a7ce15eabfef2abbe73267eda9cd0bb76}{client\_connect\_callback}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00345}00345         \mbox{\hyperlink{structuvbus}{uvbus}}-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}} = client;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00346}00346     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00347}00347     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00348}00348     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} err = \mbox{\hyperlink{uvbus_8h_a1a80668fb14970a4a36a5bb26f3640c0}{uvbus\_connect}}(\mbox{\hyperlink{structuvbus}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00349}00349     \textcolor{keywordflow}{if} (err != \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00350}00350         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00351}00351     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00352}00352     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00353}00353     \textcolor{comment}{/* Note: is\_connected will be set in the async callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00354}00354     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00355}00355 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00356}00356 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00357}00357 \textcolor{comment}{/* Disconnect from server */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00358}\mbox{\hyperlink{group__ClientAPI_gac55246e43dc3cbd60165ee1517a43ce0}{00358}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_gac55246e43dc3cbd60165ee1517a43ce0}{uvrpc\_client\_disconnect}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00359}00359     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00360}00360     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00361}00361     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00362}00362         \mbox{\hyperlink{uvbus_8h_a655383b40dc228452016695950ccfac1}{uvbus\_disconnect}}(client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00363}00363     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00364}00364     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00365}00365     client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00366}00366 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00367}00367 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00368}00368 \textcolor{comment}{/* Free client */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00369}\mbox{\hyperlink{group__ClientAPI_ga57ce57d27900980d6b883a79e2064b61}{00369}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_ga57ce57d27900980d6b883a79e2064b61}{uvrpc\_client\_free}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00370}00370     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00371}00371 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00372}00372     \mbox{\hyperlink{group__ClientAPI_gac55246e43dc3cbd60165ee1517a43ce0}{uvrpc\_client\_disconnect}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00373}00373 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00374}00374     \textcolor{comment}{/* Free UVBus */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00375}00375     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00376}00376         \mbox{\hyperlink{uvbus_8h_a46fd342d85cab0698182c7bce87d58bb}{uvbus\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00377}00377     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00378}00378 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00379}00379     \textcolor{comment}{/* Free message ID context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00380}00380     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00381}00381         \mbox{\hyperlink{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\_msgid\_ctx\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00382}00382     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00383}00383 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00384}00384     client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00385}00385 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00386}00386     \textcolor{comment}{/* Free all pending callbacks from ring buffer array */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00387}00387     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}}; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00388}00388         \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00389}00389             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[i]);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00390}00390             client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00391}00391         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00392}00392     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00393}00393     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00394}00394     \textcolor{comment}{/* Free ring buffer array itself */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00395}00395     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00396}00396         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00397}00397         client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00398}00398     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00399}00399 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00400}00400     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client-\/>\mbox{\hyperlink{structuvrpc__client_ae6936b7410dcc6ab81e4cc3a2b2fb75a}{address}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00401}00401     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(client);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00402}00402 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00403}00403 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00404}00404 \textcolor{comment}{/* Get event loop */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00405}\mbox{\hyperlink{group__ClientAPI_gaa819744acd56567e16a34076ef8cf4ab}{00405}} uv\_loop\_t* \mbox{\hyperlink{group__ClientAPI_gaa819744acd56567e16a34076ef8cf4ab}{uvrpc\_client\_get\_loop}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00406}00406     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00407}00407     \textcolor{keywordflow}{return} client-\/>\mbox{\hyperlink{structuvrpc__client_ab8fc59b50193db45ebef119a03b2ebcf}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00408}00408 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00409}00409 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00410}00410 \textcolor{comment}{/* Set context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00411}\mbox{\hyperlink{group__ClientAPI_ga9d2a0fd06a2f299032127d5b47f54bf9}{00411}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_ga9d2a0fd06a2f299032127d5b47f54bf9}{uvrpc\_client\_set\_context}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00412}00412     \textcolor{keywordflow}{if} (client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00413}00413         client-\/>\mbox{\hyperlink{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}{ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00414}00414     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00415}00415 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00416}00416 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00417}00417 \textcolor{comment}{/* Get context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00418}\mbox{\hyperlink{group__ClientAPI_gabeb066fc3f6d0cf47d7bcbab5eae3e50}{00418}} \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{group__ClientAPI_gabeb066fc3f6d0cf47d7bcbab5eae3e50}{uvrpc\_client\_get\_context}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00419}00419     \textcolor{keywordflow}{return} client ? client-\/>\mbox{\hyperlink{structuvrpc__client_a168f0b4e5967f29b20a887a446191cee}{ctx}} : NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00420}00420 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00421}00421 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00422}00422 \textcolor{comment}{/* Set max retries */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00423}\mbox{\hyperlink{group__ClientAPI_ga28909c12ab7a5fc91f98ae2459067b98}{00423}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga28909c12ab7a5fc91f98ae2459067b98}{uvrpc\_client\_set\_max\_retries}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keywordtype}{int} max\_retries) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00424}00424     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00425}00425     \textcolor{keywordflow}{if} (max\_retries < 0) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00426}00426     client-\/>\mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\_retries}} = max\_retries;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00427}00427     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00428}00428 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00429}00429 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00430}00430 \textcolor{comment}{/* Get max retries */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00431}\mbox{\hyperlink{group__ClientAPI_ga6af0c71bc47c6c0ab15be4a5e3bdcaf6}{00431}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6af0c71bc47c6c0ab15be4a5e3bdcaf6}{uvrpc\_client\_get\_max\_retries}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00432}00432     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00433}00433     \textcolor{keywordflow}{return} client-\/>\mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\_retries}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00434}00434 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00435}00435 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00436}00436 \textcolor{comment}{/* Call remote method without retry (internal) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00437}\mbox{\hyperlink{uvrpc__client_8c_ad43836b44931f98d4be9facd703c9117}{00437}} \textcolor{keyword}{static} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__client_8c_ad43836b44931f98d4be9facd703c9117}{uvrpc\_client\_call\_no\_retry\_internal}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00438}00438                                                 \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00439}00439                                                 \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00440}00440     \textcolor{keywordflow}{if} (!client || !method) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00441}00441     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00442}00442     \textcolor{keywordflow}{if} (!client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00443}00443         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{UVRPC\_ERROR\_NOT\_CONNECTED}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00444}00444     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00445}00445     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00446}00446     \textcolor{comment}{/* Generate message ID using context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00447}00447     uint32\_t msgid = \mbox{\hyperlink{uvrpc__msgid_8c_a932e18db85429d253aeb248bbc2effcc}{uvrpc\_msgid\_next}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00448}00448     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00449}00449     \textcolor{comment}{/* Encode request */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00450}00450     uint8\_t* req\_data = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00451}00451     \textcolor{keywordtype}{size\_t} req\_size = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00452}00452     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00453}00453     \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__flatbuffers_8c_a35b5e5bb78223c22e4159434a6ee8fcb}{uvrpc\_encode\_request}}(msgid, method, params, params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00454}00454                               \&req\_data, \&req\_size) != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00455}00455         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00456}00456     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00457}00457     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00458}00458     \textcolor{comment}{/* Register callback using direct indexing */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00459}00459     \textcolor{keywordflow}{if} (callback) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00460}00460         \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}* pending = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00461}00461         \textcolor{keywordflow}{if} (!pending) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00462}00462             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00463}00463             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00464}00464         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00465}00465 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00466}00466         pending-\/>\mbox{\hyperlink{structpending__callback_a2025a84ee85c64cc6ae3118b97c850a1}{msgid}} = msgid;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00467}00467         pending-\/>\mbox{\hyperlink{structpending__callback_aa651a86e28430b8c8f6a803ae02c9a2e}{generation}} = client-\/>\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00468}00468         pending-\/>\mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{callback}} = callback;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00469}00469         pending-\/>\mbox{\hyperlink{structpending__callback_ad0dd8bce2c867fae8245efd96754d64b}{ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00470}00470 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00471}00471         \textcolor{comment}{/* Direct indexing with bitmask -\/ O(1) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00472}00472         uint32\_t idx = msgid \& (client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}} -\/ 1);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00473}00473         \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}* existing = client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx];}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00474}00474 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00475}00475         \textcolor{keywordflow}{if} (existing == NULL) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00476}00476             \textcolor{comment}{/* Slot is empty -\/ insert directly */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00477}00477             client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] = pending;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00478}00478         \} \textcolor{keywordflow}{else} \textcolor{keywordflow}{if} (existing-\/>generation != client-\/>\mbox{\hyperlink{structuvrpc__client_ac066a70eb39edd358aea6ed5345d2f1f}{generation}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00479}00479             \textcolor{comment}{/* Stale entry from previous generation -\/ replace it */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00480}00480             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(existing);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00481}00481             client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] = pending;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00482}00482         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00483}00483             \textcolor{comment}{/* Slot is occupied by a valid entry -\/ ring buffer is effectively full */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00484}00484             \textcolor{comment}{/* Do NOT block the event loop -\/ return error and let caller handle it */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00485}00485             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(pending);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00486}00486             \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00487}00487             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{UVRPC\_ERROR\_CALLBACK\_LIMIT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00488}00488         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00489}00489     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00490}00490 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00491}00491     \textcolor{comment}{/* Send request (must be after callback registration to avoid race conditions) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00492}00492     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00493}00493         \mbox{\hyperlink{uvbus_8h_a0b133ff80c5fc9e4fd017471c58f9d6c}{uvbus\_send}}(client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}, req\_data, req\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00494}00494     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00495}00495 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00496}00496     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00497}00497 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00498}00498     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00499}00499 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00500}00500 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00501}00501 \textcolor{comment}{/* Call remote method with retry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00502}\mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{00502}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00503}00503                        \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00504}00504                        \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00505}00505     \textcolor{keywordflow}{if} (!client || !method) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00506}00506     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00507}00507     \textcolor{comment}{/* If retry is disabled, call directly */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00508}00508     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_aefb0cc46f2ff667a3767835f98fa1e56}{max\_retries}} <= 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00509}00509         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__client_8c_ad43836b44931f98d4be9facd703c9117}{uvrpc\_client\_call\_no\_retry\_internal}}(client, method, params, params\_size, callback, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00510}00510     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00511}00511     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00512}00512     \textcolor{comment}{/* Retry logic -\/ just retry without running event loop */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00513}00513     \textcolor{comment}{/* The event loop is driven externally, retries will be handled naturally */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00514}00514     \textcolor{keywordtype}{int} ret;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00515}00515     \textcolor{keywordtype}{int} retries = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00516}00516     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00517}00517     \textcolor{keywordflow}{do} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00518}00518         ret = \mbox{\hyperlink{uvrpc__client_8c_ad43836b44931f98d4be9facd703c9117}{uvrpc\_client\_call\_no\_retry\_internal}}(client, method, params, params\_size, callback, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00519}00519         }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00520}00520         \textcolor{keywordflow}{if} (ret == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00521}00521             \textcolor{keywordflow}{break};  \textcolor{comment}{/* Success -\/ exit retry loop */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00522}00522         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00523}00523         }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00524}00524         retries++;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00525}00525         }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00526}00526     \} \textcolor{keywordflow}{while} (retries < client-\/>max\_retries);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00527}00527     }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00528}00528     \textcolor{keywordflow}{return} ret;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00529}00529 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00530}00530 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00531}00531 \textcolor{comment}{/* Call remote method without retry (public API) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00532}\mbox{\hyperlink{group__ClientAPI_ga538d7541c4465c6bc24616281a0c23eb}{00532}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga538d7541c4465c6bc24616281a0c23eb}{uvrpc\_client\_call\_no\_retry}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00533}00533                                 \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00534}00534                                 \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00535}00535     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__client_8c_ad43836b44931f98d4be9facd703c9117}{uvrpc\_client\_call\_no\_retry\_internal}}(client, method, params, params\_size, callback, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00536}00536 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00537}00537 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00538}00538 \textcolor{comment}{/* Free response */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00539}\mbox{\hyperlink{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}{00539}} \textcolor{keywordtype}{void} \mbox{\hyperlink{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}{uvrpc\_response\_free}}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00540}00540     \textcolor{keywordflow}{if} (!resp) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00541}00541     \textcolor{comment}{/* Note: error and result point to frame data, don't free them here */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00542}00542 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00543}00543 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00544}00544 \textcolor{comment}{/* Set max concurrent requests */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00545}\mbox{\hyperlink{group__ClientAPI_ga3fffaee0b22282270b7a234e2cd2539d}{00545}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga3fffaee0b22282270b7a234e2cd2539d}{uvrpc\_client\_set\_max\_concurrent}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keywordtype}{int} max\_concurrent) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00546}00546     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00547}00547     client-\/>\mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\_concurrent}} = (max\_concurrent > 0) ? max\_concurrent : UVRPC\_MAX\_CONCURRENT\_REQUESTS;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00548}00548     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00549}00549 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00550}00550 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00551}00551 \textcolor{comment}{/* Get pending request count */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00552}\mbox{\hyperlink{group__ClientAPI_ga71cc98cf4f74f367519494b6fddc45f8}{00552}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga71cc98cf4f74f367519494b6fddc45f8}{uvrpc\_client\_get\_pending\_count}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00553}00553     \textcolor{keywordflow}{if} (!client) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00554}00554     \textcolor{keywordflow}{return} client-\/>\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00555}00555 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00556}00556 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00557}00557 \textcolor{comment}{/* Batch call -\/ send multiple requests efficiently */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00558}\mbox{\hyperlink{group__ClientAPI_ga03e1268b4ea3a33131982d2c790ce4ef}{00558}} \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga03e1268b4ea3a33131982d2c790ce4ef}{uvrpc\_client\_call\_batch}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00559}00559                              \textcolor{keyword}{const} \textcolor{keywordtype}{char}** methods,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00560}00560                              \textcolor{keyword}{const} uint8\_t** params\_array,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00561}00561                              \textcolor{keywordtype}{size\_t}* params\_sizes,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00562}00562                              \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}}* callbacks,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00563}00563                              \textcolor{keywordtype}{void}** contexts,}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00564}00564                              \textcolor{keywordtype}{int} count) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00565}00565     \textcolor{keywordflow}{if} (!client || !methods || !params\_array || !params\_sizes || !callbacks || !contexts) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00566}00566         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00567}00567     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00568}00568 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00569}00569     \textcolor{keywordflow}{if} (!client-\/>\mbox{\hyperlink{structuvrpc__client_a7421d0698d9356afe3536fbea367eb2e}{is\_connected}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00570}00570         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{UVRPC\_ERROR\_NOT\_CONNECTED}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00571}00571     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00572}00572 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00573}00573     \textcolor{keywordflow}{if} (count <= 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00574}00574         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00575}00575     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00576}00576 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00577}00577     \textcolor{comment}{/* Check concurrency limit */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00578}00578     \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\_concurrent}} > 0 \&\&}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00579}00579         (client-\/>\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}} + count) > client-\/>\mbox{\hyperlink{structuvrpc__client_a01f025c1abff0f07214b665627552ea9}{max\_concurrent}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00580}00580         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}{UVRPC\_ERROR\_RATE\_LIMITED}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00581}00581     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00582}00582 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00583}00583     \textcolor{comment}{/* Send all requests */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00584}00584     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00585}00585         \textcolor{keywordflow}{if} (!methods[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00586}00586             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00587}00587         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00588}00588 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00589}00589         \textcolor{comment}{/* Generate message ID */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00590}00590         uint32\_t msgid = \mbox{\hyperlink{uvrpc__msgid_8c_a932e18db85429d253aeb248bbc2effcc}{uvrpc\_msgid\_next}}(client-\/>\mbox{\hyperlink{structuvrpc__client_a241a38a59c683cb191953386b453294e}{msgid\_ctx}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00591}00591 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00592}00592         \textcolor{comment}{/* Encode request */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00593}00593         uint8\_t* req\_data = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00594}00594         \textcolor{keywordtype}{size\_t} req\_size = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00595}00595 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00596}00596         \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__flatbuffers_8c_a35b5e5bb78223c22e4159434a6ee8fcb}{uvrpc\_encode\_request}}(msgid, methods[i], params\_array[i], params\_sizes[i],}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00597}00597                                   \&req\_data, \&req\_size) != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00598}00598             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00599}00599         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00600}00600 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00601}00601         \textcolor{comment}{/* Register callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00602}00602         \textcolor{keywordflow}{if} (callbacks[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00603}00603             \mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}* pending = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structpending__callback}{pending\_callback\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00604}00604             \textcolor{keywordflow}{if} (!pending) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00605}00605                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00606}00606                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00607}00607             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00608}00608 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00609}00609             uint32\_t idx = (uint32\_t)msgid \% client-\/>\mbox{\hyperlink{structuvrpc__client_a1a3352536300905ca9cb6803a3a9ae30}{max\_pending\_callbacks}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00610}00610             if (client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] != NULL) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00611}00611                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(pending);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00612}00612                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00613}00613                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{UVRPC\_ERROR\_CALLBACK\_LIMIT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00614}00614             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00615}00615 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00616}00616             pending-\/>\mbox{\hyperlink{structpending__callback_a2025a84ee85c64cc6ae3118b97c850a1}{msgid}} = (uint32\_t)msgid;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00617}00617             pending-\/>\mbox{\hyperlink{structpending__callback_a72ad740bf08f2a2bb254b4f3dbbf700c}{callback}} = callbacks[i];}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00618}00618             pending-\/>\mbox{\hyperlink{structpending__callback_ad0dd8bce2c867fae8245efd96754d64b}{ctx}} = contexts[i];}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00619}00619             client-\/>\mbox{\hyperlink{structuvrpc__client_a00d69c3e34d9d61826ac3a73635a5840}{pending\_callbacks}}[idx] = pending;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00620}00620 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00621}00621             \textcolor{comment}{/* Increase concurrent count */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00622}00622             client-\/>\mbox{\hyperlink{structuvrpc__client_a52b6869550baab90a3231d544bed10bf}{current\_concurrent}}++;}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00623}00623         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00624}00624 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00625}00625         \textcolor{comment}{/* Send request (no flush for batch except last) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00626}00626         \textcolor{keywordflow}{if} (client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00627}00627             \mbox{\hyperlink{uvbus_8h_a0b133ff80c5fc9e4fd017471c58f9d6c}{uvbus\_send}}(client-\/>\mbox{\hyperlink{structuvrpc__client_acfac3463a4cef18b4a2c2a428a054e4c}{uvbus}}, req\_data, req\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00628}00628         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00629}00629 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00630}00630         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(req\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00631}00631     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00632}00632 }
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00633}00633     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__client_8c_source_l00634}00634 \}}
+
+\end{DoxyCode}

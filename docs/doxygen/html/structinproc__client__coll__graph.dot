@@ -1,0 +1,16 @@
+digraph "inproc_client"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="inproc_client",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip=" "];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" callback_ctx\nclient_transport\nserver_endpoint" ,fontname="Helvetica"];
+  Node2 [label="void *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" is_active" ,fontname="Helvetica"];
+  Node3 [label="int",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" recv_cb" ,fontname="Helvetica"];
+  Node4 [label="void(*)(const uint8\l_t *data, size_t size,\l void *client_ctx, void\l *server_ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node5 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" error_cb" ,fontname="Helvetica"];
+  Node5 [label="void(*)(uvbus_error\l_t error_code, const\l char *error_msg, void *ctx)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+}

@@ -1,0 +1,140 @@
+\hypertarget{uvrpc__khash_8h}{}\doxysection{src/uvrpc\+\_\+khash.h File Reference}
+\label{uvrpc__khash_8h}\index{src/uvrpc\_khash.h@{src/uvrpc\_khash.h}}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structkhash__t}{khash\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef uint32\+\_\+t \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}}
+\item 
+typedef uint64\+\_\+t \mbox{\hyperlink{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}{khint64\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static uint32\+\_\+t \mbox{\hyperlink{uvrpc__khash_8h_aa0911decb17f4b80d44cd95e9ace8ec8}{\+\_\+\+\_\+ac\+\_\+hash\+\_\+choose\+\_\+kh}} (uint32\+\_\+t n\+\_\+buckets, uint32\+\_\+t size)
+\item 
+static \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} \mbox{\hyperlink{uvrpc__khash_8h_a23c42ecf4347e6976435675055a88b4a}{\+\_\+\+\_\+ac\+\_\+hash\+\_\+resize}} (\mbox{\hyperlink{structkhash__t}{khash\+\_\+t}} $\ast$h, uint32\+\_\+t $\ast$new\+\_\+buckets, uint32\+\_\+t $\ast$new\+\_\+flags, uint32\+\_\+t new\+\_\+n\+\_\+buckets, uint32\+\_\+t n\+\_\+occupied, uint32\+\_\+t size, uint32\+\_\+t s, uint32\+\_\+t r, uint32\+\_\+t d, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} $\ast$keys, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} $\ast$vals, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}}($\ast$hash\+\_\+func)(\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}}))
+\item 
+static double \mbox{\hyperlink{uvrpc__khash_8h_a486116676ed24e6a8350a6c1244019ed}{\+\_\+\+\_\+ac\+\_\+hash\+\_\+upperbound}} (double load\+\_\+factor)
+\item 
+static \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} \mbox{\hyperlink{uvrpc__khash_8h_a225a7d47af462aa16b05ede21f60cf4e}{\+\_\+\+\_\+ac\+\_\+\+X31\+\_\+hash\+\_\+string}} (const char $\ast$s)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}\label{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!khint32\_t@{khint32\_t}}
+\index{khint32\_t@{khint32\_t}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{khint32\_t}{khint32\_t}}
+{\footnotesize\ttfamily typedef uint32\+\_\+t \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00042}{42}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+\mbox{\Hypertarget{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}\label{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!khint64\_t@{khint64\_t}}
+\index{khint64\_t@{khint64\_t}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{khint64\_t}{khint64\_t}}
+{\footnotesize\ttfamily typedef uint64\+\_\+t \mbox{\hyperlink{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}{khint64\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00043}{43}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__khash_8h_aa0911decb17f4b80d44cd95e9ace8ec8}\label{uvrpc__khash_8h_aa0911decb17f4b80d44cd95e9ace8ec8}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!\_\_ac\_hash\_choose\_kh@{\_\_ac\_hash\_choose\_kh}}
+\index{\_\_ac\_hash\_choose\_kh@{\_\_ac\_hash\_choose\_kh}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{\_\_ac\_hash\_choose\_kh()}{\_\_ac\_hash\_choose\_kh()}}
+{\footnotesize\ttfamily static uint32\+\_\+t \+\_\+\+\_\+ac\+\_\+hash\+\_\+choose\+\_\+kh (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{n\+\_\+buckets,  }\item[{uint32\+\_\+t}]{size }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00069}{69}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00069                                                                               \{}
+\DoxyCodeLine{00070     \textcolor{keywordflow}{if} (n\_buckets >> 2 > size) \{}
+\DoxyCodeLine{00071         \textcolor{keywordflow}{if} (n\_buckets >> 3 > size) \textcolor{keywordflow}{return} 1;}
+\DoxyCodeLine{00072         \textcolor{keywordflow}{return} 2;}
+\DoxyCodeLine{00073     \}}
+\DoxyCodeLine{00074     \textcolor{keywordflow}{return} 3;}
+\DoxyCodeLine{00075 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc__khash_8h_a23c42ecf4347e6976435675055a88b4a}\label{uvrpc__khash_8h_a23c42ecf4347e6976435675055a88b4a}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!\_\_ac\_hash\_resize@{\_\_ac\_hash\_resize}}
+\index{\_\_ac\_hash\_resize@{\_\_ac\_hash\_resize}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{\_\_ac\_hash\_resize()}{\_\_ac\_hash\_resize()}}
+{\footnotesize\ttfamily static \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} \+\_\+\+\_\+ac\+\_\+hash\+\_\+resize (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structkhash__t}{khash\+\_\+t}} $\ast$}]{h,  }\item[{uint32\+\_\+t $\ast$}]{new\+\_\+buckets,  }\item[{uint32\+\_\+t $\ast$}]{new\+\_\+flags,  }\item[{uint32\+\_\+t}]{new\+\_\+n\+\_\+buckets,  }\item[{uint32\+\_\+t}]{n\+\_\+occupied,  }\item[{uint32\+\_\+t}]{size,  }\item[{uint32\+\_\+t}]{s,  }\item[{uint32\+\_\+t}]{r,  }\item[{uint32\+\_\+t}]{d,  }\item[{\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} $\ast$}]{keys,  }\item[{\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} $\ast$}]{vals,  }\item[{\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}}($\ast$)(\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}})}]{hash\+\_\+func }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00077}{77}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00077                                                                                                                                                                                                                                                                       \{}
+\DoxyCodeLine{00078     \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} k, i;}
+\DoxyCodeLine{00079     \textcolor{keywordflow}{for} (k = 0; k != n\_buckets; ++k) \{}
+\DoxyCodeLine{00080         \textcolor{keywordflow}{if} (\_\_ac\_iseither(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}}, k)) \{}
+\DoxyCodeLine{00081             new\_buckets[k] = keys[k];}
+\DoxyCodeLine{00082             new\_flags[k] = 0x1;}
+\DoxyCodeLine{00083         \}}
+\DoxyCodeLine{00084     \}}
+\DoxyCodeLine{00085     memset(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}}, 0xaa, \_\_ac\_fsize(h-\/>\mbox{\hyperlink{structkhash__t_a178c5ec486f3d7398000b4b789f82aae}{n\_buckets}}));}
+\DoxyCodeLine{00086     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}});}
+\DoxyCodeLine{00087     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(new\_flags);}
+\DoxyCodeLine{00088     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(new\_buckets);}
+\DoxyCodeLine{00089     \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00090 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__khash_8h_source_l00061}{khash\+\_\+t\+::flags}}, \mbox{\hyperlink{uvrpc__khash_8h_source_l00062}{khash\+\_\+t\+::n\+\_\+buckets}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__khash_8h_a486116676ed24e6a8350a6c1244019ed}\label{uvrpc__khash_8h_a486116676ed24e6a8350a6c1244019ed}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!\_\_ac\_hash\_upperbound@{\_\_ac\_hash\_upperbound}}
+\index{\_\_ac\_hash\_upperbound@{\_\_ac\_hash\_upperbound}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{\_\_ac\_hash\_upperbound()}{\_\_ac\_hash\_upperbound()}}
+{\footnotesize\ttfamily static double \+\_\+\+\_\+ac\+\_\+hash\+\_\+upperbound (\begin{DoxyParamCaption}\item[{double}]{load\+\_\+factor }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00065}{65}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00065                                                               \{}
+\DoxyCodeLine{00066     \textcolor{keywordflow}{return} load\_factor -\/ load\_factor / 8;}
+\DoxyCodeLine{00067 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc__khash_8h_a225a7d47af462aa16b05ede21f60cf4e}\label{uvrpc__khash_8h_a225a7d47af462aa16b05ede21f60cf4e}} 
+\index{uvrpc\_khash.h@{uvrpc\_khash.h}!\_\_ac\_X31\_hash\_string@{\_\_ac\_X31\_hash\_string}}
+\index{\_\_ac\_X31\_hash\_string@{\_\_ac\_X31\_hash\_string}!uvrpc\_khash.h@{uvrpc\_khash.h}}
+\doxysubsubsection{\texorpdfstring{\_\_ac\_X31\_hash\_string()}{\_\_ac\_X31\_hash\_string()}}
+{\footnotesize\ttfamily static \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\+\_\+t}} \+\_\+\+\_\+ac\+\_\+\+X31\+\_\+hash\+\_\+string (\begin{DoxyParamCaption}\item[{const char $\ast$}]{s }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__khash_8h_source_l00093}{93}} of file \mbox{\hyperlink{uvrpc__khash_8h_source}{uvrpc\+\_\+khash.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00093                                                             \{}
+\DoxyCodeLine{00094     \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} h = (\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}})*s;}
+\DoxyCodeLine{00095     \textcolor{keywordflow}{if} (h) \textcolor{keywordflow}{for} (++s ; *s; ++s) h = (h << 5) -\/ h + (\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}})*s;}
+\DoxyCodeLine{00096     \textcolor{keywordflow}{return} h;}
+\DoxyCodeLine{00097 \}}
+
+\end{DoxyCode}

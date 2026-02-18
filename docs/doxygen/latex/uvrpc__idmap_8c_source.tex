@@ -1,0 +1,90 @@
+\hypertarget{uvrpc__idmap_8c_source}{}\doxysection{uvrpc\+\_\+idmap.\+c}
+\label{uvrpc__idmap_8c_source}\index{src/uvrpc\_idmap.c@{src/uvrpc\_idmap.c}}
+\mbox{\hyperlink{uvrpc__idmap_8c}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00005}00005 \textcolor{preprocessor}{\#include "{}\mbox{\hyperlink{uvrpc__idmap_8h}{uvrpc\_idmap.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00006}00006 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00007}00007 \textcolor{preprocessor}{\#include <uthash.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00008}00008 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00009}00009 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00010}00010 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00011}00011 \textcolor{comment}{/* Create ID mapping context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00012}\mbox{\hyperlink{uvrpc__idmap_8c_a869cf339b9a8c0e973336f0800a54ef4}{00012}} \mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* \mbox{\hyperlink{uvrpc__idmap_8c_a869cf339b9a8c0e973336f0800a54ef4}{uvrpc\_idmap\_ctx\_new}}(\textcolor{keywordtype}{void}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00013}00013     \mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00014}00014     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00015}00015 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00016}00016     ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00017}00017     ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_aa7ba30d841b7ce377cb4d519aff6e267}{next\_gateway\_id}} = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00018}00018 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00019}00019     \textcolor{keywordflow}{return} ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00020}00020 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00021}00021 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00022}00022 \textcolor{comment}{/* Free ID mapping context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00023}\mbox{\hyperlink{uvrpc__idmap_8c_ac5c988612394e4c77e9d48f3a2a7de66}{00023}} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__idmap_8c_ac5c988612394e4c77e9d48f3a2a7de66}{uvrpc\_idmap\_ctx\_free}}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00024}00024     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00025}00025 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00026}00026     \textcolor{comment}{/* Free all entries in hash table */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00027}00027     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry, *tmp;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00028}00028     HASH\_ITER(hh, ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry, tmp) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00029}00029         HASH\_DEL(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00030}00030         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00031}00031     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00032}00032 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00033}00033     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00034}00034 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00035}00035 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00036}00036 \textcolor{comment}{/* Transform: client msgid -\/> gateway msgid */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00037}\mbox{\hyperlink{uvrpc__idmap_8c_a4fd3f0a946e7c74142158cb11554ebc5}{00037}} uint32\_t \mbox{\hyperlink{uvrpc__idmap_8c_a4fd3f0a946e7c74142158cb11554ebc5}{uvrpc\_idmap\_to\_gateway}}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx, uint32\_t msgid\_raw, \textcolor{keywordtype}{void}* client\_handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00038}00038     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00039}00039 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00040}00040     \textcolor{comment}{/* Generate new gateway msgid */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00041}00041     uint32\_t msgid\_gateway = ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_aa7ba30d841b7ce377cb4d519aff6e267}{next\_gateway\_id}}++;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00042}00042 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00043}00043     \textcolor{comment}{/* Create mapping entry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00044}00044     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00045}00045     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00046}00046 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00047}00047     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_ac10a66b740e5e137f7c948470852e79f}{msgid\_raw}} = msgid\_raw;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00048}00048     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a8ec68a149acd53cfcb0c85a8ce68e581}{msgid\_gateway}} = msgid\_gateway;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00049}00049     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a6b63d8591511fbd59428a878e05f5141}{client\_handle}} = client\_handle;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00050}00050 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00051}00051     \textcolor{comment}{/* Store in hash table */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00052}00052     HASH\_ADD\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, msgid\_gateway, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00053}00053 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00054}00054     \textcolor{keywordflow}{return} msgid\_gateway;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00055}00055 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00056}00056 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00057}00057 \textcolor{comment}{/* Reverse transform: gateway msgid -\/> client msgid */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00058}\mbox{\hyperlink{uvrpc__idmap_8c_af693f55efb23ae77c6ac0c970cc8123f}{00058}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__idmap_8c_af693f55efb23ae77c6ac0c970cc8123f}{uvrpc\_idmap\_to\_raw}}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx, uint32\_t msgid\_gateway,}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00059}00059                        uint32\_t* out\_msgid\_raw, \textcolor{keywordtype}{void}** out\_client\_handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00060}00060     \textcolor{keywordflow}{if} (!ctx || !out\_msgid\_raw || !out\_client\_handle) \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00061}00061 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00062}00062     \textcolor{comment}{/* Find mapping entry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00063}00063     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00064}00064     HASH\_FIND\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, \&msgid\_gateway, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00065}00065 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00066}00066     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00067}00067 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00068}00068     \textcolor{comment}{/* Return original information */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00069}00069     *out\_msgid\_raw = entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_ac10a66b740e5e137f7c948470852e79f}{msgid\_raw}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00070}00070     *out\_client\_handle = entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a6b63d8591511fbd59428a878e05f5141}{client\_handle}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00071}00071 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00072}00072     \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00073}00073 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00074}00074 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00075}00075 \textcolor{comment}{/* Remove mapping */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00076}\mbox{\hyperlink{uvrpc__idmap_8c_a09766270beb16cc6910ae1a87c0a71d0}{00076}} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__idmap_8c_a09766270beb16cc6910ae1a87c0a71d0}{uvrpc\_idmap\_remove}}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx, uint32\_t msgid\_gateway) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00077}00077     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00078}00078 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00079}00079     \textcolor{comment}{/* Find and delete entry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00080}00080     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00081}00081     HASH\_FIND\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, \&msgid\_gateway, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00082}00082 }
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00083}00083     \textcolor{keywordflow}{if} (entry) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00084}00084         HASH\_DEL(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00085}00085         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00086}00086     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__idmap_8c_source_l00087}00087 \}}
+
+\end{DoxyCode}

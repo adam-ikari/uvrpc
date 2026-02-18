@@ -1,0 +1,285 @@
+\hypertarget{uvrpc_8h_source}{}\doxysection{uvrpc.\+h}
+\label{uvrpc_8h_source}\index{include/uvrpc.h@{include/uvrpc.h}}
+\mbox{\hyperlink{uvrpc_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00017}00017 \textcolor{preprocessor}{\#ifndef UVRPC\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00018}00018 \textcolor{preprocessor}{\#define UVRPC\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00019}00019 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00020}00020 \textcolor{preprocessor}{\#include <uv.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00021}00021 \textcolor{preprocessor}{\#include <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00022}00022 \textcolor{preprocessor}{\#include <stddef.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00023}00023 \textcolor{preprocessor}{\#include "{}\mbox{\hyperlink{uvbus_8h}{uvbus.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00024}00024 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00025}00025 \textcolor{comment}{/* Debug logging macro -\/ compiles out in release builds */}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00026}00026 \textcolor{preprocessor}{\#ifdef UVRPC\_DEBUG}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00027}00027 \textcolor{preprocessor}{\#define UVRPC\_LOG(fmt, ...) fprintf(stderr, "{}[DEBUG] "{}} fmt "{}\(\backslash\)n"{}, \#\#\_\_VA\_ARGS\_\_)}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00028}00028 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00029}00029 \textcolor{preprocessor}{\#define UVRPC\_LOG(fmt, ...) ((void)0)}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00030}00030 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00031}00031 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00032}00032 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00033}00033 \textcolor{keyword}{extern} \textcolor{stringliteral}{"{}C"{}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00034}00034 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00035}00035 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00042}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{00042}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00043}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{00043}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} = 0,                      }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00044}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{00044}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}} = -\/1,                  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00045}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{00045}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}} = -\/2,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00046}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{00046}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}} = -\/3,        }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00047}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{00047}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{UVRPC\_ERROR\_NOT\_CONNECTED}} = -\/4,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00048}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{00048}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}} = -\/5,          }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00049}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{00049}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}} = -\/6,        }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00050}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{00050}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{UVRPC\_ERROR\_CALLBACK\_LIMIT}} = -\/7,   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00051}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}{00051}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}{UVRPC\_ERROR\_CANCELLED}} = -\/8,        }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00052}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}{00052}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}{UVRPC\_ERROR\_POOL\_EXHAUSTED}} = -\/9,   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00053}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}{00053}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}{UVRPC\_ERROR\_RATE\_LIMITED}} = -\/10,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00054}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}{00054}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}{UVRPC\_ERROR\_NOT\_FOUND}} = -\/11,       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00055}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}{00055}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}{UVRPC\_ERROR\_ALREADY\_EXISTS}} = -\/12,  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00056}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}{00056}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}{UVRPC\_ERROR\_INVALID\_STATE}} = -\/13,   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00057}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}{00057}}     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}{UVRPC\_ERROR\_IO}} = -\/14,              }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00058}00058     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}{UVRPC\_ERROR\_MAX}}                    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00059}\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}{00059}} \} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\_error\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00060}00060 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00067}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}{00067}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00068}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}{00068}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}{UVRPC\_RPC\_ERROR\_OK}} = 0,                }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00069}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}{00069}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}{UVRPC\_RPC\_ERROR\_INVALID\_REQUEST}} = 1,   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00070}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}{00070}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}{UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND}} = 2,  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00071}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}{00071}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}{UVRPC\_RPC\_ERROR\_INVALID\_PARAMS}} = 3,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00072}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}{00072}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}{UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR}} = 4,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00073}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}{00073}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}{UVRPC\_RPC\_ERROR\_TIMEOUT}} = 5,           }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00074}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}{00074}}     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}{UVRPC\_RPC\_ERROR\_PARSE\_ERROR}} = 6,       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00075}00075     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}{UVRPC\_RPC\_ERROR\_SERVER\_ERROR}} = 7       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00076}\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}{00076}} \} \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}{uvrpc\_rpc\_error\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00077}00077 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00078}00078 \textcolor{comment}{/* Configuration constants */}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00079}00079 \textcolor{preprocessor}{\#ifndef UVRPC\_MAX\_PENDING\_CALLBACKS}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00080}00080 \textcolor{comment}{/* Ring buffer size -\/ must be a power of 2 for efficient modulo operation}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00081}00081 \textcolor{comment}{ * Recommended values: 65536 (2\string^16), 262144 (2\string^18), 1048576 (2\string^20), 4194304 (2\string^22)}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00082}00082 \textcolor{comment}{ * Default: 2\string^20 = 1,048,576 */}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00083}00083 \textcolor{preprocessor}{\#define UVRPC\_MAX\_PENDING\_CALLBACKS (1 << 20)  }\textcolor{comment}{/* 1,048,576 -\/ must be power of 2 */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00084}00084 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00085}00085 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00086}00086 \textcolor{preprocessor}{\#ifndef UVRPC\_DEFAULT\_POOL\_SIZE}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00087}00087 \textcolor{preprocessor}{\#define UVRPC\_DEFAULT\_POOL\_SIZE 10  }\textcolor{comment}{/* Default connection pool size */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00088}00088 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00089}00089 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00090}00090 \textcolor{preprocessor}{\#ifndef UVRPC\_MAX\_CONCURRENT\_REQUESTS}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00091}00091 \textcolor{preprocessor}{\#define UVRPC\_MAX\_CONCURRENT\_REQUESTS 100  }\textcolor{comment}{/* Max concurrent requests per client */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00092}00092 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00093}00093 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00099}\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{00099}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00100}\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{00100}}     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\_TRANSPORT\_TCP}} = 0,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00101}\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{00101}}     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{UVRPC\_TRANSPORT\_UDP}} = 1,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00102}\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{00102}}     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{UVRPC\_TRANSPORT\_IPC}} = 2,    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00103}00103     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{UVRPC\_TRANSPORT\_INPROC}} = 3  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00104}\mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{00104}} \} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\_transport\_type}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00105}00105 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00112}\mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{00112}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00113}\mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}{00113}}     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}{UVRPC\_PERF\_LOW\_LATENCY}} = 0,  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00114}00114     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}{UVRPC\_PERF\_HIGH\_THROUGHPUT}} = 1 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00115}\mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}{00115}} \} \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00116}00116 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00122}\mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{00122}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00123}\mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}{00123}}     \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}{UVRPC\_COMM\_SERVER\_CLIENT}} = 0,  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00124}00124     \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}{UVRPC\_COMM\_BROADCAST}} = 1        }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00125}\mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}{00125}} \} \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\_comm\_type\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00126}00126 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00133}\mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{00133}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\_context\_cleanup\_t}})(\textcolor{keywordtype}{void}* data, \textcolor{keywordtype}{void}* user\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00134}00134 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00141}\mbox{\hyperlink{structuvrpc__context}{00141}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__context}{uvrpc\_context}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00142}\mbox{\hyperlink{structuvrpc__context_aedb9ed5f972a21ce81e09ea496ec338e}{00142}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__context_aedb9ed5f972a21ce81e09ea496ec338e}{data}};                           }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00143}\mbox{\hyperlink{structuvrpc__context_a1136b9e99f6f2b4fe81f4597599a8fbf}{00143}}     \mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\_context\_cleanup\_t}} \mbox{\hyperlink{structuvrpc__context_a1136b9e99f6f2b4fe81f4597599a8fbf}{cleanup}};      }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00144}\mbox{\hyperlink{structuvrpc__context_a7bf5eac8dfe31f5d694f0b2c64e0a64d}{00144}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__context_a7bf5eac8dfe31f5d694f0b2c64e0a64d}{cleanup\_data}};                   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00145}\mbox{\hyperlink{structuvrpc__context_a2638891efb1b172d1195e7684f117f96}{00145}}     uint32\_t \mbox{\hyperlink{structuvrpc__context_a2638891efb1b172d1195e7684f117f96}{flags}};                       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00146}\mbox{\hyperlink{structuvrpc__context_a573870d953c5fdc8ae65647829296cb3}{00146}}     uint32\_t \mbox{\hyperlink{structuvrpc__context_a573870d953c5fdc8ae65647829296cb3}{reserved}};                    }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00147}\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{00147}} \} \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\_context\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00148}00148 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00161}00161 \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{group__ContextAPI_gacb2b86cd4c9a4076997f54085e03818c}{uvrpc\_context\_new}}(\textcolor{keywordtype}{void}* data);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00162}00162 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00171}00171 \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{group__ContextAPI_ga25f875304e174c915b572bc46320e9d6}{uvrpc\_context\_new\_with\_cleanup}}(\textcolor{keywordtype}{void}* data, \mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\_context\_cleanup\_t}} cleanup, \textcolor{keywordtype}{void}* cleanup\_data);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00172}00172 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00180}00180 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ContextAPI_gac511daa456d961be8b7e68bdc019a791}{uvrpc\_context\_free}}(\mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00181}00181 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00188}00188 \textcolor{keywordtype}{void}* \mbox{\hyperlink{group__ContextAPI_ga2db05f28b07941e325732e7fe20625b5}{uvrpc\_context\_get\_data}}(\mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00189}00189 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00192}00192 \textcolor{comment}{/* Forward declarations */}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00193}\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{00193}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config}} \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00194}\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{00194}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server}} \mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00195}\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{00195}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client}} \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00196}\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{00196}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher}} \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00197}\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{00197}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber}} \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00198}\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{00198}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request}} \mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00199}\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{00199}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response}} \mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00200}00200 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00207}\mbox{\hyperlink{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}{00207}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}{uvrpc\_handler\_t}})(\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}}* req, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00208}00208 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00215}\mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{00215}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}})(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00216}00216 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00223}\mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{00223}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\_connect\_callback\_t}})(\textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}}, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00224}00224 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00231}\mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{00231}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\_publish\_callback\_t}})(\textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}}, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00232}00232 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00241}\mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{00241}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\_subscribe\_callback\_t}})(\textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00242}00242 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00250}\mbox{\hyperlink{uvrpc_8h_a02d08deb67efc4ae6a3bdea477bae7a2}{00250}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvrpc_8h_a02d08deb67efc4ae6a3bdea477bae7a2}{uvrpc\_error\_callback\_t}})(\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\_error\_t}} \mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}}, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* error\_msg, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00251}00251 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00258}\mbox{\hyperlink{structuvrpc__config}{00258}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00259}\mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{00259}}     uv\_loop\_t* \mbox{\hyperlink{structuvrpc__config_a0e9c705f4f4839489f5f10b4e376000f}{loop}};                     }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00260}\mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{00260}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvrpc__config_a5ffafbc8108634285d979f65ac18a123}{address}};                       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00261}\mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{00261}}     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\_transport\_type}} \mbox{\hyperlink{structuvrpc__config_acc786c1fa413b85b98d4bec8b5588cd5}{transport}};      }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00262}\mbox{\hyperlink{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}{00262}}     \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\_comm\_type\_t}} \mbox{\hyperlink{structuvrpc__config_a8218f1c11aadceda8f659a68d1cd8a81}{comm\_type}};         }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00263}\mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{00263}}     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}} \mbox{\hyperlink{structuvrpc__config_a9ce8cac25a020e8624ec272286a118f2}{performance\_mode}};  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00264}\mbox{\hyperlink{structuvrpc__config_af659be884a080549286ec71d45d313ea}{00264}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__config_af659be884a080549286ec71d45d313ea}{pool\_size}};                       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00265}\mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{00265}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__config_a2ab79d7aa2945884dc926155fe9a4286}{max\_concurrent}};                  }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00266}\mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{00266}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__config_a5188e2a5e631a85cc8bbe61648e7692a}{max\_pending\_callbacks}};           }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00267}\mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{00267}}     uint64\_t \mbox{\hyperlink{structuvrpc__config_a5a93f83db4964b302ca5f5a08e3d9694}{timeout\_ms}};                 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00268}\mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{00268}}     uint32\_t \mbox{\hyperlink{structuvrpc__config_a7be0e350e05f6664e1370d084088fc7f}{msgid\_offset}};               }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00269}00269 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00270}00270 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00277}\mbox{\hyperlink{structuvrpc__request}{00277}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00278}\mbox{\hyperlink{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}{00278}}     \mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* \mbox{\hyperlink{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}{server}};   }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00279}\mbox{\hyperlink{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}{00279}}     uint32\_t \mbox{\hyperlink{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}{msgid}};           }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00280}\mbox{\hyperlink{structuvrpc__request_aa6e184a8325dc32fbbf89528fe9bfcd7}{00280}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvrpc__request_aa6e184a8325dc32fbbf89528fe9bfcd7}{method}};             }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00281}\mbox{\hyperlink{structuvrpc__request_a7bb10903abf7f2a7f606211b3ab36048}{00281}}     uint8\_t* \mbox{\hyperlink{structuvrpc__request_a7bb10903abf7f2a7f606211b3ab36048}{params}};          }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00282}\mbox{\hyperlink{structuvrpc__request_ae42e484197ebf744be24ef39e6c73c99}{00282}}     \textcolor{keywordtype}{size\_t} \mbox{\hyperlink{structuvrpc__request_ae42e484197ebf744be24ef39e6c73c99}{params\_size}};       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00283}\mbox{\hyperlink{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}{00283}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}{client\_ctx}};         }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00284}\mbox{\hyperlink{structuvrpc__request_a9d23d872963351c7ee449848e65c9837}{00284}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__request_a9d23d872963351c7ee449848e65c9837}{user\_data}};          }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00285}00285 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00286}00286 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00293}\mbox{\hyperlink{structuvrpc__response}{00293}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00294}\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{00294}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}};               }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00295}\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{00295}}     uint32\_t \mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}};           }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00296}\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{00296}}     int32\_t \mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}};       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00297}\mbox{\hyperlink{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}{00297}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvrpc__response_a3f38816ea2c105e21ee6998d3cd66e10}{error\_message}};      }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00298}\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{00298}}     uint8\_t* \mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}};          }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00299}\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{00299}}     \textcolor{keywordtype}{size\_t} \mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}};       }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00300}\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{00300}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}};          }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00301}00301 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00302}00302 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00332}00332 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gab2674a1d45c5780fc4f0141473b79013}{uvrpc\_config\_new}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00333}00333 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00339}00339 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ConfigAPI_ga02b1d0002541d4ef0d8699225f8e5fe3}{uvrpc\_config\_free}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00340}00340 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00348}00348 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gae89a78f07bd36c36e2ac460b52b28d4e}{uvrpc\_config\_set\_loop}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00349}00349 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00357}00357 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gacf6214d1d2df49c284074b1bd7450775}{uvrpc\_config\_set\_address}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* address);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00358}00358 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00366}00366 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga51256091cf9b945507076d8eff291d9f}{uvrpc\_config\_set\_transport}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\_transport\_type}} transport);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00367}00367 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00375}00375 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gac16cff3c468c837f91580fadc28761d9}{uvrpc\_config\_set\_comm\_type}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\_comm\_type\_t}} comm\_type);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00376}00376 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00384}00384 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga24aae189500f97db9a448503613f8f90}{uvrpc\_config\_set\_performance\_mode}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}} mode);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00385}00385 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00393}00393 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga2937d9ba73c21a566f1503f0dfb16d5b}{uvrpc\_config\_set\_pool\_size}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} pool\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00394}00394 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00402}00402 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_gad39a2be1a6038a7afebe848b67e0724e}{uvrpc\_config\_set\_max\_concurrent}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} max\_concurrent);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00403}00403 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00411}00411 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga9a3059095b78bcacc4c15c1ce94bd4f5}{uvrpc\_config\_set\_max\_pending\_callbacks}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, \textcolor{keywordtype}{int} max\_pending);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00412}00412 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00420}00420 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga9573301e91541787c8fa39eb4c0b9cb7}{uvrpc\_config\_set\_timeout}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uint64\_t timeout\_ms);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00421}00421 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00429}00429 \mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* \mbox{\hyperlink{group__ConfigAPI_ga1c648405d875cd146ae52e58cb5021e0}{uvrpc\_config\_set\_msgid\_offset}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config, uint32\_t msgid\_offset);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00430}00430 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00445}00445 \mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* \mbox{\hyperlink{group__ServerAPI_ga87bd379c5e75d0fc0e1a4857cc53482a}{uvrpc\_server\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00446}00446 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00453}00453 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ServerAPI_ga209b5f9a4a5635b21ee8ae5c64b8c674}{uvrpc\_server\_start}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00454}00454 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00462}00462 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ServerAPI_ga954fca340a3edce50c5279eec20e053d}{uvrpc\_server\_stop}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00463}00463 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00469}00469 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ServerAPI_ga7212ee2594ccf211aaa70633a23fbc65}{uvrpc\_server\_free}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00470}00470 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00480}00480 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ServerAPI_gafb0b4c350e56c93909067ea12d1cefa9}{uvrpc\_server\_register}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method, \mbox{\hyperlink{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}{uvrpc\_handler\_t}} handler, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00481}00481 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00488}00488 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ServerAPI_gad1d0a24ea024d981d8f8e4b806a5709b}{uvrpc\_server\_set\_context}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server, \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00489}00489 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00496}00496 \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{group__ServerAPI_ga5a584b68b5128541828eeb57e527a0b6}{uvrpc\_server\_get\_context}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00497}00497 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00504}00504 uint64\_t \mbox{\hyperlink{group__ServerAPI_gaa23f24c364aa1174d1791926433a1fb0}{uvrpc\_server\_get\_total\_requests}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00505}00505 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00512}00512 uint64\_t \mbox{\hyperlink{group__ServerAPI_ga0db659101ae7ed222dbf760b19bf42db}{uvrpc\_server\_get\_total\_responses}}(\mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00513}00513 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00522}00522 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ServerAPI_gaaedf61695a733f65ee8f7eb6cdcbcb84}{uvrpc\_response\_send}}(\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}}* req, \textcolor{keyword}{const} uint8\_t* result, \textcolor{keywordtype}{size\_t} result\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00523}00523 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00532}00532 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ServerAPI_gad13091e2b3b268255a7edf22f41d167d}{uvrpc\_response\_send\_error}}(\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}}* req, int32\_t error\_code, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* error\_message);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00533}00533 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00548}00548 \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* \mbox{\hyperlink{group__ClientAPI_gac6ae0fa0576a1917661a711feef6abca}{uvrpc\_client\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00549}00549 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00556}00556 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6bbddb4ed697561628f473190beb0778}{uvrpc\_client\_connect}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00557}00557 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00566}00566 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga50b3c9e4d78f8c5f7212ac423a232aa7}{uvrpc\_client\_connect\_with\_callback}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00567}00567                                          \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\_connect\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00568}00568 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00574}00574 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_gac55246e43dc3cbd60165ee1517a43ce0}{uvrpc\_client\_disconnect}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00575}00575 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00581}00581 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_ga57ce57d27900980d6b883a79e2064b61}{uvrpc\_client\_free}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00582}00582 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00589}00589 uv\_loop\_t* \mbox{\hyperlink{group__ClientAPI_gaa819744acd56567e16a34076ef8cf4ab}{uvrpc\_client\_get\_loop}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00590}00590 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00597}00597 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__ClientAPI_ga9d2a0fd06a2f299032127d5b47f54bf9}{uvrpc\_client\_set\_context}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00598}00598 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00605}00605 \mbox{\hyperlink{structuvrpc__context}{uvrpc\_context\_t}}* \mbox{\hyperlink{group__ClientAPI_gabeb066fc3f6d0cf47d7bcbab5eae3e50}{uvrpc\_client\_get\_context}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00606}00606 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00614}00614 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga28909c12ab7a5fc91f98ae2459067b98}{uvrpc\_client\_set\_max\_retries}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keywordtype}{int} max\_retries);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00615}00615 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00622}00622 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6af0c71bc47c6c0ab15be4a5e3bdcaf6}{uvrpc\_client\_get\_max\_retries}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00623}00623 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00635}00635 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00636}00636                        \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00637}00637                        \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00638}00638 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00650}00650 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga538d7541c4465c6bc24616281a0c23eb}{uvrpc\_client\_call\_no\_retry}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00651}00651                                 \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00652}00652                                 \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00653}00653 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00666}00666 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga03e1268b4ea3a33131982d2c790ce4ef}{uvrpc\_client\_call\_batch}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00667}00667                              \textcolor{keyword}{const} \textcolor{keywordtype}{char}** methods,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00668}00668                              \textcolor{keyword}{const} uint8\_t** params\_array,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00669}00669                              \textcolor{keywordtype}{size\_t}* params\_sizes,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00670}00670                              \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\_callback\_t}}* callbacks,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00671}00671                              \textcolor{keywordtype}{void}** contexts,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00672}00672                              \textcolor{keywordtype}{int} count);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00673}00673 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00681}00681 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga3fffaee0b22282270b7a234e2cd2539d}{uvrpc\_client\_set\_max\_concurrent}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client, \textcolor{keywordtype}{int} max\_concurrent);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00682}00682 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00689}00689 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__ClientAPI_ga71cc98cf4f74f367519494b6fddc45f8}{uvrpc\_client\_get\_pending\_count}}(\mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00690}00690 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00707}00707 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__RequestResponseAPI_gac01e498c688ddd313bb906d7a2c96a9f}{uvrpc\_request\_send\_response}}(\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}}* req, \textcolor{keywordtype}{int} status,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00708}00708                                   \textcolor{keyword}{const} uint8\_t* result, \textcolor{keywordtype}{size\_t} result\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00709}00709 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00715}00715 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__RequestResponseAPI_ga6d686f1046b32fec8532e550c9ec22ad}{uvrpc\_request\_free}}(\mbox{\hyperlink{structuvrpc__request}{uvrpc\_request\_t}}* req);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00716}00716 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00722}00722 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}{uvrpc\_response\_free}}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00723}00723 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00738}00738 \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* \mbox{\hyperlink{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}{uvrpc\_publisher\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00739}00739 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00746}00746 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}{uvrpc\_publisher\_start}}(\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* publisher);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00747}00747 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00753}00753 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}{uvrpc\_publisher\_stop}}(\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* publisher);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00754}00754 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00760}00760 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}{uvrpc\_publisher\_free}}(\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* publisher);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00761}00761 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00773}00773 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}{uvrpc\_publisher\_publish}}(\mbox{\hyperlink{structuvrpc__publisher}{uvrpc\_publisher\_t}}* publisher, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00774}00774                              \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00775}00775                              \mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\_publish\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00776}00776 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00783}00783 \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* \mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{uvrpc\_subscriber\_create}}(\mbox{\hyperlink{structuvrpc__config}{uvrpc\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00784}00784 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00791}00791 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{uvrpc\_subscriber\_connect}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00792}00792 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00798}00798 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\_subscriber\_disconnect}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00799}00799 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00805}00805 \textcolor{keywordtype}{void} \mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{uvrpc\_subscriber\_free}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00806}00806 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00816}00816 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{uvrpc\_subscriber\_subscribe}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic,}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00817}00817                                  \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\_subscribe\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00818}00818 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00826}00826 \textcolor{keywordtype}{int} \mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{uvrpc\_subscriber\_unsubscribe}}(\mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\_subscriber\_t}}* subscriber, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* topic);}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00827}00827 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00830}00830 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00831}00831 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00832}00832 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00833}00833 }
+\DoxyCodeLine{\Hypertarget{uvrpc_8h_source_l00834}00834 \textcolor{preprocessor}{\#endif }\textcolor{comment}{/* UVRPC\_H */}\textcolor{preprocessor}{}}
+
+\end{DoxyCode}

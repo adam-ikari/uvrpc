@@ -1,0 +1,134 @@
+\hypertarget{uvrpc__msgid_8c}{}\doxysection{src/uvrpc\+\_\+msgid.c File Reference}
+\label{uvrpc__msgid_8c}\index{src/uvrpc\_msgid.c@{src/uvrpc\_msgid.c}}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+free}} (\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\item 
+\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ \mbox{\hyperlink{uvrpc__msgid_8c_a119dfc4c63541db6b7550315be6a5ede}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+new}} (void)
+\item 
+void \mbox{\hyperlink{uvrpc__msgid_8c_a73aeadc5b317a416049ec636873fbc5e}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+set\+\_\+start}} (\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ctx, uint32\+\_\+t start\+\_\+seq)
+\item 
+uint32\+\_\+t \mbox{\hyperlink{uvrpc__msgid_8c_a932e18db85429d253aeb248bbc2effcc}{uvrpc\+\_\+msgid\+\_\+next}} (\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}\label{uvrpc__msgid_8c_a6fcca755fc4c066f532f7be6c3304837}} 
+\index{uvrpc\_msgid.c@{uvrpc\_msgid.c}!uvrpc\_msgid\_ctx\_free@{uvrpc\_msgid\_ctx\_free}}
+\index{uvrpc\_msgid\_ctx\_free@{uvrpc\_msgid\_ctx\_free}!uvrpc\_msgid.c@{uvrpc\_msgid.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_msgid\_ctx\_free()}{uvrpc\_msgid\_ctx\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+msgid\+\_\+ctx\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__msgid_8c_source_l00020}{20}} of file \mbox{\hyperlink{uvrpc__msgid_8c_source}{uvrpc\+\_\+msgid.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00020                                                   \{}
+\DoxyCodeLine{00021     \textcolor{keywordflow}{if} (ctx) \{}
+\DoxyCodeLine{00022         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(ctx);}
+\DoxyCodeLine{00023     \}}
+\DoxyCodeLine{00024 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__msgid_8c_a119dfc4c63541db6b7550315be6a5ede}\label{uvrpc__msgid_8c_a119dfc4c63541db6b7550315be6a5ede}} 
+\index{uvrpc\_msgid.c@{uvrpc\_msgid.c}!uvrpc\_msgid\_ctx\_new@{uvrpc\_msgid\_ctx\_new}}
+\index{uvrpc\_msgid\_ctx\_new@{uvrpc\_msgid\_ctx\_new}!uvrpc\_msgid.c@{uvrpc\_msgid.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_msgid\_ctx\_new()}{uvrpc\_msgid\_ctx\_new()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$ uvrpc\+\_\+msgid\+\_\+ctx\+\_\+new (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+UVRPC Message ID Encoding Implementation 
+
+Definition at line \mbox{\hyperlink{uvrpc__msgid_8c_source_l00010}{10}} of file \mbox{\hyperlink{uvrpc__msgid_8c_source}{uvrpc\+\_\+msgid.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00010                                              \{}
+\DoxyCodeLine{00011     \mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}* ctx = (\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}*)\mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\_msgid\_ctx\_t}}));}
+\DoxyCodeLine{00012     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00013 }
+\DoxyCodeLine{00014     ctx-\/>\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}} = 1;}
+\DoxyCodeLine{00015 }
+\DoxyCodeLine{00016     \textcolor{keywordflow}{return} ctx;}
+\DoxyCodeLine{00017 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__msgid_8h_source_l00022}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t\+::next\+\_\+seq}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{uvrpc__msgid_8c_a73aeadc5b317a416049ec636873fbc5e}\label{uvrpc__msgid_8c_a73aeadc5b317a416049ec636873fbc5e}} 
+\index{uvrpc\_msgid.c@{uvrpc\_msgid.c}!uvrpc\_msgid\_ctx\_set\_start@{uvrpc\_msgid\_ctx\_set\_start}}
+\index{uvrpc\_msgid\_ctx\_set\_start@{uvrpc\_msgid\_ctx\_set\_start}!uvrpc\_msgid.c@{uvrpc\_msgid.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_msgid\_ctx\_set\_start()}{uvrpc\_msgid\_ctx\_set\_start()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+msgid\+\_\+ctx\+\_\+set\+\_\+start (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{uint32\+\_\+t}]{start\+\_\+seq }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__msgid_8c_source_l00027}{27}} of file \mbox{\hyperlink{uvrpc__msgid_8c_source}{uvrpc\+\_\+msgid.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00027                                                                            \{}
+\DoxyCodeLine{00028     \textcolor{keywordflow}{if} (ctx) \{}
+\DoxyCodeLine{00029         ctx-\/>\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}} = start\_seq;}
+\DoxyCodeLine{00030     \}}
+\DoxyCodeLine{00031 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__msgid_8h_source_l00022}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t\+::next\+\_\+seq}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}.
+
+\mbox{\Hypertarget{uvrpc__msgid_8c_a932e18db85429d253aeb248bbc2effcc}\label{uvrpc__msgid_8c_a932e18db85429d253aeb248bbc2effcc}} 
+\index{uvrpc\_msgid.c@{uvrpc\_msgid.c}!uvrpc\_msgid\_next@{uvrpc\_msgid\_next}}
+\index{uvrpc\_msgid\_next@{uvrpc\_msgid\_next}!uvrpc\_msgid.c@{uvrpc\_msgid.c}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_msgid\_next()}{uvrpc\_msgid\_next()}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+msgid\+\_\+next (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__msgid__ctx__t}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__msgid_8c_source_l00034}{34}} of file \mbox{\hyperlink{uvrpc__msgid_8c_source}{uvrpc\+\_\+msgid.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00034                                                   \{}
+\DoxyCodeLine{00035     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00036 }
+\DoxyCodeLine{00037     uint32\_t msgid = ctx-\/>\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}}++;}
+\DoxyCodeLine{00038     }
+\DoxyCodeLine{00039     \textcolor{comment}{/* Wrap around on overflow (32-\/bit) */}}
+\DoxyCodeLine{00040     \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}} == 0) \{}
+\DoxyCodeLine{00041         ctx-\/>\mbox{\hyperlink{structuvrpc__msgid__ctx__t_a017c73b5ee9cc2210e4f7e2d4cc3a886}{next\_seq}} = 1;  \textcolor{comment}{/* Skip 0, start from 1 */}}
+\DoxyCodeLine{00042     \}}
+\DoxyCodeLine{00043     }
+\DoxyCodeLine{00044     \textcolor{keywordflow}{return} msgid;}
+\DoxyCodeLine{00045 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__msgid_8h_source_l00022}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+t\+::next\+\_\+seq}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}.
+

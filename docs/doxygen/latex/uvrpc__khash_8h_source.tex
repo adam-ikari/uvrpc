@@ -1,0 +1,105 @@
+\hypertarget{uvrpc__khash_8h_source}{}\doxysection{uvrpc\+\_\+khash.\+h}
+\label{uvrpc__khash_8h_source}\index{src/uvrpc\_khash.h@{src/uvrpc\_khash.h}}
+\mbox{\hyperlink{uvrpc__khash_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00001}00001 \textcolor{comment}{/* The MIT License}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00002}00002 \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00003}00003 \textcolor{comment}{   Copyright (c) 2008-\/2023 by Attractive Chaos <attractivechaos@outlook.com>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00004}00004 \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00005}00005 \textcolor{comment}{   Permission is hereby granted, free of charge, to any person obtaining}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00006}00006 \textcolor{comment}{   a copy of this software and associated documentation files (the}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00007}00007 \textcolor{comment}{   "{}Software"{}), to deal in the Software without restriction, including}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00008}00008 \textcolor{comment}{   without limitation the rights to use, copy, modify, merge, publish,}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00009}00009 \textcolor{comment}{   distribute, sublicense, and/or sell copies of the Software, and to}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00010}00010 \textcolor{comment}{   permit persons to whom the Software is furnished to do so, subject to}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00011}00011 \textcolor{comment}{   the following conditions:}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00012}00012 \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00013}00013 \textcolor{comment}{   The above copyright notice and this permission notice shall be}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00014}00014 \textcolor{comment}{   included in all copies or substantial portions of the Software.}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00015}00015 \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00016}00016 \textcolor{comment}{   THE SOFTWARE IS PROVIDED "{}AS IS"{}, WITHOUT WARRANTY OF ANY KIND,}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00017}00017 \textcolor{comment}{   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00018}00018 \textcolor{comment}{   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00019}00019 \textcolor{comment}{   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00020}00020 \textcolor{comment}{   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00021}00021 \textcolor{comment}{   ACTION OF CONTRACT, CONTRACT OR OTHERWISE, ARISING FROM, OUT OF OR}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00022}00022 \textcolor{comment}{   IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00023}00023 \textcolor{comment}{   SOFTWARE.}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00024}00024 \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00025}00025 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00026}00026 \textcolor{preprocessor}{\#ifndef \_\_AC\_KHASH\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00027}00027 \textcolor{preprocessor}{\#define \_\_AC\_KHASH\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00028}00028 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00029}00029 \textcolor{preprocessor}{\#define AC\_VERSION\_KHASH\_H "{}0.3.1"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00030}00030 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00031}00031 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00032}00032 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00033}00033 \textcolor{preprocessor}{\#include <limits.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00034}00034 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00035}00035 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00036}00036 \textcolor{preprocessor}{\#if UINTPTR\_MAX == 0xffffffffUL}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00037}00037 \textcolor{preprocessor}{\#define KH\_INT32\_T uint32\_t}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00038}00038 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00039}00039 \textcolor{preprocessor}{\#define KH\_INT32\_T uint64\_t}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00040}00040 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00041}00041 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00042}\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{00042}} \textcolor{keyword}{typedef} uint32\_t \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00043}\mbox{\hyperlink{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}{00043}} \textcolor{keyword}{typedef} uint64\_t \mbox{\hyperlink{uvrpc__khash_8h_ab8233ec19035a6be61f3111b5537bbab}{khint64\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00044}00044 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00045}00045 \textcolor{preprocessor}{\#define \_\_ac\_isempty(flag, i) ((flag[i>>4]>>((i\&0xfU)<<1))\&(0x3))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00046}00046 \textcolor{preprocessor}{\#define \_\_ac\_isdel(flag, i) ((flag[i>>4]>>((i\&0xfU)<<1))\&(0x2))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00047}00047 \textcolor{preprocessor}{\#define \_\_ac\_iseither(flag, i) ((flag[i>>4]>>((i\&0xfU)<<1))\&(0x1))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00048}00048 \textcolor{preprocessor}{\#define \_\_ac\_set\_isdel\_false(flag, i) (flag[i>>4]\&=\string~(0x2<<((i\&0xfU)<<1)))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00049}00049 \textcolor{preprocessor}{\#define \_\_ac\_set\_isempty\_false(flag, i) (flag[i>>4]\&=\string~(0x3<<((i\&0xfU)<<1)))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00050}00050 \textcolor{preprocessor}{\#define \_\_ac\_set\_isdel\_true(flag, i) (flag[i>>4]|=(0x2<<((i\&0xfU)<<1)))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00051}00051 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00052}00052 \textcolor{preprocessor}{\#define \_\_ac\_fsize(m) ((m) < 8? 8 : (m))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00053}00053 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00054}00054 \textcolor{preprocessor}{\#define \_\_ac\_hash(p, k, m, s, r, d, h) (khint32\_t)((s * h) + (khint32\_t)((khint64\_t)(p) * (r >> (d << 2)))) + (d + 2))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00055}00055 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00056}00056 \textcolor{preprocessor}{\#define kroundup32(x) (-\/-\/(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00057}00057 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00058}00058 \textcolor{preprocessor}{\#define \_\_ac\_inc(p, v) ((p)-\/>v++)}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00059}00059 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00060}\mbox{\hyperlink{structkhash__t}{00060}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00061}\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{00061}}     \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} *\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00062}\mbox{\hyperlink{structkhash__t_a178c5ec486f3d7398000b4b789f82aae}{00062}}     uint32\_t \mbox{\hyperlink{structkhash__t_a178c5ec486f3d7398000b4b789f82aae}{n\_buckets}}, size, n\_occupied, upper\_bound;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00063}00063 \} \mbox{\hyperlink{structkhash__t}{khash\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00064}00064 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00065}\mbox{\hyperlink{uvrpc__khash_8h_a486116676ed24e6a8350a6c1244019ed}{00065}} \textcolor{keyword}{static} \textcolor{keyword}{inline} \textcolor{keywordtype}{double} \mbox{\hyperlink{uvrpc__khash_8h_a486116676ed24e6a8350a6c1244019ed}{\_\_ac\_hash\_upperbound}}(\textcolor{keywordtype}{double} load\_factor) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00066}00066     \textcolor{keywordflow}{return} load\_factor -\/ load\_factor / 8;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00067}00067 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00068}00068 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00069}\mbox{\hyperlink{uvrpc__khash_8h_aa0911decb17f4b80d44cd95e9ace8ec8}{00069}} \textcolor{keyword}{static} \textcolor{keyword}{inline} uint32\_t \mbox{\hyperlink{uvrpc__khash_8h_aa0911decb17f4b80d44cd95e9ace8ec8}{\_\_ac\_hash\_choose\_kh}}(uint32\_t n\_buckets, uint32\_t size) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00070}00070     \textcolor{keywordflow}{if} (n\_buckets >> 2 > size) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00071}00071         \textcolor{keywordflow}{if} (n\_buckets >> 3 > size) \textcolor{keywordflow}{return} 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00072}00072         \textcolor{keywordflow}{return} 2;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00073}00073     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00074}00074     \textcolor{keywordflow}{return} 3;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00075}00075 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00076}00076 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00077}\mbox{\hyperlink{uvrpc__khash_8h_a23c42ecf4347e6976435675055a88b4a}{00077}} \textcolor{keyword}{static} \textcolor{keyword}{inline} \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} \mbox{\hyperlink{uvrpc__khash_8h_a23c42ecf4347e6976435675055a88b4a}{\_\_ac\_hash\_resize}}(\mbox{\hyperlink{structkhash__t}{khash\_t}} *h, uint32\_t *new\_buckets, uint32\_t *new\_flags, uint32\_t new\_n\_buckets, uint32\_t n\_occupied, uint32\_t size, uint32\_t s, uint32\_t r, uint32\_t d, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} *keys, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} *vals, \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} (*hash\_func)(\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}})) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00078}00078     \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} k, i;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00079}00079     \textcolor{keywordflow}{for} (k = 0; k != n\_buckets; ++k) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00080}00080         \textcolor{keywordflow}{if} (\_\_ac\_iseither(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}}, k)) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00081}00081             new\_buckets[k] = keys[k];}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00082}00082             new\_flags[k] = 0x1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00083}00083         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00084}00084     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00085}00085     memset(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}}, 0xaa, \_\_ac\_fsize(h-\/>\mbox{\hyperlink{structkhash__t_a178c5ec486f3d7398000b4b789f82aae}{n\_buckets}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00086}00086     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(h-\/>\mbox{\hyperlink{structkhash__t_a0e96b1a9886a6d4117160745c4d545c6}{flags}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00087}00087     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(new\_flags);}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00088}00088     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(new\_buckets);}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00089}00089     \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00090}00090 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00091}00091 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00092}00092 \textcolor{comment}{/* Simple 32-\/bit hash (MurmurHash3 variant) */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00093}\mbox{\hyperlink{uvrpc__khash_8h_a225a7d47af462aa16b05ede21f60cf4e}{00093}} \textcolor{keyword}{static} \textcolor{keyword}{inline} \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} \mbox{\hyperlink{uvrpc__khash_8h_a225a7d47af462aa16b05ede21f60cf4e}{\_\_ac\_X31\_hash\_string}}(\textcolor{keyword}{const} \textcolor{keywordtype}{char} *s) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00094}00094     \mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}} h = (\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}})*s;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00095}00095     \textcolor{keywordflow}{if} (h) \textcolor{keywordflow}{for} (++s ; *s; ++s) h = (h << 5) -\/ h + (\mbox{\hyperlink{uvrpc__khash_8h_af0167143a776be93678a7389b2f230d3}{khint32\_t}})*s;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00096}00096     \textcolor{keywordflow}{return} h;}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00097}00097 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00098}00098 }
+\DoxyCodeLine{\Hypertarget{uvrpc__khash_8h_source_l00099}00099 \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

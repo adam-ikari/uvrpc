@@ -1,0 +1,136 @@
+\hypertarget{group__RequestResponseAPI}{}\doxysection{Request/\+Response API}
+\label{group__RequestResponseAPI}\index{Request/Response API@{Request/Response API}}
+
+
+Functions for handling requests and responses.  
+
+
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_ga6d686f1046b32fec8532e550c9ec22ad}{uvrpc\+\_\+request\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req)
+\begin{DoxyCompactList}\small\item\em Free a request object. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_gac01e498c688ddd313bb906d7a2c96a9f}{uvrpc\+\_\+request\+\_\+send\+\_\+response}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, int status, const uint8\+\_\+t $\ast$result, size\+\_\+t result\+\_\+size)
+\begin{DoxyCompactList}\small\item\em Send a response to a request (deprecated, use uvrpc\+\_\+response\+\_\+send) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}{uvrpc\+\_\+response\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp)
+\begin{DoxyCompactList}\small\item\em Free a response object. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for handling requests and responses. 
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{group__RequestResponseAPI_ga6d686f1046b32fec8532e550c9ec22ad}\label{group__RequestResponseAPI_ga6d686f1046b32fec8532e550c9ec22ad}} 
+\index{Request/Response API@{Request/Response API}!uvrpc\_request\_free@{uvrpc\_request\_free}}
+\index{uvrpc\_request\_free@{uvrpc\_request\_free}!Request/Response API@{Request/Response API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_request\_free()}{uvrpc\_request\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+request\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$}]{req }\end{DoxyParamCaption})}
+
+
+
+Free a request object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em req} & Request object \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00384}{384}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00384                                               \{}
+\DoxyCodeLine{00385     \textcolor{keywordflow}{if} (!req) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00386     \textcolor{comment}{/* Note: method and params point to frame data, don't free them here */}}
+\DoxyCodeLine{00387 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{group__RequestResponseAPI_gac01e498c688ddd313bb906d7a2c96a9f}\label{group__RequestResponseAPI_gac01e498c688ddd313bb906d7a2c96a9f}} 
+\index{Request/Response API@{Request/Response API}!uvrpc\_request\_send\_response@{uvrpc\_request\_send\_response}}
+\index{uvrpc\_request\_send\_response@{uvrpc\_request\_send\_response}!Request/Response API@{Request/Response API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_request\_send\_response()}{uvrpc\_request\_send\_response()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+request\+\_\+send\+\_\+response (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$}]{req,  }\item[{int}]{status,  }\item[{const uint8\+\_\+t $\ast$}]{result,  }\item[{size\+\_\+t}]{result\+\_\+size }\end{DoxyParamCaption})}
+
+
+
+Send a response to a request (deprecated, use uvrpc\+\_\+response\+\_\+send) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em req} & Request object \\
+\hline
+{\em status} & Response status \\
+\hline
+{\em result} & Response data \\
+\hline
+{\em result\+\_\+size} & Size of response data \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{356}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00357                                                                              \{}
+\DoxyCodeLine{00358     \textcolor{keywordflow}{if} (!req || !req-\/>\mbox{\hyperlink{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}{server}} || !req-\/>\mbox{\hyperlink{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}{client\_ctx}}) \{}
+\DoxyCodeLine{00359         fprintf(stderr, \textcolor{stringliteral}{"{}[SERVER] Invalid request or client\_ctx is NULL\(\backslash\)n"{}});}
+\DoxyCodeLine{00360         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00361     \}}
+\DoxyCodeLine{00362 }
+\DoxyCodeLine{00363     \mbox{\hyperlink{structuvrpc__server}{uvrpc\_server\_t}}* server = req-\/>\mbox{\hyperlink{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}{server}};}
+\DoxyCodeLine{00364 }
+\DoxyCodeLine{00365     \textcolor{comment}{/* Encode response */}}
+\DoxyCodeLine{00366     uint8\_t* resp\_data = NULL;}
+\DoxyCodeLine{00367     \textcolor{keywordtype}{size\_t} resp\_size = 0;}
+\DoxyCodeLine{00368 }
+\DoxyCodeLine{00369     \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__flatbuffers_8c_a978c34d8fcb3413cca2f439364f654b3}{uvrpc\_encode\_response}}(req-\/>\mbox{\hyperlink{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}{msgid}}, result, result\_size,}
+\DoxyCodeLine{00370                               \&resp\_data, \&resp\_size) == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{00371         \textcolor{comment}{/* Send response via UVBus */}}
+\DoxyCodeLine{00372         \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{structuvbus}{uvbus}} = server-\/>\mbox{\hyperlink{structuvrpc__server_a6b4dcf26ce80972b56d4b5aa5651d0b4}{uvbus}};}
+\DoxyCodeLine{00373         \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} err = \mbox{\hyperlink{uvbus_8h_ab2065c287bb4a964378c0a53d8803475}{uvbus\_send\_to}}(\mbox{\hyperlink{structuvbus}{uvbus}}, resp\_data, resp\_size, req-\/>\mbox{\hyperlink{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}{client\_ctx}});}
+\DoxyCodeLine{00374         \textcolor{keywordflow}{if} (err == \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}}) \{}
+\DoxyCodeLine{00375             server-\/>\mbox{\hyperlink{structuvrpc__server_a215d2edd99a588ec00ec4d22a0f19ca3}{total\_responses}}++;}
+\DoxyCodeLine{00376         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00377             fprintf(stderr, \textcolor{stringliteral}{"{}[SERVER] Failed to send response: \%d\(\backslash\)n"{}}, err);}
+\DoxyCodeLine{00378         \}}
+\DoxyCodeLine{00379         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(resp\_data);}
+\DoxyCodeLine{00380     \}}
+\DoxyCodeLine{00381 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc_8h_source_l00283}{uvrpc\+\_\+request\+::client\+\_\+ctx}}, \mbox{\hyperlink{uvrpc_8h_source_l00279}{uvrpc\+\_\+request\+::msgid}}, \mbox{\hyperlink{uvrpc_8h_source_l00278}{uvrpc\+\_\+request\+::server}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00067}{uvrpc\+\_\+server\+::total\+\_\+responses}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00053}{uvrpc\+\_\+server\+::uvbus}}, \mbox{\hyperlink{uvbus_8h_source_l00039}{UVBUS\+\_\+\+OK}}, \mbox{\hyperlink{uvbus_8c_source_l00242}{uvbus\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00047}{uvrpc\+\_\+encode\+\_\+response()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}, and \mbox{\hyperlink{uvrpc_8h_source_l00043}{UVRPC\+\_\+\+OK}}.
+
+\mbox{\Hypertarget{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}\label{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}} 
+\index{Request/Response API@{Request/Response API}!uvrpc\_response\_free@{uvrpc\_response\_free}}
+\index{uvrpc\_response\_free@{uvrpc\_response\_free}!Request/Response API@{Request/Response API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_response\_free()}{uvrpc\_response\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+response\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$}]{resp }\end{DoxyParamCaption})}
+
+
+
+Free a response object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em resp} & Response object \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__client_8c_source_l00539}{539}} of file \mbox{\hyperlink{uvrpc__client_8c_source}{uvrpc\+\_\+client.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00539                                                  \{}
+\DoxyCodeLine{00540     \textcolor{keywordflow}{if} (!resp) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00541     \textcolor{comment}{/* Note: error and result point to frame data, don't free them here */}}
+\DoxyCodeLine{00542 \}}
+
+\end{DoxyCode}

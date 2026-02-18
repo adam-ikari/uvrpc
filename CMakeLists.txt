@@ -229,6 +229,7 @@ add_subdirectory(benchmark)
     create_example_target(uvbus_demo)
     create_example_target(uvbus_server_only)
     create_example_target(uvbus_client_only)
+    create_example_target(complete_example)
 endif()
 
 # Print configuration summary

@@ -1,0 +1,643 @@
+\hypertarget{uvrpc__async_8c_source}{}\doxysection{uvrpc\+\_\+async.\+c}
+\label{uvrpc__async_8c_source}\index{src/uvrpc\_async.c@{src/uvrpc\_async.c}}
+\mbox{\hyperlink{uvrpc__async_8c}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00012}00012 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_async.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00013}00013 \textcolor{preprocessor}{\#include "{}../include/uvrpc\_allocator.h"{}}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00014}00014 \textcolor{preprocessor}{\#include <setjmp.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00015}00015 \textcolor{preprocessor}{\#include <stdio.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00016}00016 \textcolor{preprocessor}{\#include <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00017}00017 \textcolor{preprocessor}{\#include <string.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00018}00018 \textcolor{preprocessor}{\#include <time.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00019}00019 \textcolor{preprocessor}{\#include <math.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00020}00020 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00021}00021 \textcolor{preprocessor}{\#define UVRPC\_MAX\_ASYNC\_CALLS 100}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00022}00022 \textcolor{preprocessor}{\#define UVRPC\_MAX\_CONCURRENT\_CALLS 20}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00023}00023 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00024}00024 \textcolor{comment}{/* Retry context for timer-\/based retry */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00025}\mbox{\hyperlink{structretry__context}{00025}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structretry__context}{retry\_context}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00026}\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{00026}}     \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* \mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00027}\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{00027}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00028}\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{00028}}     uint8\_t* \mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00029}\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{00029}}     \textcolor{keywordtype}{size\_t} \mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00030}\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{00030}}     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** \mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00031}\mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{00031}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00032}\mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{00032}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\_retries}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00033}\mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{00033}}     uint64\_t \mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\_delay\_ms}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00034}\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{00034}}     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* \mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00035}\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{00035}}     uv\_timer\_t \mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00036}\mbox{\hyperlink{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}{00036}} \} \mbox{\hyperlink{uvrpc__async_8c_aeea5bb492f8f5c8149bf9c3f0eb93b19}{retry\_context\_t}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00037}00037 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00038}00038 \textcolor{comment}{/* Timer callback for retry delay */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00039}\mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{00039}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\_delay\_callback}}(uv\_timer\_t* handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00040}00040     \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = (\mbox{\hyperlink{structretry__context}{retry\_context\_t}}*)handle-\/>data;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00041}00041 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00042}00042     \textcolor{comment}{/* Retry the call */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00043}00043     \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}},}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00044}00044                            retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}}, retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00045}00045 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00046}00046     \textcolor{comment}{/* Cleanup retry context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00047}00047     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00048}00048     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00049}00049     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00050}00050 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00051}00051 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00052}00052 \textcolor{comment}{/* Async context structure */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00053}\mbox{\hyperlink{structuvrpc__async__ctx}{00053}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00054}\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{00054}}     uv\_loop\_t* \mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00055}\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{00055}}     \mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}} \mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00056}\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{00056}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00057}\mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{00057}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\_count}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00058}\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{00058}}     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* \mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[UVRPC\_MAX\_ASYNC\_CALLS];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00059}\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{00059}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00060}\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{00060}}     uint64\_t \mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00061}\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{00061}}     uv\_timer\_t \mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00062}\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{00062}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00063}00063     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00064}00064     \textcolor{comment}{/* For concurrent operations */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00065}\mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{00065}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\_count}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00066}\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{00066}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00067}\mbox{\hyperlink{structuvrpc__async__ctx_a7a47145a16a1dbb9478070171d6defe9}{00067}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a7a47145a16a1dbb9478070171d6defe9}{concurrent\_indices}}[UVRPC\_MAX\_CONCURRENT\_CALLS];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00068}\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{00068}}     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* \mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[UVRPC\_MAX\_CONCURRENT\_CALLS];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00069}\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{00069}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00070}\mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{00070}}     \mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}} \mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\_jmp\_buf}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00071}00071 \};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00072}00072 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00073}00073 \textcolor{comment}{/* Internal wrapper for response callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00074}\mbox{\hyperlink{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}{00074}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}{async\_response\_callback}}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00075}00075     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00076}00076     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00077}00077     \textcolor{keywordflow}{if} (async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} < 0 || async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} >= UVRPC\_MAX\_ASYNC\_CALLS) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00078}00078         \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00079}00079     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00080}00080     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00081}00081     \textcolor{comment}{/* Store result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00082}00082     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* result = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00083}00083     \textcolor{keywordflow}{if} (!result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00084}00084         longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00085}00085     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00086}00086     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00087}00087     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}{status}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00088}00088     result-\/>\mbox{\hyperlink{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}{msgid}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00089}00089     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00090}00090     result-\/>\mbox{\hyperlink{structuvrpc__async__result_afad95aa99a8982fb81c0da99b466927e}{user\_data}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00091}00091     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00092}00092     \textcolor{keywordflow}{if} (resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} \&\& resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00093}00093         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00094}00094         \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00095}00095             memcpy(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00096}00096             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00097}00097         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00098}00098             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00099}00099         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00100}00100     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00101}00101         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00102}00102         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00103}00103     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00104}00104     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00105}00105     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}}] = result;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00106}00106     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00107}00107     \textcolor{comment}{/* Jump back to continue execution */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00108}00108     longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00109}00109 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00110}00110 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00111}00111 \textcolor{comment}{/* Timeout callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00112}\mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{00112}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\_callback}}(uv\_timer\_t* handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00113}00113     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)handle-\/>data;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00114}00114     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00115}00115     longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00116}00116 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00117}00117 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00118}00118 \textcolor{comment}{/* Create async context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00119}\mbox{\hyperlink{uvrpc__async_8h_af5e67db8b81c9cf743d65ad8622e4bee}{00119}} \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* \mbox{\hyperlink{uvrpc__async_8c_af5e67db8b81c9cf743d65ad8622e4bee}{uvrpc\_async\_ctx\_new}}(uv\_loop\_t* loop) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00120}00120     \textcolor{keywordflow}{if} (!loop) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00121}00121     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00122}00122     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00123}00123     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00124}00124     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00125}00125     memset(ctx, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00126}00126     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}} = loop;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00127}00127     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00128}00128     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\_count}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00129}00129     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00130}00130     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00131}00131     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00132}00132     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00133}00133     \textcolor{keywordflow}{return} ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00134}00134 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00135}00135 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00136}00136 \textcolor{comment}{/* Free async context */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00137}\mbox{\hyperlink{uvrpc__async_8h_af0c1200e839eaa96975912b923cf0b10}{00137}} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_af0c1200e839eaa96975912b923cf0b10}{uvrpc\_async\_ctx\_free}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00138}00138     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00139}00139     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00140}00140     \textcolor{comment}{/* Free pending results */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00141}00141     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00142}00142         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00143}00143             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00144}00144             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00145}00145         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00146}00146     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00147}00147     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00148}00148     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00149}00149 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00150}00150 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00151}00151 \textcolor{comment}{/* Execute async block */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00152}\mbox{\hyperlink{uvrpc__async_8h_a1fd4943221a9e9c2bdbf0fad59164d1f}{00152}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a1fd4943221a9e9c2bdbf0fad59164d1f}{uvrpc\_async\_exec}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx, uint64\_t timeout\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00153}00153     \textcolor{keywordflow}{if} (!ctx || ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}}) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00154}00154     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00155}00155     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00156}00156     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} = timeout\_ms;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00157}00157     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00158}00158     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00159}00159     \textcolor{comment}{/* Start timeout timer if specified */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00160}00160     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00161}00161         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00162}00162         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}.data = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00163}00163         uv\_timer\_start(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00164}00164     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00165}00165     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00166}00166     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00167}00167 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00168}00168 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00169}00169 \textcolor{comment}{/* Client call with async/await */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00170}\mbox{\hyperlink{uvrpc__async_8h_a091c1254b2fe56b67146236cb6927907}{00170}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx, \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00171}00171                              \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method, \textcolor{keyword}{const} uint8\_t* params,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00172}00172                              \textcolor{keywordtype}{size\_t} params\_size, \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00173}00173     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00174}00174         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00175}00175     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00176}00176     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00177}00177     \textcolor{keywordflow}{if} (!ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00178}00178         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00179}00179     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00180}00180     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00181}00181     \textcolor{comment}{/* Find free slot for result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00182}00182     \textcolor{keywordtype}{int} slot = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00183}00183     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00184}00184         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] == NULL) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00185}00185             slot = i;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00186}00186             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00187}00187         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00188}00188     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00189}00189     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00190}00190     \textcolor{keywordflow}{if} (slot < 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00191}00191         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00192}00192     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00193}00193     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00194}00194     \textcolor{comment}{/* Set current call index */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00195}00195     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = slot;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00196}00196     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00197}00197     \textcolor{comment}{/* Save jump point */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00198}00198     \textcolor{keywordtype}{int} jump\_status = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00199}00199     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00200}00200     \textcolor{keywordflow}{if} (jump\_status == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00201}00201         \textcolor{comment}{/* First call: make RPC request */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00202}00202         \textcolor{keywordtype}{int} call\_status = \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(client, method, params, params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00203}00203                                              \mbox{\hyperlink{uvrpc__async_8c_ae60f2ee4078fa5f9f2ad535a3a0d67a4}{async\_response\_callback}}, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00204}00204         \textcolor{keywordflow}{if} (call\_status != \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00205}00205             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00206}00206             \textcolor{keywordflow}{return} call\_status;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00207}00207         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00208}00208         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00209}00209         \textcolor{comment}{/* Run event loop to wait for response */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00210}00210         \textcolor{keywordflow}{while} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot] == NULL \&\& !ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00211}00211             uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00212}00212         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00213}00213         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00214}00214         \textcolor{comment}{/* This shouldn't happen, but handle it */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00215}00215         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00216}00216         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00217}00217     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00218}00218         \textcolor{comment}{/* Jump back from callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00219}00219         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00220}00220         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00221}00221         \textcolor{keywordflow}{if} (jump\_status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00222}00222             \textcolor{comment}{/* Handle timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00223}00223             \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00224}00224                 uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00225}00225                 uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00226}00226             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00227}00227             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00228}00228         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00229}00229         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00230}00230         \textcolor{comment}{/* Return result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00231}00231         *result = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00232}00232         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[slot] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00233}00233         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00234}00234         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00235}00235     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00236}00236 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00237}00237 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00238}00238 \textcolor{comment}{/* Free async result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00239}\mbox{\hyperlink{uvrpc__async_8h_ac6016a31e1508699df06b67375172aca}{00239}} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00240}00240     \textcolor{keywordflow}{if} (!result) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00241}00241     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00242}00242     \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00243}00243         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00244}00244     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00245}00245     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00246}00246     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00247}00247 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00248}00248 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00249}00249 \textcolor{comment}{/* Callback for concurrent operations */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00250}\mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{00250}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\_callback}}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp, \textcolor{keywordtype}{void}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00251}00251     \mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* async\_ctx = (\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}*)ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00252}00252     \textcolor{keywordtype}{int} index = (int)(intptr\_t)resp-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00253}00253     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00254}00254     \textcolor{comment}{/* Store result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00255}00255     \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}* result = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00256}00256     \textcolor{keywordflow}{if} (!result) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00257}00257     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00258}00258     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}{status}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a1dd0f33ddb517085cbeecec5c4d912a9}{status}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00259}00259     result-\/>\mbox{\hyperlink{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}{msgid}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a726b2a490deb94abbf28263225d1a9da}{msgid}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00260}00260     result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a05774c32d7b54341f17bdb83c2908bfb}{error\_code}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00261}00261     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00262}00262     \textcolor{keywordflow}{if} (resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}} \&\& resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}} > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00263}00263         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00264}00264         \textcolor{keywordflow}{if} (result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00265}00265             memcpy(result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a3969f497758135051175c666bf7f0474}{result}}, resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00266}00266             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = resp-\/>\mbox{\hyperlink{structuvrpc__response_a18f53ae652916e2fccdfb1872f6d6e22}{result\_size}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00267}00267         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00268}00268             result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00269}00269         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00270}00270     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00271}00271         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}} = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00272}00272         result-\/>\mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\_size}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00273}00273     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00274}00274     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00275}00275     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[index] = result;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00276}00276     async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}}++;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00277}00277     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00278}00278     \textcolor{comment}{/* For any() -\/ jump back immediately */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00279}00279     \textcolor{keywordflow}{if} (!async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} \&\& async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} >= 1) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00280}00280         async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00281}00281         longjmp(async\_ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\_jmp\_buf}}, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00282}00282     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00283}00283 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00284}00284 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00285}00285 \textcolor{comment}{/* Timeout callback for all() */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00286}\mbox{\hyperlink{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}{00286}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}{all\_timeout\_callback}}(uv\_timer\_t* handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00287}00287     \textcolor{keywordtype}{int}* timed\_out = (\textcolor{keywordtype}{int}*)handle-\/>data;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00288}00288     *timed\_out = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00289}00289 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00290}00290 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00291}00291 \textcolor{comment}{/* Promise.all -\/ wait for all concurrent calls to complete */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00292}\mbox{\hyperlink{uvrpc__async_8h_a1bd67863159e4e483f67e3d12630172a}{00292}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a1bd67863159e4e483f67e3d12630172a}{uvrpc\_async\_all}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00293}00293                      \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}** clients,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00294}00294                      \textcolor{keyword}{const} \textcolor{keywordtype}{char}** methods,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00295}00295                      \textcolor{keyword}{const} uint8\_t** params\_array,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00296}00296                      \textcolor{keywordtype}{size\_t}* params\_sizes,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00297}00297                      \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}*** results,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00298}00298                      \textcolor{keywordtype}{int} count,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00299}00299                      uint64\_t timeout\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00300}00300     \textcolor{keywordflow}{if} (!ctx || !clients || !methods || !params\_array || !params\_sizes || !results) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00301}00301         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00302}00302     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00303}00303     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00304}00304     \textcolor{keywordflow}{if} (count <= 0 || count > UVRPC\_MAX\_CONCURRENT\_CALLS) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00305}00305         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00306}00306     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00307}00307     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00308}00308     \textcolor{comment}{/* Initialize concurrent state */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00309}00309     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\_count}} = count;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00310}00310     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00311}00311     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00312}00312     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00313}00313         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00314}00314     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00315}00315     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00316}00316     \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00317}00317     uv\_timer\_t timeout\_timer;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00318}00318     \textcolor{keywordtype}{int} timed\_out = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00319}00319     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00320}00320         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&timeout\_timer);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00321}00321         timeout\_timer.data = \&timed\_out;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00322}00322         uv\_timer\_start(\&timeout\_timer, \mbox{\hyperlink{uvrpc__async_8c_af9f6d75709100fed4490cacff3802e5e}{all\_timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00323}00323     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00324}00324     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00325}00325     \textcolor{comment}{/* Start all concurrent calls */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00326}00326     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00327}00327         \mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}* resp\_wrapper = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__response}{uvrpc\_response\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00328}00328         resp\_wrapper-\/>\mbox{\hyperlink{structuvrpc__response_a30ad243e92c9d04871e45ddd7ddb8646}{user\_data}} = (\textcolor{keywordtype}{void}*)(intptr\_t)i;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00329}00329         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00330}00330         \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(clients[i], methods[i], params\_array[i], params\_sizes[i],}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00331}00331                           \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\_callback}}, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00332}00332     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00333}00333     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00334}00334     \textcolor{comment}{/* Wait for all to complete */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00335}00335     \textcolor{keywordflow}{while} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} < count \&\& !timed\_out) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00336}00336         uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00337}00337     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00338}00338     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00339}00339     \textcolor{comment}{/* Stop timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00340}00340     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00341}00341         uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00342}00342         uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00343}00343     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00344}00344     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00345}00345     \textcolor{keywordflow}{if} (timed\_out) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00346}00346         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00347}00347     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00348}00348     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00349}00349     \textcolor{comment}{/* Allocate results array */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00350}00350     *results = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}*) * count);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00351}00351     \textcolor{keywordflow}{if} (!*results) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00352}00352         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00353}00353     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00354}00354     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00355}00355     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00356}00356         (*results)[i] = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00357}00357         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00358}00358     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00359}00359     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00360}00360     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00361}00361 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00362}00362 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00363}00363 \textcolor{comment}{/* Timeout callback for any() */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00364}\mbox{\hyperlink{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}{00364}} \textcolor{keyword}{static} \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}{any\_timeout\_callback}}(uv\_timer\_t* handle) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00365}00365     \textcolor{keywordtype}{int}* timed\_out = (\textcolor{keywordtype}{int}*)handle-\/>data;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00366}00366     *timed\_out = 1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00367}00367 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00368}00368 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00369}00369 \textcolor{comment}{/* Promise.any -\/ wait for any one concurrent call to complete */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00370}\mbox{\hyperlink{uvrpc__async_8h_a7e9365313fb062aa8fc25a3fb66ec4ad}{00370}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a7e9365313fb062aa8fc25a3fb66ec4ad}{uvrpc\_async\_any}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00371}00371                      \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}** clients,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00372}00372                      \textcolor{keyword}{const} \textcolor{keywordtype}{char}** methods,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00373}00373                      \textcolor{keyword}{const} uint8\_t** params\_array,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00374}00374                      \textcolor{keywordtype}{size\_t}* params\_sizes,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00375}00375                      \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** result,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00376}00376                      \textcolor{keywordtype}{int}* completed\_index,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00377}00377                      \textcolor{keywordtype}{int} count,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00378}00378                      uint64\_t timeout\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00379}00379     \textcolor{keywordflow}{if} (!ctx || !clients || !methods || !params\_array || !params\_sizes || !result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00380}00380         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00381}00381     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00382}00382     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00383}00383     \textcolor{keywordflow}{if} (count <= 0 || count > UVRPC\_MAX\_CONCURRENT\_CALLS) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00384}00384         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00385}00385     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00386}00386     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00387}00387     \textcolor{comment}{/* Initialize concurrent state */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00388}00388     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6edb5cf3b4d4e1611da962a73f5563a4}{concurrent\_count}} = count;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00389}00389     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ad3a7ee03809a3181482360920216ce5b}{completed\_count}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00390}00390     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00391}00391     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00392}00392         ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00393}00393     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00394}00394     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00395}00395     \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00396}00396     uv\_timer\_t timeout\_timer;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00397}00397     \textcolor{keywordtype}{int} timed\_out = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00398}00398     \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00399}00399         uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&timeout\_timer);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00400}00400         timeout\_timer.data = \&timed\_out;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00401}00401         uv\_timer\_start(\&timeout\_timer, \mbox{\hyperlink{uvrpc__async_8c_a4e1e6dcbde63db05aaa74d3b6dd27745}{any\_timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00402}00402     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00403}00403     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00404}00404     \textcolor{comment}{/* Set jump point */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00405}00405     \textcolor{keywordtype}{int} jump\_status = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a28c23b3fc1bdb5d0c33ac0c68146ec76}{any\_jmp\_buf}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00406}00406     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00407}00407     \textcolor{keywordflow}{if} (jump\_status == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00408}00408         \textcolor{comment}{/* Start all concurrent calls */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00409}00409         \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00410}00410             \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\_client\_call}}(clients[i], methods[i], params\_array[i], params\_sizes[i],}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00411}00411                               \mbox{\hyperlink{uvrpc__async_8c_a177f2be3e70b704beb2b08b947c83e22}{concurrent\_callback}}, ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00412}00412         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00413}00413         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00414}00414         \textcolor{comment}{/* Wait for any to complete */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00415}00415         \textcolor{keywordflow}{while} (!ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a35cad4f54cfdeeb86412ed7475d6d90c}{any\_completed}} \&\& !timed\_out) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00416}00416             uv\_run(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, UV\_RUN\_ONCE);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00417}00417         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00418}00418         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00419}00419         \textcolor{comment}{/* Check if timeout occurred */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00420}00420         \textcolor{keywordflow}{if} (timed\_out) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00421}00421             \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00422}00422                 uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00423}00423                 uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00424}00424             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00425}00425             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00426}00426         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00427}00427         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00428}00428         \textcolor{comment}{/* Shouldn't reach here normally */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00429}00429         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00430}00430     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00431}00431         \textcolor{comment}{/* Jumped back from callback or timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00432}00432         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00433}00433         \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00434}00434             uv\_timer\_stop(\&timeout\_timer);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00435}00435             uv\_close((uv\_handle\_t*)\&timeout\_timer, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00436}00436         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00437}00437         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00438}00438         \textcolor{keywordflow}{if} (jump\_status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00439}00439             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00440}00440         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00441}00441         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00442}00442         \textcolor{comment}{/* Find completed result */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00443}00443         \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < count; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00444}00444             \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00445}00445                 *result = ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i];}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00446}00446                 *completed\_index = i;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00447}00447                 ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a76b902521f33facb195e5303e26456c4}{concurrent\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00448}00448                 \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00449}00449             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00450}00450         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00451}00451         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00452}00452         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00453}00453     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00454}00454 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00455}00455 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00456}00456 \textcolor{comment}{/* Promise.retry -\/ retry failed calls */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00457}\mbox{\hyperlink{uvrpc__async_8c_aeffa2c4e2c7f66e7475a17e1f91178c8}{00457}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_aeffa2c4e2c7f66e7475a17e1f91178c8}{uvrpc\_async\_retry}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx, \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00458}00458                        \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method, \textcolor{keyword}{const} uint8\_t* params,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00459}00459                        \textcolor{keywordtype}{size\_t} params\_size, \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** result,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00460}00460                        \textcolor{keywordtype}{int} max\_retries, uint64\_t retry\_delay\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00461}00461     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00462}00462         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00463}00463     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00464}00464     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00465}00465     \textcolor{keywordflow}{if} (max\_retries < 0) max\_retries = 3;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00466}00466     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00467}00467     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} attempt = 0; attempt <= max\_retries; attempt++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00468}00468         \textcolor{keywordtype}{int} status = \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00469}00469         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00470}00470         \textcolor{keywordflow}{if} (status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} \&\& *result \&\& (*result)-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00471}00471             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00472}00472         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00473}00473         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00474}00474         \textcolor{keywordflow}{if} (*result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00475}00475             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(*result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00476}00476             *result = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00477}00477         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00478}00478         }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00479}00479         \textcolor{keywordflow}{if} (attempt < max\_retries \&\& retry\_delay\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00480}00480             \textcolor{comment}{/* Non-\/blocking delay using timer -\/ return to caller, retry will be triggered by timer */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00481}00481             \textcolor{comment}{/* Store retry context for timer callback */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00482}00482             \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structretry__context}{retry\_context\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00483}00483             \textcolor{keywordflow}{if} (!retry\_ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00484}00484                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00485}00485             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00486}00486             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}} = client;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00487}00487             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(method);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00488}00488             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(params\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00489}00489             \textcolor{keywordflow}{if} (!retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} || !retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00490}00490                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00491}00491                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00492}00492                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00493}00493                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00494}00494             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00495}00495             memcpy(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, params, params\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00496}00496             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}} = params\_size;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00497}00497             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}} = result;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00498}00498             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}} = attempt;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00499}00499             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\_retries}} = max\_retries;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00500}00500             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\_delay\_ms}} = retry\_delay\_ms;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00501}00501             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00502}00502             }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00503}00503             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00504}00504             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}.data = retry\_ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00505}00505             uv\_timer\_start(\&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}, \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\_delay\_callback}}, retry\_delay\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00506}00506             }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00507}00507             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};  \textcolor{comment}{/* Will retry via timer */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00508}00508         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00509}00509     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00510}00510     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00511}00511     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00512}00512 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00513}00513 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00514}00514 \textcolor{comment}{/* Promise.timeout -\/ call with timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00515}\mbox{\hyperlink{uvrpc__async_8h_a2b8a26081ebe35ccfc5cb6489bbadedd}{00515}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a2b8a26081ebe35ccfc5cb6489bbadedd}{uvrpc\_async\_timeout}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx, \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00516}00516                          \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method, \textcolor{keyword}{const} uint8\_t* params,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00517}00517                          \textcolor{keywordtype}{size\_t} params\_size, \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** result,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00518}00518                          uint64\_t timeout\_ms) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00519}00519     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00520}00520         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00521}00521     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00522}00522     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00523}00523     \textcolor{comment}{/* Start the call */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00524}00524     \textcolor{keywordtype}{int} started = setjmp(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_ac8f4ae86a087505fc1de2058c568303a}{jmp\_buf}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00525}00525     }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00526}00526     \textcolor{keywordflow}{if} (started == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00527}00527         \textcolor{comment}{/* Setup timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00528}00528         \textcolor{keywordflow}{if} (timeout\_ms > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00529}00529             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00530}00530             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}.data = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00531}00531             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aa73c414c7031f8e9888d12c6757070a1}{timed\_out}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00532}00532             uv\_timer\_start(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, \mbox{\hyperlink{uvrpc__async_8c_abd6264722bcce06e1bc731d4f1477b06}{timeout\_callback}}, timeout\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00533}00533         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00534}00534 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00535}00535         \textcolor{comment}{/* Make the call */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00536}00536         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00537}00537     \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00538}00538         \textcolor{comment}{/* Jumped from timeout */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00539}00539         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00540}00540             uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00541}00541             uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00542}00542         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00543}00543         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00544}00544     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00545}00545 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00546}00546 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00547}00547 \textcolor{comment}{/* Promise.retry with exponential backoff */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00548}\mbox{\hyperlink{uvrpc__async_8h_acea12dde7221383d381b48410b38cd1f}{00548}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_acea12dde7221383d381b48410b38cd1f}{uvrpc\_async\_retry\_with\_backoff}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx, \mbox{\hyperlink{structuvrpc__client}{uvrpc\_client\_t}}* client,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00549}00549                                    \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method, \textcolor{keyword}{const} uint8\_t* params,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00550}00550                                    \textcolor{keywordtype}{size\_t} params\_size, \mbox{\hyperlink{structuvrpc__async__result}{uvrpc\_async\_result\_t}}** result,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00551}00551                                    \textcolor{keywordtype}{int} max\_retries, uint64\_t initial\_delay\_ms,}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00552}00552                                    \textcolor{keywordtype}{double} backoff\_multiplier) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00553}00553     \textcolor{keywordflow}{if} (!ctx || !client || !method || !result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00554}00554         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00555}00555     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00556}00556 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00557}00557     \textcolor{keywordflow}{if} (max\_retries < 0) max\_retries = 3;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00558}00558     \textcolor{keywordflow}{if} (initial\_delay\_ms == 0) initial\_delay\_ms = 100;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00559}00559     \textcolor{keywordflow}{if} (backoff\_multiplier < 1.0) backoff\_multiplier = 2.0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00560}00560 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00561}00561     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} attempt = 0; attempt <= max\_retries; attempt++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00562}00562         \textcolor{keywordtype}{int} status = \mbox{\hyperlink{uvrpc__async_8c_a091c1254b2fe56b67146236cb6927907}{uvrpc\_client\_call\_async}}(ctx, client, method, params, params\_size, result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00563}00563 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00564}00564         \textcolor{keywordflow}{if} (status == \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} \&\& *result \&\& (*result)-\/>\mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\_code}} == 0) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00565}00565             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00566}00566         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00567}00567 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00568}00568         \textcolor{keywordflow}{if} (*result) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00569}00569             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(*result);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00570}00570             *result = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00571}00571         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00572}00572 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00573}00573         \textcolor{keywordflow}{if} (attempt < max\_retries) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00574}00574             \textcolor{comment}{/* Calculate delay with exponential backoff */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00575}00575             uint64\_t delay\_ms = (uint64\_t)(initial\_delay\_ms * pow(backoff\_multiplier, attempt));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00576}00576 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00577}00577             \textcolor{comment}{/* Non-\/blocking delay using timer */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00578}00578             \mbox{\hyperlink{structretry__context}{retry\_context\_t}}* retry\_ctx = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{structretry__context}{retry\_context\_t}}));}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00579}00579             \textcolor{keywordflow}{if} (!retry\_ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00580}00580                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00581}00581             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00582}00582             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}} = client;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00583}00583             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} = \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\_strdup}}(method);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00584}00584             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}} = \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(params\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00585}00585             \textcolor{keywordflow}{if} (!retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}} || !retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00586}00586                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00587}00587                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00588}00588                 \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(retry\_ctx);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00589}00589                 \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00590}00590             \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00591}00591             memcpy(retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}, params, params\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00592}00592             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\_size}} = params\_size;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00593}00593             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}} = result;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00594}00594             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}} = attempt;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00595}00595             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\_retries}} = max\_retries;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00596}00596             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\_delay\_ms}} = delay\_ms;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00597}00597             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}} = ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00598}00598 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00599}00599             uv\_timer\_init(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a6faabe65f2837a1a4bad825cf2956f07}{loop}}, \&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00600}00600             retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}.data = retry\_ctx;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00601}00601             uv\_timer\_start(\&retry\_ctx-\/>\mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}, \mbox{\hyperlink{uvrpc__async_8c_adb8e73b821a801d2d39ca5159b9448a3}{retry\_delay\_callback}}, delay\_ms, 0);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00602}00602 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00603}00603             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};  \textcolor{comment}{/* Will retry via timer */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00604}00604         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00605}00605     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00606}00606 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00607}00607     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00608}00608 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00609}00609 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00610}00610 \textcolor{comment}{/* Cancel all pending async operations */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00611}\mbox{\hyperlink{uvrpc__async_8h_a4d01657ac868616b45b3f33d0efefce1}{00611}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_a4d01657ac868616b45b3f33d0efefce1}{uvrpc\_async\_cancel\_all}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00612}00612     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00613}00613 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00614}00614     \textcolor{comment}{/* Stop timeout timer if running */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00615}00615     \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a668bff6780e517c02edc47b93803c00b}{timeout\_ms}} > 0 \&\& !uv\_is\_closing((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}})) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00616}00616         uv\_timer\_stop(\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}});}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00617}00617         uv\_close((uv\_handle\_t*)\&ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_aacb1bc480d3b4108fc8db7c86aa7ddda}{timeout\_timer}}, NULL);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00618}00618     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00619}00619 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00620}00620     \textcolor{comment}{/* Free all pending results */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00621}00621     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00622}00622         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00623}00623             \mbox{\hyperlink{uvrpc__async_8c_ac6016a31e1508699df06b67375172aca}{uvrpc\_async\_result\_free}}(ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i]);}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00624}00624             ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] = NULL;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00625}00625         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00626}00626     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00627}00627 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00628}00628     \textcolor{comment}{/* Reset state */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00629}00629     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a2bc4882fb2fc384c0f9d429b46dc65fa}{call\_count}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00630}00630     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a90f7bd47ab50a894b24e19b9fc79fc7b}{current\_call}} = -\/1;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00631}00631     ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a472cb706fbedaaf16c63a95b5d0c71ab}{is\_running}} = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00632}00632 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00633}00633     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}};}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00634}00634 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00635}00635 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00636}00636 \textcolor{comment}{/* Get pending async operation count */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00637}\mbox{\hyperlink{uvrpc__async_8h_af2e3697c363a1a60119ed1000abd8e67}{00637}} \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__async_8c_af2e3697c363a1a60119ed1000abd8e67}{uvrpc\_async\_get\_pending\_count}}(\mbox{\hyperlink{structuvrpc__async__ctx}{uvrpc\_async\_ctx\_t}}* ctx) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00638}00638     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00639}00639 }
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00640}00640     \textcolor{keywordtype}{int} count = 0;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00641}00641     \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < UVRPC\_MAX\_ASYNC\_CALLS; i++) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00642}00642         \textcolor{keywordflow}{if} (ctx-\/>\mbox{\hyperlink{structuvrpc__async__ctx_a0c27c4a27d32f1178d14271dbc51d30a}{pending\_results}}[i] != NULL) \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00643}00643             count++;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00644}00644         \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00645}00645     \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00646}00646     \textcolor{keywordflow}{return} count;}
+\DoxyCodeLine{\Hypertarget{uvrpc__async_8c_source_l00647}00647 \}}
+
+\end{DoxyCode}

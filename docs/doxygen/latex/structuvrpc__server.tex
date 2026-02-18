@@ -1,0 +1,200 @@
+\hypertarget{structuvrpc__server}{}\doxysection{uvrpc\+\_\+server Struct Reference}
+\label{structuvrpc__server}\index{uvrpc\_server@{uvrpc\_server}}
+
+
+Collaboration diagram for uvrpc\+\_\+server\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__server_a7d75510a40989400da1d85b4dec43004}{address}}
+\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__server_a0941530327bee932f9d483cfdddb32ca}{ctx}}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__server_af578d1cd66d60388d1a2335449bcdd42}{generation}}
+\item 
+\mbox{\hyperlink{uvrpc__server_8c_ad7496fa7ff3997d63f15ffd41d392075}{handler\+\_\+entry\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__server_a205ffe44a50d980833e9d8128cbc9ad6}{handlers}}
+\item 
+int \mbox{\hyperlink{structuvrpc__server_abbda7b8eea00aad2c89b243e250fdabb}{is\+\_\+running}}
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__server_a41c1d4c71bd50702df7e12e3b2069293}{loop}}
+\item 
+int \mbox{\hyperlink{structuvrpc__server_adb5663edacd9c3eaaaca92fd88172ddc}{max\+\_\+pending\+\_\+requests}}
+\item 
+\mbox{\hyperlink{uvrpc__server_8c_ac1fd81bac0d2473d54e2c9a03e393453}{pending\+\_\+request\+\_\+t}} $\ast$$\ast$ \mbox{\hyperlink{structuvrpc__server_a2521699688fc695d8b6299897e5a089c}{pending\+\_\+requests}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvrpc__server_a75fe31a37e1452b19ef42791612ecc69}{total\+\_\+requests}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvrpc__server_a215d2edd99a588ec00ec4d22a0f19ca3}{total\+\_\+responses}}
+\item 
+\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__server_a6b4dcf26ce80972b56d4b5aa5651d0b4}{uvbus}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00050}{50}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__server_a7d75510a40989400da1d85b4dec43004}\label{structuvrpc__server_a7d75510a40989400da1d85b4dec43004}} 
+\index{uvrpc\_server@{uvrpc\_server}!address@{address}}
+\index{address@{address}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{address}{address}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+server\+::address}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00052}{52}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00239}{uvrpc\+\_\+server\+\_\+start()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a0941530327bee932f9d483cfdddb32ca}\label{structuvrpc__server_a0941530327bee932f9d483cfdddb32ca}} 
+\index{uvrpc\_server@{uvrpc\_server}!ctx@{ctx}}
+\index{ctx@{ctx}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{ctx}{ctx}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}}$\ast$ uvrpc\+\_\+server\+::ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00058}{58}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00351}{uvrpc\+\_\+server\+\_\+get\+\_\+context()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00344}{uvrpc\+\_\+server\+\_\+set\+\_\+context()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_af578d1cd66d60388d1a2335449bcdd42}\label{structuvrpc__server_af578d1cd66d60388d1a2335449bcdd42}} 
+\index{uvrpc\_server@{uvrpc\_server}!generation@{generation}}
+\index{generation@{generation}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{generation}{generation}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+server\+::generation}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00063}{63}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a205ffe44a50d980833e9d8128cbc9ad6}\label{structuvrpc__server_a205ffe44a50d980833e9d8128cbc9ad6}} 
+\index{uvrpc\_server@{uvrpc\_server}!handlers@{handlers}}
+\index{handlers@{handlers}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{handlers}{handlers}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__server_8c_ad7496fa7ff3997d63f15ffd41d392075}{handler\+\_\+entry\+\_\+t}}$\ast$ uvrpc\+\_\+server\+::handlers}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00054}{54}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00307}{uvrpc\+\_\+server\+\_\+register()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_abbda7b8eea00aad2c89b243e250fdabb}\label{structuvrpc__server_abbda7b8eea00aad2c89b243e250fdabb}} 
+\index{uvrpc\_server@{uvrpc\_server}!is\_running@{is\_running}}
+\index{is\_running@{is\_running}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{is\_running}{is\_running}}
+{\footnotesize\ttfamily int uvrpc\+\_\+server\+::is\+\_\+running}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00055}{55}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00239}{uvrpc\+\_\+server\+\_\+start()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00267}{uvrpc\+\_\+server\+\_\+stop()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a41c1d4c71bd50702df7e12e3b2069293}\label{structuvrpc__server_a41c1d4c71bd50702df7e12e3b2069293}} 
+\index{uvrpc\_server@{uvrpc\_server}!loop@{loop}}
+\index{loop@{loop}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvrpc\+\_\+server\+::loop}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00051}{51}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_adb5663edacd9c3eaaaca92fd88172ddc}\label{structuvrpc__server_adb5663edacd9c3eaaaca92fd88172ddc}} 
+\index{uvrpc\_server@{uvrpc\_server}!max\_pending\_requests@{max\_pending\_requests}}
+\index{max\_pending\_requests@{max\_pending\_requests}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{max\_pending\_requests}{max\_pending\_requests}}
+{\footnotesize\ttfamily int uvrpc\+\_\+server\+::max\+\_\+pending\+\_\+requests}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00062}{62}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a2521699688fc695d8b6299897e5a089c}\label{structuvrpc__server_a2521699688fc695d8b6299897e5a089c}} 
+\index{uvrpc\_server@{uvrpc\_server}!pending\_requests@{pending\_requests}}
+\index{pending\_requests@{pending\_requests}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{pending\_requests}{pending\_requests}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__server_8c_ac1fd81bac0d2473d54e2c9a03e393453}{pending\+\_\+request\+\_\+t}}$\ast$$\ast$ uvrpc\+\_\+server\+::pending\+\_\+requests}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00061}{61}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a75fe31a37e1452b19ef42791612ecc69}\label{structuvrpc__server_a75fe31a37e1452b19ef42791612ecc69}} 
+\index{uvrpc\_server@{uvrpc\_server}!total\_requests@{total\_requests}}
+\index{total\_requests@{total\_requests}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{total\_requests}{total\_requests}}
+{\footnotesize\ttfamily uint64\+\_\+t uvrpc\+\_\+server\+::total\+\_\+requests}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00066}{66}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00143}{uvrpc\+\_\+server\+\_\+get\+\_\+total\+\_\+requests()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a215d2edd99a588ec00ec4d22a0f19ca3}\label{structuvrpc__server_a215d2edd99a588ec00ec4d22a0f19ca3}} 
+\index{uvrpc\_server@{uvrpc\_server}!total\_responses@{total\_responses}}
+\index{total\_responses@{total\_responses}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{total\_responses}{total\_responses}}
+{\footnotesize\ttfamily uint64\+\_\+t uvrpc\+\_\+server\+::total\+\_\+responses}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00067}{67}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00148}{uvrpc\+\_\+server\+\_\+get\+\_\+total\+\_\+responses()}}.
+
+\mbox{\Hypertarget{structuvrpc__server_a6b4dcf26ce80972b56d4b5aa5651d0b4}\label{structuvrpc__server_a6b4dcf26ce80972b56d4b5aa5651d0b4}} 
+\index{uvrpc\_server@{uvrpc\_server}!uvbus@{uvbus}}
+\index{uvbus@{uvbus}!uvrpc\_server@{uvrpc\_server}}
+\doxysubsubsection{\texorpdfstring{uvbus}{uvbus}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}}$\ast$ uvrpc\+\_\+server\+::uvbus}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__server_8c_source_l00053}{53}} of file \mbox{\hyperlink{uvrpc__server_8c_source}{uvrpc\+\_\+server.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00239}{uvrpc\+\_\+server\+\_\+start()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvrpc__server_8c}{uvrpc\+\_\+server.\+c}}\end{DoxyCompactItemize}

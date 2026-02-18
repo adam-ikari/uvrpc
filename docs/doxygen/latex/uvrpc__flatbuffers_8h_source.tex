@@ -1,0 +1,51 @@
+\hypertarget{uvrpc__flatbuffers_8h_source}{}\doxysection{uvrpc\+\_\+flatbuffers.\+h}
+\label{uvrpc__flatbuffers_8h_source}\index{src/uvrpc\_flatbuffers.h@{src/uvrpc\_flatbuffers.h}}
+\mbox{\hyperlink{uvrpc__flatbuffers_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00005}00005 \textcolor{preprocessor}{\#ifndef UVRPC\_FRAME\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00006}00006 \textcolor{preprocessor}{\#define UVRPC\_FRAME\_H}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00007}00007 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00008}00008 \textcolor{preprocessor}{\#include <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00009}00009 \textcolor{preprocessor}{\#include <stddef.h>}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00010}00010 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00011}00011 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00012}00012 \textcolor{keyword}{extern} \textcolor{stringliteral}{"{}C"{}} \{}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00013}00013 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00014}00014 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00015}00015 \textcolor{comment}{/* Frame encoding functions */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00016}00016 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a35b5e5bb78223c22e4159434a6ee8fcb}{uvrpc\_encode\_request}}(uint32\_t msgid, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* method,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00017}00017                          \textcolor{keyword}{const} uint8\_t* params, \textcolor{keywordtype}{size\_t} params\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00018}00018                          uint8\_t** out\_data, \textcolor{keywordtype}{size\_t}* out\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00019}00019 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00020}00020 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a978c34d8fcb3413cca2f439364f654b3}{uvrpc\_encode\_response}}(uint32\_t msgid, \textcolor{keyword}{const} uint8\_t* result, \textcolor{keywordtype}{size\_t} result\_size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00021}00021                           uint8\_t** out\_data, \textcolor{keywordtype}{size\_t}* out\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00022}00022 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00023}00023 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a041eebfa6429de1ec7e035a53cb14e59}{uvrpc\_encode\_error}}(uint32\_t msgid, int32\_t error\_code, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* error\_message,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00024}00024                        uint8\_t** out\_data, \textcolor{keywordtype}{size\_t}* out\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00025}00025 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00026}00026 \textcolor{comment}{/* Frame decoding functions */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00027}00027 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a51728496dc77e78129676ed44fd83922}{uvrpc\_decode\_request}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00028}00028                          uint32\_t* out\_msgid, \textcolor{keywordtype}{char}** out\_method,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00029}00029                          \textcolor{keyword}{const} uint8\_t** out\_params, \textcolor{keywordtype}{size\_t}* out\_params\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00030}00030 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00031}00031 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_af563d0083169450f94fcea4815342dd4}{uvrpc\_decode\_response}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00032}00032                           uint32\_t* out\_msgid,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00033}00033                           \textcolor{keyword}{const} uint8\_t** out\_result, \textcolor{keywordtype}{size\_t}* out\_result\_size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00034}00034 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00035}00035 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a00dc6679904a0df25134739e641863d2}{uvrpc\_decode\_error}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size,}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00036}00036                        uint32\_t* out\_msgid, int32\_t* out\_error\_code, \textcolor{keywordtype}{char}** out\_error\_message);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00037}00037 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00038}00038 \textcolor{comment}{/* Get frame type */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00039}00039 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a978abede3b2489ad7ee853129366cd60}{uvrpc\_get\_frame\_type}}(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00040}00040 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00041}00041 \textcolor{comment}{/* Free decoded data */}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00042}00042 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvrpc__flatbuffers_8h_a4fc2e6f1667f0a8451003be86428f01c}{uvrpc\_free\_decoded}}(\textcolor{keywordtype}{char}* method\_or\_error);}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00043}00043 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00044}00044 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00045}00045 \}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00046}00046 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00047}00047 }
+\DoxyCodeLine{\Hypertarget{uvrpc__flatbuffers_8h_source_l00048}00048 \textcolor{preprocessor}{\#endif }\textcolor{comment}{/* UVRPC\_FRAME\_H */}\textcolor{preprocessor}{}}
+
+\end{DoxyCode}

@@ -1,14 +1,22 @@
 /**
- * UVBus - Universal Bus for libuv-based Communication
+ * @file uvbus.h
+ * @brief UVBus - Universal Bus for libuv-based Communication
  * 
  * A unified abstraction layer for various transport protocols (TCP, UDP, IPC, INPROC)
- * Built on top of libuv event loop for non-blocking I/O
+ * Built on top of libuv event loop for non-blocking I/O.
  * 
  * Design Philosophy:
  * - Zero-copy where possible
  * - Single-threaded event loop
  * - Minimal overhead
  * - Protocol-agnostic API
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) 2026
+ * @license MIT License
  */
 
 #ifndef UVBUS_H
@@ -22,33 +30,77 @@
 extern "C" {
 #endif
 
-/* Error codes */
+/**
+ * @brief UVBus error codes
+ * 
+ * Error codes returned by UVBus API functions.
+ */
 typedef enum {
-    UVBUS_OK = 0,
-    UVBUS_ERROR = -1,
-    UVBUS_ERROR_INVALID_PARAM = -2,
-    UVBUS_ERROR_NO_MEMORY = -3,
-    UVBUS_ERROR_NOT_CONNECTED = -4,
-    UVBUS_ERROR_TIMEOUT = -5,
-    UVBUS_ERROR_IO = -6,
-    UVBUS_ERROR_ALREADY_EXISTS = -7,
-    UVBUS_ERROR_NOT_FOUND = -8,
-    UVBUS_ERROR_NOT_IMPLEMENTED = -9,
-    UVBUS_ERROR_MAX
+    UVBUS_OK = 0,                      /**< @brief Operation successful */
+    UVBUS_ERROR = -1,                  /**< @brief General error */
+    UVBUS_ERROR_INVALID_PARAM = -2,    /**< @brief Invalid parameter */
+    UVBUS_ERROR_NO_MEMORY = -3,        /**< @brief Memory allocation failed */
+    UVBUS_ERROR_NOT_CONNECTED = -4,    /**< @brief Not connected */
+    UVBUS_ERROR_TIMEOUT = -5,          /**< @brief Operation timed out */
+    UVBUS_ERROR_IO = -6,               /**< @brief I/O error */
+    UVBUS_ERROR_ALREADY_EXISTS = -7,   /**< @brief Resource already exists */
+    UVBUS_ERROR_NOT_FOUND = -8,        /**< @brief Resource not found */
+    UVBUS_ERROR_NOT_IMPLEMENTED = -9,  /**< @brief Feature not implemented */
+    UVBUS_ERROR_MAX                    /**< @brief Maximum error code */
 } uvbus_error_t;
 
-/* Transport types */
+/**
+ * @brief UVBus transport types
+ * 
+ * Defines the available transport protocols.
+ */
 typedef enum {
-    UVBUS_TRANSPORT_TCP = 0,
-    UVBUS_TRANSPORT_UDP = 1,
-    UVBUS_TRANSPORT_IPC = 2,
-    UVBUS_TRANSPORT_INPROC = 3
+    UVBUS_TRANSPORT_TCP = 0,    /**< @brief TCP transport */
+    UVBUS_TRANSPORT_UDP = 1,    /**< @brief UDP transport */
+    UVBUS_TRANSPORT_IPC = 2,    /**< @brief Unix domain socket (IPC) */
+    UVBUS_TRANSPORT_INPROC = 3  /**< @brief In-process transport */
 } uvbus_transport_type_t;
 
-/* Callback types */
+/**
+ * @brief Receive callback type
+ * 
+ * Called when data is received.
+ * 
+ * @param data Received data
+ * @param size Data size
+ * @param client_ctx Client context (for server)
+ * @param server_ctx Server context
+ */
 typedef void (*uvbus_recv_callback_t)(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx);
+
+/**
+ * @brief Connect callback type
+ * 
+ * Called when connection state changes.
+ * 
+ * @param status Connection status
+ * @param ctx User context
+ */
 typedef void (*uvbus_connect_callback_t)(uvbus_error_t status, void* ctx);
+
+/**
+ * @brief Close callback type
+ * 
+ * Called when connection is closed.
+ * 
+ * @param ctx User context
+ */
 typedef void (*uvbus_close_callback_t)(void* ctx);
+
+/**
+ * @brief Error callback type
+ * 
+ * Called when an error occurs.
+ * 
+ * @param error_code Error code
+ * @param error_msg Error message
+ * @param ctx User context
+ */
 typedef void (*uvbus_error_callback_t)(uvbus_error_t error_code, const char* error_msg, void* ctx);
 
 /* Forward declarations */

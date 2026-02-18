@@ -1,6 +1,12 @@
 /**
- * UVRPC Async/Await Implementation
- * Uses libuv co-routines with setjmp/longjmp
+ * @file uvrpc_async.c
+ * @brief UVRPC Async/Await Implementation
+ * 
+ * Provides coroutine-like async/await syntax using libuv and setjmp/longjmp.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc_async.h"

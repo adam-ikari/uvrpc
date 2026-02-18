@@ -1,0 +1,13 @@
+digraph "uvrpc_context"
+{
+ // LATEX_PDF_SIZE
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="uvrpc_context",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black",tooltip="Universal context structure for server and client."];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" cleanup_data\ndata" ];
+  Node2 [label="void *",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node3 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" cleanup" ];
+  Node3 [label="void(*)(void *data,\l void *user_data)",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" flags\nreserved" ];
+  Node4 [label="uint32_t",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",tooltip=" "];
+}

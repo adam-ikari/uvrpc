@@ -1,0 +1,188 @@
+\hypertarget{structuvbus__config}{}\doxysection{uvbus\+\_\+config Struct Reference}
+\label{structuvbus__config}\index{uvbus\_config@{uvbus\_config}}
+
+
+{\ttfamily \#include $<$uvbus.\+h$>$}
+
+
+
+Collaboration diagram for uvbus\+\_\+config\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const char $\ast$ \mbox{\hyperlink{structuvbus__config_afbdd62fa0d97ae2b8082d96e6ef1a2b4}{address}}
+\item 
+void $\ast$ \mbox{\hyperlink{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}{callback\+\_\+ctx}}
+\item 
+\mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\+\_\+close\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structuvbus__config_abe950d75bb9afffb83b3df38aecb4077}{close\+\_\+cb}}
+\item 
+\mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\+\_\+connect\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}{connect\+\_\+cb}}
+\item 
+int \mbox{\hyperlink{structuvbus__config_a4c0a919f109efe4014097d3c4903a97e}{enable\+\_\+timeout}}
+\item 
+\mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structuvbus__config_ae0a0692d8c37dc1b323bf60ff57b52e1}{error\+\_\+cb}}
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvbus__config_a0a27a2aba6dd519b253c0c7ad12775e5}{loop}}
+\item 
+\mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} \mbox{\hyperlink{structuvbus__config_ad019bb400cbb38fded88263ca0c2c516}{recv\+\_\+cb}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structuvbus__config_ab0f218d40d3c7bd6b81e99fddabb392d}{timeout\+\_\+ms}}
+\item 
+\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} \mbox{\hyperlink{structuvbus__config_ac519ded25dcef1ca1b3df4028ab965b6}{transport}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00122}{122}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvbus__config_afbdd62fa0d97ae2b8082d96e6ef1a2b4}\label{structuvbus__config_afbdd62fa0d97ae2b8082d96e6ef1a2b4}} 
+\index{uvbus\_config@{uvbus\_config}!address@{address}}
+\index{address@{address}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{address}{address}}
+{\footnotesize\ttfamily const char$\ast$ uvbus\+\_\+config\+::address}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00125}{125}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00057}{uvbus\+\_\+config\+\_\+set\+\_\+address()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}\label{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}} 
+\index{uvbus\_config@{uvbus\_config}!callback\_ctx@{callback\_ctx}}
+\index{callback\_ctx@{callback\_ctx}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{callback\_ctx}{callback\_ctx}}
+{\footnotesize\ttfamily void$\ast$ uvbus\+\_\+config\+::callback\+\_\+ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00132}{132}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00077}{uvbus\+\_\+config\+\_\+set\+\_\+close\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00070}{uvbus\+\_\+config\+\_\+set\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00084}{uvbus\+\_\+config\+\_\+set\+\_\+error\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00063}{uvbus\+\_\+config\+\_\+set\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvbus__config_abe950d75bb9afffb83b3df38aecb4077}\label{structuvbus__config_abe950d75bb9afffb83b3df38aecb4077}} 
+\index{uvbus\_config@{uvbus\_config}!close\_cb@{close\_cb}}
+\index{close\_cb@{close\_cb}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{close\_cb}{close\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\+\_\+close\+\_\+callback\+\_\+t}} uvbus\+\_\+config\+::close\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00130}{130}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00077}{uvbus\+\_\+config\+\_\+set\+\_\+close\+\_\+callback()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}\label{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}} 
+\index{uvbus\_config@{uvbus\_config}!connect\_cb@{connect\_cb}}
+\index{connect\_cb@{connect\_cb}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{connect\_cb}{connect\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\+\_\+connect\+\_\+callback\+\_\+t}} uvbus\+\_\+config\+::connect\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00129}{129}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00070}{uvbus\+\_\+config\+\_\+set\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, and \mbox{\hyperlink{uvrpc__client_8c_source_l00327}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvbus__config_a4c0a919f109efe4014097d3c4903a97e}\label{structuvbus__config_a4c0a919f109efe4014097d3c4903a97e}} 
+\index{uvbus\_config@{uvbus\_config}!enable\_timeout@{enable\_timeout}}
+\index{enable\_timeout@{enable\_timeout}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{enable\_timeout}{enable\_timeout}}
+{\footnotesize\ttfamily int uvbus\+\_\+config\+::enable\+\_\+timeout}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00136}{136}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00026}{uvbus\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvbus_8c_source_l00097}{uvbus\+\_\+config\+\_\+set\+\_\+timeout\+\_\+enabled()}}.
+
+\mbox{\Hypertarget{structuvbus__config_ae0a0692d8c37dc1b323bf60ff57b52e1}\label{structuvbus__config_ae0a0692d8c37dc1b323bf60ff57b52e1}} 
+\index{uvbus\_config@{uvbus\_config}!error\_cb@{error\_cb}}
+\index{error\_cb@{error\_cb}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{error\_cb}{error\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} uvbus\+\_\+config\+::error\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00131}{131}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00084}{uvbus\+\_\+config\+\_\+set\+\_\+error\+\_\+callback()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvbus__config_a0a27a2aba6dd519b253c0c7ad12775e5}\label{structuvbus__config_a0a27a2aba6dd519b253c0c7ad12775e5}} 
+\index{uvbus\_config@{uvbus\_config}!loop@{loop}}
+\index{loop@{loop}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvbus\+\_\+config\+::loop}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00123}{123}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00045}{uvbus\+\_\+config\+\_\+set\+\_\+loop()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvbus__config_ad019bb400cbb38fded88263ca0c2c516}\label{structuvbus__config_ad019bb400cbb38fded88263ca0c2c516}} 
+\index{uvbus\_config@{uvbus\_config}!recv\_cb@{recv\_cb}}
+\index{recv\_cb@{recv\_cb}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{recv\_cb}{recv\_cb}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} uvbus\+\_\+config\+::recv\+\_\+cb}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00128}{128}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00063}{uvbus\+\_\+config\+\_\+set\+\_\+recv\+\_\+callback()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+\mbox{\Hypertarget{structuvbus__config_ab0f218d40d3c7bd6b81e99fddabb392d}\label{structuvbus__config_ab0f218d40d3c7bd6b81e99fddabb392d}} 
+\index{uvbus\_config@{uvbus\_config}!timeout\_ms@{timeout\_ms}}
+\index{timeout\_ms@{timeout\_ms}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{timeout\_ms}{timeout\_ms}}
+{\footnotesize\ttfamily uint64\+\_\+t uvbus\+\_\+config\+::timeout\+\_\+ms}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00135}{135}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00026}{uvbus\+\_\+config\+\_\+new()}}, and \mbox{\hyperlink{uvbus_8c_source_l00091}{uvbus\+\_\+config\+\_\+set\+\_\+timeout()}}.
+
+\mbox{\Hypertarget{structuvbus__config_ac519ded25dcef1ca1b3df4028ab965b6}\label{structuvbus__config_ac519ded25dcef1ca1b3df4028ab965b6}} 
+\index{uvbus\_config@{uvbus\_config}!transport@{transport}}
+\index{transport@{transport}!uvbus\_config@{uvbus\_config}}
+\doxysubsubsection{\texorpdfstring{transport}{transport}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} uvbus\+\_\+config\+::transport}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00124}{124}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00051}{uvbus\+\_\+config\+\_\+set\+\_\+transport()}}, and \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvbus_8h}{uvbus.\+h}}\end{DoxyCompactItemize}

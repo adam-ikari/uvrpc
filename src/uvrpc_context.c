@@ -1,5 +1,13 @@
 /**
- * UVRPC Context Implementation
+ * @file uvrpc_context.c
+ * @brief UVRPC Context Implementation
+ * 
+ * Provides functions for managing user contexts attached to UVRPC
+ * servers and clients, including automatic cleanup support.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc.h"

@@ -1,0 +1,45 @@
+\hypertarget{uvrpc__publisher_8c}{}\doxysection{src/uvrpc\+\_\+publisher.c File Reference}
+\label{uvrpc__publisher_8c}\index{src/uvrpc\_publisher.c@{src/uvrpc\_publisher.c}}
+
+
+UVRPC Publisher (Broadcast) Implementation.  
+
+
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\+\_\+publisher}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}{uvrpc\+\_\+publisher\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}{uvrpc\+\_\+publisher\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Free the publisher. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}{uvrpc\+\_\+publisher\+\_\+publish}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher, const char $\ast$topic, const uint8\+\_\+t $\ast$data, size\+\_\+t size, \mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\+\_\+publish\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Publish a message to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}{uvrpc\+\_\+publisher\+\_\+start}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Start the publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}{uvrpc\+\_\+publisher\+\_\+stop}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Stop the publisher. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC Publisher (Broadcast) Implementation. 
+
+Zero threads, Zero locks, Zero global variables All I/O managed by libuv event loop
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+
+
+Definition in file \mbox{\hyperlink{uvrpc__publisher_8c_source}{uvrpc\+\_\+publisher.\+c}}.
+

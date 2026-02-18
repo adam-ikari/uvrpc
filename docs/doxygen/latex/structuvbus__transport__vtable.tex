@@ -1,0 +1,124 @@
+\hypertarget{structuvbus__transport__vtable}{}\doxysection{uvbus\+\_\+transport\+\_\+vtable Struct Reference}
+\label{structuvbus__transport__vtable}\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+
+
+{\ttfamily \#include $<$uvbus.\+h$>$}
+
+
+
+Collaboration diagram for uvbus\+\_\+transport\+\_\+vtable\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_aae7131677ed967b31f3059ee4fe4f001}{connect}} )(void $\ast$impl, const char $\ast$address)
+\item 
+void($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_a61e71e4a76b77811566f121cdef0fcda}{disconnect}} )(void $\ast$impl)
+\item 
+void($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_aa6615b9dffdd375b462164a73cd1a4ef}{free}} )(void $\ast$impl)
+\item 
+int($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_a8a2ac20c5dde5e1d0811e4dd08125c56}{listen}} )(void $\ast$impl, const char $\ast$address)
+\item 
+int($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}{send}} )(void $\ast$impl, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\item 
+int($\ast$ \mbox{\hyperlink{structuvbus__transport__vtable_ad896f874fc743e33fb33ba05b55627dd}{send\+\_\+to}} )(void $\ast$impl, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$target)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00112}{112}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvbus__transport__vtable_aae7131677ed967b31f3059ee4fe4f001}\label{structuvbus__transport__vtable_aae7131677ed967b31f3059ee4fe4f001}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!connect@{connect}}
+\index{connect@{connect}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{connect}{connect}}
+{\footnotesize\ttfamily int($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::connect) (void $\ast$impl, const char $\ast$address)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00114}{114}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00258}{uvbus\+\_\+connect()}}, and \mbox{\hyperlink{uvbus_8c_source_l00275}{uvbus\+\_\+connect\+\_\+with\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvbus__transport__vtable_a61e71e4a76b77811566f121cdef0fcda}\label{structuvbus__transport__vtable_a61e71e4a76b77811566f121cdef0fcda}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!disconnect@{disconnect}}
+\index{disconnect@{disconnect}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{disconnect}{disconnect}}
+{\footnotesize\ttfamily void($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::disconnect) (void $\ast$impl)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00115}{115}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00296}{uvbus\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{structuvbus__transport__vtable_aa6615b9dffdd375b462164a73cd1a4ef}\label{structuvbus__transport__vtable_aa6615b9dffdd375b462164a73cd1a4ef}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!free@{free}}
+\index{free@{free}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{free}{free}}
+{\footnotesize\ttfamily void($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::free) (void $\ast$impl)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00118}{118}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00345}{uvbus\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvbus__transport__vtable_a8a2ac20c5dde5e1d0811e4dd08125c56}\label{structuvbus__transport__vtable_a8a2ac20c5dde5e1d0811e4dd08125c56}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!listen@{listen}}
+\index{listen@{listen}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{listen}{listen}}
+{\footnotesize\ttfamily int($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::listen) (void $\ast$impl, const char $\ast$address)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00113}{113}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00198}{uvbus\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}\label{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!send@{send}}
+\index{send@{send}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{send}{send}}
+{\footnotesize\ttfamily int($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::send) (void $\ast$impl, const uint8\+\_\+t $\ast$data, size\+\_\+t size)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00116}{116}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00309}{uvbus\+\_\+client\+\_\+send()}}, and \mbox{\hyperlink{uvbus_8c_source_l00226}{uvbus\+\_\+send()}}.
+
+\mbox{\Hypertarget{structuvbus__transport__vtable_ad896f874fc743e33fb33ba05b55627dd}\label{structuvbus__transport__vtable_ad896f874fc743e33fb33ba05b55627dd}} 
+\index{uvbus\_transport\_vtable@{uvbus\_transport\_vtable}!send\_to@{send\_to}}
+\index{send\_to@{send\_to}!uvbus\_transport\_vtable@{uvbus\_transport\_vtable}}
+\doxysubsubsection{\texorpdfstring{send\_to}{send\_to}}
+{\footnotesize\ttfamily int($\ast$ uvbus\+\_\+transport\+\_\+vtable\+::send\+\_\+to) (void $\ast$impl, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$target)}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus_8h_source_l00117}{117}} of file \mbox{\hyperlink{uvbus_8h_source}{uvbus.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus_8c_source_l00242}{uvbus\+\_\+send\+\_\+to()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvbus_8h}{uvbus.\+h}}\end{DoxyCompactItemize}

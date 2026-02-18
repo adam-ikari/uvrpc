@@ -1,0 +1,1 @@
+../en/guide/design-philosophy.md

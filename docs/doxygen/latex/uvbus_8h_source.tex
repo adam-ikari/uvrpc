@@ -1,0 +1,198 @@
+\hypertarget{uvbus_8h_source}{}\doxysection{uvbus.\+h}
+\label{uvbus_8h_source}\index{include/uvbus.h@{include/uvbus.h}}
+\mbox{\hyperlink{uvbus_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00001}00001 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00022}00022 \textcolor{preprocessor}{\#ifndef UVBUS\_H}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00023}00023 \textcolor{preprocessor}{\#define UVBUS\_H}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00024}00024 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00025}00025 \textcolor{preprocessor}{\#include <uv.h>}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00026}00026 \textcolor{preprocessor}{\#include <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00027}00027 \textcolor{preprocessor}{\#include <stddef.h>}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00028}00028 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00029}00029 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00030}00030 \textcolor{keyword}{extern} \textcolor{stringliteral}{"{}C"{}} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00031}00031 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00032}00032 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00038}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{00038}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00039}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{00039}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}} = 0,                      }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00040}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{00040}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{UVBUS\_ERROR}} = -\/1,                  }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00041}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{00041}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}} = -\/2,    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00042}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{00042}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}} = -\/3,        }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00043}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{00043}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\_ERROR\_NOT\_CONNECTED}} = -\/4,    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00044}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}{00044}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}{UVBUS\_ERROR\_TIMEOUT}} = -\/5,          }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00045}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{00045}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}} = -\/6,               }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00046}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}{00046}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}{UVBUS\_ERROR\_ALREADY\_EXISTS}} = -\/7,   }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00047}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{00047}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{UVBUS\_ERROR\_NOT\_FOUND}} = -\/8,        }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00048}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a0f2bcc09e344f866f7a5ef7cdc47a734}{00048}}     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a0f2bcc09e344f866f7a5ef7cdc47a734}{UVBUS\_ERROR\_NOT\_IMPLEMENTED}} = -\/9,  }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00049}00049     \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad4ec3b0fd8c086f6f729b691bcabecf0}{UVBUS\_ERROR\_MAX}}                    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00050}\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad4ec3b0fd8c086f6f729b691bcabecf0}{00050}} \} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00051}00051 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00057}\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{00057}} \textcolor{keyword}{typedef} \textcolor{keyword}{enum} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00058}\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{00058}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\_TRANSPORT\_TCP}} = 0,    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00059}\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{00059}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{UVBUS\_TRANSPORT\_UDP}} = 1,    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00060}\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{00060}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{UVBUS\_TRANSPORT\_IPC}} = 2,    }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00061}00061     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{UVBUS\_TRANSPORT\_INPROC}} = 3  }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00062}\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{00062}} \} \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00063}00063 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00074}\mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{00074}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\_recv\_callback\_t}})(\textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* client\_ctx, \textcolor{keywordtype}{void}* server\_ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00075}00075 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00084}\mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{00084}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\_connect\_callback\_t}})(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} status, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00085}00085 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00093}\mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{00093}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\_close\_callback\_t}})(\textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00094}00094 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00104}\mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{00104}} \textcolor{keyword}{typedef} void (*\mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\_error\_callback\_t}})(\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} error\_code, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* error\_msg, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00105}00105 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00106}00106 \textcolor{comment}{/* Forward declarations */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00107}\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{00107}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus}{uvbus}} \mbox{\hyperlink{structuvbus}{uvbus\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00108}\mbox{\hyperlink{uvbus_8h_ab592662d6b5436af61939b9136fa3b4d}{00108}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus__config}{uvbus\_config}} \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00109}\mbox{\hyperlink{uvbus_8h_adc46d9173e0b80030fd5ab616466d33c}{00109}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport}} \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00110}00110 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00111}00111 \textcolor{comment}{/* Transport virtual function table */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00112}\mbox{\hyperlink{structuvbus__transport__vtable}{00112}} \textcolor{keyword}{typedef} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus__transport__vtable}{uvbus\_transport\_vtable}} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00113}\mbox{\hyperlink{structuvbus__transport__vtable_a8a2ac20c5dde5e1d0811e4dd08125c56}{00113}}     int (*\mbox{\hyperlink{structuvbus__transport__vtable_a8a2ac20c5dde5e1d0811e4dd08125c56}{listen}})(\textcolor{keywordtype}{void}* impl, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* address);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00114}\mbox{\hyperlink{structuvbus__transport__vtable_aae7131677ed967b31f3059ee4fe4f001}{00114}}     int (*\mbox{\hyperlink{structuvbus__transport__vtable_aae7131677ed967b31f3059ee4fe4f001}{connect}})(\textcolor{keywordtype}{void}* impl, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* address);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00115}\mbox{\hyperlink{structuvbus__transport__vtable_a61e71e4a76b77811566f121cdef0fcda}{00115}}     void (*\mbox{\hyperlink{structuvbus__transport__vtable_a61e71e4a76b77811566f121cdef0fcda}{disconnect}})(\textcolor{keywordtype}{void}* impl);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00116}\mbox{\hyperlink{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}{00116}}     int (*\mbox{\hyperlink{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}{send}})(\textcolor{keywordtype}{void}* impl, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00117}\mbox{\hyperlink{structuvbus__transport__vtable_ad896f874fc743e33fb33ba05b55627dd}{00117}}     int (*\mbox{\hyperlink{structuvbus__transport__vtable_ad896f874fc743e33fb33ba05b55627dd}{send\_to}})(\textcolor{keywordtype}{void}* impl, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* target);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00118}\mbox{\hyperlink{structuvbus__transport__vtable_aa6615b9dffdd375b462164a73cd1a4ef}{00118}}     void (*\mbox{\hyperlink{structuvbus__transport__vtable_aa6615b9dffdd375b462164a73cd1a4ef}{free}})(\textcolor{keywordtype}{void}* impl);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00119}\mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{00119}} \} \mbox{\hyperlink{uvbus_8h_a682c1a186667678e21d3c75399834c1e}{uvbus\_transport\_vtable\_t}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00120}00120 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00121}00121 \textcolor{comment}{/* Configuration */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00122}\mbox{\hyperlink{structuvbus__config}{00122}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus__config}{uvbus\_config}} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00123}\mbox{\hyperlink{structuvbus__config_a0a27a2aba6dd519b253c0c7ad12775e5}{00123}}     uv\_loop\_t* \mbox{\hyperlink{structuvbus__config_a0a27a2aba6dd519b253c0c7ad12775e5}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00124}\mbox{\hyperlink{structuvbus__config_ac519ded25dcef1ca1b3df4028ab965b6}{00124}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} \mbox{\hyperlink{structuvbus__config_ac519ded25dcef1ca1b3df4028ab965b6}{transport}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00125}\mbox{\hyperlink{structuvbus__config_afbdd62fa0d97ae2b8082d96e6ef1a2b4}{00125}}     \textcolor{keyword}{const} \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvbus__config_afbdd62fa0d97ae2b8082d96e6ef1a2b4}{address}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00126}00126     }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00127}00127     \textcolor{comment}{/* Callbacks */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00128}\mbox{\hyperlink{structuvbus__config_ad019bb400cbb38fded88263ca0c2c516}{00128}}     \mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\_recv\_callback\_t}} \mbox{\hyperlink{structuvbus__config_ad019bb400cbb38fded88263ca0c2c516}{recv\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00129}\mbox{\hyperlink{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}{00129}}     \mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\_connect\_callback\_t}} \mbox{\hyperlink{structuvbus__config_a23b4f4ef9133f851beaed395dff0c648}{connect\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00130}\mbox{\hyperlink{structuvbus__config_abe950d75bb9afffb83b3df38aecb4077}{00130}}     \mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\_close\_callback\_t}} \mbox{\hyperlink{structuvbus__config_abe950d75bb9afffb83b3df38aecb4077}{close\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00131}\mbox{\hyperlink{structuvbus__config_ae0a0692d8c37dc1b323bf60ff57b52e1}{00131}}     \mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\_error\_callback\_t}} \mbox{\hyperlink{structuvbus__config_ae0a0692d8c37dc1b323bf60ff57b52e1}{error\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00132}\mbox{\hyperlink{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}{00132}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__config_a7554c54370f53e0c80cd05d567ee9333}{callback\_ctx}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00133}00133     }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00134}00134     \textcolor{comment}{/* Options */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00135}\mbox{\hyperlink{structuvbus__config_ab0f218d40d3c7bd6b81e99fddabb392d}{00135}}     uint64\_t \mbox{\hyperlink{structuvbus__config_ab0f218d40d3c7bd6b81e99fddabb392d}{timeout\_ms}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00136}\mbox{\hyperlink{structuvbus__config_a4c0a919f109efe4014097d3c4903a97e}{00136}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvbus__config_a4c0a919f109efe4014097d3c4903a97e}{enable\_timeout}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00137}00137 \};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00138}00138 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00139}00139 \textcolor{comment}{/* Transport implementation base structure */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00140}\mbox{\hyperlink{structuvbus__transport}{00140}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus__transport}{uvbus\_transport}} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00141}\mbox{\hyperlink{structuvbus__transport_ae864e2a968309893ec61736cfc290471}{00141}}     \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} \mbox{\hyperlink{structuvbus__transport_ae864e2a968309893ec61736cfc290471}{type}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00142}\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{00142}}     uv\_loop\_t* \mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00143}\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{00143}}     \textcolor{keywordtype}{char}* \mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00144}00144 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00145}00145     \textcolor{comment}{/* Parent bus reference */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00146}\mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{00146}}     \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus}{uvbus}}* \mbox{\hyperlink{structuvbus__transport_af50c9fbc9ed6a04a6d60d9b63bdb037f}{parent\_bus}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00147}00147 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00148}00148     \textcolor{comment}{/* Callbacks */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00149}\mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{00149}}     \mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\_recv\_callback\_t}} \mbox{\hyperlink{structuvbus__transport_a4ab45c59b479251c9ebfd25cddbae56b}{recv\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00150}\mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{00150}}     \mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\_connect\_callback\_t}} \mbox{\hyperlink{structuvbus__transport_a9837bb840e25f5fe7cb0fd8aa61aa114}{connect\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00151}\mbox{\hyperlink{structuvbus__transport_a4ac49b958fc7df1565e57ed163178f63}{00151}}     \mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\_close\_callback\_t}} \mbox{\hyperlink{structuvbus__transport_a4ac49b958fc7df1565e57ed163178f63}{close\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00152}\mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{00152}}     \mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\_error\_callback\_t}} \mbox{\hyperlink{structuvbus__transport_ac6b378630e5217bcbafde4f2b7f17bb4}{error\_cb}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00153}\mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{00153}}     \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_a2ab2c76cf7c0b7430f927c4047dd005b}{callback\_ctx}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00154}00154 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00155}00155     \textcolor{comment}{/* Flags */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00156}\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{00156}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00157}\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{00157}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00158}00158 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00159}00159     \textcolor{comment}{/* Virtual function table */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00160}\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{00160}}     \textcolor{keyword}{const} \mbox{\hyperlink{structuvbus__transport__vtable}{uvbus\_transport\_vtable\_t}}* \mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00161}00161 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00162}00162     \textcolor{comment}{/* Transport-\/specific implementation */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00163}00163     \textcolor{keyword}{union }\{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00164}\mbox{\hyperlink{structuvbus__transport_a05fe0e87f2c896617dc75a35ece95836}{00164}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_a05fe0e87f2c896617dc75a35ece95836}{tcp\_server}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00165}\mbox{\hyperlink{structuvbus__transport_a63a93f0a2a9ea27c6ee91113cc8a0d11}{00165}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_a63a93f0a2a9ea27c6ee91113cc8a0d11}{tcp\_client}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00166}\mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{00166}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_a1e1794d464d27f5480f19ae1744bb56f}{udp\_server}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00167}\mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{00167}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_aee5225caa734b34dfe3adca1f2440eb8}{udp\_client}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00168}\mbox{\hyperlink{structuvbus__transport_abab888d596f15b9680ccabd1785a9b7d}{00168}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_abab888d596f15b9680ccabd1785a9b7d}{ipc\_server}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00169}\mbox{\hyperlink{structuvbus__transport_a4f6539c8f18ab0112097eb8d855bd411}{00169}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_a4f6539c8f18ab0112097eb8d855bd411}{ipc\_client}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00170}\mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{00170}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_ace6435755d5796268920a80b8fbe6357}{inproc\_server}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00171}\mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{00171}}         \textcolor{keywordtype}{void}* \mbox{\hyperlink{structuvbus__transport_aefbf7b9f80ed07d5a97f8878d6d97d48}{inproc\_client}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00172}\mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{00172}}     \} \mbox{\hyperlink{structuvbus__transport_afe1d50e5ec5b72088eaa6387866c7075}{impl}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00173}00173 \};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00174}00174 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00175}00175 \textcolor{comment}{/* UVBus main structure */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00176}\mbox{\hyperlink{structuvbus}{00176}} \textcolor{keyword}{struct }\mbox{\hyperlink{structuvbus}{uvbus}} \{}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00177}\mbox{\hyperlink{structuvbus_a27c03e912da4609d7ca35ea823a2ec5d}{00177}}     \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}} \mbox{\hyperlink{structuvbus_a27c03e912da4609d7ca35ea823a2ec5d}{config}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00178}\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{00178}}     \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* \mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00179}\mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{00179}}     \textcolor{keywordtype}{int} \mbox{\hyperlink{structuvbus_a9d3b33f64d341847f3770c252a0d2452}{is\_active}};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00180}00180 \};}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00181}00181 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00182}00182 \textcolor{comment}{/* Core API */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00183}00183 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00187}00187 \mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* \mbox{\hyperlink{uvbus_8h_afdf4cbd411257359186f6a842a7ca881}{uvbus\_config\_new}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00188}00188 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00192}00192 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_ac2cd04e3243086f112110710434227f0}{uvbus\_config\_free}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00193}00193 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00197}00197 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_afd32cbd35cc2efd347230ec84a45394d}{uvbus\_config\_set\_loop}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00198}00198 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00202}00202 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_aa61fe1a2bad717d81e2c07baf8823c28}{uvbus\_config\_set\_transport}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} transport);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00203}00203 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00207}00207 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a710a8ee1b3c23442a5e1d379406c8af9}{uvbus\_config\_set\_address}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \textcolor{keyword}{const} \textcolor{keywordtype}{char}* address);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00208}00208 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00212}00212 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a1bcbc82ae667fa41e4eac2869c698643}{uvbus\_config\_set\_recv\_callback}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \mbox{\hyperlink{uvbus_8h_a7ee04f761a0174f2fc56aa22039914c3}{uvbus\_recv\_callback\_t}} recv\_cb, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00213}00213 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00217}00217 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_ab5987b867a5ffafca5579db5b8e7b632}{uvbus\_config\_set\_connect\_callback}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\_connect\_callback\_t}} connect\_cb, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00218}00218 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00222}00222 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a3bcb31ed1f35f8f7bfb98452fd8f852c}{uvbus\_config\_set\_close\_callback}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \mbox{\hyperlink{uvbus_8h_a3c076e1686371283f451219a548e8597}{uvbus\_close\_callback\_t}} close\_cb, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00223}00223 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00227}00227 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a90d7c12f6c2d9a2e81fa8f5eabfdfd79}{uvbus\_config\_set\_error\_callback}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \mbox{\hyperlink{uvbus_8h_ac3816436b08adc91316441e50f3444d4}{uvbus\_error\_callback\_t}} error\_cb, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00228}00228 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00232}00232 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_aa50224089bc209f5b997711e3d61ab07}{uvbus\_config\_set\_timeout}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, uint64\_t timeout\_ms);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00233}00233 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00237}00237 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a6a9e7c0e2ef61d67ec1311001e29ac5a}{uvbus\_config\_set\_timeout\_enabled}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config, \textcolor{keywordtype}{int} enabled);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00238}00238 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00239}00239 \textcolor{comment}{/* Server API */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00240}00240 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00244}00244 \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{uvbus_8h_ada15a768df6c8f95930ccda8228ee2c3}{uvbus\_server\_new}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00245}00245 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00249}00249 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_a30faabd1a57fc5094f1e19de7f51d3be}{uvbus\_listen}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00250}00250 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00254}00254 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_ab44be75eab57a3388b7bf3e708544be1}{uvbus\_stop}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00255}00255 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00259}00259 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_a0b133ff80c5fc9e4fd017471c58f9d6c}{uvbus\_send}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00260}00260 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00264}00264 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_ab2065c287bb4a964378c0a53d8803475}{uvbus\_send\_to}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* client);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00265}00265 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00266}00266 \textcolor{comment}{/* Client API */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00267}00267 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00271}00271 \mbox{\hyperlink{structuvbus}{uvbus\_t}}* \mbox{\hyperlink{uvbus_8h_a64931dfcbf8405bf85e61eeaa6ebc296}{uvbus\_client\_new}}(\mbox{\hyperlink{structuvbus__config}{uvbus\_config\_t}}* config);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00272}00272 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00276}00276 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_a1a80668fb14970a4a36a5bb26f3640c0}{uvbus\_connect}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00277}00277 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00281}00281 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_a26cd34924087f7660961c3d61d44273f}{uvbus\_connect\_with\_callback}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus, \mbox{\hyperlink{uvbus_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\_connect\_callback\_t}} callback, \textcolor{keywordtype}{void}* ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00282}00282 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00286}00286 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a655383b40dc228452016695950ccfac1}{uvbus\_disconnect}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00287}00287 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00291}00291 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_a88f0c325cbde89e0a83bb2fd2403538f}{uvbus\_client\_send}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00292}00292 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00297}00297 \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}} \mbox{\hyperlink{uvbus_8h_ab2065c287bb4a964378c0a53d8803475}{uvbus\_send\_to}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus, \textcolor{keyword}{const} uint8\_t* data, \textcolor{keywordtype}{size\_t} size, \textcolor{keywordtype}{void}* client\_ctx);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00298}00298 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00299}00299 \textcolor{comment}{/* Common API */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00300}00300 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00304}00304 uv\_loop\_t* \mbox{\hyperlink{uvbus_8h_aa279e2e58a1db237d8dd74322c72de2b}{uvbus\_get\_loop}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00305}00305 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00309}00309 \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} \mbox{\hyperlink{uvbus_8h_a5988be214285c0ad01553200ea9044ae}{uvbus\_get\_transport\_type}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00310}00310 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00314}00314 \textcolor{keyword}{const} \textcolor{keywordtype}{char}* \mbox{\hyperlink{uvbus_8h_aca43a5b7160613d1bb94b10749552404}{uvbus\_get\_address}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00315}00315 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00319}00319 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvbus_8h_a5f0471bc166d90b6d1b8ca4672a9b266}{uvbus\_is\_connected}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00320}00320 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00324}00324 \textcolor{keywordtype}{int} \mbox{\hyperlink{uvbus_8h_a77addd370d0bbc117616a966b7b91fd2}{uvbus\_is\_server}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00325}00325 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00326}00326 \textcolor{comment}{/* Internal transport creation functions (not part of public API) */}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00327}00327 \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* \mbox{\hyperlink{uvbus_8h_a4537eda15fcd40225eda9044e5ef3d59}{create\_tcp\_transport}}(\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} type, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00328}00328 \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* \mbox{\hyperlink{uvbus_8h_a2055660fb7349d59db63bbb75cdad85f}{create\_udp\_transport}}(\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} type, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00329}00329 \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* \mbox{\hyperlink{uvbus_8h_affed1089aa7584022ddd1024be7201c6}{create\_ipc\_transport}}(\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} type, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00330}00330 \mbox{\hyperlink{structuvbus__transport}{uvbus\_transport\_t}}* \mbox{\hyperlink{uvbus_8h_a15be4c50bc0928853840499fc4a6a095}{create\_inproc\_transport}}(\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}} type, uv\_loop\_t* loop);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00331}00331 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00335}00335 \textcolor{keywordtype}{void} \mbox{\hyperlink{uvbus_8h_a46fd342d85cab0698182c7bce87d58bb}{uvbus\_free}}(\mbox{\hyperlink{structuvbus}{uvbus\_t}}* bus);}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00336}00336 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00337}00337 \textcolor{preprocessor}{\#ifdef \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00338}00338 \}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00339}00339 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00340}00340 }
+\DoxyCodeLine{\Hypertarget{uvbus_8h_source_l00341}00341 \textcolor{preprocessor}{\#endif }\textcolor{comment}{/* UVBUS\_H */}\textcolor{preprocessor}{}}
+
+\end{DoxyCode}

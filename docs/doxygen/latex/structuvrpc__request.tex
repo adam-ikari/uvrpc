@@ -1,0 +1,178 @@
+\hypertarget{structuvrpc__request}{}\doxysection{uvrpc\+\_\+request Struct Reference}
+\label{structuvrpc__request}\index{uvrpc\_request@{uvrpc\_request}}
+
+
+RPC request structure (server-\/side)  
+
+
+
+
+{\ttfamily \#include $<$uvrpc.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+request\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}{client\+\_\+ctx}}
+\begin{DoxyCompactList}\small\item\em Client context for sending response (from UVBus) \end{DoxyCompactList}\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__request_aa6e184a8325dc32fbbf89528fe9bfcd7}{method}}
+\begin{DoxyCompactList}\small\item\em Method name (valid only during handler callback) \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}{msgid}}
+\begin{DoxyCompactList}\small\item\em Message ID for request-\/response matching. \end{DoxyCompactList}\item 
+uint8\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__request_a7bb10903abf7f2a7f606211b3ab36048}{params}}
+\begin{DoxyCompactList}\small\item\em Request parameters (valid only during handler callback) \end{DoxyCompactList}\item 
+size\+\_\+t \mbox{\hyperlink{structuvrpc__request_ae42e484197ebf744be24ef39e6c73c99}{params\+\_\+size}}
+\begin{DoxyCompactList}\small\item\em Size of parameters buffer. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}{server}}
+\begin{DoxyCompactList}\small\item\em Server instance. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__request_a9d23d872963351c7ee449848e65c9837}{user\+\_\+data}}
+\begin{DoxyCompactList}\small\item\em User-\/defined data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+RPC request structure (server-\/side) 
+
+Represents an incoming RPC request to be handled by the server. \begin{DoxyWarning}{Warning}
+The method and params pointers are only valid during the handler callback. 
+\end{DoxyWarning}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00277}{277}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}\label{structuvrpc__request_ab00cd1132bee8f43cb6375967a8722f1}} 
+\index{uvrpc\_request@{uvrpc\_request}!client\_ctx@{client\_ctx}}
+\index{client\_ctx@{client\_ctx}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{client\_ctx}{client\_ctx}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+request\+::client\+\_\+ctx}
+
+
+
+Client context for sending response (from UVBus) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00283}{283}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_aa6e184a8325dc32fbbf89528fe9bfcd7}\label{structuvrpc__request_aa6e184a8325dc32fbbf89528fe9bfcd7}} 
+\index{uvrpc\_request@{uvrpc\_request}!method@{method}}
+\index{method@{method}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{method}{method}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+request\+::method}
+
+
+
+Method name (valid only during handler callback) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00280}{280}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}\label{structuvrpc__request_a56372cc79bb92ead4f81487125f8f204}} 
+\index{uvrpc\_request@{uvrpc\_request}!msgid@{msgid}}
+\index{msgid@{msgid}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{msgid}{msgid}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+request\+::msgid}
+
+
+
+Message ID for request-\/response matching. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00279}{279}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_a7bb10903abf7f2a7f606211b3ab36048}\label{structuvrpc__request_a7bb10903abf7f2a7f606211b3ab36048}} 
+\index{uvrpc\_request@{uvrpc\_request}!params@{params}}
+\index{params@{params}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{params}{params}}
+{\footnotesize\ttfamily uint8\+\_\+t$\ast$ uvrpc\+\_\+request\+::params}
+
+
+
+Request parameters (valid only during handler callback) 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00281}{281}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_ae42e484197ebf744be24ef39e6c73c99}\label{structuvrpc__request_ae42e484197ebf744be24ef39e6c73c99}} 
+\index{uvrpc\_request@{uvrpc\_request}!params\_size@{params\_size}}
+\index{params\_size@{params\_size}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{params\_size}{params\_size}}
+{\footnotesize\ttfamily size\+\_\+t uvrpc\+\_\+request\+::params\+\_\+size}
+
+
+
+Size of parameters buffer. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00282}{282}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}\label{structuvrpc__request_ab7d17dcc262d677a079186884de12c9c}} 
+\index{uvrpc\_request@{uvrpc\_request}!server@{server}}
+\index{server@{server}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{server}{server}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}}$\ast$ uvrpc\+\_\+request\+::server}
+
+
+
+Server instance. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00278}{278}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}.
+
+\mbox{\Hypertarget{structuvrpc__request_a9d23d872963351c7ee449848e65c9837}\label{structuvrpc__request_a9d23d872963351c7ee449848e65c9837}} 
+\index{uvrpc\_request@{uvrpc\_request}!user\_data@{user\_data}}
+\index{user\_data@{user\_data}!uvrpc\_request@{uvrpc\_request}}
+\doxysubsubsection{\texorpdfstring{user\_data}{user\_data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+request\+::user\+\_\+data}
+
+
+
+User-\/defined data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00284}{284}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc_8h}{uvrpc.\+h}}\end{DoxyCompactItemize}

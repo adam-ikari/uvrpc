@@ -1,0 +1,155 @@
+\hypertarget{structuvrpc__async__result}{}\doxysection{uvrpc\+\_\+async\+\_\+result Struct Reference}
+\label{structuvrpc__async__result}\index{uvrpc\_async\_result@{uvrpc\_async\_result}}
+
+
+Async result structure.  
+
+
+
+
+{\ttfamily \#include $<$uvrpc\+\_\+async.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+async\+\_\+result\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int32\+\_\+t \mbox{\hyperlink{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}{error\+\_\+code}}
+\begin{DoxyCompactList}\small\item\em Error code from response. \end{DoxyCompactList}\item 
+uint32\+\_\+t \mbox{\hyperlink{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}{msgid}}
+\begin{DoxyCompactList}\small\item\em Message ID. \end{DoxyCompactList}\item 
+uint8\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}{result}}
+\begin{DoxyCompactList}\small\item\em Response data. \end{DoxyCompactList}\item 
+size\+\_\+t \mbox{\hyperlink{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}{result\+\_\+size}}
+\begin{DoxyCompactList}\small\item\em Response data size. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}{status}}
+\begin{DoxyCompactList}\small\item\em UVRPC\+\_\+\+OK or error code. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__async__result_afad95aa99a8982fb81c0da99b466927e}{user\+\_\+data}}
+\begin{DoxyCompactList}\small\item\em User data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Async result structure. 
+
+Contains the result of an async operation. 
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00058}{58}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}\label{structuvrpc__async__result_a8a0136587c6eb5a43eef841e59fc274b}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!error\_code@{error\_code}}
+\index{error\_code@{error\_code}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{error\_code}{error\_code}}
+{\footnotesize\ttfamily int32\+\_\+t uvrpc\+\_\+async\+\_\+result\+::error\+\_\+code}
+
+
+
+Error code from response. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00061}{61}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}\label{structuvrpc__async__result_aa17cb989e498ac8eb247721ab9c5e88a}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!msgid@{msgid}}
+\index{msgid@{msgid}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{msgid}{msgid}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+async\+\_\+result\+::msgid}
+
+
+
+Message ID. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00060}{60}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}\label{structuvrpc__async__result_a24fc425c609adfdae29600b5b30bea71}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!result@{result}}
+\index{result@{result}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{result}{result}}
+{\footnotesize\ttfamily uint8\+\_\+t$\ast$ uvrpc\+\_\+async\+\_\+result\+::result}
+
+
+
+Response data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00062}{62}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}\label{structuvrpc__async__result_a8808da7f19a4f41695151b085094bd03}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!result\_size@{result\_size}}
+\index{result\_size@{result\_size}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{result\_size}{result\_size}}
+{\footnotesize\ttfamily size\+\_\+t uvrpc\+\_\+async\+\_\+result\+::result\+\_\+size}
+
+
+
+Response data size. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00063}{63}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}\label{structuvrpc__async__result_a2c4e2407e214b1aa7dc7ae555ec8d98e}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!status@{status}}
+\index{status@{status}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{status}{status}}
+{\footnotesize\ttfamily int uvrpc\+\_\+async\+\_\+result\+::status}
+
+
+
+UVRPC\+\_\+\+OK or error code. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00059}{59}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}.
+
+\mbox{\Hypertarget{structuvrpc__async__result_afad95aa99a8982fb81c0da99b466927e}\label{structuvrpc__async__result_afad95aa99a8982fb81c0da99b466927e}} 
+\index{uvrpc\_async\_result@{uvrpc\_async\_result}!user\_data@{user\_data}}
+\index{user\_data@{user\_data}!uvrpc\_async\_result@{uvrpc\_async\_result}}
+\doxysubsubsection{\texorpdfstring{user\_data}{user\_data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+async\+\_\+result\+::user\+\_\+data}
+
+
+
+User data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8h_source_l00064}{64}} of file \mbox{\hyperlink{uvrpc__async_8h_source}{uvrpc\+\_\+async.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc__async_8h}{uvrpc\+\_\+async.\+h}}\end{DoxyCompactItemize}

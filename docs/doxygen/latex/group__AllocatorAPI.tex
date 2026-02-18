@@ -1,0 +1,428 @@
+\hypertarget{group__AllocatorAPI}{}\doxysection{Allocator API}
+\label{group__AllocatorAPI}\index{Allocator API@{Allocator API}}
+
+
+Functions for memory allocation.  
+
+
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\+\_\+alloc}} (size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocate memory. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_gab5e5aa03a23833151f56f0ef75f20ff0}{uvrpc\+\_\+allocator\+\_\+cleanup}} (void)
+\begin{DoxyCompactList}\small\item\em Cleanup allocator resources. \end{DoxyCompactList}\item 
+const char $\ast$ \mbox{\hyperlink{group__AllocatorAPI_gaec44abf1ab643754a37c5eb9b10572fa}{uvrpc\+\_\+allocator\+\_\+get\+\_\+name}} (void)
+\begin{DoxyCompactList}\small\item\em Get current allocator name. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} \mbox{\hyperlink{group__AllocatorAPI_gaf311dc4ee4adac6ac9dedefeba4d89d5}{uvrpc\+\_\+allocator\+\_\+get\+\_\+type}} (void)
+\begin{DoxyCompactList}\small\item\em Get current allocator type. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_gaf419a912d024bb4b8acf2dce18b28db3}{uvrpc\+\_\+allocator\+\_\+init}} (\mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} type, const \mbox{\hyperlink{structuvrpc__custom__allocator__t}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t}} $\ast$custom)
+\begin{DoxyCompactList}\small\item\em Initialize allocator (runtime selection) \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\+\_\+calloc}} (size\+\_\+t count, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Allocate zero-\/initialized memory. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\+\_\+free}} (void $\ast$ptr)
+\begin{DoxyCompactList}\small\item\em Free memory. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga70713f720aa0e303f43627beac48b91a}{uvrpc\+\_\+realloc}} (void $\ast$ptr, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Reallocate memory. \end{DoxyCompactList}\item 
+char $\ast$ \mbox{\hyperlink{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}{uvrpc\+\_\+strdup}} (const char $\ast$s)
+\begin{DoxyCompactList}\small\item\em Duplicate a string. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for memory allocation. 
+
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}\label{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}} 
+\index{Allocator API@{Allocator API}!uvrpc\_alloc@{uvrpc\_alloc}}
+\index{uvrpc\_alloc@{uvrpc\_alloc}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_alloc()}{uvrpc\_alloc()}}
+{\footnotesize\ttfamily void $\ast$ uvrpc\+\_\+alloc (\begin{DoxyParamCaption}\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Allocate memory. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em size} & Size to allocate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to allocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{116}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00116                                \{}
+\DoxyCodeLine{00117     \textcolor{keywordflow}{switch} (\mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}}) \{}
+\DoxyCodeLine{00118         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}}:}
+\DoxyCodeLine{00119             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1584656852ec9864c34c6fee506c990d}{system\_alloc}}(size);}
+\DoxyCodeLine{00120         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}}:}
+\DoxyCodeLine{00121 \textcolor{preprocessor}{\#if UVRPC\_DEFAULT\_ALLOCATOR == UVRPC\_ALLOCATOR\_MIMALLOC}}
+\DoxyCodeLine{00122             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a615bc41d6935fac64d4cf88bfd92bbde}{mimalloc\_alloc}}(size);}
+\DoxyCodeLine{00123 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00124             fprintf(stderr, \textcolor{stringliteral}{"{}Error: Mimalloc not compiled in\(\backslash\)n"{}});}
+\DoxyCodeLine{00125             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1584656852ec9864c34c6fee506c990d}{system\_alloc}}(size);}
+\DoxyCodeLine{00126 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00127         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}}:}
+\DoxyCodeLine{00128             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}{alloc}} ? \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}{alloc}}(size) : \mbox{\hyperlink{uvrpc__allocator_8c_a1584656852ec9864c34c6fee506c990d}{system\_alloc}}(size);}
+\DoxyCodeLine{00129         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00130             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1584656852ec9864c34c6fee506c990d}{system\_alloc}}(size);}
+\DoxyCodeLine{00131     \}}
+\DoxyCodeLine{00132 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8h_source_l00077}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::alloc}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00058}{mimalloc\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00040}{system\+\_\+alloc()}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00034}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00074}{async\+\_\+response\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00250}{concurrent\+\_\+callback()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00414}{create\+\_\+inproc\+\_\+transport()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00494}{create\+\_\+ipc\+\_\+transport()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00709}{create\+\_\+tcp\+\_\+transport()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00431}{create\+\_\+udp\+\_\+transport()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00239}{inproc\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00296}{ipc\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00378}{ipc\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00438}{ipc\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00218}{on\+\_\+client\+\_\+alloc()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00110}{on\+\_\+client\+\_\+read()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00107}{on\+\_\+server\+\_\+alloc()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00078}{on\+\_\+server\+\_\+recv()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00048}{parse\+\_\+ipc\+\_\+address()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00077}{parse\+\_\+tcp\+\_\+address()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00045}{parse\+\_\+udp\+\_\+address()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00040}{subscriber\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00481}{tcp\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00410}{tcp\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00571}{tcp\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00643}{tcp\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{udp\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{udp\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00373}{udp\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00026}{uvbus\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00292}{uvrpc\+\_\+async\+\_\+all()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00119}{uvrpc\+\_\+async\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00138}{uvrpc\+\_\+encode\+\_\+error()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00111}{uvrpc\+\_\+publisher\+\_\+publish()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{uvrpc\+\_\+strdup()}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_gab5e5aa03a23833151f56f0ef75f20ff0}\label{group__AllocatorAPI_gab5e5aa03a23833151f56f0ef75f20ff0}} 
+\index{Allocator API@{Allocator API}!uvrpc\_allocator\_cleanup@{uvrpc\_allocator\_cleanup}}
+\index{uvrpc\_allocator\_cleanup@{uvrpc\_allocator\_cleanup}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_allocator\_cleanup()}{uvrpc\_allocator\_cleanup()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+allocator\+\_\+cleanup (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Cleanup allocator resources. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00090}{90}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00090                                    \{}
+\DoxyCodeLine{00091     \textcolor{comment}{/* Reset to default allocator */}}
+\DoxyCodeLine{00092     \mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}} = UVRPC\_DEFAULT\_ALLOCATOR;}
+\DoxyCodeLine{00093     memset(\&\mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}, 0, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}));}
+\DoxyCodeLine{00094 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_gaec44abf1ab643754a37c5eb9b10572fa}\label{group__AllocatorAPI_gaec44abf1ab643754a37c5eb9b10572fa}} 
+\index{Allocator API@{Allocator API}!uvrpc\_allocator\_get\_name@{uvrpc\_allocator\_get\_name}}
+\index{uvrpc\_allocator\_get\_name@{uvrpc\_allocator\_get\_name}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_allocator\_get\_name()}{uvrpc\_allocator\_get\_name()}}
+{\footnotesize\ttfamily const char $\ast$ uvrpc\+\_\+allocator\+\_\+get\+\_\+name (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Get current allocator name. 
+
+\begin{DoxyReturn}{Returns}
+Allocator name string 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00102}{102}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00102                                            \{}
+\DoxyCodeLine{00103     \textcolor{keywordflow}{switch} (\mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}}) \{}
+\DoxyCodeLine{00104         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}}:}
+\DoxyCodeLine{00105             \textcolor{keywordflow}{return} \textcolor{stringliteral}{"{}system"{}};}
+\DoxyCodeLine{00106         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}}:}
+\DoxyCodeLine{00107             \textcolor{keywordflow}{return} \textcolor{stringliteral}{"{}mimalloc"{}};}
+\DoxyCodeLine{00108         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}}:}
+\DoxyCodeLine{00109             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a01c2937d81345f2bfdcb2ef9ca054c43}{name}} ? \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a01c2937d81345f2bfdcb2ef9ca054c43}{name}} : \textcolor{stringliteral}{"{}custom"{}};}
+\DoxyCodeLine{00110         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00111             \textcolor{keywordflow}{return} \textcolor{stringliteral}{"{}unknown"{}};}
+\DoxyCodeLine{00112     \}}
+\DoxyCodeLine{00113 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00081}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::name}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00034}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_gaf311dc4ee4adac6ac9dedefeba4d89d5}\label{group__AllocatorAPI_gaf311dc4ee4adac6ac9dedefeba4d89d5}} 
+\index{Allocator API@{Allocator API}!uvrpc\_allocator\_get\_type@{uvrpc\_allocator\_get\_type}}
+\index{uvrpc\_allocator\_get\_type@{uvrpc\_allocator\_get\_type}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_allocator\_get\_type()}{uvrpc\_allocator\_get\_type()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}} uvrpc\+\_\+allocator\+\_\+get\+\_\+type (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Get current allocator type. 
+
+\begin{DoxyReturn}{Returns}
+Current allocator type 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00097}{97}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00097                                                       \{}
+\DoxyCodeLine{00098     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}};}
+\DoxyCodeLine{00099 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_gaf419a912d024bb4b8acf2dce18b28db3}\label{group__AllocatorAPI_gaf419a912d024bb4b8acf2dce18b28db3}} 
+\index{Allocator API@{Allocator API}!uvrpc\_allocator\_init@{uvrpc\_allocator\_init}}
+\index{uvrpc\_allocator\_init@{uvrpc\_allocator\_init}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_allocator\_init()}{uvrpc\_allocator\_init()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+allocator\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63}{uvrpc\+\_\+allocator\+\_\+type\+\_\+t}}}]{type,  }\item[{const \mbox{\hyperlink{structuvrpc__custom__allocator__t}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t}} $\ast$}]{custom }\end{DoxyParamCaption})}
+
+
+
+Initialize allocator (runtime selection) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em type} & Allocator type \\
+\hline
+{\em custom} & Custom allocator (required if type is CUSTOM) \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00076}{76}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00076                                                                                                \{}
+\DoxyCodeLine{00077     \mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}} = type;}
+\DoxyCodeLine{00078 }
+\DoxyCodeLine{00079     \textcolor{keywordflow}{if} (type == \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}} \&\& custom) \{}
+\DoxyCodeLine{00080         \textcolor{keywordflow}{if} (custom-\/>\mbox{\hyperlink{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}{alloc}} \&\& custom-\/>\mbox{\hyperlink{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}{calloc}} \&\& custom-\/>\mbox{\hyperlink{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}{realloc}} \&\& custom-\/>\mbox{\hyperlink{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}{free}}) \{}
+\DoxyCodeLine{00081             \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}} = *custom;}
+\DoxyCodeLine{00082         \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00083             fprintf(stderr, \textcolor{stringliteral}{"{}Warning: Invalid custom allocator, falling back to system\(\backslash\)n"{}});}
+\DoxyCodeLine{00084             \mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}} = \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}};}
+\DoxyCodeLine{00085         \}}
+\DoxyCodeLine{00086     \}}
+\DoxyCodeLine{00087 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8h_source_l00077}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::alloc}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00078}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::calloc}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00080}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::free}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00079}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::realloc}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}\label{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}} 
+\index{Allocator API@{Allocator API}!uvrpc\_calloc@{uvrpc\_calloc}}
+\index{uvrpc\_calloc@{uvrpc\_calloc}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_calloc()}{uvrpc\_calloc()}}
+{\footnotesize\ttfamily void $\ast$ uvrpc\+\_\+calloc (\begin{DoxyParamCaption}\item[{size\+\_\+t}]{count,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Allocate zero-\/initialized memory. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em count} & Number of elements \\
+\hline
+{\em size} & Size of each element \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to allocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{134}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00134                                               \{}
+\DoxyCodeLine{00135     \textcolor{keywordflow}{switch} (\mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}}) \{}
+\DoxyCodeLine{00136         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}}:}
+\DoxyCodeLine{00137             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1826e833715f8e78e1fd647fa3cce8ff}{system\_calloc}}(count, size);}
+\DoxyCodeLine{00138         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}}:}
+\DoxyCodeLine{00139 \textcolor{preprocessor}{\#if UVRPC\_DEFAULT\_ALLOCATOR == UVRPC\_ALLOCATOR\_MIMALLOC}}
+\DoxyCodeLine{00140             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a9487a3aab6c919a4a592387234123a65}{mimalloc\_calloc}}(count, size);}
+\DoxyCodeLine{00141 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00142             fprintf(stderr, \textcolor{stringliteral}{"{}Error: Mimalloc not compiled in\(\backslash\)n"{}});}
+\DoxyCodeLine{00143             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1826e833715f8e78e1fd647fa3cce8ff}{system\_calloc}}(count, size);}
+\DoxyCodeLine{00144 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00145         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}}:}
+\DoxyCodeLine{00146             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}{calloc}} ? \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}{calloc}}(count, size) : \mbox{\hyperlink{uvrpc__allocator_8c_a1826e833715f8e78e1fd647fa3cce8ff}{system\_calloc}}(count, size);}
+\DoxyCodeLine{00147         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00148             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a1826e833715f8e78e1fd647fa3cce8ff}{system\_calloc}}(count, size);}
+\DoxyCodeLine{00149     \}}
+\DoxyCodeLine{00150 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8h_source_l00078}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::calloc}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00062}{mimalloc\+\_\+calloc()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00044}{system\+\_\+calloc()}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00034}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00018}{uvrpc\+\_\+config\+\_\+new()}}, \mbox{\hyperlink{uvrpc__context_8c_source_l00019}{uvrpc\+\_\+context\+\_\+new()}}, \mbox{\hyperlink{uvrpc__idmap_8c_source_l00012}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__idmap_8c_source_l00037}{uvrpc\+\_\+idmap\+\_\+to\+\_\+gateway()}}, \mbox{\hyperlink{uvrpc__msgid_8c_source_l00010}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+new()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00307}{uvrpc\+\_\+server\+\_\+register()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00200}{uvrpc\+\_\+subscriber\+\_\+subscribe()}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}\label{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}} 
+\index{Allocator API@{Allocator API}!uvrpc\_free@{uvrpc\_free}}
+\index{uvrpc\_free@{uvrpc\_free}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_free()}{uvrpc\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+free (\begin{DoxyParamCaption}\item[{void $\ast$}]{ptr }\end{DoxyParamCaption})}
+
+
+
+Free memory. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to free \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{170}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00170                            \{}
+\DoxyCodeLine{00171     \textcolor{keywordflow}{if} (!ptr) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00172 }
+\DoxyCodeLine{00173     \textcolor{keywordflow}{switch} (\mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}}) \{}
+\DoxyCodeLine{00174         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}}:}
+\DoxyCodeLine{00175             \mbox{\hyperlink{uvrpc__allocator_8c_a537023c6c78789e14d17959f1a1da14e}{system\_free}}(ptr);}
+\DoxyCodeLine{00176             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00177         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}}:}
+\DoxyCodeLine{00178 \textcolor{preprocessor}{\#if UVRPC\_DEFAULT\_ALLOCATOR == UVRPC\_ALLOCATOR\_MIMALLOC}}
+\DoxyCodeLine{00179             \mbox{\hyperlink{uvrpc__allocator_8c_a46b6673f0fcf8acc69445cadb9ff455e}{mimalloc\_free}}(ptr);}
+\DoxyCodeLine{00180 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00181             fprintf(stderr, \textcolor{stringliteral}{"{}Error: Mimalloc not compiled in\(\backslash\)n"{}});}
+\DoxyCodeLine{00182             \mbox{\hyperlink{uvrpc__allocator_8c_a537023c6c78789e14d17959f1a1da14e}{system\_free}}(ptr);}
+\DoxyCodeLine{00183 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00184             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00185         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}}:}
+\DoxyCodeLine{00186             \textcolor{keywordflow}{if} (\mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}{free}}) \{}
+\DoxyCodeLine{00187                 \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}{free}}(ptr);}
+\DoxyCodeLine{00188             \} \textcolor{keywordflow}{else} \{}
+\DoxyCodeLine{00189                 \mbox{\hyperlink{uvrpc__allocator_8c_a537023c6c78789e14d17959f1a1da14e}{system\_free}}(ptr);}
+\DoxyCodeLine{00190             \}}
+\DoxyCodeLine{00191             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00192         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00193             \mbox{\hyperlink{uvrpc__allocator_8c_a537023c6c78789e14d17959f1a1da14e}{system\_free}}(ptr);}
+\DoxyCodeLine{00194             \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00195     \}}
+\DoxyCodeLine{00196 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8h_source_l00080}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::free}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00070}{mimalloc\+\_\+free()}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00052}{system\+\_\+free()}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00034}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__khash_8h_source_l00077}{\+\_\+\+\_\+ac\+\_\+hash\+\_\+resize()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00082}{client\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00303}{inproc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00398}{inproc\+\_\+free()}}, \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00136}{inproc\+\_\+send\+\_\+to\+\_\+all()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00296}{ipc\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00338}{ipc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00478}{ipc\+\_\+free()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00378}{ipc\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00438}{ipc\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00297}{on\+\_\+client\+\_\+close()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00110}{on\+\_\+client\+\_\+read()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00117}{on\+\_\+client\+\_\+recv()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00150}{on\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00310}{on\+\_\+server\+\_\+close()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00078}{on\+\_\+server\+\_\+recv()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00188}{on\+\_\+write()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00040}{subscriber\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00481}{tcp\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00534}{tcp\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00693}{tcp\+\_\+free()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00410}{tcp\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00571}{tcp\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__tcp_8c_source_l00643}{tcp\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00235}{udp\+\_\+connect()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00302}{udp\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00415}{udp\+\_\+free()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00174}{udp\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00330}{udp\+\_\+send()}}, \mbox{\hyperlink{uvbus__transport__udp_8c_source_l00373}{udp\+\_\+send\+\_\+to()}}, \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00039}{uvbus\+\_\+config\+\_\+free()}}, \mbox{\hyperlink{uvbus_8c_source_l00345}{uvbus\+\_\+free()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00137}{uvrpc\+\_\+async\+\_\+ctx\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00239}{uvrpc\+\_\+async\+\_\+result\+\_\+free()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00558}{uvrpc\+\_\+client\+\_\+call\+\_\+batch()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00437}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry\+\_\+internal()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00369}{uvrpc\+\_\+client\+\_\+free()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00035}{uvrpc\+\_\+config\+\_\+free()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00051}{uvrpc\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvrpc__context_8c_source_l00040}{uvrpc\+\_\+context\+\_\+free()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00138}{uvrpc\+\_\+encode\+\_\+error()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00236}{uvrpc\+\_\+free\+\_\+decoded()}}, \mbox{\hyperlink{uvrpc__idmap_8c_source_l00023}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+free()}}, \mbox{\hyperlink{uvrpc__idmap_8c_source_l00076}{uvrpc\+\_\+idmap\+\_\+remove()}}, \mbox{\hyperlink{uvrpc__msgid_8c_source_l00020}{uvrpc\+\_\+msgid\+\_\+ctx\+\_\+free()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00096}{uvrpc\+\_\+publisher\+\_\+free()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00111}{uvrpc\+\_\+publisher\+\_\+publish()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00356}{uvrpc\+\_\+request\+\_\+send\+\_\+response()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00390}{uvrpc\+\_\+response\+\_\+send()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00420}{uvrpc\+\_\+response\+\_\+send\+\_\+error()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00274}{uvrpc\+\_\+server\+\_\+free()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00307}{uvrpc\+\_\+server\+\_\+register()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{uvrpc\+\_\+subscriber\+\_\+free()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00200}{uvrpc\+\_\+subscriber\+\_\+subscribe()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00229}{uvrpc\+\_\+subscriber\+\_\+unsubscribe()}}, and \mbox{\hyperlink{uvrpc__server_8c_source_l00023}{write\+\_\+callback()}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_ga70713f720aa0e303f43627beac48b91a}\label{group__AllocatorAPI_ga70713f720aa0e303f43627beac48b91a}} 
+\index{Allocator API@{Allocator API}!uvrpc\_realloc@{uvrpc\_realloc}}
+\index{uvrpc\_realloc@{uvrpc\_realloc}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_realloc()}{uvrpc\_realloc()}}
+{\footnotesize\ttfamily void $\ast$ uvrpc\+\_\+realloc (\begin{DoxyParamCaption}\item[{void $\ast$}]{ptr,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+
+
+Reallocate memory. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ptr} & Pointer to reallocate \\
+\hline
+{\em size} & New size \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to reallocated memory, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00152}{152}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00152                                             \{}
+\DoxyCodeLine{00153     \textcolor{keywordflow}{switch} (\mbox{\hyperlink{uvrpc__allocator_8c_a66985e5c7a313072d576e27da0c31f3f}{g\_allocator\_type}}) \{}
+\DoxyCodeLine{00154         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a1ff52d584a2c0b185c136781a10f1865}{UVRPC\_ALLOCATOR\_SYSTEM}}:}
+\DoxyCodeLine{00155             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a4a146995e62268e184707c036bd6efbf}{system\_realloc}}(ptr, size);}
+\DoxyCodeLine{00156         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a2ff6d0826d9a8b402c2f56005c826e22}{UVRPC\_ALLOCATOR\_MIMALLOC}}:}
+\DoxyCodeLine{00157 \textcolor{preprocessor}{\#if UVRPC\_DEFAULT\_ALLOCATOR == UVRPC\_ALLOCATOR\_MIMALLOC}}
+\DoxyCodeLine{00158             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a16dcc14a051a02c42d3d177943f196a3}{mimalloc\_realloc}}(ptr, size);}
+\DoxyCodeLine{00159 \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{00160             fprintf(stderr, \textcolor{stringliteral}{"{}Error: Mimalloc not compiled in\(\backslash\)n"{}});}
+\DoxyCodeLine{00161             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a4a146995e62268e184707c036bd6efbf}{system\_realloc}}(ptr, size);}
+\DoxyCodeLine{00162 \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00163         \textcolor{keywordflow}{case} \mbox{\hyperlink{uvrpc__allocator_8h_accfd7934de66ccc91cd13d6fac89aa63a65d7c68746789e96bf106fd7756c7e83}{UVRPC\_ALLOCATOR\_CUSTOM}}:}
+\DoxyCodeLine{00164             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}{realloc}} ? \mbox{\hyperlink{uvrpc__allocator_8c_a9c5c594ec5f5b765474348ef4673a41a}{g\_custom\_allocator}}.\mbox{\hyperlink{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}{realloc}}(ptr, size) : \mbox{\hyperlink{uvrpc__allocator_8c_a4a146995e62268e184707c036bd6efbf}{system\_realloc}}(ptr, size);}
+\DoxyCodeLine{00165         \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00166             \textcolor{keywordflow}{return} \mbox{\hyperlink{uvrpc__allocator_8c_a4a146995e62268e184707c036bd6efbf}{system\_realloc}}(ptr, size);}
+\DoxyCodeLine{00167     \}}
+\DoxyCodeLine{00168 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00036}{g\+\_\+allocator\+\_\+type}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00037}{g\+\_\+custom\+\_\+allocator}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00066}{mimalloc\+\_\+realloc()}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00079}{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::realloc}}, \mbox{\hyperlink{uvrpc__allocator_8c_source_l00048}{system\+\_\+realloc()}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00035}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+CUSTOM}}, \mbox{\hyperlink{uvrpc__allocator_8h_source_l00034}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+MIMALLOC}}, and \mbox{\hyperlink{uvrpc__allocator_8h_source_l00033}{UVRPC\+\_\+\+ALLOCATOR\+\_\+\+SYSTEM}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00104}{inproc\+\_\+add\+\_\+client()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}.
+
+\mbox{\Hypertarget{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}\label{group__AllocatorAPI_ga73a86be88aff6f12142368fced3605f2}} 
+\index{Allocator API@{Allocator API}!uvrpc\_strdup@{uvrpc\_strdup}}
+\index{uvrpc\_strdup@{uvrpc\_strdup}!Allocator API@{Allocator API}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_strdup()}{uvrpc\_strdup()}}
+{\footnotesize\ttfamily char $\ast$ uvrpc\+\_\+strdup (\begin{DoxyParamCaption}\item[{const char $\ast$}]{s }\end{DoxyParamCaption})}
+
+
+
+Duplicate a string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s} & String to duplicate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Newly allocated string, or NULL on failure 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8c_source_l00199}{199}} of file \mbox{\hyperlink{uvrpc__allocator_8c_source}{uvrpc\+\_\+allocator.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00199                                   \{}
+\DoxyCodeLine{00200     \textcolor{keywordflow}{if} (!s) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00201 }
+\DoxyCodeLine{00202     \textcolor{keywordtype}{size\_t} len = strlen(s) + 1;}
+\DoxyCodeLine{00203     \textcolor{keywordtype}{char}* copy = (\textcolor{keywordtype}{char}*)\mbox{\hyperlink{group__AllocatorAPI_ga40028cd95db0b1659f90e48e1d732905}{uvrpc\_alloc}}(len);}
+\DoxyCodeLine{00204     \textcolor{keywordflow}{if} (copy) \{}
+\DoxyCodeLine{00205         memcpy(copy, s, len);}
+\DoxyCodeLine{00206     \}}
+\DoxyCodeLine{00207     \textcolor{keywordflow}{return} copy;}
+\DoxyCodeLine{00208 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__inproc_8c_source_l00184}{inproc\+\_\+listen()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00071}{server\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvbus_8c_source_l00158}{uvbus\+\_\+client\+\_\+new()}}, \mbox{\hyperlink{uvbus_8c_source_l00118}{uvbus\+\_\+server\+\_\+new()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}, \mbox{\hyperlink{uvrpc__client_8c_source_l00206}{uvrpc\+\_\+client\+\_\+create()}}, \mbox{\hyperlink{uvrpc__config_8c_source_l00051}{uvrpc\+\_\+config\+\_\+set\+\_\+address()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00186}{uvrpc\+\_\+decode\+\_\+error()}}, \mbox{\hyperlink{uvrpc__flatbuffers_8c_source_l00078}{uvrpc\+\_\+decode\+\_\+request()}}, \mbox{\hyperlink{uvrpc__publisher_8c_source_l00031}{uvrpc\+\_\+publisher\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00154}{uvrpc\+\_\+server\+\_\+create()}}, \mbox{\hyperlink{uvrpc__server_8c_source_l00307}{uvrpc\+\_\+server\+\_\+register()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00200}{uvrpc\+\_\+subscriber\+\_\+subscribe()}}.
+

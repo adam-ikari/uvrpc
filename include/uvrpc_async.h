@@ -1,15 +1,33 @@
 /**
- * UVRPC Async/Await API
- * Provides coroutine-like async/await syntax for C
+ * @file uvrpc_async.h
+ * @brief UVRPC Async/Await API
  * 
- * Usage:
- *   UVRPC_ASYNC(client, {
- *       UVRPC_AWAIT(uvrpc_client_call_async(client, "echo", data, size, timeout_ms));
- *       if (result->error_code != 0) {
- *           // Handle error
- *       }
- *       // Use result->result and result->result_size
- *   });
+ * Provides coroutine-like async/await syntax for C using libuv event loop.
+ * This API allows writing asynchronous code in a synchronous style.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) 2026
+ * @license MIT License
+ * 
+ * @section usage Usage Example
+ * @code
+ * uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(loop);
+ * 
+ * UVRPC_ASYNC(ctx, 5000) {
+ *     uvrpc_async_result_t* result;
+ *     UVRPC_AWAIT(uvrpc_client_call_async(ctx, client, "echo", data, size, &result));
+ *     if (result->error_code != 0) {
+ *         // Handle error
+ *     }
+ *     // Use result->result and result->result_size
+ *     uvrpc_async_result_free(result);
+ * }
+ * 
+ * uvrpc_async_ctx_free(ctx);
+ * @endcode
  */
 
 #ifndef UVRPC_ASYNC_H
@@ -24,17 +42,26 @@
 extern "C" {
 #endif
 
-/* Async context for coroutine */
+/**
+ * @brief Async context for coroutine execution
+ * 
+ * Opaque structure representing an async context for executing
+ * async/await blocks.
+ */
 typedef struct uvrpc_async_ctx uvrpc_async_ctx_t;
 
-/* Async result structure */
+/**
+ * @brief Async result structure
+ * 
+ * Contains the result of an async operation.
+ */
 typedef struct uvrpc_async_result {
-    int status;              /* UVRPC_OK or error code */
-    uint32_t msgid;          /* Message ID */
-    int32_t error_code;      /* Error code from response */
-    uint8_t* result;         /* Response data */
-    size_t result_size;      /* Response data size */
-    void* user_data;         /* User data */
+    int status;              /**< @brief UVRPC_OK or error code */
+    uint32_t msgid;          /**< @brief Message ID */
+    int32_t error_code;      /**< @brief Error code from response */
+    uint8_t* result;         /**< @brief Response data */
+    size_t result_size;      /**< @brief Response data size */
+    void* user_data;         /**< @brief User data */
 } uvrpc_async_result_t;
 
 /**

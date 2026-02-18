@@ -1,0 +1,749 @@
+\hypertarget{uvrpc_8h}{}\doxysection{include/uvrpc.h File Reference}
+\label{uvrpc_8h}\index{include/uvrpc.h@{include/uvrpc.h}}
+
+
+UVRPC -\/ Ultra-\/\+Fast RPC Framework.  
+
+
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structuvrpc__config}{uvrpc\+\_\+config}}
+\begin{DoxyCompactList}\small\item\em UVRPC configuration structure. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structuvrpc__context}{uvrpc\+\_\+context}}
+\begin{DoxyCompactList}\small\item\em Universal context structure for server and client. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structuvrpc__request}{uvrpc\+\_\+request}}
+\begin{DoxyCompactList}\small\item\em RPC request structure (server-\/side) \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structuvrpc__response}{uvrpc\+\_\+response}}
+\begin{DoxyCompactList}\small\item\em RPC response structure (client-\/side) \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\+\_\+callback\+\_\+t}}) (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Response callback type (client-\/side) \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structuvrpc__client}{uvrpc\+\_\+client}} \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structuvrpc__config}{uvrpc\+\_\+config}} \mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}}
+\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\+\_\+connect\+\_\+callback\+\_\+t}}) (int status, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Connection state callback type. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\+\_\+context\+\_\+cleanup\+\_\+t}}) (void $\ast$data, void $\ast$user\+\_\+data)
+\begin{DoxyCompactList}\small\item\em Context cleanup callback type. \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structuvrpc__context}{uvrpc\+\_\+context}} \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Universal context structure for server and client. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a02d08deb67efc4ae6a3bdea477bae7a2}{uvrpc\+\_\+error\+\_\+callback\+\_\+t}}) (\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\+\_\+error\+\_\+t}} error\+\_\+code, const char $\ast$error\+\_\+msg, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Error callback type. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}{uvrpc\+\_\+handler\+\_\+t}}) (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Request handler callback type (server-\/side) \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\+\_\+publish\+\_\+callback\+\_\+t}}) (int status, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Publish callback type (broadcast mode) \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\+\_\+publisher}} \mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structuvrpc__request}{uvrpc\+\_\+request}} \mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structuvrpc__response}{uvrpc\+\_\+response}} \mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}}
+\item 
+typedef struct \mbox{\hyperlink{structuvrpc__server}{uvrpc\+\_\+server}} \mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}}
+\item 
+typedef void($\ast$ \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t}}) (const char $\ast$topic, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Subscribe callback type (broadcast mode) \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\+\_\+subscriber}} \mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\+\_\+comm\+\_\+type\+\_\+t}} \{ \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}{UVRPC\+\_\+\+COMM\+\_\+\+SERVER\+\_\+\+CLIENT}} = 0
+, \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}{UVRPC\+\_\+\+COMM\+\_\+\+BROADCAST}} = 1
+ \}
+\begin{DoxyCompactList}\small\item\em Communication types for UVRPC. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\+\_\+error\+\_\+t}} \{ \newline
+\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\+\_\+\+OK}} = 0
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\+\_\+\+ERROR}} = -\/1
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}} = -\/2
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}} = -\/3
+, \newline
+\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{UVRPC\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED}} = -\/4
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}} = -\/5
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\+\_\+\+ERROR\+\_\+\+TRANSPORT}} = -\/6
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{UVRPC\+\_\+\+ERROR\+\_\+\+CALLBACK\+\_\+\+LIMIT}} = -\/7
+, \newline
+\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}{UVRPC\+\_\+\+ERROR\+\_\+\+CANCELLED}} = -\/8
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}{UVRPC\+\_\+\+ERROR\+\_\+\+POOL\+\_\+\+EXHAUSTED}} = -\/9
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}{UVRPC\+\_\+\+ERROR\+\_\+\+RATE\+\_\+\+LIMITED}} = -\/10
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}{UVRPC\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND}} = -\/11
+, \newline
+\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}{UVRPC\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+EXISTS}} = -\/12
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}{UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+STATE}} = -\/13
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}{UVRPC\+\_\+\+ERROR\+\_\+\+IO}} = -\/14
+, \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}{UVRPC\+\_\+\+ERROR\+\_\+\+MAX}}
+ \}
+\begin{DoxyCompactList}\small\item\em Error codes for UVRPC operations. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} \{ \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}{UVRPC\+\_\+\+PERF\+\_\+\+LOW\+\_\+\+LATENCY}} = 0
+, \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}{UVRPC\+\_\+\+PERF\+\_\+\+HIGH\+\_\+\+THROUGHPUT}} = 1
+ \}
+\begin{DoxyCompactList}\small\item\em Performance modes for UVRPC operations. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}{uvrpc\+\_\+rpc\+\_\+error\+\_\+t}} \{ \newline
+\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+OK}} = 0
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+REQUEST}} = 1
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+METHOD\+\_\+\+NOT\+\_\+\+FOUND}} = 2
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAMS}} = 3
+, \newline
+\mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INTERNAL\+\_\+\+ERROR}} = 4
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+TIMEOUT}} = 5
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+PARSE\+\_\+\+ERROR}} = 6
+, \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}{UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+SERVER\+\_\+\+ERROR}} = 7
+ \}
+\begin{DoxyCompactList}\small\item\em RPC-\/specific error codes for error frames. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\+\_\+transport\+\_\+type}} \{ \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\+\_\+\+TRANSPORT\+\_\+\+TCP}} = 0
+, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{UVRPC\+\_\+\+TRANSPORT\+\_\+\+UDP}} = 1
+, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{UVRPC\+\_\+\+TRANSPORT\+\_\+\+IPC}} = 2
+, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{UVRPC\+\_\+\+TRANSPORT\+\_\+\+INPROC}} = 3
+ \}
+\begin{DoxyCompactList}\small\item\em Transport types for UVRPC communication. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{group__ClientAPI_ga6af867ef4da1e1bf378b4fa1fd5306a8}{uvrpc\+\_\+client\+\_\+call}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Call RPC method with automatic retry. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga03e1268b4ea3a33131982d2c790ce4ef}{uvrpc\+\_\+client\+\_\+call\+\_\+batch}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$$\ast$methods, const uint8\+\_\+t $\ast$$\ast$params\+\_\+array, size\+\_\+t $\ast$params\+\_\+sizes, \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\+\_\+callback\+\_\+t}} $\ast$callbacks, void $\ast$$\ast$contexts, int count)
+\begin{DoxyCompactList}\small\item\em Call multiple RPC methods in batch. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga538d7541c4465c6bc24616281a0c23eb}{uvrpc\+\_\+client\+\_\+call\+\_\+no\+\_\+retry}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, const char $\ast$method, const uint8\+\_\+t $\ast$params, size\+\_\+t params\+\_\+size, \mbox{\hyperlink{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}{uvrpc\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Call RPC method without retry. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga6bbddb4ed697561628f473190beb0778}{uvrpc\+\_\+client\+\_\+connect}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Connect to server synchronously. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga50b3c9e4d78f8c5f7212ac423a232aa7}{uvrpc\+\_\+client\+\_\+connect\+\_\+with\+\_\+callback}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, \mbox{\hyperlink{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}{uvrpc\+\_\+connect\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Connect to server asynchronously. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ClientAPI_gac6ae0fa0576a1917661a711feef6abca}{uvrpc\+\_\+client\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new RPC client. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ClientAPI_gac55246e43dc3cbd60165ee1517a43ce0}{uvrpc\+\_\+client\+\_\+disconnect}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Disconnect from server. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ClientAPI_ga57ce57d27900980d6b883a79e2064b61}{uvrpc\+\_\+client\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Free the client. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ClientAPI_gabeb066fc3f6d0cf47d7bcbab5eae3e50}{uvrpc\+\_\+client\+\_\+get\+\_\+context}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Get client context. \end{DoxyCompactList}\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{group__ClientAPI_gaa819744acd56567e16a34076ef8cf4ab}{uvrpc\+\_\+client\+\_\+get\+\_\+loop}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Get the event loop. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga6af0c71bc47c6c0ab15be4a5e3bdcaf6}{uvrpc\+\_\+client\+\_\+get\+\_\+max\+\_\+retries}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Get maximum retry count. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga71cc98cf4f74f367519494b6fddc45f8}{uvrpc\+\_\+client\+\_\+get\+\_\+pending\+\_\+count}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client)
+\begin{DoxyCompactList}\small\item\em Get pending request count. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ClientAPI_ga9d2a0fd06a2f299032127d5b47f54bf9}{uvrpc\+\_\+client\+\_\+set\+\_\+context}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Set client context. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga3fffaee0b22282270b7a234e2cd2539d}{uvrpc\+\_\+client\+\_\+set\+\_\+max\+\_\+concurrent}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, int max\+\_\+concurrent)
+\begin{DoxyCompactList}\small\item\em Set maximum concurrent requests. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ClientAPI_ga28909c12ab7a5fc91f98ae2459067b98}{uvrpc\+\_\+client\+\_\+set\+\_\+max\+\_\+retries}} (\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$client, int max\+\_\+retries)
+\begin{DoxyCompactList}\small\item\em Set maximum retry count. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ConfigAPI_ga02b1d0002541d4ef0d8699225f8e5fe3}{uvrpc\+\_\+config\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Free a configuration structure. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_gab2674a1d45c5780fc4f0141473b79013}{uvrpc\+\_\+config\+\_\+new}} (void)
+\begin{DoxyCompactList}\small\item\em Create a new configuration structure. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_gacf6214d1d2df49c284074b1bd7450775}{uvrpc\+\_\+config\+\_\+set\+\_\+address}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, const char $\ast$address)
+\begin{DoxyCompactList}\small\item\em Set the address. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_gac16cff3c468c837f91580fadc28761d9}{uvrpc\+\_\+config\+\_\+set\+\_\+comm\+\_\+type}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\+\_\+comm\+\_\+type\+\_\+t}} comm\+\_\+type)
+\begin{DoxyCompactList}\small\item\em Set the communication type. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_gae89a78f07bd36c36e2ac460b52b28d4e}{uvrpc\+\_\+config\+\_\+set\+\_\+loop}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, uv\+\_\+loop\+\_\+t $\ast$loop)
+\begin{DoxyCompactList}\small\item\em Set the event loop. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_gad39a2be1a6038a7afebe848b67e0724e}{uvrpc\+\_\+config\+\_\+set\+\_\+max\+\_\+concurrent}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, int max\+\_\+concurrent)
+\begin{DoxyCompactList}\small\item\em Set the maximum concurrent requests. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga9a3059095b78bcacc4c15c1ce94bd4f5}{uvrpc\+\_\+config\+\_\+set\+\_\+max\+\_\+pending\+\_\+callbacks}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, int max\+\_\+pending)
+\begin{DoxyCompactList}\small\item\em Set the maximum pending callbacks. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga1c648405d875cd146ae52e58cb5021e0}{uvrpc\+\_\+config\+\_\+set\+\_\+msgid\+\_\+offset}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, uint32\+\_\+t msgid\+\_\+offset)
+\begin{DoxyCompactList}\small\item\em Set the message ID offset. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga24aae189500f97db9a448503613f8f90}{uvrpc\+\_\+config\+\_\+set\+\_\+performance\+\_\+mode}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}} mode)
+\begin{DoxyCompactList}\small\item\em Set the performance mode. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga2937d9ba73c21a566f1503f0dfb16d5b}{uvrpc\+\_\+config\+\_\+set\+\_\+pool\+\_\+size}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, int pool\+\_\+size)
+\begin{DoxyCompactList}\small\item\em Set the connection pool size. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga9573301e91541787c8fa39eb4c0b9cb7}{uvrpc\+\_\+config\+\_\+set\+\_\+timeout}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, uint64\+\_\+t timeout\+\_\+ms)
+\begin{DoxyCompactList}\small\item\em Set the default timeout. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ConfigAPI_ga51256091cf9b945507076d8eff291d9f}{uvrpc\+\_\+config\+\_\+set\+\_\+transport}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config, \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\+\_\+transport\+\_\+type}} transport)
+\begin{DoxyCompactList}\small\item\em Set the transport type. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ContextAPI_gac511daa456d961be8b7e68bdc019a791}{uvrpc\+\_\+context\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Free a context. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{group__ContextAPI_ga2db05f28b07941e325732e7fe20625b5}{uvrpc\+\_\+context\+\_\+get\+\_\+data}} (\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Get user data from context. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ContextAPI_gacb2b86cd4c9a4076997f54085e03818c}{uvrpc\+\_\+context\+\_\+new}} (void $\ast$data)
+\begin{DoxyCompactList}\small\item\em Create a new context with user data. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ContextAPI_ga25f875304e174c915b572bc46320e9d6}{uvrpc\+\_\+context\+\_\+new\+\_\+with\+\_\+cleanup}} (void $\ast$data, \mbox{\hyperlink{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}{uvrpc\+\_\+context\+\_\+cleanup\+\_\+t}} cleanup, void $\ast$cleanup\+\_\+data)
+\begin{DoxyCompactList}\small\item\em Create a new context with cleanup callback. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_ga6ee3c4daea7a36fe3530e4931cbf88ec}{uvrpc\+\_\+publisher\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gad842c595c9390e65769c842f11084102}{uvrpc\+\_\+publisher\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Free the publisher. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga10ec8adf1463b5ac99fc016391bfe6a9}{uvrpc\+\_\+publisher\+\_\+publish}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher, const char $\ast$topic, const uint8\+\_\+t $\ast$data, size\+\_\+t size, \mbox{\hyperlink{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}{uvrpc\+\_\+publish\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Publish a message to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gaf7fd8dced1770e8c11efcb36798963e7}{uvrpc\+\_\+publisher\+\_\+start}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Start the publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga13aabfc7a3b17b6c4b2c16c5b874f030}{uvrpc\+\_\+publisher\+\_\+stop}} (\mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}} $\ast$publisher)
+\begin{DoxyCompactList}\small\item\em Stop the publisher. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_ga6d686f1046b32fec8532e550c9ec22ad}{uvrpc\+\_\+request\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req)
+\begin{DoxyCompactList}\small\item\em Free a request object. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_gac01e498c688ddd313bb906d7a2c96a9f}{uvrpc\+\_\+request\+\_\+send\+\_\+response}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, int status, const uint8\+\_\+t $\ast$result, size\+\_\+t result\+\_\+size)
+\begin{DoxyCompactList}\small\item\em Send a response to a request (deprecated, use uvrpc\+\_\+response\+\_\+send) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__RequestResponseAPI_gafb7e16788fb623e8ae12a671aaa2a99d}{uvrpc\+\_\+response\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp)
+\begin{DoxyCompactList}\small\item\em Free a response object. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ServerAPI_gaaedf61695a733f65ee8f7eb6cdcbcb84}{uvrpc\+\_\+response\+\_\+send}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, const uint8\+\_\+t $\ast$result, size\+\_\+t result\+\_\+size)
+\begin{DoxyCompactList}\small\item\em Send a response to a request. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ServerAPI_gad13091e2b3b268255a7edf22f41d167d}{uvrpc\+\_\+response\+\_\+send\+\_\+error}} (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, int32\+\_\+t error\+\_\+code, const char $\ast$error\+\_\+message)
+\begin{DoxyCompactList}\small\item\em Send an error response to a request. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ServerAPI_ga87bd379c5e75d0fc0e1a4857cc53482a}{uvrpc\+\_\+server\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new RPC server. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ServerAPI_ga7212ee2594ccf211aaa70633a23fbc65}{uvrpc\+\_\+server\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Free the server. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ \mbox{\hyperlink{group__ServerAPI_ga5a584b68b5128541828eeb57e527a0b6}{uvrpc\+\_\+server\+\_\+get\+\_\+context}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Get server context. \end{DoxyCompactList}\item 
+uint64\+\_\+t \mbox{\hyperlink{group__ServerAPI_gaa23f24c364aa1174d1791926433a1fb0}{uvrpc\+\_\+server\+\_\+get\+\_\+total\+\_\+requests}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Get total requests received. \end{DoxyCompactList}\item 
+uint64\+\_\+t \mbox{\hyperlink{group__ServerAPI_ga0db659101ae7ed222dbf760b19bf42db}{uvrpc\+\_\+server\+\_\+get\+\_\+total\+\_\+responses}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Get total responses sent. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ServerAPI_gafb0b4c350e56c93909067ea12d1cefa9}{uvrpc\+\_\+server\+\_\+register}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server, const char $\ast$method, \mbox{\hyperlink{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}{uvrpc\+\_\+handler\+\_\+t}} handler, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Register a method handler. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ServerAPI_gad1d0a24ea024d981d8f8e4b806a5709b}{uvrpc\+\_\+server\+\_\+set\+\_\+context}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server, \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}} $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Set server context. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__ServerAPI_ga209b5f9a4a5635b21ee8ae5c64b8c674}{uvrpc\+\_\+server\+\_\+start}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Start the server. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__ServerAPI_ga954fca340a3edce50c5279eec20e053d}{uvrpc\+\_\+server\+\_\+stop}} (\mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}} $\ast$server)
+\begin{DoxyCompactList}\small\item\em Stop the server. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_gab12f926906f087211665f505b54bad85}{uvrpc\+\_\+subscriber\+\_\+connect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Connect subscriber to publisher. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$ \mbox{\hyperlink{group__BroadcastAPI_gaeb5f7f3d2bee845b637e16542dcc9fcd}{uvrpc\+\_\+subscriber\+\_\+create}} (\mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}} $\ast$config)
+\begin{DoxyCompactList}\small\item\em Create a new subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_ga8269503e4897a47ed9cceca04d0cfe09}{uvrpc\+\_\+subscriber\+\_\+disconnect}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Disconnect subscriber. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__BroadcastAPI_gabdec22436e6414be73b47fe09dcc8c33}{uvrpc\+\_\+subscriber\+\_\+free}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber)
+\begin{DoxyCompactList}\small\item\em Free the subscriber. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga3e862c193828057361a8880dd7436da6}{uvrpc\+\_\+subscriber\+\_\+subscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic, \mbox{\hyperlink{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}{uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t}} callback, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Subscribe to a topic. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{group__BroadcastAPI_ga9ba88c002c2ea4490fa1ba58ba788553}{uvrpc\+\_\+subscriber\+\_\+unsubscribe}} (\mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}} $\ast$subscriber, const char $\ast$topic)
+\begin{DoxyCompactList}\small\item\em Unsubscribe from a topic. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVRPC -\/ Ultra-\/\+Fast RPC Framework. 
+
+Design\+: libuv + Flat\+CC + UVBus Philosophy\+: Zero threads, Zero locks, Zero global variables All I/O managed by libuv event loop
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+1.\+0
+\end{DoxyVersion}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2026 @license MIT License 
+\end{DoxyCopyright}
+
+
+Definition in file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}\label{uvrpc_8h_a241ad81f8b36dd34ac051f74f48bce06}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_callback\_t@{uvrpc\_callback\_t}}
+\index{uvrpc\_callback\_t@{uvrpc\_callback\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_callback\_t}{uvrpc\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+callback\+\_\+t) (\mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}} $\ast$resp, void $\ast$ctx)}
+
+
+
+Response callback type (client-\/side) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em resp} & Response object containing result or error \\
+\hline
+{\em ctx} & User context provided during call \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00215}{215}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}\label{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_client\_t@{uvrpc\_client\_t}}
+\index{uvrpc\_client\_t@{uvrpc\_client\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_client\_t}{uvrpc\_client\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__client}{uvrpc\+\_\+client}} \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00195}{195}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}\label{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_config\_t@{uvrpc\_config\_t}}
+\index{uvrpc\_config\_t@{uvrpc\_config\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_config\_t}{uvrpc\_config\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__config}{uvrpc\+\_\+config}} \mbox{\hyperlink{uvrpc_8h_a877e55a4f9d0b9b7ee1e89e1f5155c75}{uvrpc\+\_\+config\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00193}{193}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}\label{uvrpc_8h_a31000545374020d4cb6d936363eb01b5}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_connect\_callback\_t@{uvrpc\_connect\_callback\_t}}
+\index{uvrpc\_connect\_callback\_t@{uvrpc\_connect\_callback\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_connect\_callback\_t}{uvrpc\_connect\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+connect\+\_\+callback\+\_\+t) (int status, void $\ast$ctx)}
+
+
+
+Connection state callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em status} & Connection status (0 for success, negative for error) \\
+\hline
+{\em ctx} & User context provided during connection \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00223}{223}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}\label{uvrpc_8h_a30423b2a2d6b28e49be2dab4179f2d45}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_context\_cleanup\_t@{uvrpc\_context\_cleanup\_t}}
+\index{uvrpc\_context\_cleanup\_t@{uvrpc\_context\_cleanup\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_context\_cleanup\_t}{uvrpc\_context\_cleanup\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+context\+\_\+cleanup\+\_\+t) (void $\ast$data, void $\ast$user\+\_\+data)}
+
+
+
+Context cleanup callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em data} & User data to be cleaned up \\
+\hline
+{\em user\+\_\+data} & Additional user data passed to cleanup \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00133}{133}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}\label{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_context\_t@{uvrpc\_context\_t}}
+\index{uvrpc\_context\_t@{uvrpc\_context\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_context\_t}{uvrpc\_context\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__context}{uvrpc\+\_\+context}} \mbox{\hyperlink{uvrpc_8h_a1267360dffceedbb9a190699dbe91c52}{uvrpc\+\_\+context\+\_\+t}}}
+
+
+
+Universal context structure for server and client. 
+
+Provides a way to attach user-\/defined data to server or client instances with automatic cleanup support. \mbox{\Hypertarget{uvrpc_8h_a02d08deb67efc4ae6a3bdea477bae7a2}\label{uvrpc_8h_a02d08deb67efc4ae6a3bdea477bae7a2}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_error\_callback\_t@{uvrpc\_error\_callback\_t}}
+\index{uvrpc\_error\_callback\_t@{uvrpc\_error\_callback\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_error\_callback\_t}{uvrpc\_error\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+error\+\_\+callback\+\_\+t) (\mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\+\_\+error\+\_\+t}} error\+\_\+code, const char $\ast$error\+\_\+msg, void $\ast$ctx)}
+
+
+
+Error callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em error\+\_\+code} & Error code from uvrpc\+\_\+error\+\_\+t \\
+\hline
+{\em error\+\_\+msg} & Error message string \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00250}{250}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}\label{uvrpc_8h_ad44acde8ec79ff9da45d213a32ccca12}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_handler\_t@{uvrpc\_handler\_t}}
+\index{uvrpc\_handler\_t@{uvrpc\_handler\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_handler\_t}{uvrpc\_handler\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+handler\+\_\+t) (\mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}} $\ast$req, void $\ast$ctx)}
+
+
+
+Request handler callback type (server-\/side) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em req} & Incoming request object \\
+\hline
+{\em ctx} & User context provided during registration \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00207}{207}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}\label{uvrpc_8h_a254d668502898daf0dc8874a444d9c7e}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_publish\_callback\_t@{uvrpc\_publish\_callback\_t}}
+\index{uvrpc\_publish\_callback\_t@{uvrpc\_publish\_callback\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publish\_callback\_t}{uvrpc\_publish\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+publish\+\_\+callback\+\_\+t) (int status, void $\ast$ctx)}
+
+
+
+Publish callback type (broadcast mode) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em status} & Publish status (0 for success, negative for error) \\
+\hline
+{\em ctx} & User context provided during publish \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00231}{231}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}\label{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_publisher\_t@{uvrpc\_publisher\_t}}
+\index{uvrpc\_publisher\_t@{uvrpc\_publisher\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_publisher\_t}{uvrpc\_publisher\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__publisher}{uvrpc\+\_\+publisher}} \mbox{\hyperlink{uvrpc_8h_ac336b00ffd70433a1dcb080f1184b32b}{uvrpc\+\_\+publisher\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00196}{196}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}\label{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_request\_t@{uvrpc\_request\_t}}
+\index{uvrpc\_request\_t@{uvrpc\_request\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_request\_t}{uvrpc\_request\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__request}{uvrpc\+\_\+request}} \mbox{\hyperlink{uvrpc_8h_af5858d287dc6d6e22d3f8dd717fd29c8}{uvrpc\+\_\+request\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00198}{198}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}\label{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_response\_t@{uvrpc\_response\_t}}
+\index{uvrpc\_response\_t@{uvrpc\_response\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_response\_t}{uvrpc\_response\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__response}{uvrpc\+\_\+response}} \mbox{\hyperlink{uvrpc_8h_a98a3781d6db51a19805fcefaab87b1aa}{uvrpc\+\_\+response\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00199}{199}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}\label{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_server\_t@{uvrpc\_server\_t}}
+\index{uvrpc\_server\_t@{uvrpc\_server\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_server\_t}{uvrpc\_server\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__server}{uvrpc\+\_\+server}} \mbox{\hyperlink{uvrpc_8h_af92095e9b3ee6ef008ad632c601d2a7f}{uvrpc\+\_\+server\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00194}{194}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}\label{uvrpc_8h_a7e26f72ff3345eff9e248767d7c6c7e8}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_subscribe\_callback\_t@{uvrpc\_subscribe\_callback\_t}}
+\index{uvrpc\_subscribe\_callback\_t@{uvrpc\_subscribe\_callback\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscribe\_callback\_t}{uvrpc\_subscribe\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvrpc\+\_\+subscribe\+\_\+callback\+\_\+t) (const char $\ast$topic, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$ctx)}
+
+
+
+Subscribe callback type (broadcast mode) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em topic} & Topic name \\
+\hline
+{\em data} & Published data \\
+\hline
+{\em size} & Data size \\
+\hline
+{\em ctx} & User context provided during subscription \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00241}{241}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+\mbox{\Hypertarget{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}\label{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_subscriber\_t@{uvrpc\_subscriber\_t}}
+\index{uvrpc\_subscriber\_t@{uvrpc\_subscriber\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_subscriber\_t}{uvrpc\_subscriber\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvrpc__subscriber}{uvrpc\+\_\+subscriber}} \mbox{\hyperlink{uvrpc_8h_afee5692bcd67ed8b81f85d7c90d4b27e}{uvrpc\+\_\+subscriber\+\_\+t}}}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00197}{197}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}\label{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_comm\_type\_t@{uvrpc\_comm\_type\_t}}
+\index{uvrpc\_comm\_type\_t@{uvrpc\_comm\_type\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_comm\_type\_t}{uvrpc\_comm\_type\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\+\_\+comm\+\_\+type\+\_\+t}}}
+
+
+
+Communication types for UVRPC. 
+
+Defines the communication pattern\+: request-\/response or publish-\/subscribe. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_COMM\_SERVER\_CLIENT@{UVRPC\_COMM\_SERVER\_CLIENT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_COMM\_SERVER\_CLIENT@{UVRPC\_COMM\_SERVER\_CLIENT}}}\mbox{\Hypertarget{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}\label{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}} 
+UVRPC\+\_\+\+COMM\+\_\+\+SERVER\+\_\+\+CLIENT&Server/\+Client mode (request-\/response) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_COMM\_BROADCAST@{UVRPC\_COMM\_BROADCAST}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_COMM\_BROADCAST@{UVRPC\_COMM\_BROADCAST}}}\mbox{\Hypertarget{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}\label{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}} 
+UVRPC\+\_\+\+COMM\+\_\+\+BROADCAST&Broadcast mode (publish-\/subscribe) \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00122}{122}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00122              \{}
+\DoxyCodeLine{00123     \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083aec1dacd9f0070361848b337775959410}{UVRPC\_COMM\_SERVER\_CLIENT}} = 0,  }
+\DoxyCodeLine{00124     \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083a89777c613d04ccf7c4e7f33c2511b891}{UVRPC\_COMM\_BROADCAST}} = 1        }
+\DoxyCodeLine{00125 \} \mbox{\hyperlink{uvrpc_8h_a203ae69065e3389fbb7a971643d3e083}{uvrpc\_comm\_type\_t}};}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_error\_t@{uvrpc\_error\_t}}
+\index{uvrpc\_error\_t@{uvrpc\_error\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_error\_t}{uvrpc\_error\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\+\_\+error\+\_\+t}}}
+
+
+
+Error codes for UVRPC operations. 
+
+These error codes are returned by UVRPC API functions to indicate success or failure conditions. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_OK@{UVRPC\_OK}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_OK@{UVRPC\_OK}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}} 
+UVRPC\+\_\+\+OK&Operation successful. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR@{UVRPC\_ERROR}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR@{UVRPC\_ERROR}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}} 
+UVRPC\+\_\+\+ERROR&General error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_INVALID\_PARAM@{UVRPC\_ERROR\_INVALID\_PARAM}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_INVALID\_PARAM@{UVRPC\_ERROR\_INVALID\_PARAM}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM&Invalid parameter provided. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_NO\_MEMORY@{UVRPC\_ERROR\_NO\_MEMORY}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_NO\_MEMORY@{UVRPC\_ERROR\_NO\_MEMORY}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY&Memory allocation failed. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_NOT\_CONNECTED@{UVRPC\_ERROR\_NOT\_CONNECTED}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_NOT\_CONNECTED@{UVRPC\_ERROR\_NOT\_CONNECTED}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED&Not connected to server. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_TIMEOUT@{UVRPC\_ERROR\_TIMEOUT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_TIMEOUT@{UVRPC\_ERROR\_TIMEOUT}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+TIMEOUT&Operation timed out. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_TRANSPORT@{UVRPC\_ERROR\_TRANSPORT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_TRANSPORT@{UVRPC\_ERROR\_TRANSPORT}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+TRANSPORT&Transport layer error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_CALLBACK\_LIMIT@{UVRPC\_ERROR\_CALLBACK\_LIMIT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_CALLBACK\_LIMIT@{UVRPC\_ERROR\_CALLBACK\_LIMIT}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+CALLBACK\+\_\+\+LIMIT&Callback limit exceeded. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_CANCELLED@{UVRPC\_ERROR\_CANCELLED}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_CANCELLED@{UVRPC\_ERROR\_CANCELLED}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+CANCELLED&Operation was cancelled. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_POOL\_EXHAUSTED@{UVRPC\_ERROR\_POOL\_EXHAUSTED}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_POOL\_EXHAUSTED@{UVRPC\_ERROR\_POOL\_EXHAUSTED}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+POOL\+\_\+\+EXHAUSTED&Connection pool exhausted. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_RATE\_LIMITED@{UVRPC\_ERROR\_RATE\_LIMITED}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_RATE\_LIMITED@{UVRPC\_ERROR\_RATE\_LIMITED}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+RATE\+\_\+\+LIMITED&Rate limit exceeded. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_NOT\_FOUND@{UVRPC\_ERROR\_NOT\_FOUND}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_NOT\_FOUND@{UVRPC\_ERROR\_NOT\_FOUND}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND&Resource not found. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_ALREADY\_EXISTS@{UVRPC\_ERROR\_ALREADY\_EXISTS}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_ALREADY\_EXISTS@{UVRPC\_ERROR\_ALREADY\_EXISTS}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+EXISTS&Resource already exists. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_INVALID\_STATE@{UVRPC\_ERROR\_INVALID\_STATE}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_INVALID\_STATE@{UVRPC\_ERROR\_INVALID\_STATE}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+STATE&Invalid state for operation. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_IO@{UVRPC\_ERROR\_IO}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_IO@{UVRPC\_ERROR\_IO}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+IO&I/O error occurred. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_ERROR\_MAX@{UVRPC\_ERROR\_MAX}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_ERROR\_MAX@{UVRPC\_ERROR\_MAX}}}\mbox{\Hypertarget{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}\label{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}} 
+UVRPC\+\_\+\+ERROR\+\_\+\+MAX&Maximum error code (for validation) \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00042}{42}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00042              \{}
+\DoxyCodeLine{00043     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72ac2c13b8fa81012294dc8e35d78e1d2d1}{UVRPC\_OK}} = 0,                      }
+\DoxyCodeLine{00044     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a01dc6ff93d6b6c548ff87f96bf31b4c7}{UVRPC\_ERROR}} = -\/1,                  }
+\DoxyCodeLine{00045     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8d73874fe8173df9dd37c1f73799d00d}{UVRPC\_ERROR\_INVALID\_PARAM}} = -\/2,    }
+\DoxyCodeLine{00046     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72af77fe4914a80f34a820ee3160360256c}{UVRPC\_ERROR\_NO\_MEMORY}} = -\/3,        }
+\DoxyCodeLine{00047     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a112348e491c471442e8de62275f531c9}{UVRPC\_ERROR\_NOT\_CONNECTED}} = -\/4,    }
+\DoxyCodeLine{00048     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2deba23a0263309d1e656a1928f49e86}{UVRPC\_ERROR\_TIMEOUT}} = -\/5,          }
+\DoxyCodeLine{00049     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aebd7c495f5311f67868d8f63d62a3c00}{UVRPC\_ERROR\_TRANSPORT}} = -\/6,        }
+\DoxyCodeLine{00050     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aeee48b8f1166f6154a2be034ef241e24}{UVRPC\_ERROR\_CALLBACK\_LIMIT}} = -\/7,   }
+\DoxyCodeLine{00051     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72abb13d17c82976389580c671e6fafb925}{UVRPC\_ERROR\_CANCELLED}} = -\/8,        }
+\DoxyCodeLine{00052     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aad027fdbdf2c1317d9f632a63f87e31b}{UVRPC\_ERROR\_POOL\_EXHAUSTED}} = -\/9,   }
+\DoxyCodeLine{00053     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a2ac1fefba0e9da6cef59e762167f1991}{UVRPC\_ERROR\_RATE\_LIMITED}} = -\/10,    }
+\DoxyCodeLine{00054     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a5a3c845ff67739689dfa9ff19fcc9c90}{UVRPC\_ERROR\_NOT\_FOUND}} = -\/11,       }
+\DoxyCodeLine{00055     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72aca0a3b833687dbc3cdb59392fe7d2210}{UVRPC\_ERROR\_ALREADY\_EXISTS}} = -\/12,  }
+\DoxyCodeLine{00056     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a82d708baaad9e71ac08c07b666d2d4d5}{UVRPC\_ERROR\_INVALID\_STATE}} = -\/13,   }
+\DoxyCodeLine{00057     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a45d3d38c9cd716be8bc9ab415dd8340f}{UVRPC\_ERROR\_IO}} = -\/14,              }
+\DoxyCodeLine{00058     \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72a8f4c37a4fc111040956897f19afab161}{UVRPC\_ERROR\_MAX}}                    }
+\DoxyCodeLine{00059 \} \mbox{\hyperlink{uvrpc_8h_a3395bc40082fb5185a07c39c649d3e72}{uvrpc\_error\_t}};}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}\label{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_perf\_mode\_t@{uvrpc\_perf\_mode\_t}}
+\index{uvrpc\_perf\_mode\_t@{uvrpc\_perf\_mode\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_perf\_mode\_t}{uvrpc\_perf\_mode\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\+\_\+perf\+\_\+mode\+\_\+t}}}
+
+
+
+Performance modes for UVRPC operations. 
+
+Controls how requests are processed to optimize for either low latency or high throughput. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_PERF\_LOW\_LATENCY@{UVRPC\_PERF\_LOW\_LATENCY}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_PERF\_LOW\_LATENCY@{UVRPC\_PERF\_LOW\_LATENCY}}}\mbox{\Hypertarget{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}\label{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}} 
+UVRPC\+\_\+\+PERF\+\_\+\+LOW\+\_\+\+LATENCY&Low latency mode\+: process immediately with minimal batching. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_PERF\_HIGH\_THROUGHPUT@{UVRPC\_PERF\_HIGH\_THROUGHPUT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_PERF\_HIGH\_THROUGHPUT@{UVRPC\_PERF\_HIGH\_THROUGHPUT}}}\mbox{\Hypertarget{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}\label{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}} 
+UVRPC\+\_\+\+PERF\+\_\+\+HIGH\+\_\+\+THROUGHPUT&High throughput mode\+: batch processing for bulk operations. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00112}{112}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00112              \{}
+\DoxyCodeLine{00113     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3a5931e4d07ae794c6e9d442d68edf7dce}{UVRPC\_PERF\_LOW\_LATENCY}} = 0,  }
+\DoxyCodeLine{00114     \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3aecfcd96de68e70450d452dbdecbeffa4}{UVRPC\_PERF\_HIGH\_THROUGHPUT}} = 1 }
+\DoxyCodeLine{00115 \} \mbox{\hyperlink{uvrpc_8h_ab4592e7dc0417e0dbf10fb7b7492bda3}{uvrpc\_perf\_mode\_t}};}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_rpc\_error\_t@{uvrpc\_rpc\_error\_t}}
+\index{uvrpc\_rpc\_error\_t@{uvrpc\_rpc\_error\_t}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_rpc\_error\_t}{uvrpc\_rpc\_error\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}{uvrpc\+\_\+rpc\+\_\+error\+\_\+t}}}
+
+
+
+RPC-\/specific error codes for error frames. 
+
+These error codes are used in RPC error responses to indicate the specific nature of the failure. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_OK@{UVRPC\_RPC\_ERROR\_OK}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_OK@{UVRPC\_RPC\_ERROR\_OK}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+OK&No error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_INVALID\_REQUEST@{UVRPC\_RPC\_ERROR\_INVALID\_REQUEST}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_INVALID\_REQUEST@{UVRPC\_RPC\_ERROR\_INVALID\_REQUEST}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+REQUEST&Invalid request format. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND@{UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND@{UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+METHOD\+\_\+\+NOT\+\_\+\+FOUND&Requested method does not exist. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_INVALID\_PARAMS@{UVRPC\_RPC\_ERROR\_INVALID\_PARAMS}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_INVALID\_PARAMS@{UVRPC\_RPC\_ERROR\_INVALID\_PARAMS}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAMS&Invalid parameters provided. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR@{UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR@{UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+INTERNAL\+\_\+\+ERROR&Internal server error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_TIMEOUT@{UVRPC\_RPC\_ERROR\_TIMEOUT}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_TIMEOUT@{UVRPC\_RPC\_ERROR\_TIMEOUT}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+TIMEOUT&Request timed out. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_PARSE\_ERROR@{UVRPC\_RPC\_ERROR\_PARSE\_ERROR}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_PARSE\_ERROR@{UVRPC\_RPC\_ERROR\_PARSE\_ERROR}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+PARSE\+\_\+\+ERROR&Failed to parse request. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_RPC\_ERROR\_SERVER\_ERROR@{UVRPC\_RPC\_ERROR\_SERVER\_ERROR}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_RPC\_ERROR\_SERVER\_ERROR@{UVRPC\_RPC\_ERROR\_SERVER\_ERROR}}}\mbox{\Hypertarget{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}\label{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}} 
+UVRPC\+\_\+\+RPC\+\_\+\+ERROR\+\_\+\+SERVER\+\_\+\+ERROR&Server-\/side error. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00067}{67}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00067              \{}
+\DoxyCodeLine{00068     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0db7fb2d4553301b1b0d1d5292f7eb8f}{UVRPC\_RPC\_ERROR\_OK}} = 0,                }
+\DoxyCodeLine{00069     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a26192f966310a705e9f62c7af7660497}{UVRPC\_RPC\_ERROR\_INVALID\_REQUEST}} = 1,   }
+\DoxyCodeLine{00070     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a32a4bd99b7cadbe98f4efea8a982d522}{UVRPC\_RPC\_ERROR\_METHOD\_NOT\_FOUND}} = 2,  }
+\DoxyCodeLine{00071     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0e61402164261319a1b611918b241339}{UVRPC\_RPC\_ERROR\_INVALID\_PARAMS}} = 3,    }
+\DoxyCodeLine{00072     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a965dff54122772a4fbcf682a23d8170f}{UVRPC\_RPC\_ERROR\_INTERNAL\_ERROR}} = 4,    }
+\DoxyCodeLine{00073     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a0b5cf8b5ef0d261983e70fd47668b566}{UVRPC\_RPC\_ERROR\_TIMEOUT}} = 5,           }
+\DoxyCodeLine{00074     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a989cfc7970a7c75f7d6d234d0895de42}{UVRPC\_RPC\_ERROR\_PARSE\_ERROR}} = 6,       }
+\DoxyCodeLine{00075     \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90a09c2eead5081278c982052021a093770}{UVRPC\_RPC\_ERROR\_SERVER\_ERROR}} = 7       }
+\DoxyCodeLine{00076 \} \mbox{\hyperlink{uvrpc_8h_a1e62d676da97e34448fafde46e3b2d90}{uvrpc\_rpc\_error\_t}};}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}\label{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}} 
+\index{uvrpc.h@{uvrpc.h}!uvrpc\_transport\_type@{uvrpc\_transport\_type}}
+\index{uvrpc\_transport\_type@{uvrpc\_transport\_type}!uvrpc.h@{uvrpc.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_transport\_type}{uvrpc\_transport\_type}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\+\_\+transport\+\_\+type}}}
+
+
+
+Transport types for UVRPC communication. 
+
+Defines the underlying transport protocol used for communication. \begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_TRANSPORT\_TCP@{UVRPC\_TRANSPORT\_TCP}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_TRANSPORT\_TCP@{UVRPC\_TRANSPORT\_TCP}}}\mbox{\Hypertarget{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}\label{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}} 
+UVRPC\+\_\+\+TRANSPORT\+\_\+\+TCP&TCP network transport (reliable, connection-\/oriented) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_TRANSPORT\_UDP@{UVRPC\_TRANSPORT\_UDP}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_TRANSPORT\_UDP@{UVRPC\_TRANSPORT\_UDP}}}\mbox{\Hypertarget{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}\label{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}} 
+UVRPC\+\_\+\+TRANSPORT\+\_\+\+UDP&UDP transport (fast, connectionless) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_TRANSPORT\_IPC@{UVRPC\_TRANSPORT\_IPC}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_TRANSPORT\_IPC@{UVRPC\_TRANSPORT\_IPC}}}\mbox{\Hypertarget{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}\label{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}} 
+UVRPC\+\_\+\+TRANSPORT\+\_\+\+IPC&Unix domain socket (IPC) for local communication. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVRPC\_TRANSPORT\_INPROC@{UVRPC\_TRANSPORT\_INPROC}!uvrpc.h@{uvrpc.h}}\index{uvrpc.h@{uvrpc.h}!UVRPC\_TRANSPORT\_INPROC@{UVRPC\_TRANSPORT\_INPROC}}}\mbox{\Hypertarget{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}\label{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}} 
+UVRPC\+\_\+\+TRANSPORT\+\_\+\+INPROC&In-\/process transport for same-\/process communication. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvrpc_8h_source_l00099}{99}} of file \mbox{\hyperlink{uvrpc_8h_source}{uvrpc.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00099              \{}
+\DoxyCodeLine{00100     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7bafa95848482679ed4981d16726319153c}{UVRPC\_TRANSPORT\_TCP}} = 0,    }
+\DoxyCodeLine{00101     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba1b0bad5d510a23c2802aa5e6e10dbd29}{UVRPC\_TRANSPORT\_UDP}} = 1,    }
+\DoxyCodeLine{00102     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7ba99eafd1eec9dd37033b0b0b471d7df5b}{UVRPC\_TRANSPORT\_IPC}} = 2,    }
+\DoxyCodeLine{00103     \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7baafd7624f7284f780db438f158d79d6ce}{UVRPC\_TRANSPORT\_INPROC}} = 3  }
+\DoxyCodeLine{00104 \} \mbox{\hyperlink{uvrpc_8h_a3773a28b44c0e71ec4a7874be719ee7b}{uvrpc\_transport\_type}};}
+
+\end{DoxyCode}

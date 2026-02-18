@@ -1,7 +1,13 @@
 /**
- * UVRPC Async Client
+ * @file uvrpc_client.c
+ * @brief UVRPC Async Client Implementation
+ * 
  * Zero threads, Zero locks, Zero global variables
  * All I/O managed by libuv event loop
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc.h"
@@ -78,7 +84,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
 
     if (!client || !client->uvbus) {
-        uvrpc_free(data);
+        uvrpc_free((void*)data);
         return;
     }
 
@@ -86,7 +92,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     int frame_type = uvrpc_get_frame_type(data, size);
     
     if (frame_type < 0) {
-        uvrpc_free(data);
+        uvrpc_free((void*)data);
         return;
     }
 
@@ -98,7 +104,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         char* error_message = NULL;
 
         if (uvrpc_decode_error(data, size, &msgid, &error_code, &error_message) != UVRPC_OK) {
-            uvrpc_free(data);
+            uvrpc_free((void*)data);
             return;
         }
 
@@ -135,7 +141,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             uvrpc_free(pending);
         }
 
-        uvrpc_free(data);
+        uvrpc_free((void*)data);
         return;
     }
 
@@ -144,7 +150,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     size_t result_size = 0;
 
     if (uvrpc_decode_response(data, size, &msgid, &result, &result_size) != UVRPC_OK) {
-        uvrpc_free(data);
+        uvrpc_free((void*)data);
         return;
     }
 

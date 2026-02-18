@@ -1,10 +1,15 @@
 /**
- * UVRPC Memory Allocator Implementation
- *
+ * @file uvrpc_allocator.c
+ * @brief UVRPC Memory Allocator Implementation
+ * 
  * Supports runtime allocator type selection:
  * - system: Standard malloc/free
  * - mimalloc: High-performance mimalloc
  * - custom: User-defined allocator
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc_allocator.h"

@@ -1,0 +1,826 @@
+\hypertarget{uvbus__v2_8h}{}\doxysection{include/uvbus\+\_\+v2.h File Reference}
+\label{uvbus__v2_8h}\index{include/uvbus\_v2.h@{include/uvbus\_v2.h}}
+
+
+UVBus v2 -\/ Minimal Transport Abstraction Layer.  
+
+
+\doxysubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef void($\ast$ \mbox{\hyperlink{uvbus__v2_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\+\_\+connect\+\_\+callback\+\_\+t}}) (\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} status, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Connect callback type. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}{uvbus\+\_\+error\+\_\+callback\+\_\+t}}) (\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} error, const char $\ast$msg, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Error callback type. \end{DoxyCompactList}\item 
+typedef void($\ast$ \mbox{\hyperlink{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}}) (const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$ctx)
+\begin{DoxyCompactList}\small\item\em Receive callback type. \end{DoxyCompactList}\item 
+typedef struct \mbox{\hyperlink{structuvbus}{uvbus}} \mbox{\hyperlink{uvbus__v2_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Forward declaration of uvbus\+\_\+t. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \{ \newline
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\+\_\+\+OK}} = 0
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{UVBUS\+\_\+\+ERROR}} = -\/1
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}} = -\/2
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}} = -\/3
+, \newline
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED}} = -\/4
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}{UVBUS\+\_\+\+ERROR\+\_\+\+TIMEOUT}} = -\/5
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}} = -\/6
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}{UVBUS\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+EXISTS}} = -\/7
+, \newline
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND}} = -\/8
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a0f2bcc09e344f866f7a5ef7cdc47a734}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+IMPLEMENTED}} = -\/9
+, \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59ad4ec3b0fd8c086f6f729b691bcabecf0}{UVBUS\+\_\+\+ERROR\+\_\+\+MAX}}
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\+\_\+\+OK}} = 0
+, \newline
+\mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{UVBUS\+\_\+\+ERROR}} = -\/1
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM}} = -\/2
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY}} = -\/3
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED}} = -\/4
+, \newline
+\mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}{UVBUS\+\_\+\+ERROR\+\_\+\+TIMEOUT}} = -\/5
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\+\_\+\+ERROR\+\_\+\+IO}} = -\/6
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ac752c78104ebe182c8729352cff480f5}{UVBUS\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+CONNECTED}} = -\/7
+, \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND}} = -\/8
+ \}
+\begin{DoxyCompactList}\small\item\em UVBus v2 error codes. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} \{ \newline
+\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+TCP}} = 0
+, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+UDP}} = 1
+, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+IPC}} = 2
+, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+INPROC}} = 3
+, \newline
+\mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+TCP}} = 0
+, \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+UDP}} = 1
+, \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+IPC}} = 2
+, \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{UVBUS\+\_\+\+TRANSPORT\+\_\+\+INPROC}} = 3
+ \}
+\begin{DoxyCompactList}\small\item\em UVBus v2 transport types. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_ab21d97e92f328d74842c097dd5fed1b0}{uvbus\+\_\+client\+\_\+connect}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a11ac75e1c1bac5535d3950fd2b4eef96}{uvbus\+\_\+client\+\_\+disconnect}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a15cba088ae27622a100091790e80b179}{uvbus\+\_\+client\+\_\+free}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__v2_8h_a72dbb5300868aa460b5b7f2abf11f31d}{uvbus\+\_\+client\+\_\+new}} (uv\+\_\+loop\+\_\+t $\ast$loop, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} transport, const char $\ast$address)
+\item 
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_a88f0c325cbde89e0a83bb2fd2403538f}{uvbus\+\_\+client\+\_\+send}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_afc89ab8ba125c876bfffcef82cbf86af}{uvbus\+\_\+client\+\_\+set\+\_\+connect\+\_\+callback}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, \mbox{\hyperlink{uvbus__v2_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\+\_\+connect\+\_\+callback\+\_\+t}} cb, void $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_aa7be807c5096309fe8469b143fcc780f}{uvbus\+\_\+client\+\_\+set\+\_\+error\+\_\+callback}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, \mbox{\hyperlink{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} cb, void $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a066240711e631539c070a8f06e5a9bea}{uvbus\+\_\+client\+\_\+set\+\_\+recv\+\_\+callback}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, \mbox{\hyperlink{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} cb, void $\ast$ctx)
+\item 
+const char $\ast$ \mbox{\hyperlink{uvbus__v2_8h_aca43a5b7160613d1bb94b10749552404}{uvbus\+\_\+get\+\_\+address}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{uvbus__v2_8h_aa279e2e58a1db237d8dd74322c72de2b}{uvbus\+\_\+get\+\_\+loop}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_a5988be214285c0ad01553200ea9044ae}{uvbus\+\_\+get\+\_\+transport\+\_\+type}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+int \mbox{\hyperlink{uvbus__v2_8h_a5f0471bc166d90b6d1b8ca4672a9b266}{uvbus\+\_\+is\+\_\+connected}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+int \mbox{\hyperlink{uvbus__v2_8h_a77addd370d0bbc117616a966b7b91fd2}{uvbus\+\_\+is\+\_\+server}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a4856b519bfeb105dc611a2c0c78d42a7}{uvbus\+\_\+server\+\_\+free}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_a8c3a4f20235b514afdd0ee110a5a6159}{uvbus\+\_\+server\+\_\+listen}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ \mbox{\hyperlink{uvbus__v2_8h_a040cf0fba56ba05bb355474ee29b7547}{uvbus\+\_\+server\+\_\+new}} (uv\+\_\+loop\+\_\+t $\ast$loop, \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} transport, const char $\ast$address)
+\item 
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_a7278cce077066b42a1ad3d870f11acd9}{uvbus\+\_\+server\+\_\+send}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, const uint8\+\_\+t $\ast$data, size\+\_\+t size)
+\item 
+\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} \mbox{\hyperlink{uvbus__v2_8h_a3db84279ceed7977872ee37298e69ee9}{uvbus\+\_\+server\+\_\+send\+\_\+to}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$client\+\_\+id)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a329111ab77df02609e3cea4f5413c1d4}{uvbus\+\_\+server\+\_\+set\+\_\+error\+\_\+callback}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, \mbox{\hyperlink{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}{uvbus\+\_\+error\+\_\+callback\+\_\+t}} cb, void $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a23c0877bc88a2f7bc319a886971032fe}{uvbus\+\_\+server\+\_\+set\+\_\+recv\+\_\+callback}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus, \mbox{\hyperlink{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}} cb, void $\ast$ctx)
+\item 
+void \mbox{\hyperlink{uvbus__v2_8h_a7be60aa48d4927e5349c244033b33eb0}{uvbus\+\_\+server\+\_\+stop}} (\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$bus)
+\item 
+const char $\ast$ \mbox{\hyperlink{uvbus__v2_8h_afc0ea292bf27356fdcff8b05433dcdc1}{uvbus\+\_\+strerror}} (\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} error)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UVBus v2 -\/ Minimal Transport Abstraction Layer. 
+
+Design Principles\+:
+\begin{DoxyItemize}
+\item Minimal\+: Minimized API, each function does one thing
+\item Zero threads\+: All operations execute asynchronously in event loop
+\item Zero locks\+: Single-\/threaded model (except INPROC)
+\item Zero global variables\+: All state passed through context
+\item Loop injection\+: Does not manage loop lifecycle, fully controlled by user
+\end{DoxyItemize}
+
+Loop Injection Design\+:
+\begin{DoxyItemize}
+\item UVBus accepts user-\/provided uv\+\_\+loop\+\_\+t$\ast$ pointer
+\item UVBus does not create, start, or stop loop
+\item UVBus does not free loop
+\item User has full control over loop lifecycle
+\item Supports multiple instances, multiple loops, loop reuse
+\end{DoxyItemize}
+
+Responsibilities\+:
+\begin{DoxyItemize}
+\item Pure transport layer (TCP/\+UDP/\+IPC/\+INPROC)
+\item Byte send/receive
+\item Connection management
+\item Does not handle business logic
+\end{DoxyItemize}
+
+\begin{DoxyAuthor}{Author}
+UVRPC Team 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+2026 
+\end{DoxyDate}
+\begin{DoxyVersion}{Version}
+2.\+0
+\end{DoxyVersion}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2026 @license MIT License 
+\end{DoxyCopyright}
+
+
+Definition in file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+
+
+\doxysubsection{Typedef Documentation}
+\mbox{\Hypertarget{uvbus__v2_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}\label{uvbus__v2_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_connect\_callback\_t@{uvbus\_connect\_callback\_t}}
+\index{uvbus\_connect\_callback\_t@{uvbus\_connect\_callback\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_connect\_callback\_t}{uvbus\_connect\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvbus\+\_\+connect\+\_\+callback\+\_\+t) (\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} status, void $\ast$ctx)}
+
+
+
+Connect callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em status} & Connection status \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00089}{89}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+\mbox{\Hypertarget{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}\label{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_error\_callback\_t@{uvbus\_error\_callback\_t}}
+\index{uvbus\_error\_callback\_t@{uvbus\_error\_callback\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_error\_callback\_t}{uvbus\_error\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvbus\+\_\+error\+\_\+callback\+\_\+t) (\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} error, const char $\ast$msg, void $\ast$ctx)}
+
+
+
+Error callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em error} & Error code \\
+\hline
+{\em msg} & Error message \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00098}{98}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+\mbox{\Hypertarget{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}\label{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_recv\_callback\_t@{uvbus\_recv\_callback\_t}}
+\index{uvbus\_recv\_callback\_t@{uvbus\_recv\_callback\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_recv\_callback\_t}{uvbus\_recv\_callback\_t}}
+{\footnotesize\ttfamily typedef void($\ast$ uvbus\+\_\+recv\+\_\+callback\+\_\+t) (const uint8\+\_\+t $\ast$data, size\+\_\+t size, void $\ast$ctx)}
+
+
+
+Receive callback type. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em data} & Received data \\
+\hline
+{\em size} & Data size \\
+\hline
+{\em ctx} & User context \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00081}{81}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+\mbox{\Hypertarget{uvbus__v2_8h_af50e701f5de7dfa1529ece89489144bd}\label{uvbus__v2_8h_af50e701f5de7dfa1529ece89489144bd}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_t@{uvbus\_t}}
+\index{uvbus\_t@{uvbus\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_t}{uvbus\_t}}
+{\footnotesize\ttfamily typedef struct \mbox{\hyperlink{structuvbus}{uvbus}} \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}}}
+
+
+
+Forward declaration of uvbus\+\_\+t. 
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00072}{72}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_error\_t@{uvbus\_error\_t}}
+\index{uvbus\_error\_t@{uvbus\_error\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_error\_t}{uvbus\_error\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}}}
+
+
+
+UVBus v2 error codes. 
+
+\begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_OK@{UVBUS\_OK}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_OK@{UVBUS\_OK}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}} 
+UVBUS\+\_\+\+OK&Operation successful. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR@{UVBUS\_ERROR}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR@{UVBUS\_ERROR}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}} 
+UVBUS\+\_\+\+ERROR&General error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_INVALID\_PARAM@{UVBUS\_ERROR\_INVALID\_PARAM}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_INVALID\_PARAM@{UVBUS\_ERROR\_INVALID\_PARAM}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM&Invalid parameter. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NO\_MEMORY@{UVBUS\_ERROR\_NO\_MEMORY}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NO\_MEMORY@{UVBUS\_ERROR\_NO\_MEMORY}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY&Memory allocation failed. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NOT\_CONNECTED@{UVBUS\_ERROR\_NOT\_CONNECTED}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NOT\_CONNECTED@{UVBUS\_ERROR\_NOT\_CONNECTED}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED&Not connected. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_TIMEOUT@{UVBUS\_ERROR\_TIMEOUT}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_TIMEOUT@{UVBUS\_ERROR\_TIMEOUT}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+TIMEOUT&Operation timed out. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_IO@{UVBUS\_ERROR\_IO}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_IO@{UVBUS\_ERROR\_IO}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+IO&I/O error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_ALREADY\_EXISTS@{UVBUS\_ERROR\_ALREADY\_EXISTS}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_ALREADY\_EXISTS@{UVBUS\_ERROR\_ALREADY\_EXISTS}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59af90330a9734d840cb84ed18e55939f91}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+EXISTS&Resource already exists. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NOT\_FOUND@{UVBUS\_ERROR\_NOT\_FOUND}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NOT\_FOUND@{UVBUS\_ERROR\_NOT\_FOUND}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND&Resource not found. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NOT\_IMPLEMENTED@{UVBUS\_ERROR\_NOT\_IMPLEMENTED}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NOT\_IMPLEMENTED@{UVBUS\_ERROR\_NOT\_IMPLEMENTED}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a0f2bcc09e344f866f7a5ef7cdc47a734}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a0f2bcc09e344f866f7a5ef7cdc47a734}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+IMPLEMENTED&Feature not implemented. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_MAX@{UVBUS\_ERROR\_MAX}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_MAX@{UVBUS\_ERROR\_MAX}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad4ec3b0fd8c086f6f729b691bcabecf0}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad4ec3b0fd8c086f6f729b691bcabecf0}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+MAX&Maximum error code. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_OK@{UVBUS\_OK}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_OK@{UVBUS\_OK}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}} 
+UVBUS\+\_\+\+OK&Operation successful. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR@{UVBUS\_ERROR}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR@{UVBUS\_ERROR}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}} 
+UVBUS\+\_\+\+ERROR&General error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_INVALID\_PARAM@{UVBUS\_ERROR\_INVALID\_PARAM}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_INVALID\_PARAM@{UVBUS\_ERROR\_INVALID\_PARAM}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+INVALID\+\_\+\+PARAM&Invalid parameter. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NO\_MEMORY@{UVBUS\_ERROR\_NO\_MEMORY}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NO\_MEMORY@{UVBUS\_ERROR\_NO\_MEMORY}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NO\+\_\+\+MEMORY&Memory allocation failed. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NOT\_CONNECTED@{UVBUS\_ERROR\_NOT\_CONNECTED}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NOT\_CONNECTED@{UVBUS\_ERROR\_NOT\_CONNECTED}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+CONNECTED&Not connected. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_TIMEOUT@{UVBUS\_ERROR\_TIMEOUT}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_TIMEOUT@{UVBUS\_ERROR\_TIMEOUT}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+TIMEOUT&Operation timed out. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_IO@{UVBUS\_ERROR\_IO}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_IO@{UVBUS\_ERROR\_IO}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+IO&I/O error. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_ALREADY\_CONNECTED@{UVBUS\_ERROR\_ALREADY\_CONNECTED}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_ALREADY\_CONNECTED@{UVBUS\_ERROR\_ALREADY\_CONNECTED}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ac752c78104ebe182c8729352cff480f5}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ac752c78104ebe182c8729352cff480f5}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+ALREADY\+\_\+\+CONNECTED&Already connected. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_ERROR\_NOT\_FOUND@{UVBUS\_ERROR\_NOT\_FOUND}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_ERROR\_NOT\_FOUND@{UVBUS\_ERROR\_NOT\_FOUND}}}\mbox{\Hypertarget{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}\label{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}} 
+UVBUS\+\_\+\+ERROR\+\_\+\+NOT\+\_\+\+FOUND&Resource not found. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00047}{47}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00047              \{}
+\DoxyCodeLine{00048     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a3597b5536b36c9678593c04d1619ff4b}{UVBUS\_OK}} = 0,                      }
+\DoxyCodeLine{00049     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{UVBUS\_ERROR}} = -\/1,                  }
+\DoxyCodeLine{00050     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}} = -\/2,    }
+\DoxyCodeLine{00051     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ad93db1224a7dbaca46dd014763c5ddcc}{UVBUS\_ERROR\_NO\_MEMORY}} = -\/3,        }
+\DoxyCodeLine{00052     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\_ERROR\_NOT\_CONNECTED}} = -\/4,    }
+\DoxyCodeLine{00053     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59aa56bce3b9532c7dc4166e0bb1ea920aa}{UVBUS\_ERROR\_TIMEOUT}} = -\/5,          }
+\DoxyCodeLine{00054     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a9608171c77f1cc248e9423334163328b}{UVBUS\_ERROR\_IO}} = -\/6,               }
+\DoxyCodeLine{00055     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59ac752c78104ebe182c8729352cff480f5}{UVBUS\_ERROR\_ALREADY\_CONNECTED}} = -\/7,}
+\DoxyCodeLine{00056     \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59a94e98a7560af759c08fa9cb2eca31767}{UVBUS\_ERROR\_NOT\_FOUND}} = -\/8         }
+\DoxyCodeLine{00057 \} \mbox{\hyperlink{uvbus__v2_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\_error\_t}};}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_transport\_type\_t@{uvbus\_transport\_type\_t}}
+\index{uvbus\_transport\_type\_t@{uvbus\_transport\_type\_t}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_transport\_type\_t}{uvbus\_transport\_type\_t}}
+{\footnotesize\ttfamily enum \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}}}
+
+
+
+UVBus v2 transport types. 
+
+\begin{DoxyEnumFields}{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_TCP@{UVBUS\_TRANSPORT\_TCP}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_TCP@{UVBUS\_TRANSPORT\_TCP}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+TCP&TCP transport. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_UDP@{UVBUS\_TRANSPORT\_UDP}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_UDP@{UVBUS\_TRANSPORT\_UDP}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+UDP&UDP transport. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_IPC@{UVBUS\_TRANSPORT\_IPC}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_IPC@{UVBUS\_TRANSPORT\_IPC}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+IPC&Unix domain socket (IPC) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_INPROC@{UVBUS\_TRANSPORT\_INPROC}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_INPROC@{UVBUS\_TRANSPORT\_INPROC}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+INPROC&In-\/process transport. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_TCP@{UVBUS\_TRANSPORT\_TCP}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_TCP@{UVBUS\_TRANSPORT\_TCP}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+TCP&TCP transport. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_UDP@{UVBUS\_TRANSPORT\_UDP}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_UDP@{UVBUS\_TRANSPORT\_UDP}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+UDP&UDP transport. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_IPC@{UVBUS\_TRANSPORT\_IPC}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_IPC@{UVBUS\_TRANSPORT\_IPC}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+IPC&Unix domain socket (IPC) \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{UVBUS\_TRANSPORT\_INPROC@{UVBUS\_TRANSPORT\_INPROC}!uvbus\_v2.h@{uvbus\_v2.h}}\index{uvbus\_v2.h@{uvbus\_v2.h}!UVBUS\_TRANSPORT\_INPROC@{UVBUS\_TRANSPORT\_INPROC}}}\mbox{\Hypertarget{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}\label{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}} 
+UVBUS\+\_\+\+TRANSPORT\+\_\+\+INPROC&In-\/process transport. \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+Definition at line \mbox{\hyperlink{uvbus__v2_8h_source_l00062}{62}} of file \mbox{\hyperlink{uvbus__v2_8h_source}{uvbus\+\_\+v2.\+h}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00062              \{}
+\DoxyCodeLine{00063     \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\_TRANSPORT\_TCP}} = 0,    }
+\DoxyCodeLine{00064     \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4a5145f149a72cb6852239565bb17ebbf3}{UVBUS\_TRANSPORT\_UDP}} = 1,    }
+\DoxyCodeLine{00065     \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4aa1a32cd0ebf514c9c80f5966b5fb0661}{UVBUS\_TRANSPORT\_IPC}} = 2,    }
+\DoxyCodeLine{00066     \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4ae0eed2476e4cd226e7550ce7c9c69fcd}{UVBUS\_TRANSPORT\_INPROC}} = 3  }
+\DoxyCodeLine{00067 \} \mbox{\hyperlink{uvbus__v2_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\_transport\_type\_t}};}
+
+\end{DoxyCode}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvbus__v2_8h_ab21d97e92f328d74842c097dd5fed1b0}\label{uvbus__v2_8h_ab21d97e92f328d74842c097dd5fed1b0}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_connect@{uvbus\_client\_connect}}
+\index{uvbus\_client\_connect@{uvbus\_client\_connect}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_connect()}{uvbus\_client\_connect()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} uvbus\+\_\+client\+\_\+connect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+连接到服务器 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVBUS\+\_\+\+OK 成功，其他值失败 
+\end{DoxyReturn}
+\mbox{\Hypertarget{uvbus__v2_8h_a11ac75e1c1bac5535d3950fd2b4eef96}\label{uvbus__v2_8h_a11ac75e1c1bac5535d3950fd2b4eef96}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_disconnect@{uvbus\_client\_disconnect}}
+\index{uvbus\_client\_disconnect@{uvbus\_client\_disconnect}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_disconnect()}{uvbus\_client\_disconnect()}}
+{\footnotesize\ttfamily void uvbus\+\_\+client\+\_\+disconnect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+断开连接 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a15cba088ae27622a100091790e80b179}\label{uvbus__v2_8h_a15cba088ae27622a100091790e80b179}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_free@{uvbus\_client\_free}}
+\index{uvbus\_client\_free@{uvbus\_client\_free}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_free()}{uvbus\_client\_free()}}
+{\footnotesize\ttfamily void uvbus\+\_\+client\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+释放客户端 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a72dbb5300868aa460b5b7f2abf11f31d}\label{uvbus__v2_8h_a72dbb5300868aa460b5b7f2abf11f31d}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_new@{uvbus\_client\_new}}
+\index{uvbus\_client\_new@{uvbus\_client\_new}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_new()}{uvbus\_client\_new()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ uvbus\+\_\+client\+\_\+new (\begin{DoxyParamCaption}\item[{uv\+\_\+loop\+\_\+t $\ast$}]{loop,  }\item[{\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}}}]{transport,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})}
+
+创建 UVBus 客户端 
+\begin{DoxyParams}{Parameters}
+{\em loop} & libuv 事件循环（用户拥有，不管理生命周期） \\
+\hline
+{\em transport} & 传输类型 \\
+\hline
+{\em address} & 服务器地址（如 \char`\"{}tcp\+://127.\+0.\+0.\+1\+:5555\char`\"{}） \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+客户端实例，失败返回 NULL
+\end{DoxyReturn}
+注意：
+\begin{DoxyItemize}
+\item loop 必须由用户提供，\+UVBus 不创建或释放 loop
+\item loop 可以在多个 UVBus 实例间共享
+\item 用户负责 loop 的初始化和运行
+\item 用户负责 loop 的清理和释放 
+\end{DoxyItemize}\mbox{\Hypertarget{uvbus__v2_8h_a88f0c325cbde89e0a83bb2fd2403538f}\label{uvbus__v2_8h_a88f0c325cbde89e0a83bb2fd2403538f}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_send@{uvbus\_client\_send}}
+\index{uvbus\_client\_send@{uvbus\_client\_send}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_send()}{uvbus\_client\_send()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} uvbus\+\_\+client\+\_\+send (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+发送数据到服务器 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+{\em data} & 数据 \\
+\hline
+{\em size} & 数据大小 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVBUS\+\_\+\+OK 成功，其他值失败
+\end{DoxyReturn}
+Send data to server (client only) 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00297}{297}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00297                                                                                 \{}
+\DoxyCodeLine{00298     \textcolor{keywordflow}{if} (!bus || !bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}} || !bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}}) \{}
+\DoxyCodeLine{00299         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a8d235591462a6997474c2877dfca40db}{UVBUS\_ERROR\_INVALID\_PARAM}};}
+\DoxyCodeLine{00300     \}}
+\DoxyCodeLine{00301     }
+\DoxyCodeLine{00302     \textcolor{keywordflow}{if} (!bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}}) \{}
+\DoxyCodeLine{00303         \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59a7605cd29a04738364faf02de293fe3f7}{UVBUS\_ERROR\_NOT\_CONNECTED}};}
+\DoxyCodeLine{00304     \}}
+\DoxyCodeLine{00305     }
+\DoxyCodeLine{00306     \textcolor{keywordflow}{if} (bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}}-\/>\mbox{\hyperlink{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}{send}}) \{}
+\DoxyCodeLine{00307         \textcolor{keywordflow}{return} bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a148c222f86ef6ba2b4dd5f9f3eb9dabe}{vtable}}-\/>\mbox{\hyperlink{structuvbus__transport__vtable_a1175e8f2703b46b4dde56c6283f6e9af}{send}}(bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}, data, size);}
+\DoxyCodeLine{00308     \}}
+\DoxyCodeLine{00309     }
+\DoxyCodeLine{00310     \textcolor{keywordflow}{return} \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59abb1261371830bd9078efa7f89a7ea327}{UVBUS\_ERROR}};}
+\DoxyCodeLine{00311 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_afc89ab8ba125c876bfffcef82cbf86af}\label{uvbus__v2_8h_afc89ab8ba125c876bfffcef82cbf86af}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_set\_connect\_callback@{uvbus\_client\_set\_connect\_callback}}
+\index{uvbus\_client\_set\_connect\_callback@{uvbus\_client\_set\_connect\_callback}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_set\_connect\_callback()}{uvbus\_client\_set\_connect\_callback()}}
+{\footnotesize\ttfamily void uvbus\+\_\+client\+\_\+set\+\_\+connect\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{\mbox{\hyperlink{uvbus__v2_8h_afcf0cf11848dfbcac6e76b0bae3a4f8c}{uvbus\+\_\+connect\+\_\+callback\+\_\+t}}}]{cb,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+设置连接回调 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+{\em cb} & 连接回调 \\
+\hline
+{\em ctx} & 回调上下文 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_aa7be807c5096309fe8469b143fcc780f}\label{uvbus__v2_8h_aa7be807c5096309fe8469b143fcc780f}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_set\_error\_callback@{uvbus\_client\_set\_error\_callback}}
+\index{uvbus\_client\_set\_error\_callback@{uvbus\_client\_set\_error\_callback}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_set\_error\_callback()}{uvbus\_client\_set\_error\_callback()}}
+{\footnotesize\ttfamily void uvbus\+\_\+client\+\_\+set\+\_\+error\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{\mbox{\hyperlink{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}{uvbus\+\_\+error\+\_\+callback\+\_\+t}}}]{cb,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+设置错误回调 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+{\em cb} & 错误回调 \\
+\hline
+{\em ctx} & 回调上下文 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a066240711e631539c070a8f06e5a9bea}\label{uvbus__v2_8h_a066240711e631539c070a8f06e5a9bea}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_client\_set\_recv\_callback@{uvbus\_client\_set\_recv\_callback}}
+\index{uvbus\_client\_set\_recv\_callback@{uvbus\_client\_set\_recv\_callback}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_client\_set\_recv\_callback()}{uvbus\_client\_set\_recv\_callback()}}
+{\footnotesize\ttfamily void uvbus\+\_\+client\+\_\+set\+\_\+recv\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{\mbox{\hyperlink{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}}}]{cb,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+设置接收回调 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 客户端实例 \\
+\hline
+{\em cb} & 接收回调 \\
+\hline
+{\em ctx} & 回调上下文 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_aca43a5b7160613d1bb94b10749552404}\label{uvbus__v2_8h_aca43a5b7160613d1bb94b10749552404}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_get\_address@{uvbus\_get\_address}}
+\index{uvbus\_get\_address@{uvbus\_get\_address}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_get\_address()}{uvbus\_get\_address()}}
+{\footnotesize\ttfamily const char $\ast$ uvbus\+\_\+get\+\_\+address (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+获取地址 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+地址字符串
+\end{DoxyReturn}
+Get address 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00321}{321}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00321                                             \{}
+\DoxyCodeLine{00322     \textcolor{keywordflow}{return} bus ? bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a9453881eb60f18fb722b7d81581a5c57}{address}} : NULL;}
+\DoxyCodeLine{00323 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_aa279e2e58a1db237d8dd74322c72de2b}\label{uvbus__v2_8h_aa279e2e58a1db237d8dd74322c72de2b}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_get\_loop@{uvbus\_get\_loop}}
+\index{uvbus\_get\_loop@{uvbus\_get\_loop}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_get\_loop()}{uvbus\_get\_loop()}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t $\ast$ uvbus\+\_\+get\+\_\+loop (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+获取事件循环 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+libuv 事件循环
+\end{DoxyReturn}
+Get event loop 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00313}{313}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00313                                         \{}
+\DoxyCodeLine{00314     \textcolor{keywordflow}{return} bus ? bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a3edad18aa0aa3e966597ce91e5ee0881}{loop}} : NULL;}
+\DoxyCodeLine{00315 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_a5988be214285c0ad01553200ea9044ae}\label{uvbus__v2_8h_a5988be214285c0ad01553200ea9044ae}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_get\_transport\_type@{uvbus\_get\_transport\_type}}
+\index{uvbus\_get\_transport\_type@{uvbus\_get\_transport\_type}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_get\_transport\_type()}{uvbus\_get\_transport\_type()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} uvbus\+\_\+get\+\_\+transport\+\_\+type (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+获取传输类型 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+传输类型
+\end{DoxyReturn}
+Get transport type 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00317}{317}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00317                                                               \{}
+\DoxyCodeLine{00318     \textcolor{keywordflow}{return} bus ? bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_ae864e2a968309893ec61736cfc290471}{type}} : \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4a9c42979b8c6be712ecd3e1d4bbbb2929}{UVBUS\_TRANSPORT\_TCP}};}
+\DoxyCodeLine{00319 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_a5f0471bc166d90b6d1b8ca4672a9b266}\label{uvbus__v2_8h_a5f0471bc166d90b6d1b8ca4672a9b266}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_is\_connected@{uvbus\_is\_connected}}
+\index{uvbus\_is\_connected@{uvbus\_is\_connected}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_is\_connected()}{uvbus\_is\_connected()}}
+{\footnotesize\ttfamily int uvbus\+\_\+is\+\_\+connected (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+检查是否已连接 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 已连接，0 未连接
+\end{DoxyReturn}
+Check if connected 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00325}{325}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00325                                      \{}
+\DoxyCodeLine{00326     \textcolor{keywordflow}{return} bus ? bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_aeaea64f5d72eb50b540c4f5165e2828d}{is\_connected}} : 0;}
+\DoxyCodeLine{00327 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_a77addd370d0bbc117616a966b7b91fd2}\label{uvbus__v2_8h_a77addd370d0bbc117616a966b7b91fd2}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_is\_server@{uvbus\_is\_server}}
+\index{uvbus\_is\_server@{uvbus\_is\_server}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_is\_server()}{uvbus\_is\_server()}}
+{\footnotesize\ttfamily int uvbus\+\_\+is\+\_\+server (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+检查是否为服务器 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+1 是服务器，0 是客户端
+\end{DoxyReturn}
+Check if server 
+
+Definition at line \mbox{\hyperlink{uvbus_8c_source_l00329}{329}} of file \mbox{\hyperlink{uvbus_8c_source}{uvbus.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00329                                   \{}
+\DoxyCodeLine{00330     \textcolor{keywordflow}{return} bus ? bus-\/>\mbox{\hyperlink{structuvbus_ac66f16735f47500903f2f7d0f2b4883f}{transport}}-\/>\mbox{\hyperlink{structuvbus__transport_a4eb3566bc868898f7c928d56e1efe9ce}{is\_server}} : 0;}
+\DoxyCodeLine{00331 \}}
+
+\end{DoxyCode}
+\mbox{\Hypertarget{uvbus__v2_8h_a4856b519bfeb105dc611a2c0c78d42a7}\label{uvbus__v2_8h_a4856b519bfeb105dc611a2c0c78d42a7}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_free@{uvbus\_server\_free}}
+\index{uvbus\_server\_free@{uvbus\_server\_free}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_free()}{uvbus\_server\_free()}}
+{\footnotesize\ttfamily void uvbus\+\_\+server\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+释放服务器 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a8c3a4f20235b514afdd0ee110a5a6159}\label{uvbus__v2_8h_a8c3a4f20235b514afdd0ee110a5a6159}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_listen@{uvbus\_server\_listen}}
+\index{uvbus\_server\_listen@{uvbus\_server\_listen}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_listen()}{uvbus\_server\_listen()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} uvbus\+\_\+server\+\_\+listen (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+开始监听 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVBUS\+\_\+\+OK 成功，其他值失败 
+\end{DoxyReturn}
+\mbox{\Hypertarget{uvbus__v2_8h_a040cf0fba56ba05bb355474ee29b7547}\label{uvbus__v2_8h_a040cf0fba56ba05bb355474ee29b7547}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_new@{uvbus\_server\_new}}
+\index{uvbus\_server\_new@{uvbus\_server\_new}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_new()}{uvbus\_server\_new()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ uvbus\+\_\+server\+\_\+new (\begin{DoxyParamCaption}\item[{uv\+\_\+loop\+\_\+t $\ast$}]{loop,  }\item[{\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}}}]{transport,  }\item[{const char $\ast$}]{address }\end{DoxyParamCaption})}
+
+创建 UVBus 服务器 
+\begin{DoxyParams}{Parameters}
+{\em loop} & libuv 事件循环（用户拥有，不管理生命周期） \\
+\hline
+{\em transport} & 传输类型 \\
+\hline
+{\em address} & 监听地址（如 \char`\"{}tcp\+://127.\+0.\+0.\+1\+:5555\char`\"{}） \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+服务器实例，失败返回 NULL
+\end{DoxyReturn}
+注意：
+\begin{DoxyItemize}
+\item loop 必须由用户提供，\+UVBus 不创建或释放 loop
+\item loop 可以在多个 UVBus 实例间共享
+\item 用户负责 loop 的初始化和运行
+\item 用户负责 loop 的清理和释放 
+\end{DoxyItemize}\mbox{\Hypertarget{uvbus__v2_8h_a7278cce077066b42a1ad3d870f11acd9}\label{uvbus__v2_8h_a7278cce077066b42a1ad3d870f11acd9}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_send@{uvbus\_server\_send}}
+\index{uvbus\_server\_send@{uvbus\_server\_send}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_send()}{uvbus\_server\_send()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} uvbus\+\_\+server\+\_\+send (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size }\end{DoxyParamCaption})}
+
+发送数据（广播到所有客户端） 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+{\em data} & 数据 \\
+\hline
+{\em size} & 数据大小 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVBUS\+\_\+\+OK 成功，其他值失败 
+\end{DoxyReturn}
+\mbox{\Hypertarget{uvbus__v2_8h_a3db84279ceed7977872ee37298e69ee9}\label{uvbus__v2_8h_a3db84279ceed7977872ee37298e69ee9}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_send\_to@{uvbus\_server\_send\_to}}
+\index{uvbus\_server\_send\_to@{uvbus\_server\_send\_to}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_send\_to()}{uvbus\_server\_send\_to()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}} uvbus\+\_\+server\+\_\+send\+\_\+to (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{const uint8\+\_\+t $\ast$}]{data,  }\item[{size\+\_\+t}]{size,  }\item[{void $\ast$}]{client\+\_\+id }\end{DoxyParamCaption})}
+
+发送数据（到特定客户端） 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+{\em data} & 数据 \\
+\hline
+{\em size} & 数据大小 \\
+\hline
+{\em client\+\_\+id} & 客户端 ID（来自接收回调） \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UVBUS\+\_\+\+OK 成功，其他值失败 
+\end{DoxyReturn}
+\mbox{\Hypertarget{uvbus__v2_8h_a329111ab77df02609e3cea4f5413c1d4}\label{uvbus__v2_8h_a329111ab77df02609e3cea4f5413c1d4}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_set\_error\_callback@{uvbus\_server\_set\_error\_callback}}
+\index{uvbus\_server\_set\_error\_callback@{uvbus\_server\_set\_error\_callback}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_set\_error\_callback()}{uvbus\_server\_set\_error\_callback()}}
+{\footnotesize\ttfamily void uvbus\+\_\+server\+\_\+set\+\_\+error\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{\mbox{\hyperlink{uvbus__v2_8h_ace3535ab169183fa3971426956cba31c}{uvbus\+\_\+error\+\_\+callback\+\_\+t}}}]{cb,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+设置错误回调 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+{\em cb} & 错误回调 \\
+\hline
+{\em ctx} & 回调上下文 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a23c0877bc88a2f7bc319a886971032fe}\label{uvbus__v2_8h_a23c0877bc88a2f7bc319a886971032fe}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_set\_recv\_callback@{uvbus\_server\_set\_recv\_callback}}
+\index{uvbus\_server\_set\_recv\_callback@{uvbus\_server\_set\_recv\_callback}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_set\_recv\_callback()}{uvbus\_server\_set\_recv\_callback()}}
+{\footnotesize\ttfamily void uvbus\+\_\+server\+\_\+set\+\_\+recv\+\_\+callback (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus,  }\item[{\mbox{\hyperlink{uvbus__v2_8h_a8d5d553a13745c5a5d1e44f8d1ee0069}{uvbus\+\_\+recv\+\_\+callback\+\_\+t}}}]{cb,  }\item[{void $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+设置接收回调 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+{\em cb} & 接收回调 \\
+\hline
+{\em ctx} & 回调上下文 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_a7be60aa48d4927e5349c244033b33eb0}\label{uvbus__v2_8h_a7be60aa48d4927e5349c244033b33eb0}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_server\_stop@{uvbus\_server\_stop}}
+\index{uvbus\_server\_stop@{uvbus\_server\_stop}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_server\_stop()}{uvbus\_server\_stop()}}
+{\footnotesize\ttfamily void uvbus\+\_\+server\+\_\+stop (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$}]{bus }\end{DoxyParamCaption})}
+
+停止服务器 
+\begin{DoxyParams}{Parameters}
+{\em bus} & 服务器实例 \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{uvbus__v2_8h_afc0ea292bf27356fdcff8b05433dcdc1}\label{uvbus__v2_8h_afc0ea292bf27356fdcff8b05433dcdc1}} 
+\index{uvbus\_v2.h@{uvbus\_v2.h}!uvbus\_strerror@{uvbus\_strerror}}
+\index{uvbus\_strerror@{uvbus\_strerror}!uvbus\_v2.h@{uvbus\_v2.h}}
+\doxysubsubsection{\texorpdfstring{uvbus\_strerror()}{uvbus\_strerror()}}
+{\footnotesize\ttfamily const char $\ast$ uvbus\+\_\+strerror (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{uvbus_8h_ae709b2472bc33f6d34b6612fef049b59}{uvbus\+\_\+error\+\_\+t}}}]{error }\end{DoxyParamCaption})}
+
+错误码转字符串 
+\begin{DoxyParams}{Parameters}
+{\em error} & 错误码 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+错误描述 
+\end{DoxyReturn}

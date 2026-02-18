@@ -1,7 +1,13 @@
 /**
- * UVRPC Subscriber (Broadcast)
+ * @file uvrpc_subscriber.c
+ * @brief UVRPC Subscriber (Broadcast) Implementation
+ * 
  * Zero threads, Zero locks, Zero global variables
  * All I/O managed by libuv event loop
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc.h"

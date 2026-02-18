@@ -1,0 +1,182 @@
+\hypertarget{uvrpc__idmap_8h}{}\doxysection{src/uvrpc\+\_\+idmap.h File Reference}
+\label{uvrpc__idmap_8h}\index{src/uvrpc\_idmap.h@{src/uvrpc\_idmap.h}}
+\doxysubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{uvrpc__idmap_8h_ac5c988612394e4c77e9d48f3a2a7de66}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+free}} (\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ctx)
+\item 
+\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ \mbox{\hyperlink{uvrpc__idmap_8h_a869cf339b9a8c0e973336f0800a54ef4}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+new}} (void)
+\item 
+void \mbox{\hyperlink{uvrpc__idmap_8h_a09766270beb16cc6910ae1a87c0a71d0}{uvrpc\+\_\+idmap\+\_\+remove}} (\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ctx, uint32\+\_\+t msgid\+\_\+gateway)
+\item 
+uint32\+\_\+t \mbox{\hyperlink{uvrpc__idmap_8h_a4fd3f0a946e7c74142158cb11554ebc5}{uvrpc\+\_\+idmap\+\_\+to\+\_\+gateway}} (\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ctx, uint32\+\_\+t msgid\+\_\+raw, void $\ast$client\+\_\+handle)
+\item 
+int \mbox{\hyperlink{uvrpc__idmap_8h_af693f55efb23ae77c6ac0c970cc8123f}{uvrpc\+\_\+idmap\+\_\+to\+\_\+raw}} (\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ctx, uint32\+\_\+t msgid\+\_\+gateway, uint32\+\_\+t $\ast$out\+\_\+msgid\+\_\+raw, void $\ast$$\ast$out\+\_\+client\+\_\+handle)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{uvrpc__idmap_8h_ac5c988612394e4c77e9d48f3a2a7de66}\label{uvrpc__idmap_8h_ac5c988612394e4c77e9d48f3a2a7de66}} 
+\index{uvrpc\_idmap.h@{uvrpc\_idmap.h}!uvrpc\_idmap\_ctx\_free@{uvrpc\_idmap\_ctx\_free}}
+\index{uvrpc\_idmap\_ctx\_free@{uvrpc\_idmap\_ctx\_free}!uvrpc\_idmap.h@{uvrpc\_idmap.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_idmap\_ctx\_free()}{uvrpc\_idmap\_ctx\_free()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+idmap\+\_\+ctx\+\_\+free (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$}]{ctx }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__idmap_8c_source_l00023}{23}} of file \mbox{\hyperlink{uvrpc__idmap_8c_source}{uvrpc\+\_\+idmap.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00023                                                   \{}
+\DoxyCodeLine{00024     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00025 }
+\DoxyCodeLine{00026     \textcolor{comment}{/* Free all entries in hash table */}}
+\DoxyCodeLine{00027     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry, *tmp;}
+\DoxyCodeLine{00028     HASH\_ITER(hh, ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry, tmp) \{}
+\DoxyCodeLine{00029         HASH\_DEL(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry);}
+\DoxyCodeLine{00030         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{00031     \}}
+\DoxyCodeLine{00032 }
+\DoxyCodeLine{00033     \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(ctx);}
+\DoxyCodeLine{00034 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__idmap_8h_source_l00030}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::map}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__idmap_8h_a869cf339b9a8c0e973336f0800a54ef4}\label{uvrpc__idmap_8h_a869cf339b9a8c0e973336f0800a54ef4}} 
+\index{uvrpc\_idmap.h@{uvrpc\_idmap.h}!uvrpc\_idmap\_ctx\_new@{uvrpc\_idmap\_ctx\_new}}
+\index{uvrpc\_idmap\_ctx\_new@{uvrpc\_idmap\_ctx\_new}!uvrpc\_idmap.h@{uvrpc\_idmap.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_idmap\_ctx\_new()}{uvrpc\_idmap\_ctx\_new()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$ uvrpc\+\_\+idmap\+\_\+ctx\+\_\+new (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+UVRPC ID Mapping Implementation 
+
+Definition at line \mbox{\hyperlink{uvrpc__idmap_8c_source_l00012}{12}} of file \mbox{\hyperlink{uvrpc__idmap_8c_source}{uvrpc\+\_\+idmap.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00012                                              \{}
+\DoxyCodeLine{00013     \mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}* ctx = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\_idmap\_ctx\_t}}));}
+\DoxyCodeLine{00014     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{00015 }
+\DoxyCodeLine{00016     ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}} = NULL;}
+\DoxyCodeLine{00017     ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_aa7ba30d841b7ce377cb4d519aff6e267}{next\_gateway\_id}} = 1;}
+\DoxyCodeLine{00018 }
+\DoxyCodeLine{00019     \textcolor{keywordflow}{return} ctx;}
+\DoxyCodeLine{00020 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__idmap_8h_source_l00030}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::map}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00031}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::next\+\_\+gateway\+\_\+id}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}.
+
+\mbox{\Hypertarget{uvrpc__idmap_8h_a09766270beb16cc6910ae1a87c0a71d0}\label{uvrpc__idmap_8h_a09766270beb16cc6910ae1a87c0a71d0}} 
+\index{uvrpc\_idmap.h@{uvrpc\_idmap.h}!uvrpc\_idmap\_remove@{uvrpc\_idmap\_remove}}
+\index{uvrpc\_idmap\_remove@{uvrpc\_idmap\_remove}!uvrpc\_idmap.h@{uvrpc\_idmap.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_idmap\_remove()}{uvrpc\_idmap\_remove()}}
+{\footnotesize\ttfamily void uvrpc\+\_\+idmap\+\_\+remove (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{uint32\+\_\+t}]{msgid\+\_\+gateway }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__idmap_8c_source_l00076}{76}} of file \mbox{\hyperlink{uvrpc__idmap_8c_source}{uvrpc\+\_\+idmap.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00076                                                                         \{}
+\DoxyCodeLine{00077     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00078 }
+\DoxyCodeLine{00079     \textcolor{comment}{/* Find and delete entry */}}
+\DoxyCodeLine{00080     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{00081     HASH\_FIND\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, \&msgid\_gateway, entry);}
+\DoxyCodeLine{00082 }
+\DoxyCodeLine{00083     \textcolor{keywordflow}{if} (entry) \{}
+\DoxyCodeLine{00084         HASH\_DEL(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, entry);}
+\DoxyCodeLine{00085         \mbox{\hyperlink{group__AllocatorAPI_ga067f00c05f4a005dae8fc92d39875de4}{uvrpc\_free}}(entry);}
+\DoxyCodeLine{00086     \}}
+\DoxyCodeLine{00087 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__idmap_8h_source_l00030}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::map}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{uvrpc__idmap_8h_a4fd3f0a946e7c74142158cb11554ebc5}\label{uvrpc__idmap_8h_a4fd3f0a946e7c74142158cb11554ebc5}} 
+\index{uvrpc\_idmap.h@{uvrpc\_idmap.h}!uvrpc\_idmap\_to\_gateway@{uvrpc\_idmap\_to\_gateway}}
+\index{uvrpc\_idmap\_to\_gateway@{uvrpc\_idmap\_to\_gateway}!uvrpc\_idmap.h@{uvrpc\_idmap.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_idmap\_to\_gateway()}{uvrpc\_idmap\_to\_gateway()}}
+{\footnotesize\ttfamily uint32\+\_\+t uvrpc\+\_\+idmap\+\_\+to\+\_\+gateway (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{uint32\+\_\+t}]{msgid\+\_\+raw,  }\item[{void $\ast$}]{client\+\_\+handle }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__idmap_8c_source_l00037}{37}} of file \mbox{\hyperlink{uvrpc__idmap_8c_source}{uvrpc\+\_\+idmap.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00037                                                                                                  \{}
+\DoxyCodeLine{00038     \textcolor{keywordflow}{if} (!ctx) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00039 }
+\DoxyCodeLine{00040     \textcolor{comment}{/* Generate new gateway msgid */}}
+\DoxyCodeLine{00041     uint32\_t msgid\_gateway = ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_aa7ba30d841b7ce377cb4d519aff6e267}{next\_gateway\_id}}++;}
+\DoxyCodeLine{00042 }
+\DoxyCodeLine{00043     \textcolor{comment}{/* Create mapping entry */}}
+\DoxyCodeLine{00044     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = \mbox{\hyperlink{group__AllocatorAPI_ga91fe7dfcd5db69a938f8e8e9291677ae}{uvrpc\_calloc}}(1, \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}));}
+\DoxyCodeLine{00045     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00046 }
+\DoxyCodeLine{00047     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_ac10a66b740e5e137f7c948470852e79f}{msgid\_raw}} = msgid\_raw;}
+\DoxyCodeLine{00048     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a8ec68a149acd53cfcb0c85a8ce68e581}{msgid\_gateway}} = msgid\_gateway;}
+\DoxyCodeLine{00049     entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a6b63d8591511fbd59428a878e05f5141}{client\_handle}} = client\_handle;}
+\DoxyCodeLine{00050 }
+\DoxyCodeLine{00051     \textcolor{comment}{/* Store in hash table */}}
+\DoxyCodeLine{00052     HASH\_ADD\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, msgid\_gateway, entry);}
+\DoxyCodeLine{00053 }
+\DoxyCodeLine{00054     \textcolor{keywordflow}{return} msgid\_gateway;}
+\DoxyCodeLine{00055 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__idmap_8h_source_l00024}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t\+::client\+\_\+handle}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00030}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::map}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00023}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t\+::msgid\+\_\+gateway}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00022}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t\+::msgid\+\_\+raw}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00031}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::next\+\_\+gateway\+\_\+id}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}.
+
+\mbox{\Hypertarget{uvrpc__idmap_8h_af693f55efb23ae77c6ac0c970cc8123f}\label{uvrpc__idmap_8h_af693f55efb23ae77c6ac0c970cc8123f}} 
+\index{uvrpc\_idmap.h@{uvrpc\_idmap.h}!uvrpc\_idmap\_to\_raw@{uvrpc\_idmap\_to\_raw}}
+\index{uvrpc\_idmap\_to\_raw@{uvrpc\_idmap\_to\_raw}!uvrpc\_idmap.h@{uvrpc\_idmap.h}}
+\doxysubsubsection{\texorpdfstring{uvrpc\_idmap\_to\_raw()}{uvrpc\_idmap\_to\_raw()}}
+{\footnotesize\ttfamily int uvrpc\+\_\+idmap\+\_\+to\+\_\+raw (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structuvrpc__idmap__ctx__t}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t}} $\ast$}]{ctx,  }\item[{uint32\+\_\+t}]{msgid\+\_\+gateway,  }\item[{uint32\+\_\+t $\ast$}]{out\+\_\+msgid\+\_\+raw,  }\item[{void $\ast$$\ast$}]{out\+\_\+client\+\_\+handle }\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__idmap_8c_source_l00058}{58}} of file \mbox{\hyperlink{uvrpc__idmap_8c_source}{uvrpc\+\_\+idmap.\+c}}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00059                                                                           \{}
+\DoxyCodeLine{00060     \textcolor{keywordflow}{if} (!ctx || !out\_msgid\_raw || !out\_client\_handle) \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00061 }
+\DoxyCodeLine{00062     \textcolor{comment}{/* Find mapping entry */}}
+\DoxyCodeLine{00063     \mbox{\hyperlink{structuvrpc__idmap__entry__t}{uvrpc\_idmap\_entry\_t}}* entry = NULL;}
+\DoxyCodeLine{00064     HASH\_FIND\_INT(ctx-\/>\mbox{\hyperlink{structuvrpc__idmap__ctx__t_a5748a5345703b957c233b4b6ed030955}{map}}, \&msgid\_gateway, entry);}
+\DoxyCodeLine{00065 }
+\DoxyCodeLine{00066     \textcolor{keywordflow}{if} (!entry) \textcolor{keywordflow}{return} -\/1;}
+\DoxyCodeLine{00067 }
+\DoxyCodeLine{00068     \textcolor{comment}{/* Return original information */}}
+\DoxyCodeLine{00069     *out\_msgid\_raw = entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_ac10a66b740e5e137f7c948470852e79f}{msgid\_raw}};}
+\DoxyCodeLine{00070     *out\_client\_handle = entry-\/>\mbox{\hyperlink{structuvrpc__idmap__entry__t_a6b63d8591511fbd59428a878e05f5141}{client\_handle}};}
+\DoxyCodeLine{00071 }
+\DoxyCodeLine{00072     \textcolor{keywordflow}{return} 0;}
+\DoxyCodeLine{00073 \}}
+
+\end{DoxyCode}
+
+
+References \mbox{\hyperlink{uvrpc__idmap_8h_source_l00024}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t\+::client\+\_\+handle}}, \mbox{\hyperlink{uvrpc__idmap_8h_source_l00030}{uvrpc\+\_\+idmap\+\_\+ctx\+\_\+t\+::map}}, and \mbox{\hyperlink{uvrpc__idmap_8h_source_l00022}{uvrpc\+\_\+idmap\+\_\+entry\+\_\+t\+::msgid\+\_\+raw}}.
+

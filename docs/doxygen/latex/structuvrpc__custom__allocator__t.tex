@@ -1,0 +1,151 @@
+\hypertarget{structuvrpc__custom__allocator__t}{}\doxysection{uvrpc\+\_\+custom\+\_\+allocator\+\_\+t Struct Reference}
+\label{structuvrpc__custom__allocator__t}\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+
+
+Custom allocator interface.  
+
+
+
+
+{\ttfamily \#include $<$uvrpc\+\_\+allocator.\+h$>$}
+
+
+
+Collaboration diagram for uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_a5f852a766fc083d1098b463af9074acf}{uvrpc\+\_\+alloc\+\_\+fn}} \mbox{\hyperlink{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}{alloc}}
+\begin{DoxyCompactList}\small\item\em Allocation function. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_a9d2690555c530e6cf966a216de176dd6}{uvrpc\+\_\+calloc\+\_\+fn}} \mbox{\hyperlink{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}{calloc}}
+\begin{DoxyCompactList}\small\item\em Calloc function. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_a984199b3f9f3d105c99f7fec7c154b7e}{uvrpc\+\_\+free\+\_\+fn}} \mbox{\hyperlink{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}{free}}
+\begin{DoxyCompactList}\small\item\em Free function. \end{DoxyCompactList}\item 
+const char $\ast$ \mbox{\hyperlink{structuvrpc__custom__allocator__t_a01c2937d81345f2bfdcb2ef9ca054c43}{name}}
+\begin{DoxyCompactList}\small\item\em Allocator name. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{uvrpc__allocator_8h_a559a63192284607bc7bce937a7faa465}{uvrpc\+\_\+realloc\+\_\+fn}} \mbox{\hyperlink{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}{realloc}}
+\begin{DoxyCompactList}\small\item\em Realloc function. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{structuvrpc__custom__allocator__t_a88439976fb714a90692f6d9879bf451e}{user\+\_\+data}}
+\begin{DoxyCompactList}\small\item\em User data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Custom allocator interface. 
+
+Structure containing function pointers for a custom allocator. 
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00076}{76}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}\label{structuvrpc__custom__allocator__t_ad69111abf7141034917af7434f8167c5}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!alloc@{alloc}}
+\index{alloc@{alloc}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{alloc}{alloc}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__allocator_8h_a5f852a766fc083d1098b463af9074acf}{uvrpc\+\_\+alloc\+\_\+fn}} uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::alloc}
+
+
+
+Allocation function. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00077}{77}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__allocator_8c_source_l00116}{uvrpc\+\_\+alloc()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00076}{uvrpc\+\_\+allocator\+\_\+init()}}.
+
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}\label{structuvrpc__custom__allocator__t_a7cf483122a2e716709d5057215731292}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!calloc@{calloc}}
+\index{calloc@{calloc}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{calloc}{calloc}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__allocator_8h_a9d2690555c530e6cf966a216de176dd6}{uvrpc\+\_\+calloc\+\_\+fn}} uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::calloc}
+
+
+
+Calloc function. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00078}{78}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__allocator_8c_source_l00076}{uvrpc\+\_\+allocator\+\_\+init()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00134}{uvrpc\+\_\+calloc()}}.
+
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}\label{structuvrpc__custom__allocator__t_afd0b0a918b1a95a714a9e329b9c8b119}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!free@{free}}
+\index{free@{free}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{free}{free}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__allocator_8h_a984199b3f9f3d105c99f7fec7c154b7e}{uvrpc\+\_\+free\+\_\+fn}} uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::free}
+
+
+
+Free function. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00080}{80}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__allocator_8c_source_l00076}{uvrpc\+\_\+allocator\+\_\+init()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00170}{uvrpc\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_a01c2937d81345f2bfdcb2ef9ca054c43}\label{structuvrpc__custom__allocator__t_a01c2937d81345f2bfdcb2ef9ca054c43}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!name@{name}}
+\index{name@{name}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily const char$\ast$ uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::name}
+
+
+
+Allocator name. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00081}{81}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__allocator_8c_source_l00102}{uvrpc\+\_\+allocator\+\_\+get\+\_\+name()}}.
+
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}\label{structuvrpc__custom__allocator__t_a1e992c683b150c7764cba5dbe8b66f98}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!realloc@{realloc}}
+\index{realloc@{realloc}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{realloc}{realloc}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__allocator_8h_a559a63192284607bc7bce937a7faa465}{uvrpc\+\_\+realloc\+\_\+fn}} uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::realloc}
+
+
+
+Realloc function. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00079}{79}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__allocator_8c_source_l00076}{uvrpc\+\_\+allocator\+\_\+init()}}, and \mbox{\hyperlink{uvrpc__allocator_8c_source_l00152}{uvrpc\+\_\+realloc()}}.
+
+\mbox{\Hypertarget{structuvrpc__custom__allocator__t_a88439976fb714a90692f6d9879bf451e}\label{structuvrpc__custom__allocator__t_a88439976fb714a90692f6d9879bf451e}} 
+\index{uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}!user\_data@{user\_data}}
+\index{user\_data@{user\_data}!uvrpc\_custom\_allocator\_t@{uvrpc\_custom\_allocator\_t}}
+\doxysubsubsection{\texorpdfstring{user\_data}{user\_data}}
+{\footnotesize\ttfamily void$\ast$ uvrpc\+\_\+custom\+\_\+allocator\+\_\+t\+::user\+\_\+data}
+
+
+
+User data. 
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__allocator_8h_source_l00082}{82}} of file \mbox{\hyperlink{uvrpc__allocator_8h_source}{uvrpc\+\_\+allocator.\+h}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+include/\mbox{\hyperlink{uvrpc__allocator_8h}{uvrpc\+\_\+allocator.\+h}}\end{DoxyCompactItemize}

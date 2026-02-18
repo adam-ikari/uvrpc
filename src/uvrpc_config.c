@@ -1,5 +1,13 @@
 /**
- * UVRPC Configuration Management
+ * @file uvrpc_config.c
+ * @brief UVRPC Configuration Management
+ * 
+ * Provides functions for creating, configuring, and freeing UVRPC
+ * configuration structures.
+ * 
+ * @author UVRPC Team
+ * @date 2026
+ * @version 1.0
  */
 
 #include "../include/uvrpc.h"

@@ -1,0 +1,136 @@
+\hypertarget{structuvbus__ipc__server}{}\doxysection{uvbus\+\_\+ipc\+\_\+server Struct Reference}
+\label{structuvbus__ipc__server}\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+
+
+Collaboration diagram for uvbus\+\_\+ipc\+\_\+server\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{structuvbus__ipc__server_a998a11d246885030c6c429f6f32bb610}{client\+\_\+capacity}}
+\item 
+int \mbox{\hyperlink{structuvbus__ipc__server_afe8cb48c67e199b5cbb59678448e30d3}{client\+\_\+count}}
+\item 
+\mbox{\hyperlink{uvbus__transport__ipc_8c_a013908634b4c76c125383e24bd2826a9}{uvbus\+\_\+ipc\+\_\+client\+\_\+t}} $\ast$$\ast$ \mbox{\hyperlink{structuvbus__ipc__server_a81a66e01a793e40730875abf339490c3}{clients}}
+\item 
+int \mbox{\hyperlink{structuvbus__ipc__server_a674f27e4767e5345cac4045e08c12d53}{is\+\_\+listening}}
+\item 
+uv\+\_\+pipe\+\_\+t \mbox{\hyperlink{structuvbus__ipc__server_a188609651ff3102f774bf1a435cbbd01}{listen\+\_\+pipe}}
+\item 
+void $\ast$ \mbox{\hyperlink{structuvbus__ipc__server_a322b4eb8c3023df1154b3b057101d3ce}{parent\+\_\+transport}}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvbus__ipc__server_a8765f38a1453a5dd6b05b21c2c414525}{socket\+\_\+path}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00032}{32}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvbus__ipc__server_a998a11d246885030c6c429f6f32bb610}\label{structuvbus__ipc__server_a998a11d246885030c6c429f6f32bb610}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!client\_capacity@{client\_capacity}}
+\index{client\_capacity@{client\_capacity}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{client\_capacity}{client\_capacity}}
+{\footnotesize\ttfamily int uvbus\+\_\+ipc\+\_\+server\+::client\+\_\+capacity}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00041}{41}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_afe8cb48c67e199b5cbb59678448e30d3}\label{structuvbus__ipc__server_afe8cb48c67e199b5cbb59678448e30d3}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!client\_count@{client\_count}}
+\index{client\_count@{client\_count}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{client\_count}{client\_count}}
+{\footnotesize\ttfamily int uvbus\+\_\+ipc\+\_\+server\+::client\+\_\+count}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00040}{40}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00338}{ipc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00378}{ipc\+\_\+send()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_a81a66e01a793e40730875abf339490c3}\label{structuvbus__ipc__server_a81a66e01a793e40730875abf339490c3}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!clients@{clients}}
+\index{clients@{clients}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{clients}{clients}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus__transport__ipc_8c_a013908634b4c76c125383e24bd2826a9}{uvbus\+\_\+ipc\+\_\+client\+\_\+t}}$\ast$$\ast$ uvbus\+\_\+ipc\+\_\+server\+::clients}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00039}{39}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00338}{ipc\+\_\+disconnect()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}, \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00378}{ipc\+\_\+send()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00139}{on\+\_\+server\+\_\+connection()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_a674f27e4767e5345cac4045e08c12d53}\label{structuvbus__ipc__server_a674f27e4767e5345cac4045e08c12d53}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!is\_listening@{is\_listening}}
+\index{is\_listening@{is\_listening}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{is\_listening}{is\_listening}}
+{\footnotesize\ttfamily int uvbus\+\_\+ipc\+\_\+server\+::is\+\_\+listening}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00036}{36}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_a188609651ff3102f774bf1a435cbbd01}\label{structuvbus__ipc__server_a188609651ff3102f774bf1a435cbbd01}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!listen\_pipe@{listen\_pipe}}
+\index{listen\_pipe@{listen\_pipe}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{listen\_pipe}{listen\_pipe}}
+{\footnotesize\ttfamily uv\+\_\+pipe\+\_\+t uvbus\+\_\+ipc\+\_\+server\+::listen\+\_\+pipe}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00033}{33}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00338}{ipc\+\_\+disconnect()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_a322b4eb8c3023df1154b3b057101d3ce}\label{structuvbus__ipc__server_a322b4eb8c3023df1154b3b057101d3ce}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!parent\_transport@{parent\_transport}}
+\index{parent\_transport@{parent\_transport}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{parent\_transport}{parent\_transport}}
+{\footnotesize\ttfamily void$\ast$ uvbus\+\_\+ipc\+\_\+server\+::parent\+\_\+transport}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00044}{44}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}.
+
+\mbox{\Hypertarget{structuvbus__ipc__server_a8765f38a1453a5dd6b05b21c2c414525}\label{structuvbus__ipc__server_a8765f38a1453a5dd6b05b21c2c414525}} 
+\index{uvbus\_ipc\_server@{uvbus\_ipc\_server}!socket\_path@{socket\_path}}
+\index{socket\_path@{socket\_path}!uvbus\_ipc\_server@{uvbus\_ipc\_server}}
+\doxysubsubsection{\texorpdfstring{socket\_path}{socket\_path}}
+{\footnotesize\ttfamily char$\ast$ uvbus\+\_\+ipc\+\_\+server\+::socket\+\_\+path}
+
+
+
+Definition at line \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00035}{35}} of file \mbox{\hyperlink{uvbus__transport__ipc_8c_source}{uvbus\+\_\+transport\+\_\+ipc.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00338}{ipc\+\_\+disconnect()}}, and \mbox{\hyperlink{uvbus__transport__ipc_8c_source_l00212}{ipc\+\_\+listen()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvbus__transport__ipc_8c}{uvbus\+\_\+transport\+\_\+ipc.\+c}}\end{DoxyCompactItemize}

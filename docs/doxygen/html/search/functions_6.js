@@ -1,0 +1,14 @@
+var searchData=
+[
+  ['on_5fclient_5falloc_0',['on_client_alloc',['../uvbus__transport__tcp_8c.html#a5d40578880eeeb2be10a1157e9da1bbe',1,'on_client_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf):&#160;uvbus_transport_tcp.c'],['../uvbus__transport__udp_8c.html#a5d40578880eeeb2be10a1157e9da1bbe',1,'on_client_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf):&#160;uvbus_transport_udp.c'],['../uvbus__transport__ipc_8c.html#a5d40578880eeeb2be10a1157e9da1bbe',1,'on_client_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf):&#160;uvbus_transport_ipc.c']]],
+  ['on_5fclient_5fclose_1',['on_client_close',['../uvbus__transport__tcp_8c.html#ac733c0ecaaf82d7299b0877ef0264ff9',1,'uvbus_transport_tcp.c']]],
+  ['on_5fclient_5fconnect_2',['on_client_connect',['../uvbus__transport__ipc_8c.html#af4da8d99720facd857defdd92a36fa74',1,'on_client_connect(uv_connect_t *req, int status):&#160;uvbus_transport_ipc.c'],['../uvbus__transport__tcp_8c.html#af4da8d99720facd857defdd92a36fa74',1,'on_client_connect(uv_connect_t *req, int status):&#160;uvbus_transport_tcp.c']]],
+  ['on_5fclient_5fread_3',['on_client_read',['../uvbus__transport__ipc_8c.html#a88c2dca9ca2eda5b4c2a2ccd75dae81f',1,'on_client_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf):&#160;uvbus_transport_ipc.c'],['../uvbus__transport__tcp_8c.html#a88c2dca9ca2eda5b4c2a2ccd75dae81f',1,'on_client_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf):&#160;uvbus_transport_tcp.c']]],
+  ['on_5fclient_5frecv_4',['on_client_recv',['../uvbus__transport__udp_8c.html#aa98e79ac96f2806e57845ca0d083dae0',1,'uvbus_transport_udp.c']]],
+  ['on_5fsend_5',['on_send',['../uvbus__transport__udp_8c.html#a10ad14f6993fac66edbf5d2f6a75aa62',1,'uvbus_transport_udp.c']]],
+  ['on_5fserver_5falloc_6',['on_server_alloc',['../uvbus__transport__udp_8c.html#a3a6e3c6f3690ccabaf601c829181e1d5',1,'uvbus_transport_udp.c']]],
+  ['on_5fserver_5fclose_7',['on_server_close',['../uvbus__transport__tcp_8c.html#a2aca6583c208fcfbaf92481a80497a9e',1,'uvbus_transport_tcp.c']]],
+  ['on_5fserver_5fconnection_8',['on_server_connection',['../uvbus__transport__ipc_8c.html#a470e06ca6e88bceee16f969aca5b2bda',1,'on_server_connection(uv_stream_t *server, int status):&#160;uvbus_transport_ipc.c'],['../uvbus__transport__tcp_8c.html#a470e06ca6e88bceee16f969aca5b2bda',1,'on_server_connection(uv_stream_t *server, int status):&#160;uvbus_transport_tcp.c']]],
+  ['on_5fserver_5frecv_9',['on_server_recv',['../uvbus__transport__udp_8c.html#a464ca59196f9763002965ed9ef5314c0',1,'uvbus_transport_udp.c']]],
+  ['on_5fwrite_10',['on_write',['../uvbus__transport__ipc_8c.html#a3599c310b7d3677b8df8716142503500',1,'on_write(uv_write_t *req, int status):&#160;uvbus_transport_ipc.c'],['../uvbus__transport__tcp_8c.html#a3599c310b7d3677b8df8716142503500',1,'on_write(uv_write_t *req, int status):&#160;uvbus_transport_tcp.c']]]
+];

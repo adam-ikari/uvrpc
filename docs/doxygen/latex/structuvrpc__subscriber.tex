@@ -1,0 +1,120 @@
+\hypertarget{structuvrpc__subscriber}{}\doxysection{uvrpc\+\_\+subscriber Struct Reference}
+\label{structuvrpc__subscriber}\index{uvrpc\_subscriber@{uvrpc\_subscriber}}
+
+
+Collaboration diagram for uvrpc\+\_\+subscriber\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \mbox{\hyperlink{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}{address}}
+\item 
+int \mbox{\hyperlink{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}{is\+\_\+connected}}
+\item 
+uv\+\_\+loop\+\_\+t $\ast$ \mbox{\hyperlink{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}{loop}}
+\item 
+\mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{subscription\+\_\+entry\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}{subscriptions}}
+\item 
+\mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} \mbox{\hyperlink{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}{transport\+\_\+type}}
+\item 
+\mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}} $\ast$ \mbox{\hyperlink{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}{uvbus}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00030}{30}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}\label{structuvrpc__subscriber_ad9361c409bc7a3706c22d842633161e0}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!address@{address}}
+\index{address@{address}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{address}{address}}
+{\footnotesize\ttfamily char$\ast$ uvrpc\+\_\+subscriber\+::address}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00032}{32}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{uvrpc\+\_\+subscriber\+\_\+free()}}.
+
+\mbox{\Hypertarget{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}\label{structuvrpc__subscriber_a9c30d924658ef16c09c16913c6dc46f7}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!is\_connected@{is\_connected}}
+\index{is\_connected@{is\_connected}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{is\_connected}{is\_connected}}
+{\footnotesize\ttfamily int uvrpc\+\_\+subscriber\+::is\+\_\+connected}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00035}{35}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00098}{subscriber\+\_\+connect\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00154}{uvrpc\+\_\+subscriber\+\_\+connect()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00166}{uvrpc\+\_\+subscriber\+\_\+disconnect()}}.
+
+\mbox{\Hypertarget{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}\label{structuvrpc__subscriber_a75d4bce0f1c6ab7a98925278dd9a2d6c}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!loop@{loop}}
+\index{loop@{loop}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily uv\+\_\+loop\+\_\+t$\ast$ uvrpc\+\_\+subscriber\+::loop}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00031}{31}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}\label{structuvrpc__subscriber_ad77800036c0f48a30fabb5dadccbaf28}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!subscriptions@{subscriptions}}
+\index{subscriptions@{subscriptions}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{subscriptions}{subscriptions}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__subscriber_8c_a94d91ec5d3f34d0e878799365270e71f}{subscription\+\_\+entry\+\_\+t}}$\ast$ uvrpc\+\_\+subscriber\+::subscriptions}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00036}{36}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00040}{subscriber\+\_\+recv\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{uvrpc\+\_\+subscriber\+\_\+free()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00200}{uvrpc\+\_\+subscriber\+\_\+subscribe()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00229}{uvrpc\+\_\+subscriber\+\_\+unsubscribe()}}.
+
+\mbox{\Hypertarget{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}\label{structuvrpc__subscriber_aa845057e92b0e8edc224a955983c335c}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!transport\_type@{transport\_type}}
+\index{transport\_type@{transport\_type}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{transport\_type}{transport\_type}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_a793e1db1b4e704546608c6b1ee615fc4}{uvbus\+\_\+transport\+\_\+type\+\_\+t}} uvrpc\+\_\+subscriber\+::transport\+\_\+type}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00034}{34}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}.
+
+\mbox{\Hypertarget{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}\label{structuvrpc__subscriber_aa314c473b8cebf895552a1bf43cff143}} 
+\index{uvrpc\_subscriber@{uvrpc\_subscriber}!uvbus@{uvbus}}
+\index{uvbus@{uvbus}!uvrpc\_subscriber@{uvrpc\_subscriber}}
+\doxysubsubsection{\texorpdfstring{uvbus}{uvbus}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvbus_8h_af50e701f5de7dfa1529ece89489144bd}{uvbus\+\_\+t}}$\ast$ uvrpc\+\_\+subscriber\+::uvbus}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00033}{33}} of file \mbox{\hyperlink{uvrpc__subscriber_8c_source}{uvrpc\+\_\+subscriber.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00154}{uvrpc\+\_\+subscriber\+\_\+connect()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00108}{uvrpc\+\_\+subscriber\+\_\+create()}}, \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00166}{uvrpc\+\_\+subscriber\+\_\+disconnect()}}, and \mbox{\hyperlink{uvrpc__subscriber_8c_source_l00177}{uvrpc\+\_\+subscriber\+\_\+free()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvrpc__subscriber_8c}{uvrpc\+\_\+subscriber.\+c}}\end{DoxyCompactItemize}

@@ -1,0 +1,184 @@
+\hypertarget{structretry__context}{}\doxysection{retry\+\_\+context Struct Reference}
+\label{structretry__context}\index{retry\_context@{retry\_context}}
+
+
+Collaboration diagram for retry\+\_\+context\+:
+% FIG 0
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{structretry__context_aea2997922cb807658aabf50007012c48}{attempt}}
+\item 
+\mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}} $\ast$ \mbox{\hyperlink{structretry__context_a87798f5b2bddfe31353e4394943c8504}{client}}
+\item 
+\mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}} $\ast$ \mbox{\hyperlink{structretry__context_a757de2dd58a349d4d8c24dee70c86916}{ctx}}
+\item 
+int \mbox{\hyperlink{structretry__context_aa1061a88c4322df52e830236a61ddb90}{max\+\_\+retries}}
+\item 
+char $\ast$ \mbox{\hyperlink{structretry__context_a3f89333638444bac65d017183eff8ceb}{method}}
+\item 
+uint8\+\_\+t $\ast$ \mbox{\hyperlink{structretry__context_a8e5b05c28716124b6b901fb56645ee82}{params}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}{params\+\_\+size}}
+\item 
+\mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}} $\ast$$\ast$ \mbox{\hyperlink{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}{result}}
+\item 
+uint64\+\_\+t \mbox{\hyperlink{structretry__context_a6156f10428d602519990c8dfcdc4accc}{retry\+\_\+delay\+\_\+ms}}
+\item 
+uv\+\_\+timer\+\_\+t \mbox{\hyperlink{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}{timer}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00025}{25}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\mbox{\Hypertarget{structretry__context_aea2997922cb807658aabf50007012c48}\label{structretry__context_aea2997922cb807658aabf50007012c48}} 
+\index{retry\_context@{retry\_context}!attempt@{attempt}}
+\index{attempt@{attempt}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{attempt}{attempt}}
+{\footnotesize\ttfamily int retry\+\_\+context\+::attempt}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00031}{31}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a87798f5b2bddfe31353e4394943c8504}\label{structretry__context_a87798f5b2bddfe31353e4394943c8504}} 
+\index{retry\_context@{retry\_context}!client@{client}}
+\index{client@{client}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{client}{client}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc_8h_a1f754da64a9851571460abe6b3b2660e}{uvrpc\+\_\+client\+\_\+t}}$\ast$ retry\+\_\+context\+::client}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00026}{26}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a757de2dd58a349d4d8c24dee70c86916}\label{structretry__context_a757de2dd58a349d4d8c24dee70c86916}} 
+\index{retry\_context@{retry\_context}!ctx@{ctx}}
+\index{ctx@{ctx}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{ctx}{ctx}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__async_8h_a78f2c83683ddbffc8c2db49e5a0ae24d}{uvrpc\+\_\+async\+\_\+ctx\+\_\+t}}$\ast$ retry\+\_\+context\+::ctx}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00034}{34}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_aa1061a88c4322df52e830236a61ddb90}\label{structretry__context_aa1061a88c4322df52e830236a61ddb90}} 
+\index{retry\_context@{retry\_context}!max\_retries@{max\_retries}}
+\index{max\_retries@{max\_retries}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{max\_retries}{max\_retries}}
+{\footnotesize\ttfamily int retry\+\_\+context\+::max\+\_\+retries}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00032}{32}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a3f89333638444bac65d017183eff8ceb}\label{structretry__context_a3f89333638444bac65d017183eff8ceb}} 
+\index{retry\_context@{retry\_context}!method@{method}}
+\index{method@{method}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{method}{method}}
+{\footnotesize\ttfamily char$\ast$ retry\+\_\+context\+::method}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00027}{27}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a8e5b05c28716124b6b901fb56645ee82}\label{structretry__context_a8e5b05c28716124b6b901fb56645ee82}} 
+\index{retry\_context@{retry\_context}!params@{params}}
+\index{params@{params}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{params}{params}}
+{\footnotesize\ttfamily uint8\+\_\+t$\ast$ retry\+\_\+context\+::params}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00028}{28}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}\label{structretry__context_a86650ed0220a6c5582e1d8f7bb593253}} 
+\index{retry\_context@{retry\_context}!params\_size@{params\_size}}
+\index{params\_size@{params\_size}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{params\_size}{params\_size}}
+{\footnotesize\ttfamily size\+\_\+t retry\+\_\+context\+::params\+\_\+size}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00029}{29}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}\label{structretry__context_aa37e069b9b39056ecf0e1ba3efe1fe54}} 
+\index{retry\_context@{retry\_context}!result@{result}}
+\index{result@{result}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{result}{result}}
+{\footnotesize\ttfamily \mbox{\hyperlink{uvrpc__async_8h_a64113b71789022613c1369d8d4eba04b}{uvrpc\+\_\+async\+\_\+result\+\_\+t}}$\ast$$\ast$ retry\+\_\+context\+::result}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00030}{30}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00039}{retry\+\_\+delay\+\_\+callback()}}, \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a6156f10428d602519990c8dfcdc4accc}\label{structretry__context_a6156f10428d602519990c8dfcdc4accc}} 
+\index{retry\_context@{retry\_context}!retry\_delay\_ms@{retry\_delay\_ms}}
+\index{retry\_delay\_ms@{retry\_delay\_ms}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{retry\_delay\_ms}{retry\_delay\_ms}}
+{\footnotesize\ttfamily uint64\+\_\+t retry\+\_\+context\+::retry\+\_\+delay\+\_\+ms}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00033}{33}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+\mbox{\Hypertarget{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}\label{structretry__context_a58ffed0fcf21a191d8ea1cbcbe3a3e1b}} 
+\index{retry\_context@{retry\_context}!timer@{timer}}
+\index{timer@{timer}!retry\_context@{retry\_context}}
+\doxysubsubsection{\texorpdfstring{timer}{timer}}
+{\footnotesize\ttfamily uv\+\_\+timer\+\_\+t retry\+\_\+context\+::timer}
+
+
+
+Definition at line \mbox{\hyperlink{uvrpc__async_8c_source_l00035}{35}} of file \mbox{\hyperlink{uvrpc__async_8c_source}{uvrpc\+\_\+async.\+c}}.
+
+
+
+Referenced by \mbox{\hyperlink{uvrpc__async_8c_source_l00457}{uvrpc\+\_\+async\+\_\+retry()}}, and \mbox{\hyperlink{uvrpc__async_8c_source_l00548}{uvrpc\+\_\+async\+\_\+retry\+\_\+with\+\_\+backoff()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+src/\mbox{\hyperlink{uvrpc__async_8c}{uvrpc\+\_\+async.\+c}}\end{DoxyCompactItemize}
