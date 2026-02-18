@@ -417,32 +417,58 @@ uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 
 ### 分层架构
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Layer 3: 应用层                                      │
-│  - 服务处理器                                        │
-│  - 客户端回调                                        │
-│  - 用户逻辑                                          │
-├─────────────────────────────────────────────────────┤
-│  Layer 2: RPC API 层                                 │
-│  - uvrpc_server_t                                   │
-│  - uvrpc_client_t                                   │
-│  - uvrpc_publisher_t                                │
-│  - uvrpc_subscriber_t                               │
-├─────────────────────────────────────────────────────┤
-│  Layer 1: 传输层（统一抽象）                          │
-│  - uvrpc_transport_t (统一接口)                      │
-│  - TCP 实现 (uvrpc_transport_tcp_new)               │
-│  - UDP 实现 (uvrpc_transport_udp_new)               │
-│  - IPC 实现 (uvrpc_transport_ipc_new)               │
-│  - INPROC 实现 (uvrpc_transport_inproc_new)         │
-│  - 相同的 vtable 接口                                │
-├─────────────────────────────────────────────────────┤
-│  Layer 0: 核心库层                                    │
-│  - libuv                                            │
-│  - FlatBuffers                                      │
-│  - mimalloc                                         │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Layer3["Layer 3: 应用层"]
+        A1[服务处理器]
+        A2[客户端回调]
+        A3[用户逻辑]
+    end
+    
+    subgraph Layer2["Layer 2: RPC API 层"]
+        B1[uvrpc_server_t]
+        B2[uvrpc_client_t]
+        B3[uvrpc_publisher_t]
+        B4[uvrpc_subscriber_t]
+    end
+    
+    subgraph Layer1["Layer 1: 传输层（统一抽象）"]
+        C1[uvrpc_transport_t<br/>统一接口]
+        C2[TCP 实现<br/>uvrpc_transport_tcp_new]
+        C3[UDP 实现<br/>uvrpc_transport_udp_new]
+        C4[IPC 实现<br/>uvrpc_transport_ipc_new]
+        C5[INPROC 实现<br/>uvrpc_transport_inproc_new]
+        C6[相同的 vtable 接口]
+    end
+    
+    subgraph Layer0["Layer 0: 核心库层"]
+        D1[libuv]
+        D2[FlatBuffers]
+        D3[mimalloc]
+    end
+    
+    A3 --> B1
+    A3 --> B2
+    B1 --> C1
+    B2 --> C1
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
+    C1 --> C5
+    C1 --> C6
+    C2 --> D1
+    C3 --> D1
+    C4 --> D1
+    C5 --> D1
+    C2 --> D2
+    C3 --> D2
+    C4 --> D2
+    C5 --> D2
+    
+    style Layer3 fill:#e1f5ff
+    style Layer2 fill:#fff4e6
+    style Layer1 fill:#f0f0f0
+    style Layer0 fill:#f9f9f9
 ```
 
 ### 统一的传输抽象
@@ -566,42 +592,49 @@ INPROC (In-Process) 传输为进程内通信提供最高性能：
 
 #### 架构实现
 
-```
-进程内通信架构：
-
-┌─────────────────────────────────────────────────────┐
-│  Server Process                                       │
-│                                                       │
-│  ┌─────────────────────────────────────────────────┐│
-│  │  uvrpc_server_t                                 ││
-│  │  - transport: uvrpc_transport_t                 ││
-│  │    - impl: uvrpc_inproc_transport_t            ││
-│  │      - endpoint: inproc_endpoint_t             ││
-│  │        - name: "test_endpoint"                 ││
-│  │        - server_transport: ← 指向自己         ││
-│  │        - clients: [client1, client2, ...]      ││
-│  │        - client_count: 2                       ││
-│  └─────────────────────────────────────────────────┘│
-│                           │                          │
-│                           │ 直接调用                  │
-│                           ↓                          │
-│  ┌─────────────────────────────────────────────────┐│
-│  │  inproc_endpoint_t                             ││
-│  │  - 全局端点注册表 (g_endpoint_list)            ││
-│  │  - 链表结构，支持多个端点                      ││
-│  └─────────────────────────────────────────────────┘│
-│                           ↑                          │
-│                           │ 直接调用                  │
-│                           │                          │
-│  ┌─────────────────────────────────────────────────┐│
-│  │  uvrpc_client_t                                 ││
-│  │  - transport: uvrpc_transport_t                 ││
-│  │    - impl: uvrpc_inproc_transport_t            ││
-│  │      - recv_cb: client_recv_callback            ││
-│  │      - endpoint: → 指向同一端点                ││
-│  └─────────────────────────────────────────────────┘│
-│                                                       │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Server["Server Process"]
+        subgraph S1["uvrpc_server_t"]
+            S1a[transport: uvrpc_transport_t]
+            S1b[impl: uvrpc_inproc_transport_t]
+            S1c[endpoint: inproc_endpoint_t]
+            S1c1[name: "test_endpoint"]
+            S1c2[server_transport: ← 指向自己]
+            S1c3[clients: [client1, client2, ...]]
+            S1c4[client_count: 2]
+            
+            S1a --> S1b
+            S1b --> S1c
+            S1c --> S1c1
+            S1c --> S1c2
+            S1c --> S1c3
+            S1c --> S1c4
+        end
+        
+        subgraph S2["inproc_endpoint_t"]
+            S2a[全局端点注册表 g_endpoint_list]
+            S2b[链表结构，支持多个端点]
+            
+            S2a --> S2b
+        end
+        
+        subgraph S3["uvrpc_client_t"]
+            S3a[transport: uvrpc_transport_t]
+            S3b[impl: uvrpc_inproc_transport_t]
+            S3c[recv_cb: client_recv_callback]
+            S3d[endpoint: → 指向同一端点]
+            
+            S3a --> S3b
+            S3b --> S3c
+            S3b --> S3d
+        end
+        
+        S1 -->|直接调用| S2
+        S3 -->|直接调用| S2
+    end
+    
+    style Server fill:#e1f5ff
 ```
 
 #### 端点管理

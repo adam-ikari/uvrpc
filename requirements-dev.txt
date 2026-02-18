@@ -1,0 +1,11 @@
+# Python 3.9+
+python>=3.9
+
+# Development tools
+pyinstaller>=6.0
+jinja2>=3.1
+
+# Optional
+pytest>=7.0
+black>=23.0
+mypy>=1.0

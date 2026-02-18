@@ -1,0 +1,56 @@
+namespace rpc;
+
+/* ============================================================
+   Broadcast Service Definition
+   For publish/subscribe pattern
+   Uses standard FlatBuffers rpc_service syntax
+   ============================================================ */
+
+/* Broadcast Message Types */
+
+table NewsPublishRequest {
+    title: string;
+    content: string;
+    timestamp: int64;
+    author: string;
+}
+
+table NewsPublishResponse {
+    success: bool;
+    message: string;
+}
+
+table WeatherUpdateRequest {
+    location: string;
+    temperature: float;
+    humidity: int32;
+    condition: string;
+    timestamp: int64;
+}
+
+table WeatherUpdateResponse {
+    received: bool;
+    timestamp: int64;
+}
+
+table EventNotificationRequest {
+    event_type: string;
+    event_data: [ubyte];
+    timestamp: int64;
+    priority: int32;
+}
+
+table EventNotificationResponse {
+    acknowledged: bool;
+}
+
+/* ============================================================
+   Broadcast Service
+   Service name convention: *Broadcast* indicates broadcast mode
+   ============================================================ */
+
+rpc_service BroadcastService {
+    PublishNews(NewsPublishRequest):NewsPublishResponse;
+    UpdateWeather(WeatherUpdateRequest):WeatherUpdateResponse;
+    NotifyEvent(EventNotificationRequest):EventNotificationResponse;
+}

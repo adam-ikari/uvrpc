@@ -10,36 +10,26 @@
 
 ## 架构层次
 
-```
-┌─────────────────────────────────────┐
-│         用户代码                    │
-│  uvrpc_server_create()              │
-│  uvrpc_client_create()              │
-│  uvrpc_server_register()            │
-│  uvrpc_client_call()                │
-└──────────────┬──────────────────────┘
-               │
-               ↓
-┌─────────────────────────────────────┐
-│      UVRPC (用户可见 API)           │
-│  - 服务器/客户端管理                 │
-│  - RPC 协议处理                     │
-│  - 请求/响应路由                    │
-│  - 回调管理                         │
-└──────────────┬──────────────────────┘
-               │ 内部实现
-               ↓
-┌─────────────────────────────────────┐
-│      UVBus (实现细节)               │
-│  - TCP/UDP/IPC/INPROC 传输          │
-│  - 连接管理                         │
-│  - 字节发送/接收                    │
-└──────────────┬──────────────────────┘
-               │
-               ↓
-┌─────────────────────────────────────┐
-│         libuv (事件循环)            │
-└─────────────────────────────────────┘
+```mermaid
+graph TD
+    A[用户代码<br/>uvrpc_server_create<br/>uvrpc_client_create<br/>uvrpc_server_register<br/>uvrpc_client_call]
+    A --> B[UVRPC<br/>用户可见 API]
+    B --> B1[服务器/客户端管理]
+    B --> B2[RPC 协议处理]
+    B --> B3[请求/响应路由]
+    B --> B4[回调管理]
+    
+    B -->|内部实现| C[UVBus<br/>实现细节]
+    C --> C1[TCP/UDP/IPC/INPROC 传输]
+    C --> C2[连接管理]
+    C --> C3[字节发送/接收]
+    
+    C --> D[libuv<br/>事件循环]
+    
+    style A fill:#f0f0f0
+    style B fill:#e1f5ff
+    style C fill:#fff4e6
+    style D fill:#f9f9f9
 ```
 
 ## UVRPC 内部使用 UVBus

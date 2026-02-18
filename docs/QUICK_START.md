@@ -9,6 +9,7 @@
 - GCC >= 4.8
 - CMake >= 3.5
 - make
+- Python 3.6+ (用于代码生成)
 
 ### 编译
 
@@ -17,10 +18,11 @@
 git clone --recursive https://github.com/your-org/uvrpc.git
 cd uvrpc
 
-# 设置依赖
-./scripts/setup_deps.sh
+# 使用 Makefile 编译（推荐）
+make deps          # 同步依赖
+make build         # 编译项目
 
-# 编译
+# 或使用脚本
 ./build.sh
 
 # 或使用 CMake
@@ -62,6 +64,226 @@ Received: Hello, UVRPC!
 
 恭喜！你已经成功运行了第一个 UVRPC 程序。
 
+## 使用代码生成器
+
+UVRPC 提供 DSL（领域特定语言）来自动生成代码，大大简化开发流程。
+
+### 定义服务
+
+创建 `my_service.fbs` 文件：
+
+```flatbuffers
+namespace myapp;
+
+// 定义请求类型
+table AddRequest {
+    a: int32;
+    b: int32;
+}
+
+// 定义响应类型
+table AddResponse {
+    result: int32;
+}
+
+// 定义服务
+rpc_service CalcService {
+    Add(AddRequest):AddResponse;
+}
+```
+
+### 生成代码
+
+```bash
+# 使用 Makefile
+make generate SERVICE=my_service.fbs
+
+# 或直接使用生成器
+python tools/rpc_dsl_generator.py \
+    --flatcc build/flatcc/flatcc \
+    -o generated \
+    my_service.fbs
+```
+
+生成的文件：
+- `myapp_calc_api.h` - API 头文件
+- `myapp_calc_client.c` - 客户端实现
+- `myapp_calc_server_stub.c` - 服务器存根
+
+### 使用生成的代码
+
+#### 服务器端
+
+```c
+#include "myapp_calc_api.h"
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    // 创建服务器
+    uvrpc_server_t* server = uvrpc_calc_create_server(&loop, "tcp://127.0.0.1:5555");
+    uvrpc_calc_start_server(server);
+    
+    // 运行事件循环
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_calc_stop_server(server);
+    uvrpc_calc_free_server(server);
+    uv_loop_close(&loop);
+    return 0;
+}
+
+// 实现业务逻辑（必须实现）
+uvrpc_error_t uvrpc_calc_handle_request(const char* method_name, 
+                                        const void* request,
+                                        uvrpc_request_t* req) {
+    if (strcmp(method_name, "Add") == 0) {
+        const myapp_AddRequest_table_t* req_data = myapp_AddRequest_as_root(request);
+        int32_t a = myapp_AddRequest_a(req_data);
+        int32_t b = myapp_AddRequest_b(req_data);
+        
+        // 业务逻辑
+        int32_t result = a + b;
+        
+        // 构建响应
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        myapp_AddResponse_create(&builder, result);
+        
+        const uint8_t* buf = flatcc_builder_get_direct_buffer(&builder);
+        size_t size = flatcc_builder_get_buffer_size(&builder);
+        
+        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        flatcc_builder_clear(&builder);
+    }
+    return UVRPC_OK;
+}
+```
+
+#### 客户端
+
+```c
+#include "myapp_calc_api.h"
+
+void on_response(uvrpc_response_t* resp, void* ctx) {
+    if (resp->status == UVRPC_OK) {
+        const myapp_AddResponse_table_t* result = myapp_AddResponse_as_root(resp->data);
+        printf("Result: %d\n", myapp_AddResponse_result(result));
+    }
+}
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    // 创建客户端
+    uvrpc_client_t* client = uvrpc_calc_create_client(&loop, "tcp://127.0.0.1:5555", NULL, NULL);
+    
+    // 调用 RPC 方法
+    uvrpc_calc_add(client, on_response, NULL, 10, 20);
+    
+    // 运行事件循环
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_calc_free_client(client);
+    uv_loop_close(&loop);
+    return 0;
+}
+```
+
+## 广播模式
+
+### 定义广播服务
+
+```flatbuffers
+namespace myapp;
+
+table NewsRequest {
+    title: string;
+    content: string;
+}
+
+table NewsResponse {
+    success: bool;
+}
+
+// 广播模式：服务名包含 "Broadcast" 表示广播模式
+rpc_service BroadcastService {
+    Publish(NewsRequest):NewsResponse;
+}
+```
+
+### 生成广播代码
+
+```bash
+python tools/rpc_dsl_generator.py \
+    --flatcc build/flatcc/flatcc \
+    -o generated \
+    my_broadcast_service.fbs
+```
+
+### 使用广播 API
+
+#### 发布者
+
+```c
+#include "myapp_news_broadcast_api.h"
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    // 创建发布者
+    uvrpc_publisher_t* publisher = uvrpc_news_create_publisher(&loop, "udp://0.0.0.0:5555");
+    uvrpc_news_start_publisher(publisher);
+    
+    // 发布消息
+    void on_published(int status, void* ctx) {
+        printf("Published\n");
+    }
+    
+    uvrpc_news_publish_publish(publisher, on_published, NULL, "Title", "Content");
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_news_stop_publisher(publisher);
+    uvrpc_news_free_publisher(publisher);
+    uv_loop_close(&loop);
+    return 0;
+}
+```
+
+#### 订阅者
+
+```c
+#include "myapp_news_broadcast_api.h"
+
+void on_news(const myapp_NewsResponse_table_t* response, void* ctx) {
+    printf("Received news\n");
+}
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    // 创建订阅者
+    uvrpc_subscriber_t* subscriber = uvrpc_news_create_subscriber(&loop, "udp://127.0.0.1:5555");
+    uvrpc_news_connect_subscriber(subscriber);
+    
+    // 订阅消息
+    uvrpc_news_subscribe_publish(subscriber, on_news, NULL);
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_news_unsubscribe_publish(subscriber);
+    uvrpc_news_disconnect_subscriber(subscriber);
+    uvrpc_news_free_subscriber(subscriber);
+    uv_loop_close(&loop);
+    return 0;
+}
+```
+
 ## 核心概念
 
 ### 1. 通信模式
@@ -78,10 +300,10 @@ uvrpc_server_start(server);
 // 客户端
 uvrpc_client_t* client = uvrpc_client_create(config);
 uvrpc_client_connect(client);
-uvrpc_client_call(client, "method_name", params, size, callback, ctx);
+uvrpc_client_call(client, "method_name", data, size, callback, ctx);
 ```
 
-#### 发布-订阅（广播）模式
+#### 广播模式
 ```c
 // 发布者
 uvrpc_publisher_t* publisher = uvrpc_publisher_create(config);
@@ -94,241 +316,127 @@ uvrpc_subscriber_connect(subscriber);
 uvrpc_subscriber_subscribe(subscriber, "topic", callback, ctx);
 ```
 
-### 2. 传输协议
+### 2. 传输层
 
-UVRPC 支持 4 种传输协议，使用方式完全相同：
-
-| 协议 | 地址格式 | 适用场景 |
-|-----|---------|---------|
-| TCP | `tcp://host:port` | 可靠网络通信 |
-| UDP | `udp://host:port` | 高吞吐网络通信 |
-| IPC | `ipc:///path/to/socket` | 本地进程间通信 |
-| INPROC | `inproc://name` | 进程内通信 |
-
-### 3. 配置
-
-使用构建器模式配置：
+UVRPC 支持多种传输层，通过配置切换：
 
 ```c
+// TCP (默认)
+uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+
+// UDP
+uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
+
+// IPC (进程间通信)
+uvrpc_config_set_transport(config, UVRPC_TRANSPORT_IPC);
+
+// INPROC (进程内，零拷贝)
+uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
+```
+
+### 3. 循环注入
+
+UVRPC **不负责运行事件循环**，用户必须：
+
+```c
+// 1. 创建自己的事件循环
+uv_loop_t loop;
+uv_loop_init(&loop);
+
+// 2. 注入到配置
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
-uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+
+// 3. 创建服务器/客户端
+uvrpc_server_t* server = uvrpc_server_create(config);
+
+// 4. 用户负责运行事件循环
+uv_run(&loop, UV_RUN_DEFAULT);
+
+// 5. 清理
+uv_loop_close(&loop);
 ```
 
-## 常见使用场景
+### 4. 异步 API
 
-### 场景 1：简单的 RPC 调用
-
-```c
-// 服务器端
-void add_handler(uvrpc_request_t* req, void* ctx) {
-    int32_t a = *(int32_t*)req->params;
-    int32_t b = *(int32_t*)(req->params + 4);
-    int32_t result = a + b;
-    
-    uvrpc_request_send_response(req, UVRPC_OK, 
-                                 (uint8_t*)&result, sizeof(result));
-    uvrpc_request_free(req);
-}
-
-// 客户端
-void response_callback(uvrpc_response_t* resp, void* ctx) {
-    int32_t result = *(int32_t*)resp->result;
-    printf("Result: %d\n", result);
-    uvrpc_response_free(resp);
-}
-
-int32_t params[2] = {10, 20};
-uvrpc_client_call(client, "Add", (uint8_t*)params, sizeof(params), 
-                  response_callback, NULL);
-```
-
-### 场景 2：发布-订阅
+所有 API 都是异步的，使用回调处理结果：
 
 ```c
-// 发布者
-void publish_callback(int status, void* ctx) {
-    if (status == UVRPC_OK) {
-        printf("Published successfully\n");
+void on_response(uvrpc_response_t* resp, void* ctx) {
+    if (resp->status == UVRPC_OK) {
+        // 处理响应
     }
 }
 
-const char* message = "Hello, World!";
-uvrpc_publisher_publish(publisher, "news", 
-                        (const uint8_t*)message, strlen(message),
-                        publish_callback, NULL);
+uvrpc_client_call(client, "method", data, size, on_response, ctx);
+```
 
-// 订阅者
-void subscribe_callback(const char* topic, const uint8_t* data, 
-                        size_t size, void* ctx) {
-    printf("Received on %s: %.*s\n", topic, (int)size, data);
+### 5. 同步 API（Async/Await）
+
+生成的代码提供同步 API，内部使用 async/await：
+
+```c
+// 同步调用
+rpc_Response_table_t response;
+uvrpc_error_t err = uvrpc_method_sync(client, &response, params, timeout_ms);
+
+if (err == UVRPC_OK) {
+    // 使用响应
 }
-
-uvrpc_subscriber_subscribe(subscriber, "news", subscribe_callback, NULL);
-```
-
-### 场景 3：使用不同传输协议
-
-**TCP**（可靠网络通信）：
-```c
-uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-```
-
-**UDP**（高吞吐网络通信）：
-```c
-uvrpc_config_set_address(config, "udp://127.0.0.1:6000");
-```
-
-**IPC**（本地进程间通信）：
-```c
-uvrpc_config_set_address(config, "ipc:///tmp/uvrpc.sock");
-```
-
-**INPROC**（进程内通信）：
-```c
-uvrpc_config_set_address(config, "inproc://my_service");
-```
-
-### 场景 4：循环注入（多实例）
-
-```c
-// 独立事件循环
-uv_loop_t loop1;
-uv_loop_init(&loop1);
-uvrpc_config_set_loop(config1, &loop1);
-
-// 共享事件循环
-uv_loop_t shared_loop;
-uv_loop_init(&shared_loop);
-uvrpc_config_set_loop(config2, &shared_loop);
-```
-
-## 性能优化
-
-### 选择合适的传输协议
-
-- **INPROC**：进程内通信，性能最佳（125,000+ ops/s）
-- **IPC**：本地进程间通信（91,895 ops/s）
-- **UDP**：高吞吐网络通信（91,685 ops/s）
-- **TCP**：可靠网络通信（86,930 ops/s）
-
-### 性能模式
-
-```c
-// 高吞吐模式（默认）
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_HIGH_THROUGHPUT);
-
-// 低延迟模式
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
-```
-
-### 批量处理
-
-```c
-// 批量发送请求
-for (int i = 0; i < 100; i++) {
-    uvrpc_client_call(client, "method", params, size, callback, ctx);
-}
-```
-
-## 错误处理
-
-```c
-int ret = uvrpc_server_start(server);
-if (ret != UVRPC_OK) {
-    fprintf(stderr, "Failed to start server: %d\n", ret);
-    // 处理错误
-}
-
-// 在回调中检查状态
-void response_callback(uvrpc_response_t* resp, void* ctx) {
-    if (resp->status != UVRPC_OK) {
-        fprintf(stderr, "Request failed: %d\n", resp->status);
-        return;
-    }
-    // 处理成功响应
-}
-```
-
-## 资源清理
-
-```c
-// 清理顺序很重要
-uvrpc_server_free(server);      // 先释放服务器
-uvrpc_config_free(config);      // 再释放配置
-uv_loop_close(&loop);          // 最后关闭循环
 ```
 
 ## 下一步
 
-1. **查看更多示例**：
-   ```bash
-   cd examples
-   ls -la
-   ```
-
-2. **阅读文档**：
-   - [API 参考](docs/API_REFERENCE.md)
-   - [设计哲学](docs/DESIGN_PHILOSOPHY.md)
-   - [构建和安装](docs/BUILD_AND_INSTALL.md)
-
-3. **运行完整示例**：
-   ```bash
-   ./dist/bin/complete_example server tcp://127.0.0.1:5555
-   ./dist/bin/complete_example client tcp://127.0.0.1:5555
-   ```
-
-4. **性能测试**：
-   ```bash
-   ./benchmark/comprehensive_perf_test.sh
-   ```
+- 阅读 [API 使用指南](API_GUIDE.md) 了解详细 API
+- 查看 [examples/](../examples/) 目录下的示例代码
+- 运行性能测试：`make benchmark`
+- 阅读 [设计哲学](DESIGN_PHILOSOPHY.md) 了解架构设计
 
 ## 常见问题
 
-### Q: 如何选择传输协议？
+### Q: 如何选择传输层？
 
-**A**:
-- 进程内通信：使用 INPROC
-- 本地进程间通信：使用 IPC
-- 高吞吐网络：使用 UDP
-- 可靠网络：使用 TCP
+- **TCP**: 可靠传输，适合 CS 模式
+- **UDP**: 高性能，适合广播模式
+- **IPC**: 同机进程通信，性能优于 TCP
+- **INPROC**: 同进程内通信，零拷贝，性能最高
 
-### Q: 如何处理异步回调？
+### Q: 事件循环可以共享吗？
 
-**A**: 所有调用都是异步的，使用回调处理响应：
+可以！多个服务可以共享同一个事件循环：
+
 ```c
-void callback(uvrpc_response_t* resp, void* ctx) {
-    // 处理响应
-}
-uvrpc_client_call(client, "method", params, size, callback, ctx);
+uv_loop_t loop;
+uv_loop_init(&loop);
+
+uvrpc_server_t* server1 = uvrpc_service1_create_server(&loop, "tcp://127.0.0.1:5555");
+uvrpc_server_t* server2 = uvrpc_service2_create_server(&loop, "tcp://127.0.0.1:5556");
+
+uv_run(&loop, UV_RUN_DEFAULT);  // 一个循环处理所有服务
 ```
 
-### Q: 如何实现重试机制？
+### Q: 如何处理错误？
 
-**A**: 在回调中检查状态，失败时重新发送：
+所有 API 返回 `uvrpc_error_t`：
+
 ```c
-void callback(uvrpc_response_t* resp, void* ctx) {
-    if (resp->status != UVRPC_OK) {
-        // 重试逻辑
-        uvrpc_client_call(client, "method", params, size, callback, ctx);
-    }
+uvrpc_error_t err = uvrpc_client_connect(client);
+if (err != UVRPC_OK) {
+    fprintf(stderr, "Connection failed: %d\n", err);
 }
 ```
 
 ### Q: 如何调试？
 
-**A**: 使用调试示例：
-```bash
-./dist/bin/debug_test
+启用调试日志：
+
+```c
+#define UVRPC_DEBUG
+#include "uvrpc.h"
 ```
 
-## 获取帮助
+或使用 Valgrind 检测内存泄漏：
 
-- 查看 [examples/README.md](examples/README.md) 了解所有示例
-- 查看 [docs/](docs/) 目录了解详细文档
-- 提交 Issue 获取支持
-
----
-
-**祝你使用愉快！** 🚀
+```bash
+valgrind --leak-check=full ./dist/bin/simple_server
+```

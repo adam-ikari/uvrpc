@@ -16,31 +16,58 @@
 
 ### 架构层次
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Layer 3: 应用层（用户创建）                          │
-│  - 服务处理器 (uvrpc_handler_t)                     │
-│  - 客户端回调 (uvrpc_callback_t)                    │
-│  - 完全独立，不受生成影响                             │
-├─────────────────────────────────────────────────────┤
-│  Layer 2: RPC API 层                                 │
-│  - 服务端 API (uvrpc_server_t)                      │
-│  - 客户端 API (uvrpc_client_t)                      │
-│  - 发布/订阅 API (uvrpc_publisher/subscriber_t)     │
-│  - 统一配置 (uvrpc_config_t)                        │
-├─────────────────────────────────────────────────────┤
-│  Layer 1: 传输层                                     │
-│  - TCP (uv_tcp_t)                                   │
-│  - UDP (uv_udp_t)                                   │
-│  - IPC (uv_pipe_t)                                  │
-│  - INPROC (内存通信)                                 │
-├─────────────────────────────────────────────────────┤
-│  Layer 0: 核心库层                                    │
-│  - 事件循环 (libuv)                                 │
-│  - 序列化 (FlatCC/FlatBuffers)                      │
-│  - 内存分配 (mimalloc/system/custom)                │
-│  - 性能优化 (零拷贝、批量处理)                       │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Layer3["Layer 3: 应用层（用户创建）"]
+        A1[服务处理器<br/>uvrpc_handler_t]
+        A2[客户端回调<br/>uvrpc_callback_t]
+        A3[完全独立<br/>不受生成影响]
+    end
+    
+    subgraph Layer2["Layer 2: RPC API 层"]
+        B1[服务端 API<br/>uvrpc_server_t]
+        B2[客户端 API<br/>uvrpc_client_t]
+        B3[发布/订阅 API<br/>uvrpc_publisher/subscriber_t]
+        B4[统一配置<br/>uvrpc_config_t]
+    end
+    
+    subgraph Layer1["Layer 1: 传输层"]
+        C1[TCP<br/>uv_tcp_t]
+        C2[UDP<br/>uv_udp_t]
+        C3[IPC<br/>uv_pipe_t]
+        C4[INPROC<br/>内存通信]
+    end
+    
+    subgraph Layer0["Layer 0: 核心库层"]
+        D1[事件循环<br/>libuv]
+        D2[序列化<br/>FlatCC/FlatBuffers]
+        D3[内存分配<br/>mimalloc/system/custom]
+        D4[性能优化<br/>零拷贝、批量处理]
+    end
+    
+    A3 --> B1
+    A3 --> B2
+    B1 --> C1
+    B1 --> C2
+    B1 --> C3
+    B1 --> C4
+    B2 --> C1
+    B2 --> C2
+    B2 --> C3
+    B2 --> C4
+    C1 --> D1
+    C2 --> D1
+    C3 --> D1
+    C4 --> D1
+    C1 --> D2
+    C2 --> D2
+    C3 --> D2
+    C4 --> D2
+    
+    style Layer3 fill:#e1f5ff
+    style Layer2 fill:#fff4e6
+    style Layer1 fill:#f0f0f0
+    style Layer0 fill:#f9f9f9
 ```
 
 ## 特性

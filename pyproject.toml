@@ -1,0 +1,51 @@
+[project]
+name = "uvrpc"
+version = "0.1.0"
+description = "Ultra-Fast RPC Framework - Zero threads, Zero locks, Zero global variables"
+authors = ["Adam Ikari <adam@example.com>"]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["rpc", "async", "libuv", "flatbuffers", "performance"]
+
+[project.urls]
+Homepage = "https://github.com/adam-ikari/uvrpc"
+Documentation = "https://adam-ikari.github.io/uvrpc/"
+Repository = "https://github.com/adam-ikari/uvrpc"
+Issues = "https://github.com/adam-ikari/uvrpc/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0",
+    "jinja2>=3.1",
+]
+docs = [
+    "jinja2>=3.1",
+]
+
+[project.scripts]
+uvrpc-gen = "tools.rpc_dsl_generator_with_flatcc:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["tools*"]
+exclude = ["tests*", "examples*", "benchmark*"]
+
+[tool.setuptools.package-data]
+"tools" = ["templates/*", "dist/*"]
+
+[tool.uv]
+dev-dependencies = [
+    "pyinstaller>=6.0",
+    "jinja2>=3.1",
+    "pytest>=7.0",
+]
+
+[tool.uv.sources]
+flatcc = { git = "https://github.com/dvidelabs/flatcc.git", rev = "v0.6.1" }

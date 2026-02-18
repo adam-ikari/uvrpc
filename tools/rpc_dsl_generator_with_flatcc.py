@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 """
-UVRPC DSL Code Generator
+UVRPC DSL Code Generator with bundled FlatCC
 Generates RPC server stubs and client code from FlatBuffers RPC DSL
 """
 
@@ -7,6 +8,7 @@ import os
 import sys
 import re
 import argparse
+import subprocess
 from pathlib import Path
 
 try:
@@ -14,6 +16,30 @@ try:
 except ImportError:
     print("Error: jinja2 is required. Install with: pip install jinja2")
     sys.exit(1)
+
+# Try to find bundled flatcc
+BUNDLED_FLATCC = None
+
+def find_bundled_flatcc():
+    """Find bundled flatcc executable"""
+    global BUNDLED_FLATCC
+    
+    # Check if running from PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running in a PyInstaller bundle
+        if hasattr(sys, '_MEIPASS'):
+            bundle_dir = sys._MEIPASS
+            flatcc_paths = [
+                os.path.join(bundle_dir, 'flatcc'),
+                os.path.join(bundle_dir, 'bin', 'flatcc'),
+                os.path.join(bundle_dir, 'flatcc', 'flatcc'),
+            ]
+            for flatcc_path in flatcc_paths:
+                if os.path.exists(flatcc_path) and os.access(flatcc_path, os.X_OK):
+                    BUNDLED_FLATCC = flatcc_path
+                    return flatcc_path
+    
+    return None
 
 class RPCParser:
     """Parse FlatBuffers RPC DSL"""
@@ -44,21 +70,15 @@ class RPCParser:
             fields = self._parse_fields(fields_str)
             self.tables[table_name] = fields
         
-        # Extract rpc_service definitions
+        # Extract rpc_service definitions (standard FlatBuffers syntax)
         service_pattern = r'rpc_service\s+(\w+)\s*\{([^}]+)\}'
         for match in re.finditer(service_pattern, content, re.DOTALL):
             service_name = match.group(1)
             methods_str = match.group(2)
             methods = self._parse_methods(methods_str)
-            
-            # Determine service type based on service name
-            # Services ending with "Broadcast" or containing "Broadcast" are broadcast mode
-            is_broadcast = 'Broadcast' in service_name
-            
             self.services.append({
                 'name': service_name,
-                'methods': methods,
-                'type': 'broadcast' if is_broadcast else 'server_client'
+                'methods': methods
             })
         
         return {
@@ -120,7 +140,7 @@ class RPCParser:
             line = line.strip()
             if not line or line.startswith('//'):
                 continue
-            # Parse: MethodName(RequestType):ReturnType
+            # Parse: MethodName(RequestType):ReturnType;
             # Format: Add(BenchmarkAddRequest):BenchmarkAddResponse;
             match = re.match(r'(\w+)\s*\(\s*(\w+)\s*\)\s*:\s*(\w+)', line)
             if match:
@@ -242,7 +262,7 @@ class RPCGenerator:
             output_path = self.output_dir / filename
             output_path.write_text(output)
             print("Generated: {}".format(output_path))
-    
+
     def generate_broadcast_api(self, rpc_data):
         """Generate broadcast API header - one per service"""
         for service in rpc_data['services']:
@@ -261,7 +281,7 @@ class RPCGenerator:
             output_path = self.output_dir / filename
             output_path.write_text(output)
             print("Generated: {}".format(output_path))
-    
+
     def generate_broadcast_publisher(self, rpc_data):
         """Generate broadcast publisher code - one per service"""
         for service in rpc_data['services']:
@@ -282,26 +302,27 @@ class RPCGenerator:
             print("Generated: {}".format(output_path))
     
     def generate_broadcast_subscriber(self, rpc_data):
-            """Generate broadcast subscriber code - one per service"""
-            for service in rpc_data['services']:
-                service_data = {
-                    'namespace': rpc_data['namespace'],
-                    'schema_basename': rpc_data['schema_basename'],
-                    'service': service,
-                    'service_name_lower': service['name'].lower(),
-                    'service_name_upper': service['name'].upper(),
-                }
-                
-                template = self.env.get_template('broadcast_subscriber.c.j2')
-                output = template.render(**service_data)
-                
-                filename = "{}_{}_broadcast_subscriber.c".format(rpc_data['namespace'].lower(), service['name'].lower())
-                output_path = self.output_dir / filename
-                output_path.write_text(output)
-                print("Generated: {}".format(output_path))
+        """Generate broadcast subscriber code - one per service"""
+        for service in rpc_data['services']:
+            service_data = {
+                'namespace': rpc_data['namespace'],
+                'schema_basename': rpc_data['schema_basename'],
+                'service': service,
+                'service_name_lower': service['name'].lower(),
+                'service_name_upper': service['name'].upper(),
+            }
+            
+            template = self.env.get_template('broadcast_subscriber.c.j2')
+            output = template.render(**service_data)
+            
+            filename = "{}_{}_broadcast_subscriber.c".format(rpc_data['namespace'].lower(), service['name'].lower())
+            output_path = self.output_dir / filename
+            output_path.write_text(output)
+            print("Generated: {}".format(output_path))
+
 def main():
     parser = argparse.ArgumentParser(description='UVRPC DSL Code Generator')
-    parser.add_argument('--flatcc', required=True, help='Path to flatcc compiler')
+    parser.add_argument('--flatcc', help='Path to flatcc compiler (auto-detected if not specified)')
     parser.add_argument('-o', '--output', default='generated', help='Output directory')
     parser.add_argument('-t', '--templates', default='tools/templates', help='Templates directory')
     parser.add_argument('schema', help='Schema file to process')
@@ -321,11 +342,31 @@ def main():
     for service in rpc_data['services']:
         print("  - {}: {} methods".format(service['name'], len(service['methods'])))
     
+    # Determine flatcc path
+    flatcc_path = args.flatcc
+    
+    # Try to find bundled flatcc first
+    bundled_flatcc = find_bundled_flatcc()
+    if bundled_flatcc:
+        print("\nUsing bundled FlatCC: {}".format(bundled_flatcc))
+        flatcc_path = bundled_flatcc
+    
+    # Fall back to provided path or system PATH
+    if not flatcc_path:
+        flatcc_path = shutil.which('flatcc')
+        if flatcc_path:
+            print("\nUsing system FlatCC: {}".format(flatcc_path))
+    
+    if not flatcc_path:
+        print("\nError: FlatCC not found")
+        print("Please specify --flatcc or ensure FlatCC is in PATH")
+        print("For bundled version, ensure flatcc was packaged correctly")
+        sys.exit(1)
+    
     # Generate FlatBuffers code
     print("\nGenerating FlatBuffers code with flatcc...")
-    import subprocess
     result = subprocess.run(
-        [args.flatcc, '-c', '-w', '-o', args.output, args.schema],
+        [flatcc_path, '-c', '-w', '-o', args.output, args.schema],
         capture_output=True,
         text=True
     )
@@ -338,23 +379,23 @@ def main():
     print("\nGenerating RPC code with Jinja2...")
     generator = RPCGenerator(args.output, args.templates)
     
-    # Generate server/client code for each service
     for service in rpc_data['services']:
-        if service['type'] == 'server_client':
-            service_data = rpc_data.copy()
-            service_data['services'] = [service]
-            generator.generate_header(service_data)
-            generator.generate_server_stub(service_data)
-            generator.generate_client_code(service_data)
-        elif service['type'] == 'broadcast':
-            service_data = rpc_data.copy()
-            service_data['services'] = [service]
-            generator.generate_broadcast_api(service_data)
-            generator.generate_broadcast_publisher(service_data)
-            generator.generate_broadcast_subscriber(service_data)
+        if 'Broadcast' in service['name']:
+            # Broadcast mode
+            generator.generate_broadcast_api(rpc_data)
+            generator.generate_broadcast_publisher(rpc_data)
+            generator.generate_broadcast_subscriber(rpc_data)
+        else:
+            # Server/Client mode
+            generator.generate_header(rpc_data)
+            generator.generate_common_header(rpc_data)
+            generator.generate_server_stub(rpc_data)
+            generator.generate_client_code(rpc_data)
+            generator.generate_common_code(rpc_data)
     
     print("\nCode generation complete!")
     return 0
 
 if __name__ == '__main__':
+    import shutil
     sys.exit(main())
