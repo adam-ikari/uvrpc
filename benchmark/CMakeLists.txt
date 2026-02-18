@@ -106,6 +106,7 @@ add_dependencies(stress_test_multi_loop generate_flatcc)
 # Unified benchmark with fork/process support
 add_executable(unified_benchmark unified_benchmark.c 
     ${GENERATED_DIR}/rpc_benchmark/rpc_server_stub.c
-    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c)
+    ${GENERATED_DIR}/rpc_benchmark/rpc_client.c
+    ${GENERATED_DIR}/rpc/rpc_user_impl.c)
 target_link_libraries(unified_benchmark uvrpc Threads::Threads m rt)
 add_dependencies(unified_benchmark generate_flatcc)

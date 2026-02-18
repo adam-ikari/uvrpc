@@ -162,67 +162,22 @@ static void kill_existing_processes(void) {
     cleanup_pid_file();
 }
 
-/* Server handler implementation - must match rpc_user_impl.c signature */
-int rpc_handle_request(const char* method_name, const void* request, uvrpc_request_t* req) {
-    if (strcmp(method_name, "Add") == 0) {
-        rpc_BenchmarkAddRequest_table_t add_req = (rpc_BenchmarkAddRequest_table_t)request;
-        
-        int32_t a = rpc_BenchmarkAddRequest_a(add_req);
-        int32_t b = rpc_BenchmarkAddRequest_b(add_req);
-        int32_t result = a + b;
-        
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        rpc_BenchmarkAddResponse_start_as_root(&builder);
-        rpc_BenchmarkAddResponse_result_add(&builder, result);
-        rpc_BenchmarkAddResponse_end_as_root(&builder);
-        
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-        
-        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-        
-        flatcc_builder_reset(&builder);
-        return 0;
-    } else if (strcmp(method_name, "Echo") == 0) {
-        rpc_BenchmarkEchoRequest_table_t echo_req = (rpc_BenchmarkEchoRequest_table_t)request;
-        
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        rpc_BenchmarkEchoResponse_start_as_root(&builder);
-        
-        if (rpc_BenchmarkEchoRequest_data_is_present(echo_req)) {
-            flatbuffers_uint8_vec_t data_vec = rpc_BenchmarkEchoRequest_data(echo_req);
-            size_t data_len = flatbuffers_vec_len(data_vec);
-            if (data_len > 0) {
-                const uint8_t* data_ptr = (const uint8_t*)data_vec;
-                flatbuffers_uint8_vec_ref_t vec_ref = flatbuffers_uint8_vec_create(&builder, data_ptr, data_len);
-                rpc_BenchmarkEchoResponse_data_add(&builder, vec_ref);
-            }
-        }
-        rpc_BenchmarkEchoResponse_end_as_root(&builder);
-        
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-        
-        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-        
-        flatcc_builder_reset(&builder);
-        return 0;
-    }
-    
-    return -1;
-}
-
 /* Server process */
 static void run_server(void) {
+    printf("[SERVER] Starting...\n");
+    fflush(stdout);
+    
     uv_loop_t loop;
     uv_loop_init(&loop);
     
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, server_address);
+    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
+    
+    printf("[SERVER] Creating server...\n");
+    fflush(stdout);
     
     uvrpc_server_t* server = uvrpc_server_create(config);
     if (!server) {
@@ -230,10 +185,17 @@ static void run_server(void) {
         exit(1);
     }
     
+    printf("[SERVER] Registering handlers...\n");
+    fflush(stdout);
+    
     rpc_register_all(server);
     
-    if (uvrpc_server_start(server) != UVRPC_OK) {
-        fprintf(stderr, "[SERVER] Failed to start server\n");
+    printf("[SERVER] Starting server...\n");
+    fflush(stdout);
+    
+    int ret = uvrpc_server_start(server);
+    if (ret != UVRPC_OK) {
+        fprintf(stderr, "[SERVER] Failed to start server, error: %d\n", ret);
         exit(1);
     }
     
@@ -241,8 +203,11 @@ static void run_server(void) {
     fflush(stdout);
     
     while (running) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
+    
+    printf("[SERVER] Stopping...\n");
+    fflush(stdout);
     
     uvrpc_server_stop(server);
     uvrpc_server_free(server);
@@ -323,12 +288,16 @@ static void run_client_process(int loop_idx, int client_idx) {
         void* buf = flatcc_builder_finalize_buffer(&builder, &size);
         
         /* Simple warmup - just send without waiting */
-        int ret = uvrpc_client_call(client, "BenchmarkService.Add", buf, size, NULL, NULL);
+        int ret = uvrpc_client_call(client, "Add", buf, size, NULL, NULL);
         (void)ret;
         
         flatcc_builder_reset(&builder);
-        
+    }
+    
+    /* Run event loop to process warmup responses */
+    for (int i = 0; i < 100 && running; i++) {
         uv_run(&loop, UV_RUN_ONCE);
+        usleep(10000);
     }
     
     if (!running) {
@@ -347,6 +316,7 @@ static void run_client_process(int loop_idx, int client_idx) {
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
     
+    /* Send all requests and let event loop handle responses */
     int sent = 0;
     while (running && sent < num_requests) {
         gettimeofday(&ctx.start_time, NULL);
@@ -364,7 +334,7 @@ static void run_client_process(int loop_idx, int client_idx) {
         size_t size;
         void* buf = flatcc_builder_finalize_buffer(&builder, &size);
         
-        int ret = uvrpc_client_call(client, "BenchmarkService.Add", buf, size, client_callback, &ctx);
+        int ret = uvrpc_client_call(client, "Add", buf, size, client_callback, &ctx);
         
         flatcc_builder_reset(&builder);
         
@@ -374,21 +344,19 @@ static void run_client_process(int loop_idx, int client_idx) {
             ctx.error_count++;
             usleep(1000);
         }
-        
-        uv_run(&loop, UV_RUN_ONCE);
     }
     
     gettimeofday(&end_time, NULL);
     
-    printf("[CLIENT %d-%d] Sent %d requests, waiting for responses...\n", loop_idx, client_idx, sent);
+    printf("[CLIENT %d-%d] Sent %d requests, completed: %d, waiting for responses...\n", 
+           loop_idx, client_idx, sent, ctx.completed_requests);
     fflush(stdout);
     
-    /* Wait for remaining responses */
+    /* Run event loop to receive all remaining responses */
     int timeout = 30;
     time_t deadline = time(NULL) + timeout;
     while (ctx.completed_requests < sent && time(NULL) < deadline && running) {
-        uv_run(&loop, UV_RUN_ONCE);
-        usleep(10000);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     uvrpc_client_disconnect(client);
