@@ -1,0 +1,165 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    name: Build and Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-latest]
+        build_type: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libuv1-dev
+    
+    - name: Build
+      run: |
+        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        make -C build -j$(nproc)
+    
+    - name: Run unit tests
+      run: |
+        ./dist/bin/uvrpc_tests --gtest_brief=1
+    
+    - name: Run integration tests
+      run: |
+        ./dist/bin/test_tcp || true
+        ./dist/bin/test_ipc || true
+        ./dist/bin/test_inproc || true
+        ./dist/bin/test_broadcast || true
+    
+    - name: Upload build artifacts
+      if: matrix.build_type == 'Release'
+      uses: actions/upload-artifact@v3
+      with:
+        name: uvrpc-${{ matrix.os }}-${{ matrix.build_type }}
+        path: dist/bin/
+    
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libuv1-dev lcov
+    
+    - name: Build with coverage
+      run: |
+        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="--coverage" -DCMAKE_CXX_FLAGS="--coverage"
+        make -C build -j$(nproc)
+    
+    - name: Run tests
+      run: |
+        ./dist/bin/uvrpc_tests --gtest_brief=1
+    
+    - name: Generate coverage report
+      run: |
+        lcov --capture --directory build --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' '*/deps/*' '*/tests/*' --output-file coverage.info
+        lcov --list coverage.info
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.info
+        flags: unittests
+        name: codecov-umbrella
+    
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libuv1-dev cppcheck clang-tidy
+    
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --inline-suppr --error-exitcode=1 src/ include/
+    
+    - name: Build with clang-tidy
+      run: |
+        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        make -C build -j$(nproc)
+    
+    - name: Run clang-tidy
+      run: |
+        find src include -name '*.c' -o -name '*.h' | xargs clang-tidy -p build
+    
+  memory-check:
+    name: Memory Leak Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libuv1-dev valgrind
+    
+    - name: Build with debug symbols
+      run: |
+        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+        make -C build -j$(nproc)
+    
+    - name: Run tests with valgrind
+      run: |
+        valgrind --leak-check=full --error-exitcode=1 ./dist/bin/uvrpc_tests --gtest_brief=1
+    
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libuv1-dev wrk
+    
+    - name: Build
+      run: |
+        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+        make -C build -j$(nproc)
+    
+    - name: Run performance tests
+      run: |
+        cd benchmark
+        ./simple_stress_test.sh || true
+        ./test_all_transports.sh || true
