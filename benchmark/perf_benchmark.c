@@ -3,7 +3,7 @@
  */
 
 #include "../include/uvrpc.h"
-#include "../../generated/rpc_benchmark/rpc_api.h"
+#include "../../generated/rpc_benchmark/rpc_benchmarkservice_api.h"
 #include "../../generated/rpc_benchmark/rpc_benchmark_builder.h"
 #include "../../generated/rpc_benchmark/flatbuffers_common_builder.h"
 #include <stdio.h>

@@ -21,31 +21,174 @@ cd uvrpc
 # 使用 Makefile 编译（推荐）
 make deps          # 同步依赖
 make build         # 编译项目
-
-# 或使用脚本
-./build.sh
-
-# 或使用 CMake
-mkdir build && cd build
-cmake ..
-make
 ```
 
 编译完成后，可执行文件位于 `dist/bin/` 目录。
 
-## 5 分钟快速体验
+## 代码生成器
 
-### 步骤 1：启动服务器
+UVRPC 使用代码生成器自动生成类型安全的 RPC 代码。
 
-在终端 1 中运行：
+### 构建代码生成器
 
 ```bash
-./dist/bin/simple_server
+# 构建包含 FlatCC 的代码生成器
+make generator-with-flatcc
+
+# 生成器位于 dist/uvrpcc/uvrpcc
 ```
 
-输出：
+### 使用代码生成器
+
+```bash
+# 生成 RPC 代码
+./dist/uvrpcc/uvrpcc schema/rpc_api.fbs -o generated
+
+# 或直接使用 Python（需要安装依赖）
+python3 tools/rpc_dsl_generator_with_flatcc.py \
+    --flatcc deps/flatcc/bin/flatcc \
+    -o generated \
+    schema/rpc_api.fbs
 ```
-[SERVER] Running on tcp://127.0.0.1:5555
+
+生成的代码将位于 `generated/` 目录。
+
+## 5 分钟快速体验
+
+### 步骤 1：定义服务
+
+创建 `schema/my_service.fbs`:
+
+```flatbuffers
+namespace my;
+
+table AddRequest {
+    a: int32;
+    b: int32;
+}
+
+table AddResponse {
+    result: int32;
+}
+
+rpc_service MyService {
+    Add(AddRequest):AddResponse;
+}
+```
+
+### 步骤 2：生成代码
+
+```bash
+./dist/uvrpcc/uvrpcc schema/my_service.fbs -o generated
+```
+
+### 步骤 3：实现服务器
+
+创建 `server.c`:
+
+```c
+#include "uvrpc.h"
+#include "generated/my_myservice_api.h"
+
+// 实现请求处理器
+uvrpc_error_t uvrpc_my_handle_request(const char* method_name,
+                                       const void* request,
+                                       uvrpc_request_t* req) {
+    if (strcmp(method_name, "Add") == 0) {
+        const my_AddRequest_table_t* req_data = my_AddRequest_as_root(request);
+        
+        int32_t a = my_AddRequest_a(req_data);
+        int32_t b = my_AddRequest_b(req_data);
+        
+        // 业务逻辑
+        int32_t result = a + b;
+        
+        // 构建响应
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        my_AddResponse_create(&builder, result);
+        
+        const uint8_t* buf = flatcc_builder_get_direct_buffer(&builder);
+        size_t size = flatcc_builder_get_buffer_size(&builder);
+        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        
+        flatcc_builder_clear(&builder);
+    }
+    return UVRPC_OK;
+}
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    uvrpc_server_t* server = uvrpc_my_create_server(&loop, "tcp://127.0.0.1:5555");
+    uvrpc_my_start_server(server);
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_my_stop_server(server);
+    uvrpc_my_free_server(server);
+    uv_loop_close(&loop);
+    return 0;
+}
+```
+
+### 步骤 4：实现客户端
+
+创建 `client.c`:
+
+```c
+#include "uvrpc.h"
+#include "generated/my_myservice_api.h"
+
+void on_response(uvrpc_response_t* resp, void* ctx) {
+    if (resp->status == UVRPC_OK) {
+        const my_AddResponse_table_t* result = my_AddResponse_as_root(resp->data);
+        printf("Result: %d\n", my_AddResponse_result(result));
+    }
+}
+
+int main() {
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    
+    uvrpc_client_t* client = uvrpc_my_create_client(&loop, "tcp://127.0.0.1:5555", NULL, NULL);
+    uvrpc_my_add(client, on_response, NULL, 10, 20);
+    
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    uvrpc_my_free_client(client);
+    uv_loop_close(&loop);
+    return 0;
+}
+```
+
+### 步骤 5：编译运行
+
+```bash
+gcc -o server server.c generated/*.c -I./include -I./generated \
+    -L./dist/lib -luvrpc -lpthread
+
+gcc -o client client.c generated/*.c -I./include -I./generated \
+    -L./dist/lib -luvrpc -lpthread
+
+# 运行服务器
+./server
+
+# 在另一个终端运行客户端
+./client
+```
+
+## 使用内置示例
+
+如果不想从头开始，可以使用内置示例：
+
+```bash
+# 启动内置服务器
+./dist/bin/simple_server
+
+# 在另一个终端运行内置客户端
+./dist/bin/simple_client
 ```
 
 ### 步骤 2：运行客户端

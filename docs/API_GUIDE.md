@@ -13,14 +13,29 @@ UVRPC的客户端和服务端都不负责运行libuv事件循环。用户必须�
 
 UVRPC 支持 DSL（领域特定语言）自动生成代码，使用 FlatBuffers schema 定义服务。
 
+### 构建代码生成器
+
+```bash
+# 构建包含 FlatCC 的代码生成器
+make generator-with-flatcc
+
+# 生成器位于 dist/uvrpcc/uvrpcc
+```
+
 ### 生成代码
 
 ```bash
-# 生成 Server/Client 模式代码
-python tools/rpc_dsl_generator.py --flatcc build/flatcc/flatcc -o generated schema/rpc_api.fbs
+# 使用打包的代码生成器（推荐）
+./dist/uvrpcc/uvrpcc schema/rpc_api.fbs -o generated
 
 # 生成 Broadcast 模式代码
-python tools/rpc_dsl_generator.py --flatcc build/flatcc/flatcc -o generated schema/rpc_broadcast.fbs
+./dist/uvrpcc/uvrpcc schema/rpc_broadcast.fbs -o generated
+
+# 或使用 Python（需要安装依赖）
+python3 tools/rpc_dsl_generator_with_flatcc.py \
+    --flatcc deps/flatcc/bin/flatcc \
+    -o generated \
+    schema/rpc_api.fbs
 ```
 
 ### Schema 定义
