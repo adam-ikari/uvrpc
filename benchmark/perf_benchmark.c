@@ -229,6 +229,8 @@ int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
         uvrpc_config_set_performance_mode(config, perf_mode);
         
         clients[i] = uvrpc_client_create(config);
+        uvrpc_config_free(config);  /* Free config after client creation */
+        
         if (!clients[i]) {
             return -1;
         }
@@ -378,6 +380,9 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+    
+    /* Configure loop for lower memory usage */
+    uv_loop_configure(&loop, UV_LOOP_BLOCK_SIGNAL, SIGPROF);
     
     /* Dynamically allocate clients array to save memory */
     uvrpc_client_t** clients = malloc(num_clients * sizeof(uvrpc_client_t*));
@@ -633,9 +638,10 @@ void run_server_mode(const char* address) {
     
     /* Create server */
     g_server = uvrpc_server_create(config);
+    uvrpc_config_free(config);  /* Free config after server creation */
+    
     if (!g_server) {
         fprintf(stderr, "Failed to create server\n");
-        uvrpc_config_free(config);
         uv_loop_close(&loop);
         return;
     }
@@ -713,6 +719,7 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     uvrpc_config_set_performance_mode(config, perf_mode);
     
     client = uvrpc_client_create(config);
+    uvrpc_config_free(config);  /* Free config after client creation */
     
     /* Allocate latency tracking arrays */
     g_latency_state.start_times = malloc(iterations * sizeof(struct timespec));
@@ -773,6 +780,8 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
         low_latency ? UVRPC_PERF_LOW_LATENCY : UVRPC_PERF_HIGH_THROUGHPUT);
     
     uvrpc_client_t* client = uvrpc_client_create(config);
+    uvrpc_config_free(config);  /* Free config after client creation */
+    
     if (!client) {
         exit(1);
     }
@@ -780,7 +789,6 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
     if (uvrpc_client_connect(client) != UVRPC_OK) {
         fprintf(stderr, "[FORK CLIENT %d-%d] Failed to connect\n", loop_idx, client_idx);
         uvrpc_client_free(client);
-        uvrpc_config_free(config);
         uv_loop_close(&loop);
         exit(1);
     }
