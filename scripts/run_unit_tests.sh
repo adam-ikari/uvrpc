@@ -38,7 +38,7 @@ echo "Running tests..."
 echo ""
 
 # Run all passing unit tests
-TEST_FILTER="AllocatorTest.*:FlatBuffersTest.*:MsgIDTest.*:UVRPCConfigTest.*"
+TEST_FILTER="AllocatorTest.*:FlatBuffersTest.*:MsgIDTest.*:UVRPCConfigTest.*:UVRPCAsyncTest.*:UVBUSTest.*:UVRPCContextTest.*:UVRPCPublisherTest.*:UVRPCSubscriberTest.*"
 
 if "$TEST_EXECUTABLE" --gtest_filter="$TEST_FILTER" --gtest_brief=1; then
     echo ""
