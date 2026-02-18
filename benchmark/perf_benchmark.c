@@ -342,7 +342,7 @@ int wait_for_responses(uv_loop_t* loop, thread_state_t* state, int target) {
 }
 
 /* Helper: Print test results */
-void print_test_results(int sent, int responses, int failed, struct timespec* start, struct timespec* end) {
+void print_test_results(int sent, int responses, int failed, struct timespec* start, struct timespec* end, int num_clients) {
     double elapsed = (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
     printf("Sent: %d\n", sent);
     printf("Received: %d\n", responses);
@@ -362,7 +362,15 @@ void print_test_results(int sent, int responses, int failed, struct timespec* st
     printf("Failed: %d\n", failed);
     
     /* Print memory usage */
-    print_memory_usage("TEST");
+    print_memory_usage("TEST CLIENT PROCESS");
+    if (num_clients > 0) {
+        struct rusage usage;
+        if (getrusage(RUSAGE_SELF, &usage) == 0) {
+            long total_rss_mb = usage.ru_maxrss / 1024;
+            long per_client_rss_kb = (usage.ru_maxrss * 1024) / num_clients;
+            printf("[TEST CLIENT] Total RSS: %ld MB (%ld KB per client)\n", total_rss_mb, per_client_rss_kb);
+        }
+    }
     fflush(stdout);
 }
 
@@ -495,7 +503,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     uv_close((uv_handle_t*)&batch_timer, NULL);
 
     /* Results */
-    print_test_results(state.sent_requests, state.responses_received, state.failed, &start, &end);
+    print_test_results(state.sent_requests, state.responses_received, state.failed, &start, &end, num_clients);
 
     /* Cleanup */
     for (int i = 0; i < num_clients; i++) {
@@ -762,7 +770,15 @@ void run_server_mode(const char* address) {
     printf("[SERVER]   Total responses: %lu\n", total_responses);
     printf("[SERVER]   Elapsed time: %.3f s\n", elapsed);
     printf("[SERVER]   Total throughput: %.0f ops/s\n", total_throughput);
-    print_memory_usage("SERVER");
+    print_memory_usage("SERVER PROCESS");
+    
+    /* Calculate memory per request */
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0 && total_responses > 0) {
+        long total_rss_mb = usage.ru_maxrss / 1024;
+        long bytes_per_request = (usage.ru_maxrss * 1024) / total_responses;
+        printf("[SERVER]   Memory efficiency: %ld bytes/request\n", bytes_per_request);
+    }
     fflush(stdout);
     
     uvrpc_server_free(g_server);
