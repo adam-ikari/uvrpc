@@ -28,6 +28,7 @@ add_executable(uvrpc_tests
     unit/test_client.cpp
     unit/test_server.cpp
     unit/test_config.cpp
+    unit/test_async.cpp
 )
 
 # Link against UVRPC library
