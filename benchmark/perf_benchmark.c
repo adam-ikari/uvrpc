@@ -98,6 +98,14 @@ void on_signal(int signum) {
     g_shutdown_requested = 1;
 }
 
+/* Timer callback to stop test */
+static void on_test_timer(uv_timer_t* handle) {
+    thread_state_t* state = (thread_state_t*)handle->data;
+    g_shutdown_requested = 1;
+    state->done = 1;
+    uv_timer_stop(handle);
+}
+
 void on_connect(int status, void* ctx) {
     thread_state_t* state = (thread_state_t*)ctx;
     if (status == 0) {
@@ -221,7 +229,7 @@ int send_requests(uvrpc_client_t** clients, int num_clients, int batch_size, thr
 int wait_for_responses(uv_loop_t* loop, thread_state_t* state, int target) {
     /* Run event loop to process remaining responses, but limit iterations */
     int iterations = 0;
-    int max_iterations = 1000; /* Reasonable limit to drain pending responses */
+    int max_iterations = 10000; /* Increase limit to handle more responses */
     
     while (state->responses_received < state->sent_requests && iterations < max_iterations) {
         uv_run(loop, UV_RUN_NOWAIT); /* Use NOWAIT to avoid blocking */
@@ -341,13 +349,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     uv_timer_init(&loop, &timer);
     timer.data = &state;
     
-    /* Timer callback to stop sending requests */
-    uv_timer_start(&timer, [](uv_timer_t* handle) {
-        thread_state_t* s = (thread_state_t*)handle->data;
-        g_shutdown_requested = 1;
-        s->done = 1;
-        uv_timer_stop(handle);
-    }, test_duration_ms, 0);
+    uv_timer_start(&timer, on_test_timer, test_duration_ms, 0);
 
     /* Run throughput test */
     struct timespec start, end;
