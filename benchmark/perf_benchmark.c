@@ -82,6 +82,13 @@ static struct {
 /* Signal handler for graceful shutdown */
 static volatile sig_atomic_t g_shutdown_requested = 0;
 
+/* Server state */
+static uv_timer_t g_stats_timer;
+static uvrpc_server_t* g_server = NULL;
+static uint64_t g_last_requests = 0;
+static uint64_t g_last_responses = 0;
+static uv_loop_t* g_server_loop = NULL;
+
 /* Shared memory for fork mode */
 typedef struct {
     pid_t pid;
@@ -102,6 +109,43 @@ static const char* g_server_address = NULL;
 void on_signal(int signum) {
     (void)signum;
     g_shutdown_requested = 1;
+    /* Stop server event loop if running in server mode */
+    if (g_server_loop) {
+        uv_stop(g_server_loop);
+    }
+}
+
+/* Server signal handler for uv_signal_t */
+void on_server_signal(uv_signal_t* handle, int signum) {
+    (void)handle;
+    printf("\n[SERVER] Received signal %d, shutting down...\n", signum);
+    fflush(stdout);
+    
+    g_shutdown_requested = 1;
+    
+    /* Stop the event loop */
+    if (g_server_loop) {
+        uv_stop(g_server_loop);
+    }
+}
+
+/* Server statistics timer callback */
+void on_stats_timer(uv_timer_t* handle) {
+    (void)handle;
+    if (g_server) {
+        uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
+        uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
+        
+        uint64_t requests_delta = total_requests - g_last_requests;
+        uint64_t responses_delta = total_responses - g_last_responses;
+        
+        printf("[SERVER] Total: %lu req, %lu resp | Delta: %lu req/s, %lu resp/s\n",
+               total_requests, total_responses, requests_delta, responses_delta);
+        fflush(stdout);
+        
+        g_last_requests = total_requests;
+        g_last_responses = total_responses;
+    }
 }
 
 /* Timer callback to stop test */
@@ -530,6 +574,95 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     printf("====================\n");
 }
 
+/* Server mode - integrated server functionality */
+void run_server_mode(const char* address) {
+    if (!address) {
+        fprintf(stderr, "Invalid address\n");
+        return;
+    }
+    
+    /* Create event loop */
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    g_server_loop = &loop;
+    
+    /* Create config */
+    uvrpc_config_t* config = uvrpc_config_new();
+    if (!config) {
+        fprintf(stderr, "Failed to create config\n");
+        uv_loop_close(&loop);
+        return;
+    }
+    
+    uvrpc_config_set_loop(config, &loop);
+    uvrpc_config_set_address(config, address);
+    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+    
+    /* Create server */
+    g_server = uvrpc_server_create(config);
+    if (!g_server) {
+        fprintf(stderr, "Failed to create server\n");
+        uvrpc_config_free(config);
+        uv_loop_close(&loop);
+        return;
+    }
+    
+    /* Register handlers using generated stub */
+    rpc_register_all(g_server, NULL);
+    
+    /* Start server */
+    int ret = uvrpc_server_start(g_server);
+    if (ret != UVRPC_OK) {
+        fprintf(stderr, "Failed to start server: %d\n", ret);
+        uvrpc_server_free(g_server);
+        uvrpc_config_free(config);
+        uv_loop_close(&loop);
+        return;
+    }
+    
+    printf("Server started on %s\n", address);
+    printf("Press Ctrl+C to stop the server\n");
+    fflush(stdout);
+    
+    /* Start stats timer (print every 1 second) */
+    uv_timer_init(&loop, &g_stats_timer);
+    uv_timer_start(&g_stats_timer, on_stats_timer, 1000, 1000);
+    
+    /* Setup signal handlers for graceful shutdown */
+    static uv_signal_t sigint_sig, sigterm_sig;
+    uv_signal_init(&loop, &sigint_sig);
+    uv_signal_start(&sigint_sig, on_server_signal, SIGINT);
+    
+    uv_signal_init(&loop, &sigterm_sig);
+    uv_signal_start(&sigterm_sig, on_server_signal, SIGTERM);
+    
+    /* Run event loop with UV_RUN_DEFAULT */
+    printf("Running event loop (server is driven by external loop)...\n");
+    fflush(stdout);
+    uv_run(&loop, UV_RUN_DEFAULT);
+    printf("Event loop exited\n");
+    fflush(stdout);
+    
+    /* Cleanup */
+    uv_timer_stop(&g_stats_timer);
+    uv_close((uv_handle_t*)&g_stats_timer, NULL);
+    
+    /* Print final statistics */
+    uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
+    uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
+    printf("[SERVER] Final statistics: %lu total requests, %lu total responses\n",
+           total_requests, total_responses);
+    fflush(stdout);
+    
+    uvrpc_server_free(g_server);
+    printf("Server stopped\n");
+    fflush(stdout);
+    
+    g_server = NULL;
+    g_server_loop = NULL;
+    uv_loop_close(&loop);
+}
+
 /* Latency test */
 void run_latency_test(const char* address, int iterations, int low_latency) {
     uv_loop_t loop;
@@ -590,48 +723,6 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
 
     uvrpc_client_free(client);
     uv_loop_close(&loop);
-}
-
-/* Server mode implementation */
-static void run_server_mode(const char* address) {
-    printf("Starting server on %s...\n", address);
-    
-    uv_loop_t loop;
-    uv_loop_init(&loop);
-    
-    uvrpc_config_t* config = uvrpc_config_new();
-    uvrpc_config_set_loop(config, &loop);
-    uvrpc_config_set_address(config, address);
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
-    uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
-    
-    uvrpc_server_t* server = uvrpc_server_create(config);
-    if (!server) {
-        fprintf(stderr, "Failed to create server\n");
-        uvrpc_config_free(config);
-        return;
-    }
-    
-    rpc_register_all(server, NULL);
-    
-    if (uvrpc_server_start(server) != UVRPC_OK) {
-        fprintf(stderr, "Failed to start server\n");
-        uvrpc_server_free(server);
-        uvrpc_config_free(config);
-        return;
-    }
-    
-    printf("Server started successfully, running event loop...\n");
-    printf("Press Ctrl+C to stop\n");
-    
-    uv_run(&loop, UV_RUN_DEFAULT);
-    
-    uvrpc_server_stop(server);
-    uvrpc_server_free(server);
-    uvrpc_config_free(config);
-    uv_loop_close(&loop);
-    
-    printf("Server stopped\n");
 }
 
 /* Fork mode client process */
@@ -803,7 +894,7 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
 }
 
 void print_usage(const char* prog_name) {
-    printf("UVRPC Unified Benchmark Client\n\n");
+    printf("UVRPC Unified Benchmark\n\n");
     printf("Usage: %s [options]\n\n", prog_name);
     printf("Options:\n");
     printf("  -a <address>      Server address (default: tcp://127.0.0.1:5555)\n");
@@ -816,22 +907,27 @@ void print_usage(const char* prog_name) {
     printf("  --fork            Use fork mode instead of threads (for multi-process testing)\n");
     printf("  --server          Run in server mode\n");
     printf("  -h                Show this help\n\n");
+    printf("Modes:\n");
+    printf("  Server mode: Starts a performance-optimized server\n");
+    printf("  Client mode: Runs benchmark tests against a server\n\n");
     printf("Test Methods:\n");
     printf("  Throughput test: Runs for specified duration, measures maximum ops/s\n");
     printf("  Latency test: Measures request-response latency with percentiles\n\n");
     printf("Examples:\n");
+    printf("  # Start server\n");
+    printf("  %s --server -a tcp://127.0.0.1:5000\n\n", prog_name);
     printf("  # Single client throughput test (1 second)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -b 100\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 -b 100\n\n", prog_name);
     printf("  # Multi-client throughput test (10 clients, 5 seconds)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -c 10 -b 100 -d 5000\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 -c 10 -b 100 -d 5000\n\n", prog_name);
     printf("  # Multi-thread test (5 threads, 2 clients each, 3 seconds)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -t 5 -c 2 -b 50 -d 3000\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 -t 5 -c 2 -b 50 -d 3000\n\n", prog_name);
     printf("  # Multi-process test with fork (4 processes, 5 clients each)\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -t 4 -c 5 --fork\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 -t 4 -c 5 --fork\n\n", prog_name);
     printf("  # Latency test\n");
-    printf("  %s -a tcp://127.0.0.1:5555 --latency\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 --latency\n\n", prog_name);
     printf("  # Low latency mode\n");
-    printf("  %s -a tcp://127.0.0.1:5555 -l\n\n", prog_name);
+    printf("  %s -a tcp://127.0.0.1:5000 -l\n\n", prog_name);
 }
 
 int main(int argc, char** argv) {
