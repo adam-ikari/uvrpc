@@ -27,6 +27,14 @@ add_executable(test_multi_client
     test_multi_client.c
 )
 
+add_executable(test_reconnect
+    test_reconnect.c
+)
+
+add_executable(test_error_handling
+    test_error_handling.c
+)
+
 # Link against UVRPC library
 target_link_libraries(test_tcp
     uvrpc
@@ -69,6 +77,22 @@ target_link_libraries(test_udp
 )
 
 target_link_libraries(test_multi_client
+    uvrpc
+    ${LIBUV_LIBRARIES}
+    pthread
+    m
+    rt
+)
+
+target_link_libraries(test_reconnect
+    uvrpc
+    ${LIBUV_LIBRARIES}
+    pthread
+    m
+    rt
+)
+
+target_link_libraries(test_error_handling
     uvrpc
     ${LIBUV_LIBRARIES}
     pthread
@@ -138,6 +162,30 @@ target_include_directories(test_udp
 )
 
 target_include_directories(test_multi_client
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+target_include_directories(test_reconnect
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+target_include_directories(test_error_handling
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
