@@ -34,8 +34,8 @@ struct uvbus_tcp_client {
     /* UVRPC compatibility: pointer to client_connection */
     void* client_connection;
     
-    /* Read buffer */
-    uint8_t read_buffer[65536];
+    /* Read buffer - optimized for performance vs memory trade-off */
+    uint8_t read_buffer[32768];  /* Reduced from 64KB to 32KB */
     size_t read_pos;
     
     /* Parent transport reference */
@@ -262,6 +262,11 @@ static void on_server_connection(uv_stream_t* server, int status) {
     }
     
     uv_tcp_init(transport->loop, &client->tcp_handle);
+    client->tcp_handle.data = client;
+    
+    /* Optimize socket buffers for accepted connections */
+    uv_tcp_nodelay(&client->tcp_handle, 1);  /* Disable Nagle algorithm */
+    /* Note: Default socket buffer sizes are used, auto-tuned by the OS */
     client->tcp_handle.data = client;
     
     /* Accept connection */
@@ -506,6 +511,10 @@ static int tcp_connect(void* impl_ptr, const char* address) {
     /* Initialize TCP handle */
     uv_tcp_init(transport->loop, &client->tcp_handle);
     client->tcp_handle.data = client;  /* Set to client so on_client_read can find it */
+    
+    /* Optimize socket buffers for better memory usage */
+    uv_tcp_nodelay(&client->tcp_handle, 1);  /* Disable Nagle algorithm for low latency */
+    /* Note: We use default socket buffer sizes which are auto-tuned by the OS */
     
     /* Set up server address */
     struct sockaddr_in addr;
