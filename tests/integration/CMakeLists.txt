@@ -19,6 +19,14 @@ add_executable(test_broadcast
     test_broadcast.c
 )
 
+add_executable(test_udp
+    test_udp.c
+)
+
+add_executable(test_multi_client
+    test_multi_client.c
+)
+
 # Link against UVRPC library
 target_link_libraries(test_tcp
     uvrpc
@@ -45,6 +53,22 @@ target_link_libraries(test_inproc
 )
 
 target_link_libraries(test_broadcast
+    uvrpc
+    ${LIBUV_LIBRARIES}
+    pthread
+    m
+    rt
+)
+
+target_link_libraries(test_udp
+    uvrpc
+    ${LIBUV_LIBRARIES}
+    pthread
+    m
+    rt
+)
+
+target_link_libraries(test_multi_client
     uvrpc
     ${LIBUV_LIBRARIES}
     pthread
@@ -90,6 +114,30 @@ target_include_directories(test_inproc
 )
 
 target_include_directories(test_broadcast
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+target_include_directories(test_udp
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
+)
+
+target_include_directories(test_multi_client
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include
