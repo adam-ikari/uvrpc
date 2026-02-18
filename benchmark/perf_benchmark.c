@@ -13,9 +13,15 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <signal.h>
 
 #define MAX_THREADS 10
 #define MAX_CLIENTS 100
+#define MAX_PROCESSES 32
 
 /* Constants */
 #define MAX_CONN_WAIT 100
@@ -69,6 +75,23 @@ static struct {
 
 /* Signal handler for graceful shutdown */
 static volatile sig_atomic_t g_shutdown_requested = 0;
+
+/* Shared memory for fork mode */
+typedef struct {
+    pid_t pid;
+    int loop_idx;
+    int client_idx;
+    int completed;
+    int errors;
+    unsigned long long latency_us;
+} client_stats_t;
+
+static client_stats_t* g_shared_stats = NULL;
+static size_t g_shm_size = 0;
+static int g_shm_fd = -1;
+static const char* g_shm_name = "/uvrpc_benchmark_shm";
+static volatile sig_atomic_t g_server_pid = 0;
+static const char* g_server_address = NULL;
 
 void on_signal(int signum) {
     (void)signum;
@@ -498,12 +521,14 @@ void print_usage(const char* prog_name) {
     printf("Usage: %s [options]\n\n", prog_name);
     printf("Options:\n");
     printf("  -a <address>      Server address (default: tcp://127.0.0.1:5555)\n");
-    printf("  -t <threads>      Number of threads (default: 1)\n");
-    printf("  -c <clients>      Clients per thread (default: 1)\n");
+    printf("  -t <threads>      Number of threads/processes (default: 1)\n");
+    printf("  -c <clients>      Clients per thread/process (default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
     printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
+    printf("  --fork            Use fork mode instead of threads (for multi-process testing)\n");
+    printf("  --server          Run in server mode\n");
     printf("  -h                Show this help\n\n");
     printf("Test Methods:\n");
     printf("  Throughput test: Runs for specified duration, measures maximum ops/s\n");
@@ -515,6 +540,8 @@ void print_usage(const char* prog_name) {
     printf("  %s -a tcp://127.0.0.1:5555 -c 10 -b 100 -d 5000\n\n", prog_name);
     printf("  # Multi-thread test (5 threads, 2 clients each, 3 seconds)\n");
     printf("  %s -a tcp://127.0.0.1:5555 -t 5 -c 2 -b 50 -d 3000\n\n", prog_name);
+    printf("  # Multi-process test with fork (4 processes, 5 clients each)\n");
+    printf("  %s -a tcp://127.0.0.1:5555 -t 4 -c 5 --fork\n\n", prog_name);
     printf("  # Latency test\n");
     printf("  %s -a tcp://127.0.0.1:5555 --latency\n\n", prog_name);
     printf("  # Low latency mode\n");
@@ -547,6 +574,8 @@ int main(int argc, char** argv) {
     int test_duration_ms = 1000;  /* Default: 1 second */
     int low_latency = 0;
     int latency_mode = 0;
+    int fork_mode = 0;
+    int server_mode = 0;
 
     /* Parse all arguments */
     for (int i = 1; i < argc; i++) {
@@ -564,6 +593,10 @@ int main(int argc, char** argv) {
             low_latency = 1;
         } else if (strcmp(argv[i], "--latency") == 0) {
             latency_mode = 1;
+        } else if (strcmp(argv[i], "--fork") == 0) {
+            fork_mode = 1;
+        } else if (strcmp(argv[i], "--server") == 0) {
+            server_mode = 1;
         } else if (strcmp(argv[i], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
