@@ -16,8 +16,8 @@
 #include <string.h>
 
 #define SERVER_ADDRESS "tcp://127.0.0.1:15555"
-#define NUM_CONCURRENT_REQUESTS 50
-#define NUM_BATCH_REQUESTS 10
+#define NUM_CONCURRENT_REQUESTS 1000
+#define NUM_BATCH_REQUESTS 100
 
 /* Echo handler for server */
 void echo_handler(uvrpc_request_t* req, void* ctx) {

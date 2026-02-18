@@ -49,7 +49,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -77,7 +78,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -105,7 +107,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -139,7 +142,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -166,7 +170,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -193,7 +198,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     
@@ -219,7 +225,8 @@ int rpc_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+        flatcc_builder_clear(&builder);
         return 0;
     }
     

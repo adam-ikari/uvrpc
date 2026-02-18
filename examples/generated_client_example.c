@@ -67,7 +67,8 @@ int main() {
     printf("Calling Add(10, 20)...\n");
     BenchmarkService_Add(client, rpc_BenchmarkAddRequest_as_root(buf), on_response, NULL);
     
-    flatcc_builder_reset(&builder);
+    free(buf);
+    flatcc_builder_clear(&builder);
     
     /* Run event loop to handle response */
     for (int i = 0; i < 100; i++) {

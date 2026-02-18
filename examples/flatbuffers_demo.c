@@ -90,7 +90,9 @@ int main(int argc, char** argv) {
     printf("[CLIENT] Calling 'add(10, 20)' using FlatBuffers\n");
     uvrpc_client_call(client, "add", buf, size, on_response, NULL);
 
-    flatcc_builder_reset(&builder);
+    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+    free(buf);
+    flatcc_builder_clear(&builder);
 
     /* Wait for response */
     iterations = 0;

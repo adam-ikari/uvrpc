@@ -39,7 +39,9 @@ int uvrpc_mathservice_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+        free(buf);
+        flatcc_builder_clear(&builder);
     }
     else if (strcmp(method_name, "Subtract") == 0) {
         rpc_MathSubtractRequest_table_t sub_req = rpc_MathSubtractRequest_as_root(request);
@@ -57,7 +59,9 @@ int uvrpc_mathservice_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+        free(buf);
+        flatcc_builder_clear(&builder);
     }
     else {
         uvrpc_request_send_response(req, UVRPC_ERROR_NOT_FOUND, NULL, 0);
@@ -90,7 +94,9 @@ int uvrpc_echoservice_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+        free(buf);
+        flatcc_builder_clear(&builder);
     }
     else {
         uvrpc_request_send_response(req, UVRPC_ERROR_NOT_FOUND, NULL, 0);
@@ -124,7 +130,9 @@ int uvrpc_userservice_handle_request(const char* method_name,
         
         uvrpc_request_send_response(req, UVRPC_OK, buf, size);
         
-        flatcc_builder_reset(&builder);
+        /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+        free(buf);
+        flatcc_builder_clear(&builder);
     }
     else {
         uvrpc_request_send_response(req, UVRPC_ERROR_NOT_FOUND, NULL, 0);

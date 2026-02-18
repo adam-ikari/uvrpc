@@ -111,7 +111,8 @@ int main(int argc, char** argv) {
         rpc_MathAddRequest_table_t request = rpc_MathAddRequest_as_root(buf);
         MathService_Add(client, request, on_response, NULL);
         
-        flatcc_builder_reset(&builder);
+        free(buf);
+    flatcc_builder_clear(&builder);
         
         /* Run event loop to process requests */
         for (int i = 0; i < 50; i++) {

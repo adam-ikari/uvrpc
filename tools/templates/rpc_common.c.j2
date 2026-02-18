@@ -68,7 +68,7 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
         if (!params_array[i]) {
             /* Cleanup and return error */
             for (int j = 0; j < i; j++) {
-                flatcc_builder_reset(&builders[j]);
+                flatcc_builder_clear(&builders[j]);
             }
             free(result_array);
             free(methods);
@@ -98,7 +98,7 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
         if (params_array[i]) {
             free((void*)params_array[i]);
         }
-        flatcc_builder_reset(&builders[i]);
+        flatcc_builder_clear(&builders[i]);
         if (async_results && async_results[i]) {
             uvrpc_async_result_free(async_results[i]);
         }
@@ -162,7 +162,7 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
         if (!params_array[i]) {
             /* Cleanup and return error */
             for (int j = 0; j < i; j++) {
-                flatcc_builder_reset(&builders[j]);
+                flatcc_builder_clear(&builders[j]);
             }
             free(methods);
             free(params_array);
@@ -187,7 +187,7 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
         if (params_array[i]) {
             free((void*)params_array[i]);
         }
-        flatcc_builder_reset(&builders[i]);
+        flatcc_builder_clear(&builders[i]);
     }
     if (async_result) {
         uvrpc_async_result_free(async_result);

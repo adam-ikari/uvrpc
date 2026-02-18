@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
         }
         
         free(buf);
-        flatcc_builder_reset(&builder);
+        flatcc_builder_clear(&builder);
         
         /* Run event loop between requests */
         uv_run(&loop, UV_RUN_NOWAIT);

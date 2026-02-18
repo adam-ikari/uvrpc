@@ -119,14 +119,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     void* buf = flatcc_builder_finalize_buffer(&builder, &size);
     
     if (!buf) {
-        flatcc_builder_reset(&builder);
+        flatcc_builder_clear(&builder);
         return UVRPC_ERROR_NO_MEMORY;
     }
     
     /* Send request using core API (retry logic is in uvrpc_client_call) */
     uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size, callback, ctx);
     
-    flatcc_builder_reset(&builder);
+    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+    free(buf);
+    flatcc_builder_clear(&builder);
     return ret;
 }
 
@@ -198,7 +200,7 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     void* buf = flatcc_builder_finalize_buffer(&builder, &size);
     
     if (!buf) {
-        flatcc_builder_reset(&builder);
+        flatcc_builder_clear(&builder);
         uvrpc_async_ctx_free(async_ctx);
         return UVRPC_ERROR_NO_MEMORY;
     }
@@ -207,7 +209,9 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size, 
                                  sync_{{ service_name_lower }}_{{ method.name }}_callback, &sync_ctx);
     
-    flatcc_builder_reset(&builder);
+    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+    free(buf);
+    flatcc_builder_clear(&builder);
     
     if (ret != UVRPC_OK) {
         uvrpc_async_ctx_free(async_ctx);
