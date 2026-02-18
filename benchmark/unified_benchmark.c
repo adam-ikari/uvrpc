@@ -54,10 +54,20 @@ static char server_address[256] = "tcp://127.0.0.1:5555";
 static pid_t server_pid = -1;
 static pid_t client_pids[MAX_PROCESSES];
 static int num_client_pids = 0;
-static int use_inproc_threads = 0;
 static int shm_fd = -1;
 static client_stats_t* shared_stats = NULL;
 static const char* shm_name = "/uvrpc_benchmark_shm";
+
+/* Client context */
+typedef struct {
+    int loop_idx;
+    int client_idx;
+    int completed_requests;
+    int error_count;
+    unsigned long long total_latency_us;
+    struct timeval start_time;
+    int target_requests;
+} client_context_t;
 
 /* Signal handler */
 static void signal_handler(int signum) {
@@ -243,46 +253,6 @@ static void run_server(void) {
     exit(0);
 }
 
-/* Server in same process for INPROC */
-static uvrpc_server_t* g_inproc_server = NULL;
-static uv_loop_t g_server_loop;
-
-static void run_server_in_process(void) {
-    uv_loop_init(&g_server_loop);
-    
-    uvrpc_config_t* config = uvrpc_config_new();
-    uvrpc_config_set_loop(config, &g_server_loop);
-    uvrpc_config_set_address(config, server_address);
-    uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
-    
-    g_inproc_server = uvrpc_server_create(config);
-    if (!g_inproc_server) {
-        fprintf(stderr, "[SERVER] Failed to create server\n");
-        exit(1);
-    }
-    
-    rpc_register_all(g_inproc_server);
-    
-    if (uvrpc_server_start(g_inproc_server) != UVRPC_OK) {
-        fprintf(stderr, "[SERVER] Failed to start server\n");
-        exit(1);
-    }
-    
-    printf("[SERVER] Started on %s\n", server_address);
-    fflush(stdout);
-}
-
-/* Client statistics */
-typedef struct {
-    int loop_idx;
-    int client_idx;
-    int total_requests;
-    int completed_requests;
-    int error_count;
-    unsigned long long total_latency_us;
-    struct timeval start_time;
-} client_context_t;
-
 /* Client callback */
 static void client_callback(uvrpc_response_t* response, void* user_data) {
     client_context_t* ctx = (client_context_t*)user_data;
@@ -310,75 +280,120 @@ static void client_callback(uvrpc_response_t* response, void* user_data) {
     uvrpc_response_free(response);
 }
 
-/* Send requests continuously */
-static void send_requests(uvrpc_client_t* client, client_context_t* ctx, uv_loop_t* loop) {
-    while (running && ctx->completed_requests < ctx->total_requests) {
-        gettimeofday(&ctx->start_time, NULL);
-        
-        int ret = BenchmarkService_Add(client, client_callback, ctx, 42, 58);
-        
-        if (ret != UVRPC_OK) {
-            ctx->error_count++;
-            usleep(1000);
-        }
-        
-        uv_run(loop, UV_RUN_ONCE);
-        
-        if (!running) break;
-    }
-}
-
 /* Client process (for fork) */
 static void run_client_process(int loop_idx, int client_idx) {
+    printf("[CLIENT %d-%d] Starting...\n", loop_idx, client_idx);
+    fflush(stdout);
+    
     uv_loop_t loop;
     uv_loop_init(&loop);
     
-    uvrpc_client_t* client = rpc_client_create(&loop, server_address, NULL, NULL);
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, &loop);
+    uvrpc_config_set_address(config, server_address);
+    uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
+    
+    uvrpc_client_t* client = uvrpc_client_create(config);
     if (!client) {
         fprintf(stderr, "[CLIENT %d-%d] Failed to create client\n", loop_idx, client_idx);
         exit(1);
     }
     
-    /* Wait for connection */
-    int wait_count = 0;
-    while (wait_count < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
-        wait_count++;
-        usleep(10000);
+    if (uvrpc_client_connect(client) != UVRPC_OK) {
+        fprintf(stderr, "[CLIENT %d-%d] Failed to connect\n", loop_idx, client_idx);
+        exit(1);
     }
     
-    /* Warmup */
+    printf("[CLIENT %d-%d] Connected, starting warmup...\n", loop_idx, client_idx);
+    fflush(stdout);
+    
+    /* Warmup - use async API with wait */
     for (int i = 0; i < warmup_requests && running; i++) {
-        rpc_BenchmarkAddResponse_table_t response;
-        int ret = BenchmarkService_Add_sync(client, &response, 10, 20, 5000);
+        int32_t a = 10;
+        int32_t b = 20;
+        
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        rpc_BenchmarkAddRequest_start_as_root(&builder);
+        rpc_BenchmarkAddRequest_a_add(&builder, a);
+        rpc_BenchmarkAddRequest_b_add(&builder, b);
+        rpc_BenchmarkAddRequest_end_as_root(&builder);
+        
+        size_t size;
+        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        
+        /* Simple warmup - just send without waiting */
+        int ret = uvrpc_client_call(client, "BenchmarkService.Add", buf, size, NULL, NULL);
         (void)ret;
+        
+        flatcc_builder_reset(&builder);
+        
         uv_run(&loop, UV_RUN_ONCE);
     }
     
     if (!running) {
-        rpc_client_free(client);
+        uvrpc_client_disconnect(client);
+        uvrpc_client_free(client);
+        uvrpc_config_free(config);
         uv_loop_close(&loop);
         exit(0);
     }
     
-    /* Actual benchmark */
-    client_context_t ctx = {loop_idx, client_idx, num_requests, 0, 0, 0, {0, 0}};
+    printf("[CLIENT %d-%d] Warmup complete, starting benchmark...\n", loop_idx, client_idx);
+    fflush(stdout);
+    
+    /* Actual benchmark - use async API */
+    client_context_t ctx = {loop_idx, client_idx, 0, 0, 0, {0, 0}, num_requests};
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
     
-    send_requests(client, &ctx, &loop);
+    int sent = 0;
+    while (running && sent < num_requests) {
+        gettimeofday(&ctx.start_time, NULL);
+        
+        int32_t a = 42;
+        int32_t b = 58;
+        
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        rpc_BenchmarkAddRequest_start_as_root(&builder);
+        rpc_BenchmarkAddRequest_a_add(&builder, a);
+        rpc_BenchmarkAddRequest_b_add(&builder, b);
+        rpc_BenchmarkAddRequest_end_as_root(&builder);
+        
+        size_t size;
+        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        
+        int ret = uvrpc_client_call(client, "BenchmarkService.Add", buf, size, client_callback, &ctx);
+        
+        flatcc_builder_reset(&builder);
+        
+        if (ret == UVRPC_OK) {
+            sent++;
+        } else {
+            ctx.error_count++;
+            usleep(1000);
+        }
+        
+        uv_run(&loop, UV_RUN_ONCE);
+    }
     
     gettimeofday(&end_time, NULL);
     
+    printf("[CLIENT %d-%d] Sent %d requests, waiting for responses...\n", loop_idx, client_idx, sent);
+    fflush(stdout);
+    
     /* Wait for remaining responses */
-    int timeout = 5;
+    int timeout = 30;
     time_t deadline = time(NULL) + timeout;
-    while (ctx.completed_requests < ctx.total_requests && time(NULL) < deadline && running) {
+    while (ctx.completed_requests < sent && time(NULL) < deadline && running) {
         uv_run(&loop, UV_RUN_ONCE);
         usleep(10000);
     }
     
-    rpc_client_free(client);
+    uvrpc_client_disconnect(client);
+    uvrpc_client_free(client);
+    uvrpc_config_free(config);
     uv_loop_close(&loop);
     
     /* Update final stats */
@@ -393,91 +408,10 @@ static void run_client_process(int loop_idx, int client_idx) {
                      (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
     
     printf("[CLIENT %d-%d] Completed: %d/%d, Errors: %d, Time: %.2fs\n",
-           loop_idx, client_idx, ctx.completed_requests, num_requests, ctx.error_count, elapsed);
+           loop_idx, client_idx, ctx.completed_requests, sent, ctx.error_count, elapsed);
     fflush(stdout);
     
     exit(0);
-}
-
-/* Thread function for INPROC clients */
-typedef struct {
-    int loop_idx;
-    int client_idx;
-} thread_arg_t;
-
-static void* client_thread_func(void* arg) {
-    thread_arg_t* t_arg = (thread_arg_t*)arg;
-    
-    uv_loop_t loop;
-    uv_loop_init(&loop);
-    
-    uvrpc_client_t* client = rpc_client_create(&loop, server_address, NULL, NULL);
-    if (!client) {
-        fprintf(stderr, "[CLIENT %d-%d] Failed to create client\n", t_arg->loop_idx, t_arg->client_idx);
-        free(arg);
-        return NULL;
-    }
-    
-    /* Wait for connection */
-    int wait_count = 0;
-    while (wait_count < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
-        wait_count++;
-        usleep(10000);
-    }
-    
-    /* Warmup */
-    for (int i = 0; i < warmup_requests && running; i++) {
-        rpc_BenchmarkAddResponse_table_t response;
-        int ret = BenchmarkService_Add_sync(client, &response, 10, 20, 5000);
-        (void)ret;
-        uv_run(&loop, UV_RUN_ONCE);
-    }
-    
-    if (!running) {
-        rpc_client_free(client);
-        uv_loop_close(&loop);
-        free(arg);
-        return NULL;
-    }
-    
-    /* Actual benchmark */
-    client_context_t ctx = {t_arg->loop_idx, t_arg->client_idx, num_requests, 0, 0, 0, {0, 0}};
-    struct timeval start_time, end_time;
-    gettimeofday(&start_time, NULL);
-    
-    send_requests(client, &ctx, &loop);
-    
-    gettimeofday(&end_time, NULL);
-    
-    /* Wait for remaining responses */
-    int timeout = 5;
-    time_t deadline = time(NULL) + timeout;
-    while (ctx.completed_requests < ctx.total_requests && time(NULL) < deadline && running) {
-        uv_run(&loop, UV_RUN_ONCE);
-        usleep(10000);
-    }
-    
-    rpc_client_free(client);
-    uv_loop_close(&loop);
-    
-    /* Update final stats */
-    if (shared_stats) {
-        int idx = t_arg->loop_idx * MAX_CLIENTS_PER_LOOP + t_arg->client_idx;
-        shared_stats[idx].ops = ctx.completed_requests;
-        shared_stats[idx].errors = ctx.error_count;
-        shared_stats[idx].latency_us = ctx.total_latency_us;
-    }
-    
-    double elapsed = (end_time.tv_sec - start_time.tv_sec) + 
-                     (end_time.tv_usec - start_time.tv_usec) / 1000000.0;
-    
-    printf("[CLIENT %d-%d] Completed: %d/%d, Errors: %d, Time: %.2fs\n",
-           t_arg->loop_idx, t_arg->client_idx, ctx.completed_requests, num_requests, ctx.error_count, elapsed);
-    fflush(stdout);
-    
-    free(arg);
-    return NULL;
 }
 
 /* Collect and print statistics */
@@ -517,8 +451,7 @@ static void collect_statistics(void) {
     if (total_ops > 0) {
         double avg_latency_us = (double)total_latency_us / total_ops;
         printf("Average latency: %.2f us\n", avg_latency_us);
-        double total_time_sec = 1.0; /* Approximate */
-        printf("Throughput: %.2f ops/s\n", total_ops / total_time_sec);
+        printf("Throughput: %.2f ops/s\n", total_ops / 1.0);
     }
     
     printf("========================\n");
@@ -528,40 +461,40 @@ static void collect_statistics(void) {
 static void wait_for_children(void) {
     int status;
     pid_t pid;
-    while ((pid = waitpid(-1, &status, 0)) > 0) {
-        if (WIFEXITED(status)) {
-            printf("[MAIN] Process %d exited with status %d\n", pid, WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            printf("[MAIN] Process %d killed by signal %d\n", pid, WTERMSIG(status));
+    int count = 0;
+    printf("[MAIN] Waiting for %d client processes...\n", num_client_pids);
+    fflush(stdout);
+    
+    while (count < num_client_pids) {
+        pid = waitpid(-1, &status, 0);
+        if (pid < 0) {
+            if (errno == EINTR) continue;
+            perror("waitpid");
+            break;
+        }
+        
+        /* Check if this is a client process */
+        int is_client = 0;
+        for (int i = 0; i < num_client_pids; i++) {
+            if (client_pids[i] == pid) {
+                is_client = 1;
+                break;
+            }
+        }
+        
+        if (is_client) {
+            count++;
+            if (WIFEXITED(status)) {
+                printf("[MAIN] Client process %d exited with status %d (%d/%d)\n", pid, WEXITSTATUS(status), count, num_client_pids);
+            } else if (WIFSIGNALED(status)) {
+                printf("[MAIN] Client process %d killed by signal %d (%d/%d)\n", pid, WTERMSIG(status), count, num_client_pids);
+            }
+            fflush(stdout);
         }
     }
-}
-
-/* Kill all child processes */
-static void kill_all_children(void) {
-    for (int i = 0; i < num_client_pids; i++) {
-        if (client_pids[i] > 0) {
-            printf("[MAIN] Killing client process %d\n", client_pids[i]);
-            kill(client_pids[i], SIGTERM);
-        }
-    }
     
-    if (server_pid > 0) {
-        printf("[MAIN] Killing server process %d\n", server_pid);
-        kill(server_pid, SIGTERM);
-    }
-    
-    sleep(1);
-    
-    for (int i = 0; i < num_client_pids; i++) {
-        if (client_pids[i] > 0 && kill(client_pids[i], 0) == 0) {
-            kill(client_pids[i], SIGKILL);
-        }
-    }
-    
-    if (server_pid > 0 && kill(server_pid, 0) == 0) {
-        kill(server_pid, SIGKILL);
-    }
+    printf("[MAIN] All client processes completed\n");
+    fflush(stdout);
 }
 
 /* Print usage */
@@ -677,12 +610,7 @@ int main(int argc, char* argv[]) {
     printf("Server address: %s\n", server_address);
     printf("===============================\n\n");
     
-    if (transport_type == TRANSPORT_INPROC) {
-    /* For INPROC, server runs in main process, clients run in threads */
-    server_pid = getpid(); /* Server runs in main process */
-    run_server_in_process();
-} else {
-    /* For other transports, fork server process */
+    /* Fork server */
     server_pid = fork();
     if (server_pid < 0) {
         perror("fork server");
@@ -695,87 +623,50 @@ int main(int argc, char* argv[]) {
     }
     
     sleep(1);
-}
     
-if (transport_type == TRANSPORT_INPROC) {
-        pthread_t threads[num_loops * clients_per_loop];
-        
-        for (int i = 0; i < num_loops; i++) {
-            for (int j = 0; j < clients_per_loop; j++) {
-                thread_arg_t* arg = malloc(sizeof(thread_arg_t));
-                arg->loop_idx = i;
-                arg->client_idx = j;
-                
-                if (pthread_create(&threads[i * clients_per_loop + j], NULL, client_thread_func, arg) != 0) {
-                    perror("pthread_create");
-                    free(arg);
-                }
+    /* Fork client processes */
+    printf("[MAIN] Forking %d client processes...\n", num_loops * clients_per_loop);
+    fflush(stdout);
+    
+    for (int i = 0; i < num_loops; i++) {
+        for (int j = 0; j < clients_per_loop; j++) {
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("fork client");
+                continue;
+            } else if (pid == 0) {
+                run_client_process(i, j);
+                exit(0);
+            } else {
+                client_pids[num_client_pids++] = pid;
+                printf("[MAIN] Forked client %d-%d (PID: %d)\n", i, j, pid);
+                fflush(stdout);
             }
         }
-        
-        /* Run server loop while clients are running */
-        int clients_done = 0;
-        time_t start_time = time(NULL);
-        while (running && clients_done < num_loops * clients_per_loop) {
-            uv_run(&g_server_loop, UV_RUN_ONCE);
-            usleep(1000);
-            
-            /* Check if all clients are done (timeout after 60 seconds) */
-            if (time(NULL) - start_time > 60) {
-                printf("[MAIN] Timeout waiting for clients\n");
-                break;
-            }
-        }
-        
-        for (int i = 0; i < num_loops * clients_per_loop; i++) {
-            pthread_join(threads[i], NULL);
-        }
-    } else {
-        for (int i = 0; i < num_loops; i++) {
-            for (int j = 0; j < clients_per_loop; j++) {
-                pid_t pid = fork();
-                if (pid < 0) {
-                    perror("fork client");
-                    continue;
-                } else if (pid == 0) {
-                    run_client_process(i, j);
-                    exit(0);
-                } else {
-                    client_pids[num_client_pids++] = pid;
-                }
-            }
-        }
-        
-        wait_for_children();
     }
     
-    if (transport_type == TRANSPORT_INPROC) {
-    /* Stop in-process server */
-    printf("[MAIN] Stopping in-process server...\n");
-    if (g_inproc_server) {
-        uvrpc_server_stop(g_inproc_server);
-        uvrpc_server_free(g_inproc_server);
-        g_inproc_server = NULL;
-    }
-    uv_loop_close(&g_server_loop);
-} else if (server_pid > 0) {
-    /* Stop forked server */
-    printf("[MAIN] Stopping server...\n");
-    kill(server_pid, SIGTERM);
+    printf("[MAIN] All clients forked, waiting for them to complete...\n");
+    fflush(stdout);
+    wait_for_children();
     
-    int status;
-    int timeout = 5;
-    time_t deadline = time(NULL) + timeout;
-    while (waitpid(server_pid, &status, WNOHANG) == 0 && time(NULL) < deadline) {
-        usleep(100000);
+    /* Stop server */
+    if (server_pid > 0) {
+        printf("[MAIN] Stopping server...\n");
+        kill(server_pid, SIGTERM);
+        
+        int status;
+        int timeout = 5;
+        time_t deadline = time(NULL) + timeout;
+        while (waitpid(server_pid, &status, WNOHANG) == 0 && time(NULL) < deadline) {
+            usleep(100000);
+        }
+        
+        if (waitpid(server_pid, &status, WNOHANG) == 0) {
+            printf("[MAIN] Force killing server...\n");
+            kill(server_pid, SIGKILL);
+            waitpid(server_pid, &status, 0);
+        }
     }
-    
-    if (waitpid(server_pid, &status, WNOHANG) == 0) {
-        printf("[MAIN] Force killing server...\n");
-        kill(server_pid, SIGKILL);
-        waitpid(server_pid, &status, 0);
-    }
-}
     
     collect_statistics();
     
