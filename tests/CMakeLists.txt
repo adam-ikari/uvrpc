@@ -33,6 +33,11 @@ add_executable(uvrpc_tests
     unit/test_context.cpp
     unit/test_publisher.cpp
     unit/test_subscriber.cpp
+    unit/test_server_context.cpp
+    unit/test_client_context.cpp
+    unit/test_client_retry.cpp
+    unit/test_client_concurrency.cpp
+    unit/test_server_stats.cpp
 )
 
 # Link against UVRPC library
