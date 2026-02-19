@@ -9,7 +9,9 @@
 #include "../include/uvbus.h"
 
 /* Receive callback */
-void on_recv(const uint8_t* data, size_t size, void* ctx) {
+void on_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
+    (void)client_ctx;
+    (void)server_ctx;
     printf("Received %zu bytes\n", size);
     if (size > 0 && data) {
         printf("Data: %.*s\n", (int)size, (char*)data);

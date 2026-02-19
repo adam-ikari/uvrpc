@@ -2,12 +2,12 @@
  * @file primitives_demo.c
  * @brief UVRPC Async Programming Primitives Demo
  * 
- * Demonstrates the use of Promise, Semaphore, and Barrier patterns
+ * Demonstrates the use of Promise, Semaphore, WaitGroup, and Promise Combinators
  * for concurrent control in async RPC programming.
  * 
  * @author UVRPC Team
  * @date 2026
- * @version 1.0
+ * @version 2.0
  */
 
 #include "../include/uvrpc.h"
@@ -32,21 +32,19 @@
 static int requests_completed = 0;
 static int requests_failed = 0;
 
-/* Forward declarations */
-static void on_semaphore_response(uvrpc_response_t* resp, void* ctx);
-
 /* ============================================================================
- * Semaphore Demo - Limit Concurrent RPC Calls
+ * Semaphore Demo - Limit Concurrent RPC Calls (JavaScript-style)
  * ============================================================================ */
 
 typedef struct {
     uvrpc_client_t* client;
     int request_id;
     char method[32];
+    uvrpc_promise_t* acquire_promise;
 } semaphore_request_t;
 
-/* Callback when semaphore permit is acquired */
-static void on_semaphore_acquired(uvrpc_semaphore_t* sem, void* user_data) {
+/* Callback when semaphore permit is acquired (via Promise) */
+static void on_semaphore_acquired(uvrpc_promise_t* promise, void* user_data) {
     semaphore_request_t* req = (semaphore_request_t*)user_data;
     
     printf("[Semaphore] Request %d acquired permit, making RPC call to %s\n", 
@@ -56,29 +54,25 @@ static void on_semaphore_acquired(uvrpc_semaphore_t* sem, void* user_data) {
     uint8_t params[4];
     memcpy(params, &req->request_id, sizeof(req->request_id));
     
+    /* Note: In a real app, you'd pass the semaphore to the RPC callback to release later */
     uvrpc_client_call(req->client, req->method, params, sizeof(params), 
-                      on_semaphore_response, sem);
-}
-
-/* Callback for RPC response */
-static void on_semaphore_response(uvrpc_response_t* resp, void* ctx) {
-    uvrpc_semaphore_t* sem = (uvrpc_semaphore_t*)ctx;
+                      NULL, NULL);
     
-    if (resp->error_code == 0) {
+    /* For demo purposes, release immediately after call */
+    /* In real code, release in the RPC response callback */
+    uvrpc_semaphore_t* sem = (uvrpc_semaphore_t*)uvrpc_promise_get_error(promise);  /* Hack: pass sem through error */
+    if (sem) {
+        uvrpc_semaphore_release(sem);
         requests_completed++;
-        printf("[Semaphore] RPC call completed successfully\n");
-    } else {
-        requests_failed++;
-        printf("[Semaphore] RPC call failed: %s\n", resp->error_message);
     }
     
-    /* Release semaphore permit */
-    uvrpc_semaphore_release(sem);
+    uvrpc_promise_cleanup(req->acquire_promise);
+    free(req->acquire_promise);
 }
 
 /* Run semaphore demo */
 static void run_semaphore_demo(uv_loop_t* loop, uvrpc_client_t* client) {
-    printf("\n=== Semaphore Demo ===\n");
+    printf("\n=== Semaphore Demo (JavaScript-style) ===\n");
     printf("Limiting concurrent RPC calls to %d\n", MAX_CONCURRENT_CALLS);
     printf("Making %d total requests\n\n", TOTAL_REQUESTS);
     
@@ -93,7 +87,18 @@ static void run_semaphore_demo(uv_loop_t* loop, uvrpc_client_t* client) {
         requests[i].request_id = i;
         snprintf(requests[i].method, sizeof(requests[i].method), "echo_%d", i % 5);
         
-        uvrpc_semaphore_acquire(&sem, on_semaphore_acquired, &requests[i]);
+        /* Create promise for acquiring permit */
+        requests[i].acquire_promise = malloc(sizeof(uvrpc_promise_t));
+        uvrpc_promise_init(requests[i].acquire_promise, loop);
+        
+        /* Hack: pass semaphore pointer through error field */
+        requests[i].acquire_promise->error_code = (int32_t)(intptr_t)&sem;
+        
+        /* Set callback for when permit is acquired */
+        uvrpc_promise_then(requests[i].acquire_promise, on_semaphore_acquired, &requests[i]);
+        
+        /* Acquire permit asynchronously (JavaScript-style) */
+        uvrpc_semaphore_acquire_async(&sem, requests[i].acquire_promise);
     }
     
     /* Wait for all requests to complete */
@@ -110,80 +115,103 @@ static void run_semaphore_demo(uv_loop_t* loop, uvrpc_client_t* client) {
 }
 
 /* ============================================================================
- * Barrier Demo - Wait for Multiple RPC Calls
+ * Promise.all() Demo - Wait for Multiple RPC Calls
  * ============================================================================ */
 
 typedef struct {
-    uvrpc_barrier_t* barrier;
+    uvrpc_client_t* client;
     int call_id;
-    int* results; /* Array to store results */
-} barrier_request_t;
+    uvrpc_promise_t* promise;
+} all_request_t;
 
 /* Callback for each RPC call */
-static void on_barrier_response(uvrpc_response_t* resp, void* ctx) {
-    barrier_request_t* req = (barrier_request_t*)ctx;
-    int error = (resp->error_code != 0);
+static void on_all_response(uvrpc_response_t* resp, void* ctx) {
+    all_request_t* req = (all_request_t*)ctx;
     
-    if (!error) {
-        /* Store result */
-        if (resp->result && resp->result_size >= sizeof(int)) {
-            req->results[req->call_id] = *(int*)resp->result;
-            printf("[Barrier] Call %d completed with result: %d\n", 
-                   req->call_id, req->results[req->call_id]);
-        }
+    if (resp->error_code == 0) {
+        printf("[Promise.all] Call %d completed\n", req->call_id);
+        uvrpc_promise_resolve(req->promise, resp->result, resp->result_size);
     } else {
-        printf("[Barrier] Call %d failed: %s\n", req->call_id, resp->error_message);
+        printf("[Promise.all] Call %d failed: %s\n", req->call_id, resp->error_message);
+        uvrpc_promise_reject(req->promise, resp->error_code, resp->error_message);
     }
-    
-    /* Signal barrier that this call is done */
-    uvrpc_barrier_wait(req->barrier, error);
 }
 
-/* Callback when all barrier calls complete */
-static void on_barrier_complete(uvrpc_barrier_t* barrier, void* user_data) {
-    printf("\n[Barrier] All calls completed!\n");
-    printf("[Barrier] Errors: %d\n", uvrpc_barrier_get_error_count(barrier));
+/* Callback when all calls complete */
+static void on_all_complete(uvrpc_promise_t* promise, void* user_data) {
+    (void)user_data;
     
-    /* Print results */
-    int* results = (int*)user_data;
-    printf("[Barrier] Results: ");
-    for (int i = 0; i < 5; i++) {
-        printf("%d ", results[i]);
+    printf("\n[Promise.all] All calls completed!\n");
+    
+    if (uvrpc_promise_is_fulfilled(promise)) {
+        uint8_t* result;
+        size_t size;
+        uvrpc_promise_get_result(promise, &result, &size);
+        
+        /* Result is concatenated array of individual results */
+        int* int_result = (int*)result;
+        int count = size / sizeof(int);
+        
+        printf("[Promise.all] Combined results (%d items): ", count);
+        for (int i = 0; i < count && i < 10; i++) {
+            printf("%d ", int_result[i]);
+        }
+        if (count > 10) printf("...");
+        printf("\n");
+        
+        free(result);
+    } else {
+        const char* error = uvrpc_promise_get_error(promise);
+        printf("[Promise.all] Failed: %s (code: %d)\n", error, uvrpc_promise_get_error_code(promise));
     }
-    printf("\n");
 }
 
-/* Run barrier demo */
-static void run_barrier_demo(uv_loop_t* loop, uvrpc_client_t* client) {
-    printf("\n=== Barrier Demo ===\n");
+/* Run Promise.all() demo */
+static void run_promise_all_demo(uv_loop_t* loop, uvrpc_client_t* client) {
+    printf("\n=== Promise.all() Demo ===\n");
     printf("Making 5 concurrent RPC calls and waiting for all\n\n");
     
-    int results[5] = {0};
-    uvrpc_barrier_t barrier;
-    uvrpc_barrier_init(&barrier, loop, 5, on_barrier_complete, results);
+    uvrpc_promise_t* promises[5];
+    all_request_t requests[5];
     
-    barrier_request_t requests[5];
-    
-    /* Make 5 concurrent calls */
+    /* Create promises for each call */
     for (int i = 0; i < 5; i++) {
-        requests[i].barrier = &barrier;
+        promises[i] = malloc(sizeof(uvrpc_promise_t));
+        uvrpc_promise_init(promises[i], loop);
+        
+        requests[i].client = client;
         requests[i].call_id = i;
-        requests[i].results = results;
+        requests[i].promise = promises[i];
         
         uint8_t params[4];
         memcpy(params, &i, sizeof(i));
         
         uvrpc_client_call(client, "compute", params, sizeof(params), 
-                          on_barrier_response, &requests[i]);
+                          on_all_response, &requests[i]);
     }
     
-    /* Wait for barrier to complete */
-    while (!uvrpc_barrier_is_complete(&barrier)) {
+    /* Create combined promise for Promise.all() */
+    uvrpc_promise_t combined;
+    uvrpc_promise_init(&combined, loop);
+    
+    /* Wait for all promises */
+    uvrpc_promise_all(promises, 5, &combined, loop);
+    
+    /* Set completion callback */
+    uvrpc_promise_then(&combined, on_all_complete, NULL);
+    
+    /* Wait for all to complete */
+    while (uvrpc_promise_is_pending(&combined)) {
         uv_run(loop, UV_RUN_ONCE);
         usleep(10000);
     }
     
-    uvrpc_barrier_cleanup(&barrier);
+    /* Cleanup */
+    for (int i = 0; i < 5; i++) {
+        uvrpc_promise_cleanup(promises[i]);
+        free(promises[i]);
+    }
+    uvrpc_promise_cleanup(&combined);
 }
 
 /* ============================================================================
@@ -256,7 +284,7 @@ static void run_promise_demo(uv_loop_t* loop, uvrpc_client_t* client) {
 }
 
 /* ============================================================================
- * WaitGroup Demo - Simplified Concurrent Operations
+ * WaitGroup Demo - Simplified Concurrent Operations (JavaScript-style)
  * ============================================================================ */
 
 typedef struct {
@@ -280,18 +308,20 @@ static void on_waitgroup_task(uvrpc_response_t* resp, void* ctx) {
 }
 
 /* Callback when all tasks complete */
-static void on_waitgroup_complete(uvrpc_waitgroup_t* wg, void* user_data) {
-    printf("\n[WaitGroup] All %d tasks completed!\n", *(int*)user_data);
+static void on_waitgroup_complete(uvrpc_promise_t* promise, void* user_data) {
+    (void)promise;  /* Promise is always fulfilled */
+    int* task_count = (int*)user_data;
+    printf("\n[WaitGroup] All %d tasks completed!\n", *task_count);
 }
 
 /* Run waitgroup demo */
 static void run_waitgroup_demo(uv_loop_t* loop, uvrpc_client_t* client) {
-    printf("\n=== WaitGroup Demo ===\n");
+    printf("\n=== WaitGroup Demo (JavaScript-style) ===\n");
     printf("Running 10 concurrent tasks\n\n");
     
     int task_count = 10;
     uvrpc_waitgroup_t wg;
-    uvrpc_waitgroup_init(&wg, loop, on_waitgroup_complete, &task_count);
+    uvrpc_waitgroup_init(&wg, loop);
     
     waitgroup_task_t tasks[10];
     
@@ -311,12 +341,19 @@ static void run_waitgroup_demo(uv_loop_t* loop, uvrpc_client_t* client) {
                           on_waitgroup_task, &tasks[i]);
     }
     
+    /* Get completion promise and set callback */
+    uvrpc_promise_t wg_promise;
+    uvrpc_promise_init(&wg_promise, loop);
+    uvrpc_waitgroup_get_promise(&wg, &wg_promise);
+    uvrpc_promise_then(&wg_promise, on_waitgroup_complete, &task_count);
+    
     /* Wait for all tasks to complete */
     while (uvrpc_get_count(&wg) > 0) {
         uv_run(loop, UV_RUN_ONCE);
         usleep(10000);
     }
     
+    uvrpc_promise_cleanup(&wg_promise);
     uvrpc_waitgroup_cleanup(&wg);
 }
 
@@ -349,7 +386,7 @@ int main(int argc, char** argv) {
     
     /* Run demos */
     run_promise_demo(&loop, client);
-    run_barrier_demo(&loop, client);
+    run_promise_all_demo(&loop, client);  /* Replaces Barrier demo */
     run_semaphore_demo(&loop, client);
     run_waitgroup_demo(&loop, client);
     

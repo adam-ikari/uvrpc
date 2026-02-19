@@ -1,5 +1,5 @@
 /**
- * Simple test for UVRPC primitives
+ * Simple test for UVRPC primitives (JavaScript-style)
  */
 
 #include "../include/uvrpc.h"
@@ -21,34 +21,41 @@ int main(void) {
     uvrpc_promise_t promise;
     uvrpc_promise_init(&promise, &loop);
     printf("Promise initialized\n");
-    uvrpc_promise_set_result(&promise, "Success", 8);
-    printf("Promise result set\n");
-    uvrpc_promise_free(&promise);
-    printf("Promise freed\n");
+    uvrpc_promise_resolve(&promise, (uint8_t*)"Success", 8);
+    printf("Promise resolved\n");
+    uvrpc_promise_cleanup(&promise);
+    printf("Promise cleaned up\n");
+    
+    printf("\n=== Testing Promise Convenience Functions ===\n");
+    uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+    if (p) {
+        printf("Promise created with convenience function\n");
+        uvrpc_promise_resolve(p, (uint8_t*)"Test", 5);
+        uvrpc_promise_destroy(p);
+        printf("Promise destroyed with convenience function\n");
+    }
     
     printf("\n=== Testing Semaphore ===\n");
     uvrpc_semaphore_t sem;
     uvrpc_semaphore_init(&sem, &loop, 5);
     printf("Semaphore initialized with capacity 5\n");
-    uvrpc_semaphore_free(&sem);
-    printf("Semaphore freed\n");
-    
-    printf("\n=== Testing Barrier ===\n");
-    uvrpc_barrier_t barrier;
-    uvrpc_barrier_init(&barrier, &loop, 3, NULL, NULL);
-    printf("Barrier initialized with count 3\n");
-    uvrpc_barrier_free(&barrier);
-    printf("Barrier freed\n");
+    printf("Available permits: %d\n", uvrpc_semaphore_get_available(&sem));
+    uvrpc_semaphore_release(&sem);
+    printf("Semaphore released one permit\n");
+    printf("Available permits: %d\n", uvrpc_semaphore_get_available(&sem));
+    uvrpc_semaphore_cleanup(&sem);
+    printf("Semaphore cleaned up\n");
     
     printf("\n=== Testing WaitGroup ===\n");
     uvrpc_waitgroup_t wg;
     uvrpc_waitgroup_init(&wg, &loop);
     printf("WaitGroup initialized\n");
     uvrpc_waitgroup_add(&wg, 1);
+    printf("WaitGroup count: %d\n", uvrpc_get_count(&wg));
     uvrpc_waitgroup_done(&wg);
-    printf("WaitGroup add/done tested\n");
-    uvrpc_waitgroup_free(&wg);
-    printf("WaitGroup freed\n");
+    printf("WaitGroup count after done: %d\n", uvrpc_get_count(&wg));
+    uvrpc_waitgroup_cleanup(&wg);
+    printf("WaitGroup cleaned up\n");
     
     uv_loop_close(&loop);
     
