@@ -114,7 +114,11 @@ The response-driven immediate mode overcomes all timer-based limitations:
 
 ### Backpressure Mechanism
 
-The benchmark uses error-based backpressure for natural concurrency control:
+The benchmark uses error-based backpressure for natural concurrency control. When the pending buffer is full, the system must decide whether to retry or return the error to the caller.
+
+**Design Decision: Return Error, Don't Retry Immediately**
+
+The current implementation chooses to **return the error** rather than retrying immediately:
 
 ```c
 /* Send requests until pending buffer is full */
@@ -125,34 +129,68 @@ while (sent_for_client < 256) {
         /* Success - continue sending */
         sent_for_client++;
     } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
-        /* Pending buffer full - stop sending
-         * Wait for responses to arrive and free up buffer space
-         * on_response callback will be called automatically when responses arrive
-         * No explicit retry needed - the callback will handle retry
+        /* Pending buffer full - RETURN the error, don't retry immediately
+         * 
+         * Why Return Instead of Retry:
+         * 1. Avoids busy waiting and CPU waste
+         * 2. Prevents stack overflow from recursive retry attempts
+         * 3. Allows event loop to process other events
+         * 4. Natural backpressure - system slows down when busy
+         * 5. Caller can decide retry strategy (if needed)
+         * 
+         * Retry Strategy:
+         * - The on_response callback will be called automatically when responses arrive
+         * - Each response frees one buffer slot
+         * - The callback will attempt to send a new request
+         * - This provides natural retry timing without explicit delays
          */
-        break;
+        break;  /* Stop sending, return control to caller */
     }
 }
 
-/* In on_response callback, retry sending after buffer space is freed */
+/* In on_response callback, retry is triggered by response arrival */
 if (state->timer_interval_ms == 0) {
     int ret = uvrpc_client_call(client, "Add", params, on_response, client_ctx);
     
     if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
-        /* Buffer still full - wait for next response callback to retry
-         * This naturally implements backpressure without explicit delays
-         * The system automatically adjusts sending rate based on response processing speed
+        /* Buffer still full - RETURN the error
+         * 
+         * Don't retry here because:
+         * 1. This is called from event loop - retry would block processing
+         * 2. Next response will trigger another callback and retry
+         * 3. System naturally adapts to processing capacity
+         * 4. No benefit to immediate retry - buffer is still full
+         * 
+         * When to retry:
+         * - Automatically: Next on_response callback when buffer space frees
+         * - Caller-initiated: If application needs explicit retry logic
          */
-        /* No action - wait for next on_response call */
+        /* No action - return control to event loop */
     }
 }
 ```
 
+**Why This Design is Correct:**
+
+1. **Natural Flow Control**: The system slows down when busy, speeds up when idle
+2. **No Busy Waiting**: CPU doesn't waste cycles retrying when buffer is full
+3. **Event Loop Friendly**: Doesn't block event loop with retry loops
+4. **Scalable**: Works correctly under any load condition
+5. **Predictable**: Backpressure behavior is clear and deterministic
+
+**Alternative Approaches (Not Used):**
+
+- **Immediate Retry**: Would waste CPU cycles and cause busy waiting
+- **Delayed Retry**: Would add artificial delays, reducing throughput
+- **Queue Requests**: Would require additional memory and complexity
+- **Block Caller**: Would block event loop, defeating async design
+
 This ensures:
 - Never exceeds pending buffer capacity (64 slots per client)
-- Automatic retry when buffer space is available
+- Automatic retry when buffer space is available (via response callbacks)
 - No explicit delay needed - responses naturally free buffer slots
 - Perfect adaptation to system capacity
+- Clean separation of concerns (sending vs. retry)
 
 ## Recommendations
 
