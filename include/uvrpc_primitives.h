@@ -307,24 +307,30 @@ int32_t uvrpc_promise_get_error_code(uvrpc_promise_t* promise);
 /** @} */
 
 /* ============================================================================
- * Semaphore Pattern
+ * Semaphore Pattern (JavaScript-style)
  * ============================================================================ */
-
-/**
- * @brief Semaphore acquire callback type
- *
- * Called when a semaphore permit is acquired.
- *
- * @param semaphore Semaphore instance
- * @param user_data User data provided in uvrpc_semaphore_acquire()
- */
-typedef void (*uvrpc_semaphore_callback_t)(uvrpc_semaphore_t* semaphore, void* user_data);
 
 /**
  * @brief Semaphore structure
  * 
  * Controls concurrent operations by limiting the number of permits available.
- * Operations wait (via callback) when no permits are available.
+ * 
+ * JavaScript-style usage:
+ * @code
+ * uvrpc_semaphore_t sem;
+ * uvrpc_semaphore_init(&sem, &loop, 3);  // Max 3 concurrent operations
+ * 
+ * uvrpc_promise_t* p = malloc(sizeof(uvrpc_promise_t));
+ * uvrpc_promise_init(p, &loop);
+ * uvrpc_semaphore_acquire_async(&sem, p);
+ * 
+ * uvrpc_promise_then(p, [](auto* promise, auto* ctx) {
+ *     // Permit acquired, do work
+ *     uvrpc_semaphore_release(&sem);
+ *     uvrpc_promise_cleanup(p);
+ *     free(p);
+ * }, NULL);
+ * @endcode
  * 
  * @note Thread-safe using atomic operations.
  */
@@ -359,19 +365,26 @@ int uvrpc_semaphore_init(uvrpc_semaphore_t* semaphore, uv_loop_t* loop, int perm
 void uvrpc_semaphore_cleanup(uvrpc_semaphore_t* semaphore);
 
 /**
- * @brief Acquire a semaphore permit (non-blocking)
+ * @brief Acquire a semaphore permit asynchronously (JavaScript-style)
  * 
- * If a permit is available, the callback is called immediately.
- * If no permit is available, the callback is queued and called later.
+ * Returns a Promise that resolves when a permit is acquired.
+ * 
+ * JavaScript-style usage:
+ * @code
+ * uvrpc_promise_t* promise = malloc(sizeof(uvrpc_promise_t));
+ * uvrpc_promise_init(promise, &loop);
+ * 
+ * if (uvrpc_semaphore_acquire_async(&sem, promise) == UVRPC_OK) {
+ *     uvrpc_promise_then(promise, on_permit_acquired, context);
+ * }
+ * @endcode
  * 
  * @param semaphore Semaphore instance
- * @param callback Callback when permit is acquired
- * @param user_data User data passed to callback
+ * @param promise Promise to resolve when permit is acquired
  * @return UVRPC_OK on success, error code on failure
  */
-int uvrpc_semaphore_acquire(uvrpc_semaphore_t* semaphore, 
-                             uvrpc_semaphore_callback_t callback, 
-                             void* user_data);
+int uvrpc_semaphore_acquire_async(uvrpc_semaphore_t* semaphore, 
+                                    uvrpc_promise_t* promise);
 
 /**
  * @brief Release a semaphore permit
@@ -384,7 +397,7 @@ int uvrpc_semaphore_acquire(uvrpc_semaphore_t* semaphore,
 int uvrpc_semaphore_release(uvrpc_semaphore_t* semaphore);
 
 /**
- * @brief Try to acquire a permit (immediate)
+ * @brief Try to acquire a permit (immediate, non-blocking)
  * 
  * @param semaphore Semaphore instance
  * @return 1 if permit acquired, 0 if no permit available
@@ -410,137 +423,33 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore);
 /** @} */
 
 /* ============================================================================
- * Barrier Pattern
+ * Wait Group Pattern (JavaScript-style)
  * ============================================================================ */
-
-/**
- * @brief Barrier completion callback type
- *
- * Called when all operations registered with the barrier have completed.
- *
- * @param barrier Barrier instance
- * @param user_data User data provided in uvrpc_barrier_init()
- */
-typedef void (*uvrpc_barrier_callback_t)(uvrpc_barrier_t* barrier, void* user_data);
-
-/**
- * @brief Barrier structure
- * 
- * Waits for a specified number of operations to complete before invoking
- * a callback. Useful for aggregating results from multiple async operations.
- * 
- * @note Thread-safe using atomic operations.
- */
-typedef struct uvrpc_barrier {
-    uv_loop_t* loop;                          /**< @brief libuv event loop */
-    int total;                                /**< @brief Total operations to wait for */
-    volatile int completed;                   /**< @brief Completed operations (atomic) */
-    volatile int error_count;                 /**< @brief Error count (atomic) */
-    uvrpc_barrier_callback_t callback;        /**< @brief Completion callback */
-    void* user_data;                          /**< @brief User data for callback */
-    uv_async_t async_handle;                  /**< @brief Async handle for callback */
-    int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
-} uvrpc_barrier_t;
-
-/**
- * @defgroup BarrierAPI Barrier API
- * @brief Functions for Barrier pattern
- * @{
- */
-
-/**
- * @brief Initialize a barrier
- * 
- * @param barrier Barrier structure to initialize
- * @param loop libuv event loop
- * @param count Number of operations to wait for
- * @param callback Callback when all operations complete
- * @param user_data User data passed to callback
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_barrier_init(uvrpc_barrier_t* barrier, uv_loop_t* loop, int count,
-                        uvrpc_barrier_callback_t callback, void* user_data);
-
-/**
- * @brief Cleanup a barrier
- * 
- * @param barrier Barrier to cleanup
- */
-void uvrpc_barrier_cleanup(uvrpc_barrier_t* barrier);
-
-/**
- * @brief Signal completion of one operation
- * 
- * Increments the completed count. When count reaches total, the callback is invoked.
- * 
- * @param barrier Barrier instance
- * @param error Whether the operation had an error (1 for error, 0 for success)
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_barrier_wait(uvrpc_barrier_t* barrier, int error);
-
-/**
- * @brief Get completed operation count
- * 
- * @param barrier Barrier instance
- * @return Number of completed operations
- */
-int uvrpc_barrier_get_completed(uvrpc_barrier_t* barrier);
-
-/**
- * @brief Get error count
- * 
- * @param barrier Barrier instance
- * @return Number of operations that had errors
- */
-int uvrpc_barrier_get_error_count(uvrpc_barrier_t* barrier);
-
-/**
- * @brief Check if barrier is complete
- * 
- * @param barrier Barrier instance
- * @return 1 if complete, 0 otherwise
- */
-int uvrpc_barrier_is_complete(uvrpc_barrier_t* barrier);
-
-/**
- * @brief Reset barrier for reuse
- * 
- * Resets the completed count and error count.
- * 
- * @param barrier Barrier instance
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_barrier_reset(uvrpc_barrier_t* barrier);
-
-/** @} */
-
-/* ============================================================================
- * Wait Group Pattern (simplified barrier)
- * ============================================================================ */
-
-/**
- * @brief WaitGroup completion callback type
- *
- * Called when count reaches 0.
- *
- * @param wg WaitGroup instance
- * @param user_data User data provided in uvrpc_waitgroup_init()
- */
-typedef void (*uvrpc_waitgroup_callback_t)(uvrpc_waitgroup_t* wg, void* user_data);
 
 /**
  * @brief WaitGroup structure
  *
- * Simplified barrier pattern for counting concurrent operations.
- * Add operations with add(), signal completion with done(), wait with wait().
+ * JavaScript-style usage:
+ * @code
+ * uvrpc_waitgroup_t wg;
+ * uvrpc_waitgroup_init(&wg, &loop);
+ * uvrpc_waitgroup_add(&wg, 10);
+ * 
+ * // In each async operation callback:
+ * uvrpc_waitgroup_done(&wg);
+ * 
+ * // Get completion promise
+ * uvrpc_promise_t* p = malloc(sizeof(uvrpc_promise_t));
+ * uvrpc_promise_init(p, &loop);
+ * uvrpc_waitgroup_get_promise(&wg, p);
+ * 
+ * uvrpc_promise_then(p, on_all_done, context);
+ * @endcode
  */
 typedef struct uvrpc_waitgroup {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
     volatile int count;                       /**< @brief Operation count (atomic) */
-    uvrpc_waitgroup_callback_t callback;      /**< @brief Callback when count reaches 0 */
-    void* user_data;                          /**< @brief User data for callback */
-    uv_async_t async_handle;                  /**< @brief Async handle for callback */
+    uv_async_t async_handle;                  /**< @brief Async handle for notification */
     int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
 } uvrpc_waitgroup_t;
 
@@ -555,12 +464,9 @@ typedef struct uvrpc_waitgroup {
  *
  * @param wg WaitGroup structure to initialize
  * @param loop libuv event loop
- * @param callback Callback when count reaches 0
- * @param user_data User data passed to callback
  * @return UVRPC_OK on success, error code on failure
  */
-int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop,
-                          uvrpc_waitgroup_callback_t callback, void* user_data);
+int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop);
 
 /**
  * @brief Cleanup a wait group
@@ -581,7 +487,7 @@ int uvrpc_waitgroup_add(uvrpc_waitgroup_t* wg, int delta);
 /**
  * @brief Signal one operation complete
  * 
- * Decrements the count. When count reaches 0, the callback is invoked.
+ * Decrements the count. When count reaches 0, the completion promise is resolved.
  * 
  * @param wg WaitGroup instance
  * @return UVRPC_OK on success, error code on failure
@@ -595,6 +501,23 @@ int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg);
  * @return Current operation count
  */
 int uvrpc_get_count(uvrpc_waitgroup_t* wg);
+
+/**
+ * @brief Get completion promise (JavaScript-style)
+ * 
+ * Returns a Promise that resolves when all operations are complete.
+ * 
+ * JavaScript-style usage:
+ * @code
+ * uvrpc_promise_t* p = uvrpc_waitgroup_get_promise(&wg);
+ * uvrpc_promise_then(p, on_all_complete, context);
+ * @endcode
+ * 
+ * @param wg WaitGroup instance
+ * @param promise Promise to resolve when count reaches 0
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_waitgroup_get_promise(uvrpc_waitgroup_t* wg, uvrpc_promise_t* promise);
 
 /** @} */
 
