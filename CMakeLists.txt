@@ -90,6 +90,7 @@ set(UVRPC_SOURCES
     src/uvbus_transport_udp.c
     src/uvbus_transport_ipc.c
     src/uvbus_transport_inproc.c
+    src/uvasync.c
 )
 
 # Headers
@@ -98,6 +99,7 @@ set(UVRPC_HEADERS
     include/uvrpc_async.h
     include/uvrpc_primitives.h
     include/uvbus.h
+    include/uvasync.h
     src/uvrpc_flatbuffers.h
     src/uvrpc_service.h
 )
@@ -285,6 +287,12 @@ add_executable(test_promise_race_only
     examples/test_promise_race_only.c
 )
 target_link_libraries(test_promise_race_only uvrpc pthread)
+
+# uvasync demo
+add_executable(uvasync_demo
+    examples/uvasync_demo.c
+)
+target_link_libraries(uvasync_demo uvrpc pthread)
 
 # Tests
 if(UVRPC_BUILD_TESTS)
