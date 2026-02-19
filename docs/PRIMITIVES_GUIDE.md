@@ -261,22 +261,35 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
 
 ### Aggregating Multiple RPC Results
 
-Use a barrier to wait for multiple calls to complete:
+Use Promise.all() to wait for multiple calls to complete:
 
 ```c
-uvrpc_barrier_t barrier;
-uvrpc_barrier_init(&barrier, loop, count, on_all_complete, results);
+uvrpc_promise_t* promises[count];
 
 // Make multiple calls
 for (int i = 0; i < count; i++) {
+    promises[i] = uvrpc_promise_create(loop);
     uvrpc_client_call(client, methods[i], params[i], sizes[i], 
-                      on_response, &barrier);
+                      on_response, promises[i]);
 }
 
 void on_response(uvrpc_response_t* resp, void* ctx) {
-    uvrpc_barrier_t* barrier = (uvrpc_barrier_t*)ctx;
-    store_result(resp);
-    uvrpc_barrier_wait(barrier, resp->error_code != 0);
+    uvrpc_promise_t* promise = (uvrpc_promise_t*)ctx;
+    if (resp->error_code == 0) {
+        uvrpc_promise_resolve(promise, resp->result, resp->result_size);
+    } else {
+        uvrpc_promise_reject(promise, resp->error_code, resp->error_message);
+    }
+}
+
+// Wait for all to complete
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all(promises, count, &combined, loop);
+uvrpc_promise_then(&combined, on_all_complete, NULL);
+
+void on_all_complete(uvrpc_promise_t* promise, void* user_data) {
+    // Process all results
 }
 ```
 
@@ -388,12 +401,15 @@ Never block waiting for primitives in event loop callbacks:
 
 ```c
 // Bad: Blocks event loop
-while (!uvrpc_barrier_is_complete(&barrier)) {
+while (uvrpc_promise_is_pending(&promise)) {
     sleep(1); // Blocking!
 }
 
 // Good: Let the callback handle completion
-uvrpc_barrier_init(&barrier, loop, count, on_complete, data);
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all(promises, count, &combined, loop);
+uvrpc_promise_then(&combined, on_complete, data);
 // Start operations...
 // Callback will be invoked automatically
 ```

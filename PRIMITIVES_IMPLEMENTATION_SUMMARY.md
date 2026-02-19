@@ -67,12 +67,12 @@ int32_t uvrpc_promise_get_error_code(uvrpc_promise_t* promise);
 
 ---
 
-### 2. Semaphore Pattern
+### 2. Semaphore Pattern (JavaScript-style)
 
 **Purpose**: Limit concurrent operations (rate limiting, resource protection)
 
 **Key Features**:
-- Non-blocking acquire with callback
+- Promise-based async acquire (JavaScript-style)
 - Automatic waiter notification
 - Thread-safe with atomic operations
 - FIFO waiter queue
@@ -81,7 +81,7 @@ int32_t uvrpc_promise_get_error_code(uvrpc_promise_t* promise);
 ```c
 int uvrpc_semaphore_init(uvrpc_semaphore_t* semaphore, uv_loop_t* loop, int permits);
 void uvrpc_semaphore_cleanup(uvrpc_semaphore_t* semaphore);
-int uvrpc_semaphore_acquire(uvrpc_semaphore_t* semaphore, uvrpc_semaphore_callback_t callback, void* user_data);
+int uvrpc_semaphore_acquire_async(uvrpc_semaphore_t* semaphore, uvrpc_promise_t* promise);
 int uvrpc_semaphore_release(uvrpc_semaphore_t* semaphore);
 int uvrpc_semaphore_try_acquire(uvrpc_semaphore_t* semaphore);
 int uvrpc_semaphore_get_available(uvrpc_semaphore_t* semaphore);
@@ -90,15 +90,26 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore);
 
 ---
 
-### 3. Barrier Pattern
+### 3. Promise Combinators
 
-**Purpose**: Wait for multiple operations to complete (aggregation)
+**Purpose**: Coordinate multiple async operations
 
 **Key Features**:
-- Wait for N operations
-- Error aggregation
-- Thread-safe counters
-- Async callback on completion
+- Promise.all() - Wait for all promises to fulfill
+- Promise.race() - Wait for first promise to complete
+- Promise.allSettled() - Wait for all promises to complete (fulfill or reject)
+- Synchronous versions for simple blocking code
+
+**API Functions**:
+```c
+int uvrpc_promise_all(uvrpc_promise_t** promises, int count, uvrpc_promise_t* combined, uv_loop_t* loop);
+int uvrpc_promise_race(uvrpc_promise_t** promises, int count, uvrpc_promise_t* combined, uv_loop_t* loop);
+int uvrpc_promise_all_settled(uvrpc_promise_t** promises, int count, uvrpc_promise_t* combined, uv_loop_t* loop);
+int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count, uint8_t** result, size_t* result_size, uv_loop_t* loop);
+int uvrpc_promise_race_sync(uvrpc_promise_t** promises, int count, uint8_t** result, size_t* result_size, uv_loop_t* loop);
+```
+
+**Note**: Barrier pattern has been removed - use Promise.all() instead.
 
 **API Functions**:
 ```c
@@ -113,23 +124,24 @@ int uvrpc_barrier_reset(uvrpc_barrier_t* barrier);
 
 ---
 
-### 4. WaitGroup Pattern
+### 4. WaitGroup Pattern (Simplified)
 
 **Purpose**: Simplified counting for concurrent tasks (fire-and-forget)
 
 **Key Features**:
+- JavaScript-style Promise for completion notification
 - Simple add/done interface
-- Callback when count reaches 0
 - Thread-safe atomic counters
-- Lightweight alternative to barrier
+- Lightweight alternative to Promise.all()
 
 **API Functions**:
 ```c
-int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop, uvrpc_waitgroup_callback_t callback, void* user_data);
+int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop);
 void uvrpc_waitgroup_cleanup(uvrpc_waitgroup_t* wg);
 int uvrpc_waitgroup_add(uvrpc_waitgroup_t* wg, int delta);
 int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg);
-int uvrpc_waitgroup_get_count(uvrpc_waitgroup_t* wg);
+int uvrpc_get_count(uvrpc_waitgroup_t* wg);
+int uvrpc_waitgroup_get_promise(uvrpc_waitgroup_t* wg, uvrpc_promise_t* promise);
 ```
 
 ---
@@ -172,16 +184,19 @@ All files compile successfully without errors:
 - Limit concurrent RPC calls (prevent server overload)
 - Resource protection (database connections, file handles)
 - Rate limiting
+- API quota management
 
-**Barrier**:
+**Promise.all()**:
 - Aggregating results from multiple RPC calls
 - Batch operations
 - Fan-in/fan-out patterns
+- Parallel data fetching
 
 **Promise**:
 - Tracking async operation completion
 - Error handling at operation boundary
 - Result passing through callbacks
+- Chaining async operations
 
 **WaitGroup**:
 - Fire-and-forget concurrent tasks
