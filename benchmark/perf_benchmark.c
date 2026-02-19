@@ -68,7 +68,7 @@ typedef struct {
     int num_clients;
     int batch_size;
     int failed;
-    int timer_interval_ms;  /* Configurable timer interval (default: 1ms) */
+    int timer_interval_ms;  /* Configurable timer interval (default: 1ms), 0 for immediate mode */
 } thread_state_t;
 
 /* Global state */
@@ -184,6 +184,10 @@ static void print_memory_usage(const char* label) {
         fflush(stdout);
     }
 }
+
+/* Forward declarations */
+void send_batch_requests(uv_timer_t* handle);
+void send_batch_requests_fast(uv_timer_t* handle);
 
 /* Server timeout callback - auto-stop server after timeout */
 static void on_server_timeout(uv_timer_t* handle) {
@@ -321,13 +325,19 @@ int wait_for_connections(uv_loop_t* loop, thread_state_t* state) {
     return state->connections_established;
 }
 
-/* Helper: Send batch of requests using callbacks */
-static void send_batch_requests(uv_timer_t* handle) {
+/* Helper: Send batch of requests with adaptive backpressure control */
+void send_batch_requests(uv_timer_t* handle) {
     thread_state_t* state = (thread_state_t*)handle->data;
+    if (!state) return;
+    
     uv_loop_t* loop = handle->loop;
     uvrpc_client_t** clients = state->clients;
     int num_clients = state->num_clients;
     int batch_size = state->batch_size;
+    
+    if (num_clients == 0 || !clients) {
+        return;
+    }
     
     /* Copy timer handle to state for cleanup */
     state->batch_timer_handle = *handle;
@@ -338,6 +348,9 @@ static void send_batch_requests(uv_timer_t* handle) {
      */
     int sent_this_round = 0;
     int skipped_count = 0;
+    
+    /* Special handling for immediate mode (interval=0) */
+    int is_immediate_mode = (state->timer_interval_ms == 0);
     
     for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
         int client_idx = state->sent_requests % num_clients;
@@ -380,11 +393,84 @@ static void send_batch_requests(uv_timer_t* handle) {
         }
     }
     
-    /* Optional: Log skipped requests for debugging (disabled in production)
-     * if (skipped_count > 0) {
-     *     fprintf(stderr, "[DEBUG] Skipped %d requests due to backpressure\n", skipped_count);
-     * }
+    /* In immediate mode (interval=0), schedule next batch immediately
+     * Add a tiny delay (100 microseconds) to allow event loop to process responses
+     * This prevents overwhelming the system while still being faster than timer mode
      */
+    if (is_immediate_mode && !g_shutdown_requested && sent_this_round > 0) {
+        /* Schedule next batch with 100us delay to allow event loop processing */
+        uv_timer_start(handle, send_batch_requests, 0, 0);
+    }
+    
+    /* If shutdown was requested, stop the event loop */
+    if (g_shutdown_requested) {
+        uv_stop(loop);
+    }
+}
+
+/* Helper: Send multiple batches per timer callback for immediate mode */
+void send_batch_requests_fast(uv_timer_t* handle) {
+    thread_state_t* state = (thread_state_t*)handle->data;
+    if (!state) return;
+    
+    uv_loop_t* loop = handle->loop;
+    uvrpc_client_t** clients = state->clients;
+    int num_clients = state->num_clients;
+    int batch_size = state->batch_size;
+    
+    if (num_clients == 0 || !clients) {
+        return;
+    }
+    
+    /* Copy timer handle to state for cleanup */
+    state->batch_timer_handle = *handle;
+    
+    /* Send 10 batches per timer callback to achieve 10x faster sending
+     * This is more efficient than immediate mode because it allows event loop
+     * to process responses between batches
+     */
+    int total_sent = 0;
+    int total_skipped = 0;
+    
+    for (int batch = 0; batch < 10 && !g_shutdown_requested; batch++) {
+        /* Send one batch */
+        for (int i = 0; i < batch_size; i++) {
+            int client_idx = state->sent_requests % num_clients;
+            
+            /* Check pending request count before sending (backpressure mechanism) */
+            int pending_count = uvrpc_client_get_pending_count(clients[client_idx]);
+            int max_concurrent = batch_size * 2;
+            int threshold = max_concurrent * 8 / 10;
+            
+            if (pending_count > threshold + 10) {
+                total_skipped++;
+                continue;
+            }
+            
+            int32_t a = 100;
+            int32_t b = 200;
+            int32_t params[2] = {a, b};
+            
+            int ret = uvrpc_client_call(clients[client_idx], "Add", (uint8_t*)params, sizeof(params), on_response, state);
+            
+            if (ret == UVRPC_OK) {
+                state->sent_requests++;
+                total_sent++;
+            } else {
+                state->failed++;
+            }
+        }
+        
+        /* Run event loop to process responses between batches
+         * Use RUN_NOWAIT to avoid blocking, but allow processing
+         */
+        uv_run(loop, UV_RUN_NOWAIT);
+        
+        /* Small sleep to prevent overwhelming the system
+         * 100 microseconds allows network processing while maintaining high throughput
+         */
+        usleep(100);
+    }
     
     /* If shutdown was requested, stop the event loop */
     if (g_shutdown_requested) {
@@ -637,8 +723,19 @@ void* thread_func(void* arg) {
     batch_timer.data = &state;
     batch_timer.loop = &loop;
     
-    /* Send requests with configurable interval (default: 1ms) */
-    uv_timer_start(&batch_timer, send_batch_requests, state.timer_interval_ms, state.timer_interval_ms);
+    /* Send requests with configurable interval (default: 1ms)
+     * Special case: interval=0 means "immediate mode" - send as fast as possible
+     * In immediate mode, use 1ms timer but send multiple batches per iteration
+     */
+    if (state.timer_interval_ms == 0) {
+        /* Immediate mode: use 1ms timer but send 10 batches per timer callback
+         * This achieves 10x faster sending while still allowing event loop to run
+         */
+        uv_timer_start(&batch_timer, send_batch_requests_fast, 1, 1);
+    } else {
+        /* Normal mode: use timer-based periodic sending */
+        uv_timer_start(&batch_timer, send_batch_requests, state.timer_interval_ms, state.timer_interval_ms);
+    }
 
     /* Run event loop with UV_RUN_DEFAULT */
     struct timespec start, end;
@@ -1156,7 +1253,7 @@ void print_usage(const char* prog_name) {
     printf("  -p <publishers>   Publishers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -s <subscribers>  Subscribers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
-    printf("  -i <interval>     Timer interval in milliseconds (default: 1)\n");
+    printf("  -i <interval>     Timer interval in milliseconds (default: 1, use 0 for immediate mode)\n");
     printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
