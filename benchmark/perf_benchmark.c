@@ -68,9 +68,7 @@ typedef struct {
     int num_clients;
     int batch_size;
     int failed;
-    int timer_interval_ms;  /* Configurable timer interval (default: 1ms), 0 for immediate mode */
-    int max_concurrent_requests;  /* Max concurrent requests for immediate mode */
-    int max_concurrent_per_client;  /* Max concurrent requests per client */
+    int timer_interval_ms;  /* Configurable timer interval (default: 0ms for immediate mode) */
     uv_loop_t* loop;  /* Event loop reference for immediate mode */
 } thread_state_t;
 
@@ -256,27 +254,31 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
     
     /* In immediate mode (interval=0), send new request immediately after receiving response
      * This maintains constant concurrency without timer delays
+     * Use pending buffer full error (UVRPC_ERROR_CALLBACK_LIMIT) as concurrency control
      * Each client maintains its own concurrency limit independently
      */
     if (state->timer_interval_ms == 0 && !g_shutdown_requested && client_ctx->client) {
-        /* Check pending count for this specific client (no global lock needed) */
-        int pending_count = uvrpc_client_get_pending_count(client_ctx->client);
+        /* Send new request immediately
+         * If pending buffer is full, uvrpc_client_call returns UVRPC_ERROR_CALLBACK_LIMIT
+         * This error serves as the concurrency control mechanism
+         */
+        int32_t a = 100;
+        int32_t b = 200;
+        int32_t params[2] = {a, b};
         
-        /* Send new request if this client is below its concurrency limit */
-        if (pending_count < state->max_concurrent_per_client) {
-            /* Send new request to this same client */
-            int32_t a = 100;
-            int32_t b = 200;
-            int32_t params[2] = {a, b};
-            
-            int ret = uvrpc_client_call(client_ctx->client, "Add", 
-                                       (uint8_t*)params, sizeof(params), on_response, client_ctx);
-            
-            if (ret == UVRPC_OK) {
-                state->sent_requests++;
-            } else {
-                state->failed++;
-            }
+        int ret = uvrpc_client_call(client_ctx->client, "Add", 
+                                   (uint8_t*)params, sizeof(params), on_response, client_ctx);
+        
+        if (ret == UVRPC_OK) {
+            state->sent_requests++;
+        } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+            /* Pending buffer full - normal backpressure, don't count as failure
+             * The client will send new requests when responses arrive and free up buffer space
+             */
+            /* No action needed - wait for response callback to free buffer slot */
+        } else {
+            /* Other errors (connection failure, etc.) */
+            state->failed++;
         }
     }
 }
@@ -755,24 +757,17 @@ void* thread_func(void* arg) {
     
     /* Send requests with configurable interval (default: 0ms for immediate mode)
      * Special case: interval=0 means "immediate mode" - send requests as fast as possible with backpressure
-     * In immediate mode, send requests immediately when response arrives, maintaining concurrency limit
-     * Use pending buffer size (64) as the concurrency limit per client
+     * In immediate mode, send requests immediately when response arrives
+     * Use pending buffer full error (UVRPC_ERROR_CALLBACK_LIMIT) as concurrency control
      */
     if (state.timer_interval_ms == 0) {
-        /* Immediate mode: use pending buffer size as concurrency limit
+        /* Immediate mode: send requests until pending buffer is full
          * Each client has 64 pending buffer slots
-         * Send up to 64 requests per client initially
+         * Send requests until we get UVRPC_ERROR_CALLBACK_LIMIT
          * No global locks or shared state between clients
+         * No separate concurrency parameter needed
          */
-        int max_concurrent_per_client = 64;  /* Use pending buffer size */
-        int max_concurrent = max_concurrent_per_client * num_clients;
-        
-        printf("[Thread %d] Immediate mode: using pending buffer size %d as concurrency limit per client (%d total)...\n", 
-               ctx->thread_id, max_concurrent_per_client, max_concurrent);
-        
-        /* Set per-client concurrency limit to match pending buffer */
-        state.max_concurrent_per_client = max_concurrent_per_client;
-        state.max_concurrent_requests = max_concurrent;
+        printf("[Thread %d] Immediate mode: sending requests until pending buffer full...\n", ctx->thread_id);
         
         /* Allocate per-client contexts (freed after test) */
         client_context_t* client_contexts = malloc(num_clients * sizeof(client_context_t));
@@ -788,8 +783,9 @@ void* thread_func(void* arg) {
             client_contexts[i].client = clients[i];
             client_contexts[i].client_idx = i;
             
-            /* Send initial requests up to pending buffer limit (64) */
-            for (int j = 0; j < max_concurrent_per_client; j++) {
+            /* Send requests until pending buffer is full (64 slots) */
+            int sent_for_client = 0;
+            while (sent_for_client < 256) {  /* Safety limit */
                 int32_t a = 100;
                 int32_t b = 200;
                 int32_t params[2] = {a, b};
@@ -799,8 +795,14 @@ void* thread_func(void* arg) {
                 
                 if (ret == UVRPC_OK) {
                     state.sent_requests++;
+                    sent_for_client++;
+                } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+                    /* Pending buffer full - stop sending for this client */
+                    break;
                 } else {
+                    /* Other errors */
                     state.failed++;
+                    break;
                 }
             }
         }
