@@ -42,6 +42,22 @@ The `send_batch_requests_fast` function sends 10 batches per timer callback with
 
 4. **Memory Pressure**: Too many pending requests consume memory, potentially causing system instability
 
+### Why 0ms Interval Has High Power Consumption
+
+The 0ms interval mode has significantly higher power consumption than timer-based modes due to:
+
+1. **Continuous CPU Activity**: The 1ms timer triggers 1000 times per second, and each callback sends 10 batches (1000 requests), resulting in 1,000,000 function calls per second in multi-threaded scenarios
+
+2. **Frequent Event Loop Processing**: Each batch calls `uv_run(loop, UV_RUN_NOWAIT)` 10 times per timer callback, totaling 10,000 event loop iterations per second per thread
+
+3. **No CPU Idle Time**: The 100us sleep between batches is too short for the CPU to enter low-power states, keeping cores constantly active
+
+4. **High Memory Bandwidth**: Constant buffer allocation and deallocation for pending requests consumes significant memory bandwidth
+
+5. **Cache Thrashing**: Rapid context switching between sending and processing reduces cache efficiency, requiring more memory accesses
+
+In contrast, timer-based modes (1ms, 2ms, 5ms+) allow CPU cores to enter idle states between timer callbacks, reducing power consumption significantly.
+
 ### Backpressure Mechanism
 
 The benchmark implements adaptive backpressure to prevent buffer overflow:
