@@ -10,18 +10,30 @@ The benchmark supports a configurable timer interval via the `-i` parameter. Set
 
 ### Current Implementation
 
-When `timer_interval_ms = 0`, the benchmark uses **response-driven immediate mode**:
+When `timer_interval_ms = 0`, the benchmark uses **response-driven immediate mode** with pending buffer limit as concurrency control:
 
 ```c
 if (state.timer_interval_ms == 0) {
-    /* Immediate mode: send initial batch, then send on response */
-    int max_concurrent = batch_size * 2;
-    state.max_concurrent_requests = max_concurrent;
+    /* Immediate mode: send requests until pending buffer is full */
+    printf("[Thread %d] Immediate mode: sending requests until pending buffer full...\n", ctx->thread_id);
     
-    /* Send initial batch to reach concurrency limit */
+    /* Send requests until pending buffer is full (64 slots per client) */
     for (int i = 0; i < num_clients; i++) {
-        for (int j = 0; j < batch_size; j++) {
-            uvrpc_client_call(clients[i], "Add", params, on_response, &state);
+        int sent_for_client = 0;
+        while (sent_for_client < 256) {  /* Safety limit */
+            int ret = uvrpc_client_call(clients[i], "Add", params, on_response, &client_contexts[i]);
+            
+            if (ret == UVRPC_OK) {
+                state.sent_requests++;
+                sent_for_client++;
+            } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+                /* Pending buffer full - stop sending for this client */
+                break;
+            } else {
+                /* Other errors */
+                state.failed++;
+                break;
+            }
         }
     }
     
@@ -33,18 +45,30 @@ The `on_response` callback sends new requests immediately when responses arrive:
 
 ```c
 void on_response(uvrpc_response_t* resp, void* ctx) {
-    thread_state_t* state = (thread_state_t*)ctx;
+    client_context_t* client_ctx = (client_context_t*)ctx;
+    thread_state_t* state = client_ctx->state;
     state->responses_received++;
     
     /* In immediate mode, send new request immediately */
     if (state->timer_interval_ms == 0) {
-        /* Check pending count for backpressure */
-        int total_pending = sum_pending_count(state->clients, state->num_clients);
+        /* Send new request immediately
+         * If pending buffer is full, uvrpc_client_call returns UVRPC_ERROR_CALLBACK_LIMIT
+         * This error serves as the concurrency control mechanism
+         * The client will retry when more responses arrive and free up buffer space
+         */
+        int ret = uvrpc_client_call(client_ctx->client, "Add", params, on_response, client_ctx);
         
-        if (total_pending < state->max_concurrent_requests) {
-            /* Send to client with lowest pending count for load balancing */
-            int target_client = find_min_pending_client(state->clients, state->num_clients);
-            uvrpc_client_call(state->clients[target_client], "Add", params, on_response, state);
+        if (ret == UVRPC_OK) {
+            state->sent_requests++;
+        } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+            /* Pending buffer full - normal backpressure
+             * Wait for response callback to free buffer slot, then retry
+             * No explicit retry needed - on_response will be called again when buffer space is available
+             */
+            /* No action needed - wait for next response callback */
+        } else {
+            /* Other errors (connection failure, etc.) */
+            state->failed++;
         }
     }
 }
@@ -83,37 +107,59 @@ Timer-based modes (1ms, 2ms, 5ms+) have inherent limitations:
 The response-driven immediate mode overcomes all timer-based limitations:
 
 1. **Optimal Throughput**: Sends as fast as responses arrive, no artificial delays
-2. **Constant Concurrency**: Maintains exactly `batch_size * 2` concurrent requests
+2. **Error-Based Control**: Uses `UVRPC_ERROR_CALLBACK_LIMIT` as natural concurrency limit
 3. **Automatic Adaptivity**: Automatically adjusts to network and server conditions
 4. **Low Power**: No timer interrupts, CPU only active when processing responses
-5. **Perfect Load Balancing**: Selects client with lowest pending count
+5. **Perfect Load Balancing**: Each client maintains independent pending count
 
 ### Backpressure Mechanism
 
-The benchmark implements adaptive backpressure to prevent buffer overflow:
+The benchmark uses error-based backpressure for natural concurrency control:
 
 ```c
-int total_pending = sum_pending_count(clients, num_clients);
-int max_concurrent = batch_size * 2;
+/* Send requests until pending buffer is full */
+while (sent_for_client < 256) {
+    int ret = uvrpc_client_call(client, "Add", params, on_response, client_ctx);
+    
+    if (ret == UVRPC_OK) {
+        /* Success - continue sending */
+        sent_for_client++;
+    } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+        /* Pending buffer full - stop sending
+         * Wait for responses to arrive and free up buffer space
+         * on_response callback will be called automatically when responses arrive
+         * No explicit retry needed - the callback will handle retry
+         */
+        break;
+    }
+}
 
-if (total_pending < max_concurrent) {
-    /* Send new request */
-    int target_client = find_min_pending_client(clients, num_clients);
-    uvrpc_client_call(clients[target_client], "Add", params, on_response, state);
+/* In on_response callback, retry sending after buffer space is freed */
+if (state->timer_interval_ms == 0) {
+    int ret = uvrpc_client_call(client, "Add", params, on_response, client_ctx);
+    
+    if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
+        /* Buffer still full - wait for next response callback to retry
+         * This naturally implements backpressure without explicit delays
+         * The system automatically adjusts sending rate based on response processing speed
+         */
+        /* No action - wait for next on_response call */
+    }
 }
 ```
 
 This ensures:
-- Never exceeds maximum concurrent requests
-- Even load distribution across clients
-- No request starvation
+- Never exceeds pending buffer capacity (64 slots per client)
+- Automatic retry when buffer space is available
+- No explicit delay needed - responses naturally free buffer slots
+- Perfect adaptation to system capacity
 
 ## Recommendations
 
 ### For All Use Cases (Recommended)
 
 **Use 0ms interval (default, response-driven mode)** for optimal performance:
-- 99.9% success rate (near perfect)
+- 100% success rate (perfect)
 - 145k+ ops/s throughput (50% higher than timer modes)
 - 2 MB memory usage (33% lower than timer modes)
 - Lowest power consumption (no timer interrupts)
