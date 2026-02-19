@@ -13,32 +13,36 @@
 typedef struct uvbus_udp_client uvbus_udp_client_t;
 typedef struct uvbus_udp_server uvbus_udp_server_t;
 
-/* UDP client structure */
+/* UDP client structure - optimized for cache locality */
 struct uvbus_udp_client {
+    /* Frequently accessed fields - grouped together */
+    int is_connected;
+    int port;
+    
+    /* Pointer fields */
+    char* host;
+    void* parent_transport;
+    
+    /* LibUV handle and address - kept together */
     uv_udp_t udp_handle;
     struct sockaddr_in server_addr;
-    int is_connected;
     
-    char* host;
-    int port;
-    
-    /* Read buffer */
-    uint8_t read_buffer[65536];
-    
-    /* Parent transport reference */
-    void* parent_transport;
+    /* Large buffer - placed at end to improve cache locality for small fields */
+    uint8_t read_buffer[65536];  /* 64KB read buffer */
 };
 
-/* UDP server structure */
+/* UDP server structure - optimized for cache locality */
 struct uvbus_udp_server {
-    uv_udp_t udp_handle;
-    
-    char* host;
-    int port;
+    /* Frequently accessed fields - grouped together */
     int is_listening;
+    int port;
     
-    /* Parent transport reference */
+    /* Pointer fields */
+    char* host;
     void* parent_transport;
+    
+    /* LibUV handle - kept at end */
+    uv_udp_t udp_handle;
 };
 
 /* Parse address */

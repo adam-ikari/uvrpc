@@ -23,44 +23,48 @@
 typedef struct uvbus_tcp_client uvbus_tcp_client_t;
 typedef struct uvbus_tcp_server uvbus_tcp_server_t;
 
-/* TCP client structure */
+/* TCP client structure - optimized for cache locality */
 struct uvbus_tcp_client {
+    /* Frequently accessed fields - grouped together */
+    int is_connected;
+    int ref_count;  /* Reference counting for async cleanup */
+    size_t read_pos;
+    
+    /* Pointer fields */
+    char* host;
+    void* parent_transport;
+    void* client_connection;
+    
+    /* Integer fields */
+    int port;
+    
+    /* LibUV handles - kept together at end */
     uv_tcp_t tcp_handle;
     uv_connect_t connect_req;
     uv_write_t write_req;
     
-    char* host;
-    int port;
-    int is_connected;
-    int ref_count;  /* Reference counting for async cleanup */
-    
-    /* UVRPC compatibility: pointer to client_connection */
-    void* client_connection;
-    
-    /* Read buffer - optimized for performance vs memory trade-off */
-    uint8_t read_buffer[32768];  /* Reduced from 64KB to 32KB */
-    size_t read_pos;
-    
-    /* Parent transport reference */
-    void* parent_transport;
+    /* Large buffer - placed at end to improve cache locality for small fields */
+    uint8_t read_buffer[32768];  /* 32KB read buffer */
 };
 
-/* TCP server structure */
+/* TCP server structure - optimized for cache locality */
 struct uvbus_tcp_server {
-    uv_tcp_t listen_handle;
-    
-    char* host;
-    int port;
+    /* Frequently accessed fields - grouped together */
     int is_listening;
     int ref_count;  /* Reference counting for async cleanup */
-    
-    /* Client connections */
-    uvbus_tcp_client_t** clients;
     int client_count;
     int client_capacity;
     
-    /* Parent transport reference */
+    /* Pointer fields */
+    char* host;
+    uvbus_tcp_client_t** clients;
     void* parent_transport;
+    
+    /* Integer fields */
+    int port;
+    
+    /* LibUV handle - kept at end */
+    uv_tcp_t listen_handle;
 };
 
 /* Reference counting helpers */

@@ -23,35 +23,38 @@ typedef struct uvbus_ipc_client uvbus_ipc_client_t;
 typedef struct uvbus_ipc_server uvbus_ipc_server_t;
 
 /* IPC client structure */
+/* IPC client structure - optimized for cache locality */
 struct uvbus_ipc_client {
-    uv_pipe_t pipe_handle;
-    uv_connect_t connect_req;
+    /* Frequently accessed fields - grouped together */
     int is_connected;
-    
-    char* socket_path;
-    
-    /* Read buffer */
-    uint8_t read_buffer[65536];
     size_t read_pos;
     
-    /* Parent transport reference */
+    /* Pointer fields */
+    char* socket_path;
     void* parent_transport;
+    
+    /* LibUV handles - kept together at end */
+    uv_pipe_t pipe_handle;
+    uv_connect_t connect_req;
+    
+    /* Large buffer - placed at end to improve cache locality for small fields */
+    uint8_t read_buffer[65536];  /* 64KB read buffer */
 };
 
-/* IPC server structure */
+/* IPC server structure - optimized for cache locality */
 struct uvbus_ipc_server {
-    uv_pipe_t listen_pipe;
-    
-    char* socket_path;
+    /* Frequently accessed fields - grouped together */
     int is_listening;
-    
-    /* Client connections */
-    uvbus_ipc_client_t** clients;
     int client_count;
     int client_capacity;
     
-    /* Parent transport reference */
+    /* Pointer fields */
+    char* socket_path;
+    uvbus_ipc_client_t** clients;
     void* parent_transport;
+    
+    /* LibUV handle - kept at end */
+    uv_pipe_t listen_pipe;
 };
 
 /* Parse address */
