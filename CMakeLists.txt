@@ -294,6 +294,12 @@ add_executable(uvasync_demo
 )
 target_link_libraries(uvasync_demo uvrpc pthread)
 
+# uvasync minimal test
+add_executable(uvasync_minimal_test
+    examples/uvasync_minimal_test.c
+)
+target_link_libraries(uvasync_minimal_test uvrpc pthread)
+
 # Tests
 if(UVRPC_BUILD_TESTS)
     add_subdirectory(tests)
