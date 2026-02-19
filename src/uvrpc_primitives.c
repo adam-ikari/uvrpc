@@ -963,12 +963,28 @@ int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count,
     /* Wait for completion */
     ret = uvrpc_promise_wait(&combined);
     
-    /* Get result */
+    /* Get result and transfer ownership to caller */
     if (ret == UVRPC_OK && result && result_size) {
-        uvrpc_promise_get_result(&combined, result, result_size);
+        uint8_t* internal_result = NULL;
+        size_t internal_size = 0;
+        uvrpc_promise_get_result(&combined, &internal_result, &internal_size);
+        
+        /* Copy result to transfer ownership to caller */
+        if (internal_result && internal_size > 0) {
+            *result = (uint8_t*)UVRPC_MALLOC(internal_size);
+            if (*result) {
+                memcpy(*result, internal_result, internal_size);
+                *result_size = internal_size;
+            } else {
+                ret = UVRPC_ERROR_NO_MEMORY;
+            }
+        } else {
+            *result = NULL;
+            *result_size = 0;
+        }
     }
     
-    /* Cleanup */
+    /* Cleanup - this will free internal result memory */
     uvrpc_promise_cleanup(&combined);
     
     return ret;
@@ -999,12 +1015,28 @@ int uvrpc_promise_race_sync(uvrpc_promise_t** promises, int count,
     /* Wait for completion */
     ret = uvrpc_promise_wait(&combined);
     
-    /* Get result */
+    /* Get result and transfer ownership to caller */
     if (ret == UVRPC_OK && result && result_size) {
-        uvrpc_promise_get_result(&combined, result, result_size);
+        uint8_t* internal_result = NULL;
+        size_t internal_size = 0;
+        uvrpc_promise_get_result(&combined, &internal_result, &internal_size);
+        
+        /* Copy result to transfer ownership to caller */
+        if (internal_result && internal_size > 0) {
+            *result = (uint8_t*)UVRPC_MALLOC(internal_size);
+            if (*result) {
+                memcpy(*result, internal_result, internal_size);
+                *result_size = internal_size;
+            } else {
+                ret = UVRPC_ERROR_NO_MEMORY;
+            }
+        } else {
+            *result = NULL;
+            *result_size = 0;
+        }
     }
     
-    /* Cleanup */
+    /* Cleanup - this will free internal result memory */
     uvrpc_promise_cleanup(&combined);
     
     return ret;
