@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* For atomic operations - GCC/Clang builtins */
 #if defined(__GNUC__) || defined(__clang__)
@@ -100,6 +101,55 @@ void uvrpc_promise_cleanup(uvrpc_promise_t* promise) {
     promise->error_code = 0;
     promise->callback = NULL;
     promise->callback_data = NULL;
+}
+
+/* Create and initialize a Promise (convenience function) */
+uvrpc_promise_t* uvrpc_promise_create(uv_loop_t* loop) {
+    if (!loop) {
+        return NULL;
+    }
+    
+    uvrpc_promise_t* promise = (uvrpc_promise_t*)UVRPC_MALLOC(sizeof(uvrpc_promise_t));
+    if (!promise) {
+        return NULL;
+    }
+    
+    int ret = uvrpc_promise_init(promise, loop);
+    if (ret != UVRPC_OK) {
+        UVRPC_FREE(promise);
+        return NULL;
+    }
+    
+    return promise;
+}
+
+/* Cleanup and free a Promise (convenience function) */
+void uvrpc_promise_destroy(uvrpc_promise_t* promise) {
+    if (!promise) {
+        return;
+    }
+    
+    uvrpc_promise_cleanup(promise);
+    UVRPC_FREE(promise);
+}
+
+/* Wait for Promise to complete synchronously (blocking) */
+int uvrpc_promise_wait(uvrpc_promise_t* promise) {
+    if (!promise) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    /* Run event loop until promise is settled */
+    while (promise->state == UVRPC_PROMISE_PENDING) {
+        uv_run(promise->loop, UV_RUN_ONCE);
+        usleep(1000);  /* 1ms sleep to avoid busy loop */
+    }
+    
+    if (promise->state == UVRPC_PROMISE_FULFILLED) {
+        return UVRPC_OK;
+    } else {
+        return promise->error_code;
+    }
 }
 
 /* Resolve promise */
@@ -886,4 +936,76 @@ int uvrpc_promise_all_settled(uvrpc_promise_t** promises, int count, uvrpc_promi
     }
     
     return UVRPC_OK;
+}
+
+/* Promise.all() - Synchronous version (blocking) */
+int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count,
+                        uint8_t** result, size_t* result_size,
+                        uv_loop_t* loop) {
+    if (!promises || count <= 0 || !loop) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    /* Create combined promise */
+    uvrpc_promise_t combined;
+    int ret = uvrpc_promise_init(&combined, loop);
+    if (ret != UVRPC_OK) {
+        return ret;
+    }
+    
+    /* Run Promise.all() */
+    ret = uvrpc_promise_all(promises, count, &combined, loop);
+    if (ret != UVRPC_OK) {
+        uvrpc_promise_cleanup(&combined);
+        return ret;
+    }
+    
+    /* Wait for completion */
+    ret = uvrpc_promise_wait(&combined);
+    
+    /* Get result */
+    if (ret == UVRPC_OK && result && result_size) {
+        uvrpc_promise_get_result(&combined, result, result_size);
+    }
+    
+    /* Cleanup */
+    uvrpc_promise_cleanup(&combined);
+    
+    return ret;
+}
+
+/* Promise.race() - Synchronous version (blocking) */
+int uvrpc_promise_race_sync(uvrpc_promise_t** promises, int count,
+                        uint8_t** result, size_t* result_size,
+                        uv_loop_t* loop) {
+    if (!promises || count <= 0 || !loop) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    /* Create combined promise */
+    uvrpc_promise_t combined;
+    int ret = uvrpc_promise_init(&combined, loop);
+    if (ret != UVRPC_OK) {
+        return ret;
+    }
+    
+    /* Run Promise.race() */
+    ret = uvrpc_promise_race(promises, count, &combined, loop);
+    if (ret != UVRPC_OK) {
+        uvrpc_promise_cleanup(&combined);
+        return ret;
+    }
+    
+    /* Wait for completion */
+    ret = uvrpc_promise_wait(&combined);
+    
+    /* Get result */
+    if (ret == UVRPC_OK && result && result_size) {
+        uvrpc_promise_get_result(&combined, result, result_size);
+    }
+    
+    /* Cleanup */
+    uvrpc_promise_cleanup(&combined);
+    
+    return ret;
 }

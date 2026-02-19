@@ -138,7 +138,6 @@ extern "C" {
 
 typedef struct uvrpc_promise uvrpc_promise_t;
 typedef struct uvrpc_semaphore uvrpc_semaphore_t;
-typedef struct uvrpc_barrier uvrpc_barrier_t;
 typedef struct uvrpc_waitgroup uvrpc_waitgroup_t;
 
 /* ============================================================================
@@ -303,6 +302,60 @@ const char* uvrpc_promise_get_error(uvrpc_promise_t* promise);
  * @return Error code, or 0 if not rejected
  */
 int32_t uvrpc_promise_get_error_code(uvrpc_promise_t* promise);
+
+/**
+ * @brief Create and initialize a Promise (convenience function)
+ * 
+ * Combines malloc() + uvrpc_promise_init() for easier use.
+ * 
+ * @code
+ * uvrpc_promise_t* promise = uvrpc_promise_create(loop);
+ * if (promise) {
+ *     // Use promise
+ *     uvrpc_promise_destroy(promise);  // Cleanup when done
+ * }
+ * @endcode
+ * 
+ * @param loop libuv event loop
+ * @return Pointer to allocated and initialized promise, or NULL on failure
+ */
+uvrpc_promise_t* uvrpc_promise_create(uv_loop_t* loop);
+
+/**
+ * @brief Cleanup and free a Promise (convenience function)
+ * 
+ * Combines uvrpc_promise_cleanup() + free() for easier use.
+ * 
+ * @param promise Promise to destroy (must be allocated with uvrpc_promise_create())
+ */
+void uvrpc_promise_destroy(uvrpc_promise_t* promise);
+
+/**
+ * @brief Wait for Promise to complete synchronously (blocking)
+ * 
+ * Blocks until the promise is fulfilled or rejected.
+ * WARNING: This blocks the current thread, do not use in event loop callbacks.
+ * 
+ * @code
+ * uvrpc_promise_t* p = uvrpc_promise_create(loop);
+ * // ... do async work that resolves/rejects p ...
+ * 
+ * // Wait for completion (blocks until promise settles)
+ * int ret = uvrpc_promise_wait(p);
+ * if (ret == UVRPC_OK) {
+ *     uint8_t* result;
+ *     size_t size;
+ *     uvrpc_promise_get_result(p, &result, &size);
+ *     // Use result
+ * }
+ * 
+ * uvrpc_promise_destroy(p);
+ * @endcode
+ * 
+ * @param promise Promise to wait for
+ * @return UVRPC_OK if fulfilled, error code if rejected
+ */
+int uvrpc_promise_wait(uvrpc_promise_t* promise);
 
 /** @} */
 
@@ -583,6 +636,59 @@ int uvrpc_promise_all_settled(
     uvrpc_promise_t** promises,
     int count,
     uvrpc_promise_t* combined,
+    uv_loop_t* loop);
+
+/**
+ * @brief Promise.all() - Synchronous version (blocking)
+ * 
+ * Convenience function that creates combined promise, runs event loop,
+ * and waits for completion. WARNING: Blocks the current thread.
+ * 
+ * @code
+ * uvrpc_promise_t* promises[N];
+ * // ... create promises ...
+ * 
+ * uint8_t* result = NULL;
+ * size_t result_size = 0;
+ * int ret = uvrpc_promise_all_sync(promises, N, &result, &result_size, loop);
+ * if (ret == UVRPC_OK) {
+ *     // Use result
+ * }
+ * uvrpc_free(result);
+ * @endcode
+ * 
+ * @param promises Array of promises
+ * @param count Number of promises
+ * @param result Output pointer to combined result data (caller must free)
+ * @param result_size Output pointer to result size
+ * @param loop libuv event loop
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_promise_all_sync(
+    uvrpc_promise_t** promises,
+    int count,
+    uint8_t** result,
+    size_t* result_size,
+    uv_loop_t* loop);
+
+/**
+ * @brief Promise.race() - Synchronous version (blocking)
+ * 
+ * Convenience function that waits for first promise to complete.
+ * WARNING: Blocks the current thread.
+ * 
+ * @param promises Array of promises
+ * @param count Number of promises
+ * @param result Output pointer to first result data (caller must free)
+ * @param result_size Output pointer to result size
+ * @param loop libuv event loop
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_promise_race_sync(
+    uvrpc_promise_t** promises,
+    int count,
+    uint8_t** result,
+    size_t* result_size,
     uv_loop_t* loop);
 
 /** @} */
