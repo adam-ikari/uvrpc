@@ -112,14 +112,13 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 
 /* Client alloc callback */
 static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-    uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)handle->data;
-    
-    if (client->read_pos + suggested_size > sizeof(client->read_buffer)) {
-        suggested_size = sizeof(client->read_buffer) - client->read_pos;
+    /* Allocate buffer based on suggested size */
+    size_t alloc_size = suggested_size;
+    if (alloc_size < 65536) {
+        alloc_size = 65536;  /* 64KB minimum for high concurrency */
     }
-    
-    buf->base = (char*)client->read_buffer + client->read_pos;
-    buf->len = suggested_size;
+    buf->base = (char*)uvrpc_alloc(alloc_size);
+    buf->len = alloc_size;
 }
 
 /* Client connect callback */

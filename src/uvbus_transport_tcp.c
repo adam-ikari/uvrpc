@@ -217,8 +217,13 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 
 /* Client alloc callback */
 static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-    buf->base = (char*)uvrpc_alloc(suggested_size);
-    buf->len = suggested_size;
+    /* Allocate buffer based on suggested size */
+    size_t alloc_size = suggested_size;
+    if (alloc_size < 65536) {
+        alloc_size = 65536;  /* 64KB minimum for high concurrency */
+    }
+    buf->base = (char*)uvrpc_alloc(alloc_size);
+    buf->len = alloc_size;
 }
 
 /* Server connection callback */

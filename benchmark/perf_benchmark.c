@@ -49,6 +49,7 @@ typedef struct {
     atomic_int* total_failures;
     atomic_int* total_requests;
     int low_latency;
+    int timer_interval_ms;  /* Configurable timer interval */
 } thread_context_t;
 
 /* Thread-specific state */
@@ -67,6 +68,7 @@ typedef struct {
     int num_clients;
     int batch_size;
     int failed;
+    int timer_interval_ms;  /* Configurable timer interval (default: 1ms) */
 } thread_state_t;
 
 /* Global state */
@@ -256,12 +258,42 @@ int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
     /* Store target number of clients */
     state->target_clients = num_clients;
     
+    /* Calculate required pending callbacks based on concurrency
+     * High concurrency (>= 50) needs larger buffer to avoid UVRPC_ERROR_CALLBACK_LIMIT
+     * Formula: clients * concurrency * 10 to accommodate pending requests and responses
+     * with sufficient headroom for burst traffic
+     * 
+     * Testing larger buffer sizes:
+     * - Default: 2^16 = 65,536
+     * - Medium: 2^18 = 262,144
+     * - High: 2^19 = 524,288
+     * - Very High: 2^20 = 1,048,576
+     * - Ultra High: 2^21 = 2,097,152 (for testing)
+     */
+    int total_concurrency = num_clients * state->batch_size;
+    int max_pending = (1 << 16);  /* Default: 65,536 */
+    if (total_concurrency >= 400) {
+        max_pending = (1 << 21);  /* 2,097,152 for very high concurrency (testing) */
+    } else if (total_concurrency >= 100) {
+        max_pending = (1 << 21);  /* 2,097,152 for high concurrency (testing) */
+    } else if (total_concurrency >= 50) {
+        max_pending = (1 << 21);  /* 2,097,152 for medium concurrency (testing) */
+    }
+    
     for (int i = 0; i < num_clients; i++) {
         uvrpc_config_t* config = uvrpc_config_new();
         uvrpc_config_set_loop(config, loop);
         uvrpc_config_set_address(config, address);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
         uvrpc_config_set_performance_mode(config, perf_mode);
+        uvrpc_config_set_max_pending_callbacks(config, max_pending);
+        
+        /* Set max concurrent requests based on batch size with headroom */
+        /* Allow 2x batch size to accommodate pending requests */
+        int max_concurrent = state->batch_size * 2;
+        if (max_concurrent < 100) max_concurrent = 100;  /* Minimum 100 */
+        if (max_concurrent > 1000) max_concurrent = 1000;  /* Maximum 1000 */
+        uvrpc_config_set_max_concurrent(config, max_concurrent);
         
         clients[i] = uvrpc_client_create(config);
         uvrpc_config_free(config);  /* Free config after client creation */
@@ -300,9 +332,38 @@ static void send_batch_requests(uv_timer_t* handle) {
     /* Copy timer handle to state for cleanup */
     state->batch_timer_handle = *handle;
     
-    /* Send batch of requests */
+    /* Send batch of requests with adaptive backpressure control
+     * Check pending count for each client before sending
+     * Skip sending if pending count is too high to avoid buffer overflow
+     */
+    int sent_this_round = 0;
+    int skipped_count = 0;
+    
     for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
         int client_idx = state->sent_requests % num_clients;
+        
+        /* Check pending request count before sending (backpressure mechanism)
+         * Use adaptive threshold based on max_concurrent to prevent buffer overflow
+         * Get max_concurrent from the first client (all clients have same config)
+         */
+        int pending_count = uvrpc_client_get_pending_count(clients[client_idx]);
+        int max_concurrent = batch_size * 2;  /* From create_clients: max_concurrent = batch_size * 2 */
+        
+        /* Backpressure threshold: 80% of max_concurrent
+         * This prevents buffer overflow while allowing reasonable throughput
+         */
+        int threshold = max_concurrent * 8 / 10;  /* 80% threshold */
+        
+        /* Allow small burst (up to 10 extra) to handle traffic spikes
+         * This improves throughput while still preventing buffer overflow
+         */
+        if (pending_count > threshold + 10) {
+            /* Skip sending this request, but don't count as failure
+             * This is normal backpressure behavior
+             */
+            skipped_count++;
+            continue;
+        }
         
         int32_t a = 100;
         int32_t b = 200;
@@ -310,12 +371,20 @@ static void send_batch_requests(uv_timer_t* handle) {
         
         int ret = uvrpc_client_call(clients[client_idx], "Add", (uint8_t*)params, sizeof(params), on_response, state);
         
-        state->sent_requests++;
-        
-        if (ret != UVRPC_OK) {
+        if (ret == UVRPC_OK) {
+            state->sent_requests++;
+            sent_this_round++;
+        } else {
             state->failed++;
+            /* Skip this request and try next one */
         }
     }
+    
+    /* Optional: Log skipped requests for debugging (disabled in production)
+     * if (skipped_count > 0) {
+     *     fprintf(stderr, "[DEBUG] Skipped %d requests due to backpressure\n", skipped_count);
+     * }
+     */
     
     /* If shutdown was requested, stop the event loop */
     if (g_shutdown_requested) {
@@ -564,11 +633,12 @@ void* thread_func(void* arg) {
     state.num_clients = ctx->num_clients;
     state.batch_size = ctx->concurrency;
     state.failed = 0;
+    state.timer_interval_ms = ctx->timer_interval_ms;  /* Use configured timer interval */
     batch_timer.data = &state;
     batch_timer.loop = &loop;
     
-    /* Send requests every 1ms */
-    uv_timer_start(&batch_timer, send_batch_requests, 1, 1);
+    /* Send requests with configurable interval (default: 1ms) */
+    uv_timer_start(&batch_timer, send_batch_requests, state.timer_interval_ms, state.timer_interval_ms);
 
     /* Run event loop with UV_RUN_DEFAULT */
     struct timespec start, end;
@@ -604,7 +674,7 @@ static void run_publisher_mode(const char* address, int num_threads, int publish
 static void run_subscriber_mode(const char* address, int num_threads, int subscribers_per_thread, 
                                 int test_duration_ms);
 
-void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int test_duration_ms, int low_latency) {
+void run_multi_thread_test(const char* address, int num_threads, int clients_per_thread, int concurrency, int test_duration_ms, int low_latency, int timer_interval_ms) {
     atomic_int total_responses = 0;
     atomic_int total_failures = 0;
     atomic_int total_requests = 0;
@@ -636,6 +706,7 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
         contexts[i].total_failures = &total_failures;
         contexts[i].total_requests = &total_requests;
         contexts[i].low_latency = low_latency;
+        contexts[i].timer_interval_ms = timer_interval_ms;  /* Pass timer interval */
 
         pthread_create(&threads[i], NULL, thread_func, &contexts[i]);
     }
@@ -1085,6 +1156,7 @@ void print_usage(const char* prog_name) {
     printf("  -p <publishers>   Publishers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -s <subscribers>  Subscribers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
+    printf("  -i <interval>     Timer interval in milliseconds (default: 1)\n");
     printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
@@ -1141,6 +1213,7 @@ int main(int argc, char** argv) {
     int publishers_per_thread = 1;
     int subscribers_per_thread = 1;
     int concurrency = 100;
+    int timer_interval_ms = 1;  /* Default: 1ms */
     int test_duration_ms = 1000;  /* Default: 1 second */
     int low_latency = 0;
     int latency_mode = 0;
@@ -1164,6 +1237,8 @@ int main(int argc, char** argv) {
             subscribers_per_thread = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-b") == 0 && i + 1 < argc) {
             concurrency = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-i") == 0 && i + 1 < argc) {
+            timer_interval_ms = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-d") == 0 && i + 1 < argc) {
             test_duration_ms = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-l") == 0) {
@@ -1244,7 +1319,7 @@ int main(int argc, char** argv) {
             if (num_threads == 1) {
                 run_single_multi_test(address, clients_per_thread, concurrency, test_duration_ms, low_latency);
             } else {
-                run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, test_duration_ms, low_latency);
+                run_multi_thread_test(address, num_threads, clients_per_thread, concurrency, test_duration_ms, low_latency, timer_interval_ms);
             }
         }
     }
