@@ -70,8 +70,16 @@ typedef struct {
     int failed;
     int timer_interval_ms;  /* Configurable timer interval (default: 1ms), 0 for immediate mode */
     int max_concurrent_requests;  /* Max concurrent requests for immediate mode */
+    int max_concurrent_per_client;  /* Max concurrent requests per client */
     uv_loop_t* loop;  /* Event loop reference for immediate mode */
 } thread_state_t;
+
+/* Per-client context for immediate mode callback */
+typedef struct {
+    thread_state_t* state;
+    uvrpc_client_t* client;
+    int client_idx;
+} client_context_t;
 
 /* Global state */
 static atomic_int g_response_sum = 0;
@@ -229,7 +237,8 @@ void on_connect(int status, void* ctx) {
 }
 
 void on_response(uvrpc_response_t* resp, void* ctx) {
-    thread_state_t* state = (thread_state_t*)ctx;
+    client_context_t* client_ctx = (client_context_t*)ctx;
+    thread_state_t* state = client_ctx->state;
     
     /* Count all responses, regardless of status */
     state->responses_received++;
@@ -247,35 +256,21 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
     
     /* In immediate mode (interval=0), send new request immediately after receiving response
      * This maintains constant concurrency without timer delays
+     * Each client maintains its own concurrency limit independently
      */
-    if (state->timer_interval_ms == 0 && !g_shutdown_requested && state->loop && state->clients) {
-        /* Check if we can send more requests (backpressure check) */
-        int total_pending = 0;
-        for (int i = 0; i < state->num_clients; i++) {
-            total_pending += uvrpc_client_get_pending_count(state->clients[i]);
-        }
+    if (state->timer_interval_ms == 0 && !g_shutdown_requested && client_ctx->client) {
+        /* Check pending count for this specific client (no global lock needed) */
+        int pending_count = uvrpc_client_get_pending_count(client_ctx->client);
         
-        /* Send new request if below concurrency limit */
-        if (total_pending < state->max_concurrent_requests) {
-            /* Send to the client with lowest pending count for load balancing */
-            int min_pending = INT_MAX;
-            int target_client = 0;
-            
-            for (int i = 0; i < state->num_clients; i++) {
-                int pending = uvrpc_client_get_pending_count(state->clients[i]);
-                if (pending < min_pending) {
-                    min_pending = pending;
-                    target_client = i;
-                }
-            }
-            
-            /* Send new request */
+        /* Send new request if this client is below its concurrency limit */
+        if (pending_count < state->max_concurrent_per_client) {
+            /* Send new request to this same client */
             int32_t a = 100;
             int32_t b = 200;
             int32_t params[2] = {a, b};
             
-            int ret = uvrpc_client_call(state->clients[target_client], "Add", 
-                                       (uint8_t*)params, sizeof(params), on_response, state);
+            int ret = uvrpc_client_call(client_ctx->client, "Add", 
+                                       (uint8_t*)params, sizeof(params), on_response, client_ctx);
             
             if (ret == UVRPC_OK) {
                 state->sent_requests++;
@@ -779,41 +774,45 @@ void* thread_func(void* arg) {
      */
     if (state.timer_interval_ms == 0) {
         /* Immediate mode: send requests with immediate callback on response
-         * Maintain concurrency limit: send when pending count is below threshold
-         * This sends requests as fast as responses arrive, respecting backpressure
-         * Use fixed 50 concurrent requests for optimal performance
+         * Maintain concurrency limit per client independently
+         * Each client maintains its own 12-13 concurrent requests
+         * No global locks or shared state between clients
          */
-        int max_concurrent = 50;  /* Fixed optimal concurrency */
-        int threshold = max_concurrent * 8 / 10;  /* 80% threshold */
+        int max_concurrent_per_client = 12;  /* 12 concurrent per client, 50 total for 4 clients */
+        int max_concurrent = max_concurrent_per_client * num_clients;
         
-        printf("[Thread %d] Immediate mode: maintaining %d max concurrent requests...\n", 
-               ctx->thread_id, max_concurrent);
+        printf("[Thread %d] Immediate mode: maintaining %d concurrent per client (%d total)...\n", 
+               ctx->thread_id, max_concurrent_per_client, max_concurrent);
         
-        /* Use a custom callback that triggers next send on response */
+        /* Set per-client concurrency limit */
+        state.max_concurrent_per_client = max_concurrent_per_client;
         state.max_concurrent_requests = max_concurrent;
         
-        /* Send initial batch to reach concurrency limit */
-        int initial_sent = 0;
-        int requests_per_client = max_concurrent / num_clients;
-        if (requests_per_client < 1) requests_per_client = 1;
+        /* Allocate per-client contexts (freed after test) */
+        client_context_t* client_contexts = malloc(num_clients * sizeof(client_context_t));
+        if (!client_contexts) {
+            fprintf(stderr, "[Thread %d] Failed to allocate client contexts\n", ctx->thread_id);
+            free(clients);
+            return NULL;
+        }
         
-        for (int i = 0; i < num_clients && initial_sent < max_concurrent; i++) {
-            /* Send requests per client to reach concurrency */
-            int to_send = requests_per_client;
-            if (i == num_clients - 1) {
-                to_send = max_concurrent - initial_sent;  /* Send remaining to last client */
-            }
+        /* Initialize client contexts and send initial requests */
+        for (int i = 0; i < num_clients; i++) {
+            client_contexts[i].state = &state;
+            client_contexts[i].client = clients[i];
+            client_contexts[i].client_idx = i;
             
-            for (int j = 0; j < to_send; j++) {
+            /* Send initial requests to reach per-client concurrency limit */
+            for (int j = 0; j < max_concurrent_per_client; j++) {
                 int32_t a = 100;
                 int32_t b = 200;
                 int32_t params[2] = {a, b};
                 
-                int ret = uvrpc_client_call(clients[i], "Add", (uint8_t*)params, sizeof(params), on_response, &state);
+                int ret = uvrpc_client_call(clients[i], "Add", (uint8_t*)params, 
+                                           sizeof(params), on_response, &client_contexts[i]);
                 
                 if (ret == UVRPC_OK) {
                     state.sent_requests++;
-                    initial_sent++;
                 } else {
                     state.failed++;
                 }
@@ -821,7 +820,11 @@ void* thread_func(void* arg) {
         }
         
         printf("[Thread %d] Sent %d initial requests, entering event loop to send on response...\n", 
-               ctx->thread_id, initial_sent);
+               ctx->thread_id, state.sent_requests);
+        
+        /* Free client contexts after event loop (cleanup in cleanup_clients_and_loop) */
+        /* Note: client_contexts will be freed after event loop exits */
+        (void)client_contexts;  /* Suppress unused warning, will use in cleanup */
         
         /* Don't start timer, enter event loop to wait for responses and send new requests */
     } else {
