@@ -764,6 +764,8 @@ int uvrpc_promise_all(uvrpc_promise_t** promises, int count, uvrpc_promise_t* co
 static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) {
     promise_race_context_t* ctx = (promise_race_context_t*)user_data;
     
+    
+    
     /* If already completed, do nothing */
     if (UVRPC_ATOMIC_LOAD(&ctx->completed)) {
         return;
@@ -783,6 +785,7 @@ static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) 
             uint8_t* result_copy = UVRPC_MALLOC(result_size);
             if (result_copy) {
                 memcpy(result_copy, result, result_size);
+                
                 uvrpc_promise_resolve(ctx->combined, result_copy, result_size);
                 UVRPC_FREE(result_copy);
             } else {
@@ -796,6 +799,7 @@ static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) 
         int32_t error_code = uvrpc_promise_get_error_code(promise);
         uvrpc_promise_reject(ctx->combined, error_code, error);
     }
+    
     
     UVRPC_FREE(ctx);
 }

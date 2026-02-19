@@ -218,16 +218,20 @@ int main() {
             free(ctx.promises[i]);
         }
         uvrpc_promise_cleanup(&ctx.combined);
+        
+        /* Run event loop to clean up closed handles */
+        for (int i = 0; i < 1000; i++) {
+            uv_run(&loop, UV_RUN_NOWAIT);
+        }
     }
     printf("\n");
     
     /* Test 3: Promise.race() - first fulfills */
     printf("Test 3: Promise.race() - First promise fulfills\n");
     {
-        /* Run event loop multiple times to clean up any pending handles from previous tests */
-        for (int i = 0; i < 50; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
-        }
+        /* Close and reopen the event loop to avoid issues with previous tests */
+        uv_loop_close(&loop);
+        uv_loop_init(&loop);
         
         test_context_t ctx;
         ctx.loop = &loop;
@@ -254,19 +258,21 @@ int main() {
         /* Run event loop until completion or timeout */
         int iterations = 0;
         while (!ctx.completed && iterations < 100) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            int ret = uv_run(&loop, UV_RUN_NOWAIT);
             iterations++;
+            usleep(1000);
         }
+        
+        printf("Promise.race test completed after %d iterations, ctx.completed=%d\n", iterations, ctx.completed);
         
         if (!ctx.completed) {
             printf("[Promise.race] Timeout - callback not called\n");
         }
         
-        /* Cleanup - resolve remaining promises to avoid blocking event loop */
+/* Cleanup - Set callbacks to NULL to avoid accessing freed memory */
         for (int i = 1; i < 3; i++) {
             if (uvrpc_promise_is_pending(ctx.promises[i])) {
-                int dummy = 0;
-                uvrpc_promise_resolve(ctx.promises[i], (uint8_t*)&dummy, sizeof(int));
+                uvrpc_promise_set_callback(ctx.promises[i], NULL, NULL);
             }
         }
         
@@ -284,9 +290,13 @@ int main() {
     }
     printf("\n");
     
-    /* Test 4: Promise.allSettled() - mix of fulfill and reject */
+    /* Test 4: Promise.allSettled() - Mix of fulfill and reject */
     printf("Test 4: Promise.allSettled() - Mix of fulfill and reject\n");
     {
+        /* Close and reopen the event loop to avoid issues with previous tests */
+        uv_loop_close(&loop);
+        uv_loop_init(&loop);
+        
         test_context_t ctx;
         ctx.loop = &loop;
         ctx.test_count = 4;
@@ -325,6 +335,11 @@ int main() {
             free(ctx.promises[i]);
         }
         uvrpc_promise_cleanup(&ctx.combined);
+        
+        /* Run event loop to clean up closed handles */
+        for (int i = 0; i < 10; i++) {
+            uv_run(&loop, UV_RUN_NOWAIT);
+        }
     }
     printf("\n");
     

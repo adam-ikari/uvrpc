@@ -280,6 +280,12 @@ add_executable(test_promise_race_simple
 )
 target_link_libraries(test_promise_race_simple uvrpc pthread)
 
+# Test Promise race only
+add_executable(test_promise_race_only
+    examples/test_promise_race_only.c
+)
+target_link_libraries(test_promise_race_only uvrpc pthread)
+
 # Tests
 if(UVRPC_BUILD_TESTS)
     add_subdirectory(tests)
