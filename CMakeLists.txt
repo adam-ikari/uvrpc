@@ -3,7 +3,11 @@ project(uvrpc VERSION 0.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Release)
+
+# Default to Release if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
 
 # Release mode flags
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

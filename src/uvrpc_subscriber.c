@@ -18,6 +18,16 @@
 #include <string.h>
 #include <stdio.h>
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVRPC_DEBUG
+#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVRPC_LOG(fmt, ...) ((void)0)
+#endif
+
+/* Error logging - always enabled */
+#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
 /* Subscription entry */
 typedef struct subscription_entry {
     char* topic;
@@ -100,7 +110,7 @@ static void subscriber_connect_callback(int status, void* ctx) {
     subscriber->is_connected = (status == 0);
 
     if (status != 0) {
-        fprintf(stderr, "Subscriber connection failed: %d\n", status);
+        UVRPC_ERROR("Subscriber connection failed: %d", status);
     }
 }
 

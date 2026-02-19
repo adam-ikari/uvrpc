@@ -25,7 +25,7 @@ uvrpc_config_t* uvrpc_config_new(void) {
     config->performance_mode = UVRPC_PERF_LOW_LATENCY;  /* Default to low latency */
     config->pool_size = UVRPC_DEFAULT_POOL_SIZE;
     config->max_concurrent = UVRPC_MAX_CONCURRENT_REQUESTS;
-    config->max_pending_callbacks = UVRPC_MAX_PENDING_CALLBACKS;
+    config->max_pending_callbacks = UVRPC_DEFAULT_PENDING_CALLBACKS;  /* Use default instead of compile-time constant */
     config->timeout_ms = 0;
     config->msgid_offset = 0;  /* Default: 0 = auto-assign */
 
@@ -107,12 +107,14 @@ uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_
 
 uvrpc_config_t* uvrpc_config_set_max_pending_callbacks(uvrpc_config_t* config, int max_pending) {
     if (!config) return NULL;
-    /* Validate that max_pending is a power of 2 */
-    if (max_pending > 0 && (max_pending & (max_pending - 1)) == 0) {
+    /* Validate that max_pending is a power of 2 and within limits
+     * Must be >= 64 (minimum for stability) and <= UVRPC_MAX_PENDING_CALLBACKS (safety limit) */
+    if (max_pending >= 64 && (max_pending & (max_pending - 1)) == 0 && 
+        max_pending <= UVRPC_MAX_PENDING_CALLBACKS) {
         config->max_pending_callbacks = max_pending;
     } else {
         /* Use default value if invalid */
-        config->max_pending_callbacks = UVRPC_MAX_PENDING_CALLBACKS;
+        config->max_pending_callbacks = UVRPC_DEFAULT_PENDING_CALLBACKS;
     }
     return config;
 }

@@ -1,22 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(benchmark C)
 
-# Force Release mode
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+# Release mode flags
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_definitions(-DNDEBUG -O2)
+    # Strip debug symbols for performance
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
 endif()
-
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    message(WARNING "Benchmark requires Release mode. Setting to Release.")
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
-
-# Add compile definitions for Release mode
-add_definitions(-DNDEBUG -O2)
-
-# Strip debug symbols for performance
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
 
 # Set C standard
 set(CMAKE_C_STANDARD 11)

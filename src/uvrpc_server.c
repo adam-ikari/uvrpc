@@ -20,6 +20,16 @@
 #include <stdio.h>
 #include <ctype.h>
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVRPC_DEBUG
+#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVRPC_LOG(fmt, ...) ((void)0)
+#endif
+
+/* Error logging - always enabled */
+#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
 /* Write callback to free buffer */
 static void write_callback(uv_write_t* req, int status) {
     (void)status;
@@ -81,7 +91,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     size_t params_size = 0;
 
     if (uvrpc_decode_request(data, size, &msgid, &method, &params, &params_size) != UVRPC_OK) {
-        UVRPC_LOG("Failed to decode request (size=%zu)", size);
+        UVRPC_ERROR("Failed to decode request (size=%zu)", size);
         return;
     }
 
@@ -126,7 +136,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         if (method) uvrpc_free(method);
     } else {
         /* Handler not found, send error response */
-        fprintf(stderr, "Handler not found: '%s'\n", method);
+        UVRPC_ERROR("Handler not found: '%s'", method);
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
 
@@ -169,7 +179,7 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     
     /* Initialize ring buffer */
     server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
-                                   config->max_pending_callbacks : UVRPC_MAX_PENDING_CALLBACKS;
+                                   config->max_pending_callbacks : UVRPC_DEFAULT_PENDING_CALLBACKS;
     server->generation = 0;
     
     /* Allocate ring buffer array */
@@ -375,7 +385,7 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         if (err == UVBUS_OK) {
             server->total_responses++;
         } else {
-            fprintf(stderr, "[SERVER] Failed to send response: %d\n", err);
+            UVRPC_ERROR("Failed to send response: %d", err);
         }
         uvrpc_free(resp_data);
     }

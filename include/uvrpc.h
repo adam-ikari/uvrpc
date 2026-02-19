@@ -76,11 +76,16 @@ typedef enum {
 } uvrpc_rpc_error_t;
 
 /* Configuration constants */
-#ifndef UVRPC_MAX_PENDING_CALLBACKS
-/* Ring buffer size - must be a power of 2 for efficient modulo operation
+#ifndef UVRPC_DEFAULT_PENDING_CALLBACKS
+/* Default ring buffer size - must be a power of 2 for efficient modulo operation
  * Recommended values: 65536 (2^16), 262144 (2^18), 1048576 (2^20), 4194304 (2^22)
- * Default: 2^20 = 1,048,576 */
-#define UVRPC_MAX_PENDING_CALLBACKS (1 << 20)  /* 1,048,576 - must be power of 2 */
+ * Default: 2^16 = 65,536 (balanced memory usage for typical workloads) */
+#define UVRPC_DEFAULT_PENDING_CALLBACKS (1 << 16)  /* 65,536 - must be power of 2 */
+#endif
+
+#ifndef UVRPC_MAX_PENDING_CALLBACKS
+/* Maximum ring buffer size - safety limit */
+#define UVRPC_MAX_PENDING_CALLBACKS (1 << 22)  /* 4,194,304 - maximum allowed */
 #endif
 
 #ifndef UVRPC_DEFAULT_POOL_SIZE

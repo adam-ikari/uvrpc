@@ -8,6 +8,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVRPC_DEBUG
+#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVRPC_LOG(fmt, ...) ((void)0)
+#endif
+
+/* Error logging - always enabled */
+#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
 /* Forward declarations */
 typedef struct uvbus_ipc_client uvbus_ipc_client_t;
 typedef struct uvbus_ipc_server uvbus_ipc_server_t;
@@ -246,35 +256,27 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     uv_pipe_init(transport->loop, &server->listen_pipe, 0);
     server->listen_pipe.data = transport;
     
-    printf("[IPC LISTEN] Pipe initialized\n");
-    fflush(stdout);
-    
     /* Bind to socket path */
     int bind_result = uv_pipe_bind(&server->listen_pipe, socket_path);
     if (bind_result != 0) {
-        fprintf(stderr, "[IPC LISTEN] Bind failed: %s\n", uv_strerror(bind_result));
+        UVRPC_ERROR("Bind failed: %s", uv_strerror(bind_result));
         uv_close((uv_handle_t*)&server->listen_pipe, NULL);
         uvrpc_free(server->socket_path);
         uvrpc_free(server->clients);
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
-    
-    printf("[IPC LISTEN] Bind successful\n");
-    fflush(stdout);
     
     /* Listen */
     int listen_result = uv_listen((uv_stream_t*)&server->listen_pipe, 128, on_server_connection);
     if (listen_result != 0) {
-        fprintf(stderr, "[IPC LISTEN] Listen failed: %s\n", uv_strerror(listen_result));
+        UVRPC_ERROR("Listen failed: %s", uv_strerror(listen_result));
         uv_close((uv_handle_t*)&server->listen_pipe, NULL);
         uvrpc_free(server->socket_path);
         uvrpc_free(server->clients);
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
-    
-    printf("[IPC LISTEN] Listen successful\n");
     fflush(stdout);
     
     server->is_listening = 1;

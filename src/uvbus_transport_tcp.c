@@ -17,6 +17,9 @@
 #define UVRPC_LOG(fmt, ...) ((void)0)
 #endif
 
+/* Error logging - always enabled */
+#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
 typedef struct uvbus_tcp_client uvbus_tcp_client_t;
 typedef struct uvbus_tcp_server uvbus_tcp_server_t;
 
@@ -121,8 +124,6 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         uvrpc_free(buf->base);
         return;
     }
-    
-UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport->recv_cb);
 
     if (nread < 0) {
         if (nread != UV_EOF) {
@@ -141,9 +142,8 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
             client->read_pos += nread;
         } else {
             /* Buffer overflow - reset and log error */
-            fprintf(stderr, "[TCP READ] Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu\n",
+            UVRPC_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",
                     client->read_pos, nread, sizeof(client->read_buffer));
-            fflush(stderr);
             client->read_pos = 0;
             uvrpc_free(buf->base);
             return;
@@ -157,13 +157,10 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
                                   (uint32_t)client->read_buffer[2] << 8 |
                                   (uint32_t)client->read_buffer[3];
 
-            fprintf(stderr, "[TCP READ] Frame size: %u (read_pos=%zu)\n", frame_size, client->read_pos);
-            fflush(stderr);
-
             /* Validate frame size - stricter limit for stability */
             if (frame_size == 0 || frame_size > 64*1024) {  /* 64KB max */
                 /* Invalid frame size, reset buffer */
-                fprintf(stderr, "[TCP READ] Invalid frame size (%u), resetting buffer\n", frame_size);
+                UVRPC_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
                 client->read_pos = 0;
                 break;
             }
@@ -179,7 +176,7 @@ UVRPC_LOG("Transport: is_server=%d, recv_cb=%p", transport->is_server, transport
                 /* Copy frame data to heap so callback can safely access it */
                 uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
                 if (!frame_copy) {
-                    UVRPC_LOG("ERROR: Failed to allocate %u bytes for frame", frame_size);
+                    UVRPC_ERROR("Failed to allocate %u bytes for frame", frame_size);
                     if (transport->error_cb) {
                         transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
                     }
@@ -223,13 +220,11 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 /* Server connection callback */
 static void on_server_connection(uv_stream_t* server, int status) {
     if (!server) {
-        fprintf(stderr, "[ERROR] server is NULL in on_server_connection\n");
         return;
     }
     
     uvbus_transport_t* transport = (uvbus_transport_t*)server->data;
     if (!transport) {
-        fprintf(stderr, "[ERROR] transport is NULL in on_server_connection\n");
         return;
     }
     
@@ -242,7 +237,6 @@ static void on_server_connection(uv_stream_t* server, int status) {
     
     uvbus_tcp_server_t* tcp_server = (uvbus_tcp_server_t*)transport->impl.tcp_server;
     if (!tcp_server) {
-        fprintf(stderr, "[ERROR] tcp_server is NULL in on_server_connection\n");
         return;
     }
     
@@ -256,7 +250,6 @@ static void on_server_connection(uv_stream_t* server, int status) {
     
     /* Initialize TCP handle */
     if (!transport->loop) {
-        fprintf(stderr, "[ERROR] transport->loop is NULL in on_server_connection\n");
         uvrpc_free(client);
         return;
     }
@@ -326,18 +319,13 @@ static void on_server_close(uv_handle_t* handle) {
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
     if (!req) {
-        fprintf(stderr, "[TCP CONNECT] req is NULL\n");
         return;
     }
 
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
     if (!transport) {
-        fprintf(stderr, "[TCP CONNECT] transport is NULL\n");
         return;
     }
-
-    fprintf(stderr, "[TCP CONNECT] status=%d (%s)\n", status, status == 0 ? "OK" : uv_strerror(status));
-    fflush(stderr);
 
     if (status == 0) {
         transport->is_connected = 1;
@@ -346,38 +334,20 @@ static void on_client_connect(uv_connect_t* req, int status) {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         if (client) {
             uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read);
-            fprintf(stderr, "[TCP CONNECT] Read started\n");
-            fflush(stderr);
         }
 
         /* Set bus is_active flag - this is critical for sending to work */
         if (transport->parent_bus) {
             transport->parent_bus->is_active = 1;
-            fprintf(stderr, "[TCP CONNECT] Set parent_bus->is_active=1\n");
-            fflush(stderr);
-        } else {
-            fprintf(stderr, "[TCP CONNECT] WARNING: parent_bus is NULL\n");
-            fflush(stderr);
         }
 
         if (transport->connect_cb) {
-            fprintf(stderr, "[TCP CONNECT] Calling connect_cb(UVBUS_OK)\n");
-            fflush(stderr);
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
-        } else {
-            fprintf(stderr, "[TCP CONNECT] WARNING: connect_cb is NULL\n");
-            fflush(stderr);
         }
     } else {
-        fprintf(stderr, "[TCP CONNECT] Connection failed: %s\n", uv_strerror(status));
-        fflush(stderr);
+        UVRPC_ERROR("Connection failed: %s", uv_strerror(status));
         if (transport->connect_cb) {
-            fprintf(stderr, "[TCP CONNECT] Calling connect_cb(UVBUS_ERROR_IO)\n");
-            fflush(stderr);
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
-        } else {
-            fprintf(stderr, "[TCP CONNECT] WARNING: connect_cb is NULL\n");
-            fflush(stderr);
         }
     }
 }
@@ -557,11 +527,11 @@ static void tcp_disconnect(void* impl_ptr) {
         transport->impl.tcp_server = NULL;
     } else if (!transport->is_server && transport->impl.tcp_client) {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
+        /* Clear the pointer first to prevent double disconnect */
+        transport->impl.tcp_client = NULL;
         /* Close client connection */
         ref_dec(&client->ref_count);
         uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
-        
-        transport->impl.tcp_client = NULL;
     }
     
     transport->is_connected = 0;
@@ -700,6 +670,7 @@ static void tcp_free(void* impl_ptr) {
     
     if (transport->address) {
         uvrpc_free(transport->address);
+        transport->address = NULL;
     }
     
     uvrpc_free(transport);
