@@ -103,6 +103,44 @@ extern "C" {
 #endif
 
 /* ============================================================================
+ * Error Codes
+ * ============================================================================ */
+
+/**
+ * @brief uvasync error codes
+ * 
+ * All uvasync error codes are negative to avoid conflicts with UVRPC codes.
+ * Positive values are reserved for future use.
+ */
+#define UVASYNC_OK                       0   /**< @brief Success */
+#define UVASYNC_ERROR                   -1   /**< @brief Generic error */
+
+/* Context errors (-100 to -199) */
+#define UVASYNC_ERROR_CONTEXT_INVALID        -100  /**< @brief Invalid context */
+#define UVASYNC_ERROR_CONTEXT_NO_LOOP        -101  /**< @brief Context has no event loop */
+#define UVASYNC_ERROR_CONTEXT_LOOP_INIT_FAILED -102 /**< @brief Failed to initialize event loop */
+
+/* Scheduler errors (-200 to -299) */
+#define UVASYNC_ERROR_SCHEDULER_INVALID       -200  /**< @brief Invalid scheduler */
+#define UVASYNC_ERROR_SCHEDULER_INIT_FAILED   -201  /**< @brief Failed to initialize scheduler */
+#define UVASYNC_ERROR_SCHEDULER_CONCURRENCY_INVALID -202 /**< @brief Invalid concurrency limit */
+
+/* Task errors (-300 to -399) */
+#define UVASYNC_ERROR_TASK_INVALID            -300  /**< @brief Invalid task */
+#define UVASYNC_ERROR_TASK_SUBMIT_FAILED      -301  /**< @brief Failed to submit task */
+#define UVASYNC_ERROR_TASK_CANCELLED          -302  /**< @brief Task was cancelled */
+
+/* Wait errors (-400 to -499) */
+#define UVASYNC_ERROR_WAIT_TIMEOUT            -400  /**< @brief Wait operation timed out */
+#define UVASYNC_ERROR_WAIT_INVALID            -401  /**< @brief Invalid wait operation */
+
+/* Memory errors (-500 to -599) */
+#define UVASYNC_ERROR_NO_MEMORY               -500  /**< @brief Out of memory */
+
+/* Parameter errors (-600 to -699) */
+#define UVASYNC_ERROR_INVALID_PARAM           -600  /**< @brief Invalid parameter */
+
+/* ============================================================================
  * Forward Declarations
  * ============================================================================ */
 
@@ -288,15 +326,15 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler);
  * @code
  * uvrpc_promise_t* promise = uvrpc_promise_create(ctx->loop);
  * uvrpc_promise_then(promise, on_complete, NULL);
- * 
+ *
  * uvasync_submit(scheduler, my_task_fn, task_data, promise);
  * @endcode
- * 
+ *
  * @param scheduler Scheduler instance
  * @param fn Task function
  * @param data Task data
  * @param promise Promise for task result
- * @return UVRPC_OK on success, error code on failure
+ * @return UVASYNC_OK on success, uvasync error code on failure
  */
 int uvasync_submit(
     uvasync_scheduler_t* scheduler,
@@ -314,17 +352,17 @@ int uvasync_submit(
  * @code
  * uvasync_task_t tasks[100];
  * uvrpc_promise_t* promises[100];
- * 
+ *
  * // Prepare tasks...
- * 
+ *
  * uvasync_submit_batch(scheduler, tasks, 100, promises);
  * @endcode
- * 
+ *
  * @param scheduler Scheduler instance
  * @param tasks Array of tasks
  * @param count Number of tasks
  * @param promises Array of promises (must have count elements)
- * @return UVRPC_OK on success, error code on failure
+ * @return UVASYNC_OK on success, uvasync error code on failure
  */
 int uvasync_submit_batch(
     uvasync_scheduler_t* scheduler,
@@ -338,10 +376,10 @@ int uvasync_submit_batch(
  * 
  * Adjusts the maximum number of concurrent tasks.
  * Can be called at any time to adapt to system load.
- * 
+ *
  * @param scheduler Scheduler instance
  * @param max_concurrency New maximum (0 = unlimited)
- * @return UVRPC_OK on success, error code on failure
+ * @return UVASYNC_OK on success, uvasync error code on failure
  */
 int uvasync_scheduler_set_concurrency(
     uvasync_scheduler_t* scheduler,
@@ -376,10 +414,10 @@ int uvasync_scheduler_get_pending_count(uvasync_scheduler_t* scheduler);
  * @brief Wait for all tasks to complete
  * 
  * Blocks until all submitted tasks have completed or timeout expires.
- * 
+ *
  * @param scheduler Scheduler instance
  * @param timeout_ms Timeout in milliseconds (0 = wait forever)
- * @return UVRPC_OK if all completed, UVRPC_ERROR_TIMEOUT if timeout
+ * @return UVASYNC_OK if all completed, UVASYNC_ERROR_WAIT_TIMEOUT if timeout
  */
 int uvasync_scheduler_wait_all(
     uvasync_scheduler_t* scheduler,
@@ -428,19 +466,19 @@ void uvasync_scheduler_reset_stats(uvasync_scheduler_t* scheduler);
  * size_t result_size = 0;
  * int ret = uvasync_submit_and_wait(scheduler, my_task_fn, task_data,
  *                                      &result, &result_size, 5000);
- * if (ret == UVRPC_OK) {
+ * if (ret == UVASYNC_OK) {
  *     // Use result
  *     uvrpc_free(result);
  * }
  * @endcode
- * 
+ *
  * @param scheduler Scheduler instance
  * @param fn Task function
  * @param data Task data
  * @param result Output pointer to result data (caller must free)
  * @param result_size Output pointer to result size
  * @param timeout_ms Timeout in milliseconds
- * @return UVRPC_OK on success, error code on failure
+ * @return UVASYNC_OK on success, uvasync error code on failure
  */
 int uvasync_submit_and_wait(
     uvasync_scheduler_t* scheduler,
@@ -463,7 +501,7 @@ int uvasync_submit_and_wait(
  * @param results Output array of result pointers (caller must free each)
  * @param result_sizes Output array of result sizes
  * @param timeout_ms Timeout in milliseconds
- * @return UVRPC_OK on success, error code on failure
+ * @return UVASYNC_OK on success, uvasync error code on failure
  */
 int uvasync_submit_batch_and_wait(
     uvasync_scheduler_t* scheduler,
