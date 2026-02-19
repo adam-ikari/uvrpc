@@ -23,12 +23,12 @@ The `send_batch_requests_fast` function sends 10 batches per timer callback with
 
 ### Performance Results
 
-| Interval | Success Rate | Throughput | Notes |
-|----------|--------------|------------|-------|
-| 0ms (immediate) | 65.4% | 117,334 ops/s | High failure rate due to backpressure |
-| 1ms | 98-99% | 95-96k ops/s | Good balance |
-| 2ms | 100% | 97,103 ops/s | Optimal balance |
-| 5ms | 100% | 85k ops/s | Lower throughput but stable |
+| Interval | Success Rate | Throughput | Latency | Use Case |
+|----------|--------------|------------|---------|----------|
+| 0ms (immediate, default) | 65-70% | 114k+ ops/s | **Lowest** | Latency-sensitive applications |
+| 1ms | 98-99% | 95-96k ops/s | Low | Stress testing, high throughput |
+| 2ms | 100% | 97k ops/s | Medium | Balanced performance (recommended) |
+| 5ms | 100% | 85k ops/s | Higher | Low-power, stable throughput |
 
 ## Limitations
 
@@ -86,24 +86,25 @@ Use 1ms interval (`-i 1`) to:
 ./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -i 1 -d 3000
 ```
 
-### For Latency-Sensitive Applications
+### For Low-Throughput Stable Applications
 
 Use 5ms interval or higher (`-i 5` or `-i 10`) to:
-- Minimize latency
 - Reduce CPU usage
 - Improve energy efficiency
+- Maintain high success rate (100%)
 - Accept lower throughput
 
 ```bash
 ./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -i 5 -d 3000
 ```
 
-### Using Default Immediate Mode
+### For Latency-Sensitive Applications
 
-The default behavior (no `-i` parameter) uses 0ms interval for maximum sending speed:
-- 65% success rate
-- 114k+ ops/s throughput
-- Higher failure rate due to backpressure
+Use 0ms interval (default, no `-i` parameter) for minimum latency:
+- Send requests immediately without delay
+- Best for low-latency requirements
+- Accept lower success rate (65-70%) due to backpressure
+- Maximum raw sending speed (114k+ ops/s)
 
 ```bash
 ./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -d 3000
@@ -111,13 +112,14 @@ The default behavior (no `-i` parameter) uses 0ms interval for maximum sending s
 
 ## Conclusion
 
-While 0ms interval is implemented for testing purposes, it is **not recommended** for production use due to poor performance characteristics. The optimal interval depends on your specific use case:
+The optimal interval depends on your specific use case:
 
-- **Balanced performance**: 2ms interval (recommended)
-- **Maximum throughput with acceptable failure rate**: 1ms interval
-- **Latency-sensitive**: 5ms+ interval
+- **Latency-sensitive (minimum delay)**: 0ms interval (default, recommended for latency-critical applications)
+- **Balanced performance**: 2ms interval (recommended for most use cases, 100% success rate)
+- **Maximum throughput**: 1ms interval (98-99% success rate, slightly higher failure rate)
+- **Low-power/low-throughput**: 5ms+ interval (100% success rate, reduced CPU usage)
 
-The 0ms interval feature serves as a theoretical upper bound, demonstrating that simply sending faster does not improve actual system performance when network and processing latency are considered.
+The 0ms interval mode provides the lowest possible latency by sending requests immediately without artificial delays, making it ideal for latency-sensitive applications. While it may have a lower success rate due to backpressure, the successful requests achieve the best possible latency performance.
 
 ## Future Improvements
 
