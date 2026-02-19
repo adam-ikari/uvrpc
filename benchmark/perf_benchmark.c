@@ -1253,7 +1253,7 @@ void print_usage(const char* prog_name) {
     printf("  -p <publishers>   Publishers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -s <subscribers>  Subscribers per thread/process (for BROADCAST mode, default: 1)\n");
     printf("  -b <concurrency>  Batch size (default: 100)\n");
-    printf("  -i <interval>     Timer interval in milliseconds (default: 1, use 0 for immediate mode)\n");
+    printf("  -i <interval>     Timer interval in milliseconds (default: 0 for immediate mode, use 1-5 for timer-based)\n");
     printf("  -d <duration>     Test duration in milliseconds (default: 1000)\n");
     printf("  -l                Enable low latency mode (default: high throughput)\n");
     printf("  --latency         Run latency test (ignores -t and -c)\n");
@@ -1310,7 +1310,7 @@ int main(int argc, char** argv) {
     int publishers_per_thread = 1;
     int subscribers_per_thread = 1;
     int concurrency = 100;
-    int timer_interval_ms = 1;  /* Default: 1ms */
+    int timer_interval_ms = 0;  /* Default: 0ms (immediate mode) */
     int test_duration_ms = 1000;  /* Default: 1 second */
     int low_latency = 0;
     int latency_mode = 0;
