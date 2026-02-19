@@ -299,27 +299,11 @@ int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
     /* Store target number of clients */
     state->target_clients = num_clients;
     
-    /* Calculate required pending callbacks based on concurrency
-     * High concurrency (>= 50) needs larger buffer to avoid UVRPC_ERROR_CALLBACK_LIMIT
-     * Formula: clients * concurrency * 10 to accommodate pending requests and responses
-     * with sufficient headroom for burst traffic
-     * 
-     * Testing larger buffer sizes:
-     * - Default: 2^16 = 65,536
-     * - Medium: 2^18 = 262,144
-     * - High: 2^19 = 524,288
-     * - Very High: 2^20 = 1,048,576
-     * - Ultra High: 2^21 = 2,097,152 (for testing)
+    /* Use fixed pending buffer size of 64 for all clients
+     * This serves as the concurrency limit per client
+     * Smaller buffer reduces memory usage and improves cache locality
      */
-    int total_concurrency = num_clients * state->batch_size;
-    int max_pending = (1 << 16);  /* Default: 65,536 */
-    if (total_concurrency >= 400) {
-        max_pending = (1 << 21);  /* 2,097,152 for very high concurrency (testing) */
-    } else if (total_concurrency >= 100) {
-        max_pending = (1 << 21);  /* 2,097,152 for high concurrency (testing) */
-    } else if (total_concurrency >= 50) {
-        max_pending = (1 << 21);  /* 2,097,152 for medium concurrency (testing) */
-    }
+    int max_pending = 64;  /* Fixed pending buffer size */
     
     for (int i = 0; i < num_clients; i++) {
         uvrpc_config_t* config = uvrpc_config_new();
@@ -327,13 +311,14 @@ int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
         uvrpc_config_set_address(config, address);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
         uvrpc_config_set_performance_mode(config, perf_mode);
+        
+        /* Set pending callbacks to 64 - this becomes the concurrency limit */
         uvrpc_config_set_max_pending_callbacks(config, max_pending);
         
-        /* Set max concurrent requests based on batch size with headroom */
-        /* Allow 2x batch size to accommodate pending requests */
-        int max_concurrent = state->batch_size * 2;
-        if (max_concurrent < 100) max_concurrent = 100;  /* Minimum 100 */
-        if (max_concurrent > 1000) max_concurrent = 1000;  /* Maximum 1000 */
+        /* Set max concurrent requests to match pending buffer size
+         * This ensures we never exceed the buffer capacity
+         */
+        int max_concurrent = max_pending;  /* Use same as pending buffer */
         uvrpc_config_set_max_concurrent(config, max_concurrent);
         
         clients[i] = uvrpc_client_create(config);
@@ -771,20 +756,21 @@ void* thread_func(void* arg) {
     /* Send requests with configurable interval (default: 0ms for immediate mode)
      * Special case: interval=0 means "immediate mode" - send requests as fast as possible with backpressure
      * In immediate mode, send requests immediately when response arrives, maintaining concurrency limit
+     * Use pending buffer size (64) as the concurrency limit per client
      */
     if (state.timer_interval_ms == 0) {
-        /* Immediate mode: send requests with immediate callback on response
-         * Maintain concurrency limit per client independently
-         * Each client maintains its own 12-13 concurrent requests
+        /* Immediate mode: use pending buffer size as concurrency limit
+         * Each client has 64 pending buffer slots
+         * Send up to 64 requests per client initially
          * No global locks or shared state between clients
          */
-        int max_concurrent_per_client = 12;  /* 12 concurrent per client, 50 total for 4 clients */
+        int max_concurrent_per_client = 64;  /* Use pending buffer size */
         int max_concurrent = max_concurrent_per_client * num_clients;
         
-        printf("[Thread %d] Immediate mode: maintaining %d concurrent per client (%d total)...\n", 
+        printf("[Thread %d] Immediate mode: using pending buffer size %d as concurrency limit per client (%d total)...\n", 
                ctx->thread_id, max_concurrent_per_client, max_concurrent);
         
-        /* Set per-client concurrency limit */
+        /* Set per-client concurrency limit to match pending buffer */
         state.max_concurrent_per_client = max_concurrent_per_client;
         state.max_concurrent_requests = max_concurrent;
         
@@ -802,7 +788,7 @@ void* thread_func(void* arg) {
             client_contexts[i].client = clients[i];
             client_contexts[i].client_idx = i;
             
-            /* Send initial requests to reach per-client concurrency limit */
+            /* Send initial requests up to pending buffer limit (64) */
             for (int j = 0; j < max_concurrent_per_client; j++) {
                 int32_t a = 100;
                 int32_t b = 200;
