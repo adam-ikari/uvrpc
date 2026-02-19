@@ -4,6 +4,8 @@
 
 The benchmark supports a configurable timer interval via the `-i` parameter. Setting the interval to 0ms enables "immediate mode", which attempts to send requests as fast as possible.
 
+**Default Behavior**: The benchmark now uses 0ms interval by default, meaning requests are sent as fast as possible without timer delays. To use timer-based sending, explicitly specify the interval with the `-i` parameter (e.g., `-i 2` for 2ms interval).
+
 ## Implementation
 
 ### Current Implementation
@@ -61,27 +63,51 @@ In immediate mode, the pending count quickly exceeds the threshold, causing many
 
 ### For Performance Testing
 
-**Use 2ms interval** as the default for maximum balanced performance:
+**Use 2ms interval** (`-i 2`) for maximum balanced performance:
 - 100% success rate
 - 97k+ ops/s throughput
 - Low memory usage
 - Stable behavior across different configurations
 
+To use timer-based mode, add the `-i` parameter:
+```bash
+./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -i 2 -d 3000
+```
+
 ### For Stress Testing
 
-Use 1ms interval to:
+Use 1ms interval (`-i 1`) to:
 - Push the system to its limits
 - Identify performance bottlenecks
 - Test resilience under high load
 - Expect slightly lower success rate (98-99%)
 
+```bash
+./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -i 1 -d 3000
+```
+
 ### For Latency-Sensitive Applications
 
-Use 5ms interval or higher to:
+Use 5ms interval or higher (`-i 5` or `-i 10`) to:
 - Minimize latency
 - Reduce CPU usage
 - Improve energy efficiency
 - Accept lower throughput
+
+```bash
+./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -i 5 -d 3000
+```
+
+### Using Default Immediate Mode
+
+The default behavior (no `-i` parameter) uses 0ms interval for maximum sending speed:
+- 65% success rate
+- 114k+ ops/s throughput
+- Higher failure rate due to backpressure
+
+```bash
+./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 2 -c 2 -b 100 -d 3000
+```
 
 ## Conclusion
 
