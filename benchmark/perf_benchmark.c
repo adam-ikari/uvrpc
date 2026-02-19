@@ -723,15 +723,58 @@ void* thread_func(void* arg) {
     batch_timer.data = &state;
     batch_timer.loop = &loop;
     
-    /* Send requests with configurable interval (default: 1ms)
-     * Special case: interval=0 means "immediate mode" - send as fast as possible
-     * In immediate mode, use 1ms timer but send multiple batches per iteration
+    int batch_size = state.batch_size;  /* Local copy for immediate mode */
+    int num_clients = state.num_clients;  /* Local copy for immediate mode */
+    
+    /* Send requests with configurable interval (default: 0ms for immediate mode)
+     * Special case: interval=0 means "immediate mode" - send all requests immediately, then loop
+     * In immediate mode, send all requests at once, then enter event loop to wait for responses
      */
     if (state.timer_interval_ms == 0) {
-        /* Immediate mode: use 1ms timer but send 10 batches per timer callback
-         * This achieves 10x faster sending while still allowing event loop to run
+        /* Immediate mode: send all requests immediately without timer
+         * This sends all requests as fast as possible, then enters event loop to wait for responses
          */
-        uv_timer_start(&batch_timer, send_batch_requests_fast, 1, 1);
+        int total_to_send = state.test_duration_ms * batch_size * num_clients / 10;  /* More aggressive estimation */
+        if (total_to_send < batch_size * 10) total_to_send = batch_size * 10;  /* Minimum 10 batches */
+        
+        printf("[Thread %d] Immediate mode: sending %d requests...\n", ctx->thread_id, total_to_send);
+        
+        /* Send all requests immediately */
+        for (int i = 0; i < total_to_send && !g_shutdown_requested; i++) {
+            int client_idx = i % num_clients;
+            
+            /* Check pending request count before sending (backpressure mechanism) */
+            int pending_count = uvrpc_client_get_pending_count(clients[client_idx]);
+            int max_concurrent = batch_size * 2;
+            int threshold = max_concurrent * 8 / 10;
+            
+            if (pending_count > threshold + 10) {
+                state.failed++;
+                continue;
+            }
+            
+            int32_t a = 100;
+            int32_t b = 200;
+            int32_t params[2] = {a, b};
+            
+            int ret = uvrpc_client_call(clients[client_idx], "Add", (uint8_t*)params, sizeof(params), on_response, &state);
+            
+            if (ret == UVRPC_OK) {
+                state.sent_requests++;
+            } else {
+                state.failed++;
+            }
+            
+            /* Process event loop after each batch to avoid overwhelming */
+            if (i % 100 == 0) {
+                uv_run(&loop, UV_RUN_NOWAIT);
+            }
+        }
+        
+        printf("[Thread %d] Sent %d requests, entering event loop to wait for responses...\n", 
+               ctx->thread_id, state.sent_requests);
+        
+        /* Don't start timer, just enter event loop to wait for responses */
     } else {
         /* Normal mode: use timer-based periodic sending */
         uv_timer_start(&batch_timer, send_batch_requests, state.timer_interval_ms, state.timer_interval_ms);
