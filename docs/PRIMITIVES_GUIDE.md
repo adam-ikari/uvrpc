@@ -69,10 +69,10 @@ uvrpc_promise_cleanup(&promise);
 The Semaphore pattern limits concurrent operations by controlling permit availability. Useful for rate limiting and resource protection.
 
 #### Features
-- Non-blocking acquire with callback
+- JavaScript-style Promise API for async acquire
 - Thread-safe using atomic operations
-- No memory allocation for acquire/release
 - Automatic waiter notification
+- Resource pool management
 
 #### Example
 
@@ -80,12 +80,17 @@ The Semaphore pattern limits concurrent operations by controlling permit availab
 uvrpc_semaphore_t sem;
 uvrpc_semaphore_init(&sem, loop, 10); // Max 10 concurrent operations
 
-// Acquire permit before making RPC call
-uvrpc_semaphore_acquire(&sem, on_acquired, request_data);
+// Create promise and acquire permit
+uvrpc_promise_t* permit_promise = uvrpc_promise_create(loop);
+uvrpc_promise_then(permit_promise, on_permit_acquired, request_data);
+uvrpc_semaphore_acquire_async(&sem, permit_promise);
 
-void on_acquired(uvrpc_semaphore_t* sem, void* user_data) {
+void on_permit_acquired(uvrpc_promise_t* promise, void* user_data) {
     // Permit acquired, make RPC call
-    uvrpc_client_call(client, method, params, size, on_response, sem);
+    uvrpc_client_call(client, method, params, size, on_response, &sem);
+    
+    // Cleanup promise
+    uvrpc_promise_destroy(promise);
 }
 
 void on_response(uvrpc_response_t* resp, void* ctx) {
@@ -103,7 +108,7 @@ uvrpc_semaphore_cleanup(&sem);
 
 - `uvrpc_semaphore_init()` - Initialize with permit count
 - `uvrpc_semaphore_cleanup()` - Free resources
-- `uvrpc_semaphore_acquire()` - Acquire permit (async with callback)
+- `uvrpc_semaphore_acquire_async()` - Acquire permit (JavaScript-style Promise)
 - `uvrpc_semaphore_release()` - Release permit
 - `uvrpc_semaphore_try_acquire()` - Try to acquire immediately
 - `uvrpc_semaphore_get_available()` - Get available permit count
@@ -111,53 +116,71 @@ uvrpc_semaphore_cleanup(&sem);
 
 ---
 
-### 3. Barrier Pattern
+### 3. Promise Combinators
 
-The Barrier pattern waits for multiple operations to complete before invoking a callback. Useful for aggregating results.
+JavaScript-style Promise combinators for coordinating multiple async operations.
 
-#### Features
-- Wait for N operations to complete
-- Error aggregation across operations
-- Thread-safe using atomic operations
-- Callback invoked when all complete
+#### Promise.all()
 
-#### Example
+Wait for all promises to fulfill. If any rejects, the combined promise rejects immediately.
 
 ```c
-uvrpc_barrier_t barrier;
-uvrpc_barrier_init(&barrier, loop, 5, on_all_complete, results);
+uvrpc_promise_t* promises[5];
+// Create promises...
 
-// Start 5 concurrent operations
-for (int i = 0; i < 5; i++) {
-    uvrpc_client_call(client, method[i], params[i], sizes[i], 
-                      on_barrier_response, &barrier);
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all(promises, 5, &combined, loop);
+
+uvrpc_promise_then(&combined, on_all_complete, NULL);
+
+void on_all_complete(uvrpc_promise_t* promise, void* user_data) {
+    if (uvrpc_promise_is_fulfilled(promise)) {
+        uint8_t* result;
+        size_t size;
+        uvrpc_promise_get_result(promise, &result, &size);
+        // Process combined result
+    }
 }
+```
 
-void on_barrier_response(uvrpc_response_t* resp, void* ctx) {
-    uvrpc_barrier_t* barrier = (uvrpc_barrier_t*)ctx;
-    int error = (resp->error_code != 0);
-    // Signal this operation is done
-    uvrpc_barrier_wait(barrier, error);
-}
+#### Promise.race()
 
-void on_all_complete(uvrpc_barrier_t* barrier, void* user_data) {
-    int errors = uvrpc_barrier_get_error_count(barrier);
-    printf("All operations complete. Errors: %d\n", errors);
-    // Process aggregated results
-}
+Wait for the first promise to complete (fulfills or rejects).
 
-uvrpc_barrier_cleanup(&barrier);
+```c
+uvrpc_promise_t* promises[3];
+// Create promises...
+
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_race(promises, 3, &combined, loop);
+
+uvrpc_promise_then(&combined, on_first_complete, NULL);
+```
+
+#### Promise.allSettled()
+
+Wait for all promises to complete (fulfill or reject), collecting all results and errors.
+
+```c
+uvrpc_promise_t* promises[10];
+// Create promises...
+
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all_settled(promises, 10, &combined, loop);
+
+uvrpc_promise_then(&combined, on_all_settled, NULL);
 ```
 
 #### API Functions
 
-- `uvrpc_barrier_init()` - Initialize with count and callback
-- `uvrpc_barrier_cleanup()` - Free resources
-- `uvrpc_barrier_wait()` - Signal one operation complete
-- `uvrpc_barrier_get_completed()` - Get completed count
-- `uvrpc_barrier_get_error_count()` - Get error count
-- `uvrpc_barrier_is_complete()` - Check if all complete
-- `uvrpc_barrier_reset()` - Reset for reuse
+- `uvrpc_promise_all()` - Wait for all promises to fulfill
+- `uvrpc_promise_race()` - Wait for first promise to complete
+- `uvrpc_promise_all_settled()` - Wait for all promises to complete
+- `uvrpc_promise_all_sync()` - Synchronous Promise.all() (blocking)
+- `uvrpc_promise_race_sync()` - Synchronous Promise.race() (blocking)
 
 ---
 
@@ -201,11 +224,12 @@ uvrpc_waitgroup_cleanup(&wg);
 
 #### API Functions
 
-- `uvrpc_waitgroup_init()` - Initialize with callback
+- `uvrpc_waitgroup_init()` - Initialize waitgroup
 - `uvrpc_waitgroup_cleanup()` - Free resources
 - `uvrpc_waitgroup_add()` - Add operations (can be negative)
 - `uvrpc_waitgroup_done()` - Signal one operation complete
-- `uvrpc_waitgroup_get_count()` - Get current count
+- `uvrpc_get_count()` - Get current count
+- `uvrpc_waitgroup_get_promise()` - Get completion promise
 
 ---
 
@@ -220,10 +244,13 @@ uvrpc_semaphore_t sem;
 uvrpc_semaphore_init(&sem, loop, 50); // Max 50 concurrent calls
 
 // For each request
-uvrpc_semaphore_acquire(&sem, on_permit_acquired, request);
+uvrpc_promise_t* permit_promise = uvrpc_promise_create(loop);
+uvrpc_promise_then(permit_promise, on_permit_acquired, request);
+uvrpc_semaphore_acquire_async(&sem, permit_promise);
 
-void on_permit_acquired(uvrpc_semaphore_t* sem, void* ctx) {
-    make_rpc_call(..., sem);
+void on_permit_acquired(uvrpc_promise_t* promise, void* ctx) {
+    make_rpc_call(..., &sem);
+    uvrpc_promise_destroy(promise);
 }
 
 void on_response(uvrpc_response_t* resp, void* ctx) {
@@ -497,12 +524,10 @@ See `include/uvrpc_primitives.h` for complete API documentation.
 
 Potential additions:
 
-1. **Promise.all()** - Wait for multiple promises
-2. **Promise.race()** - First promise to complete wins
-3. **Timeout Support** - Timeout for wait operations
-4. **Cancellation** - Cancel pending operations
-5. **Priority Queue** - Priority-based semaphore
-6. **Batch Operations** - Batch acquire/release
+1. **Timeout Support** - Timeout for wait operations
+2. **Cancellation** - Cancel pending operations
+3. **Priority Queue** - Priority-based semaphore
+4. **Batch Operations** - Batch acquire/release
 
 ---
 

@@ -42,12 +42,15 @@ uvrpc_promise_cleanup(&promise);
 uvrpc_semaphore_t sem;
 uvrpc_semaphore_init(&sem, loop, 10); // Max 10 concurrent
 
-// Acquire before operation
-uvrpc_semaphore_acquire(&sem, on_acquired, request_data);
+// Acquire before operation (JavaScript-style)
+uvrpc_promise_t* permit_promise = uvrpc_promise_create(loop);
+uvrpc_promise_then(permit_promise, on_acquired, request_data);
+uvrpc_semaphore_acquire_async(&sem, permit_promise);
 
-void on_acquired(uvrpc_semaphore_t* sem, void* ctx) {
+void on_acquired(uvrpc_promise_t* promise, void* ctx) {
     // Permit acquired, do work
-    make_rpc_call(..., sem);
+    make_rpc_call(..., &sem);
+    uvrpc_promise_destroy(promise);
 }
 
 // Release after operation completes
@@ -69,40 +72,59 @@ int waiting = uvrpc_semaphore_get_waiting_count(&sem);
 uvrpc_semaphore_cleanup(&sem);
 ```
 
-## Barrier
+## Promise.all() - Wait for All Promises
 
 ```c
-// Initialize with count and callback
-uvrpc_barrier_t barrier;
-uvrpc_barrier_init(&barrier, loop, 5, on_complete, results);
-
-// Start operations
+// Create promises
+uvrpc_promise_t* promises[5];
 for (int i = 0; i < 5; i++) {
-    make_rpc_call(..., &barrier);
+    promises[i] = uvrpc_promise_create(loop);
+    // ... async operations that resolve/reject promises[i] ...
 }
 
-// In each operation callback
-void on_response(uvrpc_response_t* resp, void* ctx) {
-    process_result(resp);
-    int error = (resp->error_code != 0);
-    uvrpc_barrier_wait((uvrpc_barrier_t*)ctx, error);
+// Combine and wait for all
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all(promises, 5, &combined, loop);
+uvrpc_promise_then(&combined, on_all_complete, NULL);
+
+void on_all_complete(uvrpc_promise_t* promise, void* user_data) {
+    if (uvrpc_promise_is_fulfilled(promise)) {
+        uint8_t* result;
+        size_t size;
+        uvrpc_promise_get_result(promise, &result, &size);
+        // Process combined result
+        free(result);
+    }
 }
+```
 
-// Callback when all complete
-void on_complete(uvrpc_barrier_t* barrier, void* user_data) {
-    int errors = uvrpc_barrier_get_error_count(barrier);
-    int completed = uvrpc_barrier_get_completed(barrier);
-    printf("Complete: %d/%d, Errors: %d\n", completed, barrier->total, errors);
-}
+## Promise.race() - First to Complete
 
-// Check state
-if (uvrpc_barrier_is_complete(&barrier)) { ... }
+```c
+// Create promises
+uvrpc_promise_t* promises[3];
+// ... create promises ...
 
-// Reset for reuse
-uvrpc_barrier_reset(&barrier);
+// Wait for first to complete
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_race(promises, 3, &combined, loop);
+uvrpc_promise_then(&combined, on_first_complete, NULL);
+```
 
-// Cleanup
-uvrpc_barrier_cleanup(&barrier);
+## Promise.allSettled() - All Complete
+
+```c
+// Create promises
+uvrpc_promise_t* promises[10];
+// ... create promises ...
+
+// Wait for all to complete (fulfill or reject)
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all_settled(promises, 10, &combined, loop);
+uvrpc_promise_then(&combined, on_all_settled, NULL);
 ```
 
 ## WaitGroup
@@ -110,7 +132,7 @@ uvrpc_barrier_cleanup(&barrier);
 ```c
 // Initialize
 uvrpc_waitgroup_t wg;
-uvrpc_waitgroup_init(&wg, loop, on_complete, NULL);
+uvrpc_waitgroup_init(&wg, loop);
 
 // Add operations
 uvrpc_waitgroup_add(&wg, task_count);
@@ -126,13 +148,13 @@ void on_task_complete(...) {
     uvrpc_waitgroup_done((uvrpc_waitgroup_t*)ctx);
 }
 
-// Callback when count reaches 0
-void on_complete(uvrpc_waitgroup_t* wg, void* user_data) {
-    printf("All tasks done!\n");
-}
+// Get completion promise
+uvrpc_promise_t* done_promise = uvrpc_promise_create(loop);
+uvrpc_promise_then(done_promise, on_complete, NULL);
+uvrpc_waitgroup_get_promise(&wg, done_promise);
 
 // Get current count
-int count = uvrpc_waitgroup_get_count(&wg);
+int count = uvrpc_get_count(&wg);
 
 // Cleanup
 uvrpc_waitgroup_cleanup(&wg);
@@ -147,11 +169,14 @@ uvrpc_semaphore_t sem;
 uvrpc_semaphore_init(&sem, loop, 50); // Max 50 concurrent
 
 for each request {
-    uvrpc_semaphore_acquire(&sem, on_acquired, req);
+    uvrpc_promise_t* permit_promise = uvrpc_promise_create(loop);
+    uvrpc_promise_then(permit_promise, on_acquired, req);
+    uvrpc_semaphore_acquire_async(&sem, permit_promise);
 }
 
-void on_acquired(uvrpc_semaphore_t* sem, void* ctx) {
-    make_rpc_call(..., sem);
+void on_acquired(uvrpc_promise_t* promise, void* ctx) {
+    make_rpc_call(..., &sem);
+    uvrpc_promise_destroy(promise);
 }
 
 void on_response(...) {
@@ -162,24 +187,45 @@ void on_response(...) {
 ### Wait for Multiple Calls
 
 ```c
-uvrpc_barrier_t barrier;
-uvrpc_barrier_init(&barrier, loop, count, on_complete, results);
-
+uvrpc_promise_t* promises[count];
 for each call {
-    make_rpc_call(..., &barrier);
+    promises[i] = uvrpc_promise_create(loop);
+    make_rpc_call(..., promises[i]);
 }
 
-void on_response(...) {
-    store_result();
-    uvrpc_barrier_wait(&barrier, error);
-}
+uvrpc_promise_t combined;
+uvrpc_promise_init(&combined, loop);
+uvrpc_promise_all(promises, count, &combined, loop);
+uvrpc_promise_then(&combined, on_complete, NULL);
 
 void on_complete(...) {
     // Aggregate results
 }
 ```
 
-### Track Async Operation
+### Convenience Functions
+
+```c
+// Create and destroy promises
+uvrpc_promise_t* p = uvrpc_promise_create(loop);
+// ... use promise ...
+uvrpc_promise_destroy(p);
+
+// Synchronous Promise.all()
+uint8_t* result = NULL;
+size_t result_size = 0;
+int ret = uvrpc_promise_all_sync(promises, count, &result, &result_size, loop);
+if (ret == UVRPC_OK) {
+    // Use result
+    free(result);
+}
+
+// Synchronous wait
+int ret = uvrpc_promise_wait(promise);
+if (ret == UVRPC_OK) {
+    // Promise fulfilled
+}
+```
 
 ```c
 uvrpc_promise_t promise;
