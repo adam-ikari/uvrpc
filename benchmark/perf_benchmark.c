@@ -781,8 +781,9 @@ void* thread_func(void* arg) {
         /* Immediate mode: send requests with immediate callback on response
          * Maintain concurrency limit: send when pending count is below threshold
          * This sends requests as fast as responses arrive, respecting backpressure
+         * Use fixed 50 concurrent requests for optimal performance
          */
-        int max_concurrent = batch_size * 2;
+        int max_concurrent = 50;  /* Fixed optimal concurrency */
         int threshold = max_concurrent * 8 / 10;  /* 80% threshold */
         
         printf("[Thread %d] Immediate mode: maintaining %d max concurrent requests...\n", 
@@ -793,9 +794,17 @@ void* thread_func(void* arg) {
         
         /* Send initial batch to reach concurrency limit */
         int initial_sent = 0;
-        for (int i = 0; i < num_clients; i++) {
-            /* Send batch_size requests per client to reach concurrency */
-            for (int j = 0; j < batch_size && initial_sent < max_concurrent; j++) {
+        int requests_per_client = max_concurrent / num_clients;
+        if (requests_per_client < 1) requests_per_client = 1;
+        
+        for (int i = 0; i < num_clients && initial_sent < max_concurrent; i++) {
+            /* Send requests per client to reach concurrency */
+            int to_send = requests_per_client;
+            if (i == num_clients - 1) {
+                to_send = max_concurrent - initial_sent;  /* Send remaining to last client */
+            }
+            
+            for (int j = 0; j < to_send; j++) {
                 int32_t a = 100;
                 int32_t b = 200;
                 int32_t params[2] = {a, b};
