@@ -830,6 +830,26 @@ int uvrpc_subscriber_subscribe(uvrpc_subscriber_t* subscriber, const char* topic
  */
 int uvrpc_subscriber_unsubscribe(uvrpc_subscriber_t* subscriber, const char* topic);
 
+/**
+ * @brief Convert error code to human-readable error message
+ * 
+ * This function converts UVRPC error codes to descriptive strings.
+ * It does NOT print or output the error message. The caller is responsible
+ * for any output (fprintf, logging, etc.).
+ * 
+ * @param error_code UVRPC error code
+ * @return Static string describing the error
+ * 
+ * Example:
+ * @code
+ * int ret = uvrpc_client_call(client, "add", params, sizeof(params), callback, ctx);
+ * if (ret != UVRPC_OK) {
+ *     fprintf(stderr, "Error: %s\n", uvrpc_strerror(ret));
+ * }
+ * @endcode
+ */
+const char* uvrpc_strerror(int error_code);
+
 /** @} */
 
 #ifdef __cplusplus
