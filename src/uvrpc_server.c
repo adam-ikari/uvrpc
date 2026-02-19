@@ -12,6 +12,7 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
+#include "../include/uvasync.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include <uthash.h>
@@ -57,6 +58,17 @@ typedef struct pending_request {
     int in_use;                  /* Flag to indicate if slot is in use */
 } pending_request_t;
 
+/* Task wrapper for handler calls through scheduler */
+typedef struct {
+    uvrpc_server_t* server;
+    handler_entry_t* handler_entry;
+    uint32_t msgid;
+    char* method;
+    uint8_t* params;
+    size_t params_size;
+    void* client_ctx;
+} handler_task_t;
+
 /* Server structure */
 struct uvrpc_server {
     uv_loop_t* loop;
@@ -64,19 +76,67 @@ struct uvrpc_server {
     uvbus_t* uvbus;
     handler_entry_t* handlers;
     int is_running;
-    
+
     /* User-defined context */
     uvrpc_context_t* ctx;
-    
+
     /* Pending requests ring buffer */
     pending_request_t** pending_requests;
     int max_pending_requests;    /* Ring buffer size (must be power of 2) */
     uint32_t generation;         /* Generation counter */
-    
+
+    /* Concurrency control */
+    int max_concurrent;          /* Max concurrent handler executions */
+    uvasync_scheduler_t* scheduler;  /* Async scheduler for handler concurrency control */
+
     /* Statistics */
     uint64_t total_requests;
     uint64_t total_responses;
 };
+
+/* Handler task function for scheduler */
+static void handler_task_fn(void* data, uvrpc_promise_t* promise) {
+    handler_task_t* task = (handler_task_t*)data;
+
+    if (!task || !task->server || !task->handler_entry || !task->handler_entry->handler) {
+        if (task) {
+            if (task->method) {
+                uvrpc_free(task->method);
+            }
+            if (task->params) {
+                uvrpc_free(task->params);
+            }
+            uvrpc_free(task);
+        }
+        return;
+    }
+
+    /* Increment request counter */
+    task->server->total_requests++;
+
+    /* Create request structure */
+    uvrpc_request_t req;
+    req.server = task->server;
+    req.msgid = task->msgid;
+    req.method = task->method;
+    req.params = task->params;
+    req.params_size = task->params_size;
+    req.client_ctx = task->client_ctx;
+    req.user_data = NULL;
+
+    /* Call handler */
+    task->handler_entry->handler(&req, task->handler_entry->ctx);
+
+    /* Free task data */
+    uvrpc_free(task->method);
+    uvrpc_free(task->params);
+    uvrpc_free(task);
+
+    /* Resolve promise */
+    if (promise) {
+        uvrpc_promise_resolve(promise, NULL, 0);
+    }
+}
 
 /* Server receive callback */
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
@@ -116,24 +176,75 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     }
     
     if (entry && entry->handler) {
-        /* Increment request counter */
-        server->total_requests++;
-        
-        /* Create request structure */
-        uvrpc_request_t req;
-        req.server = server;
-        req.msgid = msgid;
-        req.method = method;
-        req.params = (uint8_t*)params;
-        req.params_size = params_size;
-        req.client_ctx = client_ctx;
-        req.user_data = NULL;
-        
-        /* Call handler */
-        entry->handler(&req, entry->ctx);
+        /* If scheduler is available, use it for concurrency control */
+        if (server->scheduler) {
+            /* Create task wrapper */
+            handler_task_t* task = (handler_task_t*)uvrpc_calloc(1, sizeof(handler_task_t));
+            if (!task) {
+                UVRPC_ERROR("Failed to allocate handler task");
+                uvrpc_free(method);
+                return;
+            }
 
-        /* Free decoded method */
-        if (method) uvrpc_free(method);
+            task->server = server;
+            task->handler_entry = entry;
+            task->msgid = msgid;
+            task->method = method;  /* Transfer ownership */
+            task->client_ctx = client_ctx;
+
+            /* Copy params since original data will be freed */
+            if (params && params_size > 0) {
+                task->params = (uint8_t*)uvrpc_alloc(params_size);
+                if (!task->params) {
+                    UVRPC_ERROR("Failed to allocate params copy");
+                    uvrpc_free(method);
+                    uvrpc_free(task);
+                    return;
+                }
+                memcpy(task->params, params, params_size);
+                task->params_size = params_size;
+            } else {
+                task->params = NULL;
+                task->params_size = 0;
+            }
+
+            /* Create promise for task result */
+            uvrpc_promise_t* promise = uvrpc_promise_create(server->loop);
+
+            /* Submit task to scheduler */
+            int ret = uvasync_submit(server->scheduler, handler_task_fn, task, promise);
+
+            /* Cleanup promise */
+            uvrpc_promise_destroy(promise);
+
+            if (ret != UVASYNC_OK) {
+                UVRPC_ERROR("Failed to submit handler task: %d", ret);
+                uvrpc_free(task->method);
+                if (task->params) {
+                    uvrpc_free(task->params);
+                }
+                uvrpc_free(task);
+            }
+        } else {
+            /* Direct handler execution (no scheduler) */
+            server->total_requests++;
+
+            /* Create request structure */
+            uvrpc_request_t req;
+            req.server = server;
+            req.msgid = msgid;
+            req.method = method;
+            req.params = (uint8_t*)params;
+            req.params_size = params_size;
+            req.client_ctx = client_ctx;
+            req.user_data = NULL;
+
+            /* Call handler */
+            entry->handler(&req, entry->ctx);
+
+            /* Free decoded method */
+            if (method) uvrpc_free(method);
+        }
     } else {
         /* Handler not found, send error response */
         UVRPC_ERROR("Handler not found: '%s'", method);
@@ -242,7 +353,27 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     }
     
     uvbus_config_free(bus_config);
-    
+
+    /* Initialize concurrency control */
+    server->max_concurrent = (config->max_concurrent > 0) ?
+                            config->max_concurrent : UVRPC_MAX_CONCURRENT_REQUESTS;
+
+    /* Initialize uvasync scheduler for handler concurrency control */
+    if (server->max_concurrent > 0) {
+        uvasync_context_t* async_ctx = uvasync_context_create(server->loop);
+        if (async_ctx) {
+            server->scheduler = uvasync_scheduler_create(async_ctx, server->max_concurrent);
+            if (!server->scheduler) {
+                /* Scheduler creation failed, cleanup */
+                uvasync_context_destroy(async_ctx);
+                /* Note: Continue without scheduler - fall back to direct handler execution */
+                server->scheduler = NULL;
+            }
+        }
+    } else {
+        server->scheduler = NULL;
+    }
+
     return server;
 }
 
@@ -284,9 +415,15 @@ void uvrpc_server_stop(uvrpc_server_t* server) {
 /* Free server */
 void uvrpc_server_free(uvrpc_server_t* server) {
     if (!server) return;
-    
+
     uvrpc_server_stop(server);
-    
+
+    /* Free uvasync scheduler */
+    if (server->scheduler) {
+        uvasync_scheduler_destroy(server->scheduler);
+        server->scheduler = NULL;
+    }
+
     /* Free UVBus */
     if (server->uvbus) {
         uvbus_free(server->uvbus);

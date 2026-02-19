@@ -12,6 +12,7 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
+#include "../include/uvasync.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
@@ -34,6 +35,22 @@ typedef struct pending_callback {
     uvrpc_callback_t callback;
     void* ctx;
 } pending_callback_t;
+
+/* Forward declarations */
+static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
+                                                 const uint8_t* params, size_t params_size,
+                                                 uvrpc_callback_t callback, void* ctx);
+
+/* Task wrapper for RPC calls through scheduler */
+typedef struct {
+    uvrpc_client_t* client;
+    char* method;
+    uint8_t* params;
+    size_t params_size;
+    uvrpc_callback_t callback;
+    void* ctx;
+    int should_free_params;
+} rpc_task_t;
 
 /* Client structure */
 struct uvrpc_client {
@@ -61,6 +78,7 @@ struct uvrpc_client {
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
     uint64_t timeout_ms;        /* Default timeout */
+    uvasync_scheduler_t* scheduler;  /* Async scheduler for request concurrency control */
 
     /* Batch processing */
     int batching_enabled;       /* Enable request batching */
@@ -70,6 +88,53 @@ struct uvrpc_client {
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
 };
+
+/* RPC task function for scheduler */
+static void rpc_task_fn(void* data, uvrpc_promise_t* promise) {
+    rpc_task_t* task = (rpc_task_t*)data;
+
+    if (!task || !task->client || !task->method) {
+        if (promise) {
+            uvrpc_promise_reject(promise, UVASYNC_ERROR_INVALID_PARAM, "Invalid task parameters");
+        }
+        if (task) {
+            if (task->should_free_params && task->params) {
+                uvrpc_free(task->params);
+            }
+            if (task->method) {
+                uvrpc_free(task->method);
+            }
+            uvrpc_free(task);
+        }
+        return;
+    }
+
+    /* Perform actual RPC call */
+    int ret = uvrpc_client_call_no_retry_internal(
+        task->client,
+        task->method,
+        task->params,
+        task->params_size,
+        task->callback,
+        task->ctx
+    );
+
+    /* Cleanup task data */
+    if (task->should_free_params && task->params) {
+        uvrpc_free(task->params);
+    }
+    uvrpc_free(task->method);
+    uvrpc_free(task);
+
+    /* Resolve promise with result */
+    if (promise) {
+        if (ret == UVRPC_OK) {
+            uvrpc_promise_resolve(promise, (uint8_t*)&ret, sizeof(int));
+        } else {
+            uvrpc_promise_reject(promise, ret, "RPC call failed");
+        }
+    }
+}
 
 /* Transport connect callback */
 static void client_connect_callback(int status, void* ctx) {
@@ -315,6 +380,22 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     
     uvbus_config_free(bus_config);
 
+    /* Initialize uvasync scheduler for concurrency control */
+    if (client->max_concurrent > 0) {
+        uvasync_context_t* async_ctx = uvasync_context_create(client->loop);
+        if (async_ctx) {
+            client->scheduler = uvasync_scheduler_create(async_ctx, client->max_concurrent);
+            if (!client->scheduler) {
+                /* Scheduler creation failed, cleanup */
+                uvasync_context_destroy(async_ctx);
+                /* Note: Continue without scheduler - fall back to manual concurrency control */
+                client->scheduler = NULL;
+            }
+        }
+    } else {
+        client->scheduler = NULL;
+    }
+
     return client;
 }
 
@@ -380,6 +461,12 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     if (!client) return;
 
     uvrpc_client_disconnect(client);
+
+    /* Free uvasync scheduler */
+    if (client->scheduler) {
+        uvasync_scheduler_destroy(client->scheduler);
+        client->scheduler = NULL;
+    }
 
     /* Free UVBus */
     if (client->uvbus) {
@@ -513,28 +600,61 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
                        const uint8_t* params, size_t params_size,
                        uvrpc_callback_t callback, void* ctx) {
     if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
-    
+
+    /* If scheduler is available, use it for concurrency control */
+    if (client->scheduler) {
+        /* Create task wrapper */
+        rpc_task_t* task = (rpc_task_t*)uvrpc_calloc(1, sizeof(rpc_task_t));
+        if (!task) {
+            return UVRPC_ERROR_NO_MEMORY;
+        }
+
+        task->client = client;
+        task->method = uvrpc_strdup(method);
+        task->params = (uint8_t*)params;
+        task->params_size = params_size;
+        task->callback = callback;
+        task->ctx = ctx;
+        task->should_free_params = 0;  /* Don't free params, they're owned by caller */
+
+        if (!task->method) {
+            uvrpc_free(task);
+            return UVRPC_ERROR_NO_MEMORY;
+        }
+
+        /* Create promise for task result */
+        uvrpc_promise_t* promise = uvrpc_promise_create(client->loop);
+
+        /* Submit task to scheduler */
+        int ret = uvasync_submit(client->scheduler, rpc_task_fn, task, promise);
+
+        /* Cleanup promise (task owns the callback through rpc_task_fn) */
+        uvrpc_promise_destroy(promise);
+
+        return ret;
+    }
+
     /* If retry is disabled, call directly */
     if (client->max_retries <= 0) {
         return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
     }
-    
+
     /* Retry logic - just retry without running event loop */
     /* The event loop is driven externally, retries will be handled naturally */
     int ret;
     int retries = 0;
-    
+
     do {
         ret = uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
-        
+
         if (ret == UVRPC_OK) {
             break;  /* Success - exit retry loop */
         }
-        
+
         retries++;
-        
+
     } while (retries < client->max_retries);
-    
+
     return ret;
 }
 

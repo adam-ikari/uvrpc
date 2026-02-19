@@ -99,10 +99,25 @@ void uvasync_context_destroy(uvasync_context_t* ctx) {
     if (!ctx) {
         return;
     }
-    
-    /* Note: Skipping loop cleanup to avoid issues */
-    /* In production, proper cleanup should be implemented */
-    
+
+    /* If we own the loop, close and free it */
+    if (ctx->owns_loop && ctx->loop) {
+        /* Run event loop one more time to process any pending cleanup callbacks */
+        uv_run(ctx->loop, UV_RUN_NOWAIT);
+
+        /* Close the loop */
+        int ret = uv_loop_close(ctx->loop);
+        if (ret == UV_EBUSY) {
+            /* Loop is still busy, run once more to process remaining handles */
+            uv_run(ctx->loop, UV_RUN_NOWAIT);
+            uv_loop_close(ctx->loop);
+        }
+
+        /* Free the loop */
+        UVASYNC_FREE(ctx->loop);
+    }
+
+    /* Free the context */
     UVASYNC_FREE(ctx);
 }
 
@@ -187,15 +202,25 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler) {
     if (!scheduler) {
         return;
     }
-    
-    /* Note: Skipping cleanup calls to avoid issues */
-    /* In production, proper cleanup should be implemented */
-    
+
+    /* Wait for all pending tasks to complete */
+    int active = UVASYNC_ATOMIC_LOAD(&scheduler->active_tasks);
+    if (active > 0) {
+        /* Run event loop to process remaining tasks */
+        uv_run(scheduler->ctx->loop, UV_RUN_NOWAIT);
+    }
+
+    /* Cleanup semaphore */
+    uvrpc_semaphore_cleanup(&scheduler->concurrency_limit);
+
+    /* Cleanup waitgroup */
+    uvrpc_waitgroup_cleanup(&scheduler->waitgroup);
+
     /* Free statistics */
     if (scheduler->stats) {
         UVASYNC_FREE(scheduler->stats);
     }
-    
+
     UVASYNC_FREE(scheduler);
 }
 
