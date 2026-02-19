@@ -83,6 +83,8 @@ set(UVRPC_SOURCES
     src/uvrpc_subscriber.c
     src/uvrpc_allocator.c
     src/uvrpc_async.c
+    src/uvrpc_primitives.c
+    src/uvrpc_strerror.c
     src/uvbus.c
     src/uvbus_transport_tcp.c
     src/uvbus_transport_udp.c
@@ -94,6 +96,7 @@ set(UVRPC_SOURCES
 set(UVRPC_HEADERS
     include/uvrpc.h
     include/uvrpc_async.h
+    include/uvrpc_primitives.h
     include/uvbus.h
     src/uvrpc_flatbuffers.h
     src/uvrpc_service.h
@@ -235,6 +238,7 @@ add_subdirectory(benchmark)
     create_example_target(uvbus_client_only)
     create_example_target(complete_example)
     create_example_target(perf_mode_demo)
+    create_example_target(primitives_demo)
     # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now
 endif()
 
@@ -246,6 +250,36 @@ message(STATUS "Static linking: ${UVRPC_STATIC_LINKING}")
 message(STATUS "Build tests: ${UVRPC_BUILD_TESTS}")
 message(STATUS "Build examples: ${UVRPC_BUILD_EXAMPLES}")
 message(STATUS "=============================")
+# Simple test for primitives
+add_executable(test_primitives_simple
+    examples/test_primitives_simple.c
+)
+target_link_libraries(test_primitives_simple uvrpc pthread)
+
+# Test Promise combinators
+add_executable(test_promise_combinators
+    examples/test_promise_combinators.c
+)
+target_link_libraries(test_promise_combinators uvrpc pthread)
+
+# Test Promise basic
+add_executable(test_promise_basic
+    examples/test_promise_basic.c
+)
+target_link_libraries(test_promise_basic uvrpc pthread)
+
+# Test Promise race debug
+add_executable(test_promise_race_debug
+    examples/test_promise_race_debug.c
+)
+target_link_libraries(test_promise_race_debug uvrpc pthread)
+
+# Test Promise race simple
+add_executable(test_promise_race_simple
+    examples/test_promise_race_simple.c
+)
+target_link_libraries(test_promise_race_simple uvrpc pthread)
+
 # Tests
 if(UVRPC_BUILD_TESTS)
     add_subdirectory(tests)
