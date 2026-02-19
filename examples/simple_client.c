@@ -1,6 +1,7 @@
 /**
  * UVRPC Simple Client Example
  * Demonstrates basic RPC client usage with proper error handling
+ * Uses context structure instead of global variables
  */
 
 #include "../include/uvrpc.h"
@@ -8,26 +9,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-static volatile int g_running = 1;
-static volatile int g_connected = 0;
-static volatile int g_received = 0;
+/* Client context - stores all state locally */
+typedef struct {
+    volatile int running;
+    volatile int connected;
+    volatile int received;
+    uv_loop_t* loop;
+} client_context_t;
 
 /* Connection callback */
 void on_connect(int status, void* ctx) {
-    (void)ctx;
+    client_context_t* context = (client_context_t*)ctx;
     if (status == 0) {
-        g_connected = 1;
+        context->connected = 1;
         printf("[CLIENT] Connected successfully\n");
     } else {
         printf("[CLIENT] Connection failed: %d\n", status);
-        g_running = 0;
+        context->running = 0;
     }
 }
 
 /* Response callback */
 void on_response(uvrpc_response_t* resp, void* ctx) {
-    (void)ctx;
-    g_received = 1;
+    client_context_t* context = (client_context_t*)ctx;
+    context->received = 1;
     
     if (resp->status == UVRPC_OK && resp->result_size == 4) {
         int32_t result = *(int32_t*)resp->result;
@@ -38,7 +43,7 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
         printf("[CLIENT] Request failed: %d\n", resp->status);
     }
     
-    g_running = 0;  /* Exit after receiving response */
+    context->running = 0;  /* Exit after receiving response */
 }
 
 int main(int argc, char** argv) {
@@ -52,6 +57,14 @@ int main(int argc, char** argv) {
         fprintf(stderr, "[CLIENT] Failed to init loop\n");
         return 1;
     }
+    
+    /* Create context - stores all state locally */
+    client_context_t context = {
+        .running = 1,
+        .connected = 0,
+        .received = 0,
+        .loop = &loop
+    };
     
     /* Create config with pending buffer size */
     uvrpc_config_t* config = uvrpc_config_new();
@@ -68,8 +81,8 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    /* Connect with callback */
-    int ret = uvrpc_client_connect_with_callback(client, on_connect, NULL);
+    /* Connect with callback - pass context as user data */
+    int ret = uvrpc_client_connect_with_callback(client, on_connect, &context);
     if (ret != UVRPC_OK) {
         fprintf(stderr, "[CLIENT] Failed to initiate connect: %d\n", ret);
         uvrpc_client_free(client);
@@ -79,12 +92,12 @@ int main(int argc, char** argv) {
     
     /* Wait for connection */
     int iterations = 0;
-    while (!g_connected && g_running && iterations < 100) {
+    while (!context.connected && context.running && iterations < 100) {
         uv_run(&loop, UV_RUN_ONCE);
         iterations++;
     }
     
-    if (!g_connected) {
+    if (!context.connected) {
         fprintf(stderr, "[CLIENT] Connection timeout\n");
         uvrpc_client_free(client);
         uvrpc_config_free(config);
@@ -95,26 +108,26 @@ int main(int argc, char** argv) {
     int32_t params[2] = {10, 20};
     printf("[CLIENT] Calling 'add' with params %d + %d\n", params[0], params[1]);
     
-    ret = uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, NULL);
+    ret = uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, &context);
     
     if (ret == UVRPC_OK) {
         printf("[CLIENT] Request sent successfully\n");
     } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
         printf("[CLIENT] Pending buffer full - cannot send request\n");
-        g_running = 0;
+        context.running = 0;
     } else {
         fprintf(stderr, "[CLIENT] Failed to call: %d\n", ret);
-        g_running = 0;
+        context.running = 0;
     }
     
     /* Wait for response */
     iterations = 0;
-    while (g_running && iterations < 50) {
+    while (context.running && iterations < 50) {
         uv_run(&loop, UV_RUN_ONCE);
         iterations++;
     }
     
-    if (!g_received) {
+    if (!context.received) {
         printf("[CLIENT] No response received\n");
     }
     
