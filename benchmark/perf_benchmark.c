@@ -48,6 +48,8 @@ typedef struct {
     atomic_int* total_responses;
     atomic_int* total_failures;
     atomic_int* total_requests;
+    atomic_int* total_successful_responses;  /* Total successful responses across all threads */
+    atomic_int* total_result_sum;  /* Total result sum across all threads */
     int low_latency;
     int timer_interval_ms;  /* Configurable timer interval */
 } thread_context_t;
@@ -70,6 +72,9 @@ typedef struct {
     int failed;
     int timer_interval_ms;  /* Configurable timer interval (default: 0ms for immediate mode) */
     uv_loop_t* loop;  /* Event loop reference for immediate mode */
+    atomic_int successful_response_count;  /* Count of successful responses (UVRPC_OK) */
+    atomic_int result_sum;  /* Sum of result values for correctness verification */
+    volatile sig_atomic_t shutdown_requested;  /* Flag for graceful shutdown */
 } thread_state_t;
 
 /* Per-client context for immediate mode callback */
@@ -79,27 +84,26 @@ typedef struct {
     int client_idx;
 } client_context_t;
 
-/* Global state */
-static atomic_int g_response_sum = 0;
-static atomic_int g_result_sum = 0;
-
 /* Latency test state */
-static struct {
+typedef struct {
     struct timespec* start_times;
     struct timespec* end_times;
     int* received;
     int total;
-} g_latency_state = {NULL, NULL, NULL, 0};
+} latency_test_state_t;
 
-/* Signal handler for graceful shutdown */
-static volatile sig_atomic_t g_shutdown_requested = 0;
-
-/* Server state */
-static uv_timer_t g_stats_timer;
-static uvrpc_server_t* g_server = NULL;
-static uint64_t g_last_requests = 0;
-static uint64_t g_last_responses = 0;
-static uv_loop_t* g_server_loop = NULL;
+/* Server context */
+typedef struct {
+    uv_timer_t stats_timer;
+    uvrpc_server_t* server;
+    uint64_t last_requests;
+    uint64_t last_responses;
+    uv_loop_t* loop;
+    volatile sig_atomic_t shutdown_requested;
+    int timeout_ms;
+    uv_timer_t timeout_timer;
+    struct timespec start_time;
+} server_context_t;
 
 /* Shared memory for fork mode */
 typedef struct {
@@ -111,19 +115,17 @@ typedef struct {
     unsigned long long latency_us;
 } client_stats_t;
 
-static client_stats_t* g_shared_stats = NULL;
-static size_t g_shm_size = 0;
-static int g_shm_fd = -1;
-static const char* g_shm_name = "/uvrpc_benchmark_shm";
-static volatile sig_atomic_t g_server_pid = 0;
-static const char* g_server_address = NULL;
-static int g_server_timeout_ms = 0;  /* Server timeout in milliseconds */
-static uv_timer_t g_server_timeout_timer;  /* Server timeout timer */
-static struct timespec g_server_start_time;  /* Server start time for throughput calculation */
+/* Fork mode shared memory context */
+typedef struct {
+    client_stats_t* shared_stats;
+    size_t shm_size;
+    int shm_fd;
+    const char* shm_name;
+} fork_context_t;
 
 void on_signal(int signum) {
     (void)signum;
-    g_shutdown_requested = 1;
+    /* Signal handler - no global state needed for client mode */
 }
 
 /* Handler for Add operation */
@@ -156,30 +158,32 @@ void on_server_signal(uv_signal_t* handle, int signum) {
     printf("\n[SERVER] Received signal %d, shutting down...\n", signum);
     fflush(stdout);
     
-    g_shutdown_requested = 1;
-    
-    /* Stop the event loop */
-    if (g_server_loop) {
-        uv_stop(g_server_loop);
+    server_context_t* ctx = (server_context_t*)handle->loop->data;
+    if (ctx) {
+        ctx->shutdown_requested = 1;
+        /* Stop the event loop */
+        if (ctx->loop) {
+            uv_stop(ctx->loop);
+        }
     }
 }
 
 /* Server statistics timer callback */
 void on_stats_timer(uv_timer_t* handle) {
-    (void)handle;
-    if (g_server) {
-        uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
-        uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
+    server_context_t* ctx = (server_context_t*)handle->loop->data;
+    if (ctx && ctx->server) {
+        uint64_t total_requests = uvrpc_server_get_total_requests(ctx->server);
+        uint64_t total_responses = uvrpc_server_get_total_responses(ctx->server);
         
-        uint64_t requests_delta = total_requests - g_last_requests;
-        uint64_t responses_delta = total_responses - g_last_responses;
+        uint64_t requests_delta = total_requests - ctx->last_requests;
+        uint64_t responses_delta = total_responses - ctx->last_responses;
         
         printf("[SERVER] Total: %lu req, %lu resp | Delta: %lu req/s, %lu resp/s | Throughput: %lu ops/s\n",
                total_requests, total_responses, requests_delta, responses_delta, responses_delta);
         fflush(stdout);
         
-        g_last_requests = total_requests;
-        g_last_responses = total_responses;
+        ctx->last_requests = total_requests;
+        ctx->last_responses = total_responses;
     }
 }
 
@@ -199,20 +203,22 @@ void send_batch_requests_fast(uv_timer_t* handle);
 
 /* Server timeout callback - auto-stop server after timeout */
 static void on_server_timeout(uv_timer_t* handle) {
-    (void)handle;
-    fprintf(stderr, "[SERVER] Timeout reached (%d ms), shutting down...\n", g_server_timeout_ms);
-    fflush(stderr);
-    
-    /* Stop the event loop gracefully */
-    if (g_server_loop) {
-        uv_stop(g_server_loop);
+    server_context_t* ctx = (server_context_t*)handle->loop->data;
+    if (ctx) {
+        fprintf(stderr, "[SERVER] Timeout reached (%d ms), shutting down...\n", ctx->timeout_ms);
+        fflush(stderr);
+        
+        /* Stop the event loop gracefully */
+        if (ctx->loop) {
+            uv_stop(ctx->loop);
+        }
     }
 }
 
 /* Timer callback to stop test */
 static void on_test_timer(uv_timer_t* handle) {
     thread_state_t* state = (thread_state_t*)handle->data;
-    g_shutdown_requested = 1;
+    state->shutdown_requested = 1;
     state->done = 1;
     uv_timer_stop(handle);
     /* Stop the batch timer */
@@ -246,10 +252,10 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
         int32_t result = *((int32_t*)resp->result);
         
         /* Prevent compiler optimization by using atomic counter */
-        atomic_fetch_add(&g_response_sum, 1);
+        atomic_fetch_add(&state->successful_response_count, 1);
         
         /* Also accumulate result to verify correctness */
-        atomic_fetch_add(&g_result_sum, result);
+        atomic_fetch_add(&state->result_sum, result);
     }
     
     /* In immediate mode (interval=0), send new request immediately after receiving response
@@ -261,15 +267,25 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
     /* Skip immediate mode logic in single-thread mode */
 }
 
+/* Latency test context */
+typedef struct {
+    latency_test_state_t* state;
+    long req_id;
+} latency_request_context_t;
+
 /* Latency test callback */
 void on_latency_response(uvrpc_response_t* resp, void* ctx) {
     (void)resp;
-    long req_id = (long)ctx;
+    latency_request_context_t* req_ctx = (latency_request_context_t*)ctx;
+    latency_test_state_t* state = req_ctx->state;
+    long req_id = req_ctx->req_id;
     
-    if (req_id >= 0 && req_id < g_latency_state.total) {
-        g_latency_state.received[req_id] = 1;
-        clock_gettime(CLOCK_MONOTONIC, &g_latency_state.end_times[req_id]);
+    if (req_id >= 0 && req_id < state->total) {
+        state->received[req_id] = 1;
+        clock_gettime(CLOCK_MONOTONIC, &state->end_times[req_id]);
     }
+    
+    free(req_ctx);  /* Free the context */
 }
 
 int create_clients(uvrpc_client_t** clients, int num_clients, uv_loop_t* loop,
@@ -354,7 +370,7 @@ void send_batch_requests(uv_timer_t* handle) {
     /* Special handling for immediate mode (interval=0) */
     int is_immediate_mode = (state->timer_interval_ms == 0);
     
-    for (int i = 0; i < batch_size && !g_shutdown_requested; i++) {
+    for (int i = 0; i < batch_size && !state->shutdown_requested; i++) {
         int client_idx = state->sent_requests % num_clients;
         
         /* Check pending request count before sending (backpressure mechanism)
@@ -399,13 +415,13 @@ void send_batch_requests(uv_timer_t* handle) {
      * Add a tiny delay (100 microseconds) to allow event loop to process responses
      * This prevents overwhelming the system while still being faster than timer mode
      */
-    if (is_immediate_mode && !g_shutdown_requested && sent_this_round > 0) {
+    if (is_immediate_mode && !state->shutdown_requested && sent_this_round > 0) {
         /* Schedule next batch with 100us delay to allow event loop processing */
         uv_timer_start(handle, send_batch_requests, 0, 0);
     }
     
     /* If shutdown was requested, stop the event loop */
-    if (g_shutdown_requested) {
+    if (state->shutdown_requested) {
         uv_stop(loop);
     }
 }
@@ -434,7 +450,7 @@ void send_batch_requests_fast(uv_timer_t* handle) {
     int total_sent = 0;
     int total_skipped = 0;
     
-    for (int batch = 0; batch < 10 && !g_shutdown_requested; batch++) {
+    for (int batch = 0; batch < 10 && !state->shutdown_requested; batch++) {
         /* Send one batch */
         for (int i = 0; i < batch_size; i++) {
             int client_idx = state->sent_requests % num_clients;
@@ -475,7 +491,7 @@ void send_batch_requests_fast(uv_timer_t* handle) {
     }
     
     /* If shutdown was requested, stop the event loop */
-    if (g_shutdown_requested) {
+    if (state->shutdown_requested) {
         uv_stop(loop);
     }
 }
@@ -495,24 +511,25 @@ int wait_for_responses(uv_loop_t* loop, thread_state_t* state, int target) {
 }
 
 /* Helper: Print test results */
-void print_test_results(int sent, int responses, int failed, struct timespec* start, struct timespec* end, int num_clients) {
+void print_test_results(int sent, int responses, int failed, struct timespec* start, struct timespec* end, int num_clients, atomic_int* successful_responses_ptr, atomic_int* result_sum_ptr) {
     double elapsed = (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
     printf("Sent: %d\n", sent);
     printf("Received: %d\n", responses);
     printf("Time: %.3f s\n", elapsed);
     printf("Client throughput: %.0f ops/s (sent)\n", sent / elapsed);
     
-    /* Calculate success rate based on received responses only */
-    int successful_responses = atomic_load(&g_response_sum);
-    int result_sum = atomic_load(&g_result_sum);
-    if (responses > 0) {
-        printf("Success rate: %.1f%% (based on received responses)\n", (successful_responses * 100.0) / responses);
+    /* Calculate success rate based on total sent requests */
+    int successful_responses = atomic_load(successful_responses_ptr);
+    int result_sum = atomic_load(result_sum_ptr);
+    int total_requests = sent + failed;  /* Total requests attempted */
+    if (total_requests > 0) {
+        printf("Success rate: %.1f%% (successful / total requests)\n", (successful_responses * 100.0) / total_requests);
         printf("Result count: %d (correct responses)\n", successful_responses);
         if (successful_responses > 0) {
             printf("Result average: %.1f (to verify correctness)\n", (double)result_sum / successful_responses);
         }
     }
-    printf("Failed: %d\n", failed);
+    printf("Failed: %d (buffer full / rejected)\n", failed);
     
     /* Print memory usage */
     print_memory_usage("TEST CLIENT PROCESS");
@@ -539,14 +556,14 @@ void cleanup_clients_and_loop(uvrpc_client_t** clients, int num_clients, uv_loop
 }
 
 /* Helper: Calculate and print latency statistics */
-void print_latency_results(int iterations) {
+void print_latency_results(int iterations, latency_test_state_t* state) {
     /* Calculate latency statistics */
     double latencies[iterations];
     int received_count = 0;
     for (int i = 0; i < iterations; i++) {
-        if (g_latency_state.received[i]) {
-            double latency = (g_latency_state.end_times[i].tv_sec - g_latency_state.start_times[i].tv_sec) +
-                           (g_latency_state.end_times[i].tv_nsec - g_latency_state.start_times[i].tv_nsec) / 1e9;
+        if (state->received[i]) {
+            double latency = (state->end_times[i].tv_sec - state->start_times[i].tv_sec) +
+                           (state->end_times[i].tv_nsec - state->start_times[i].tv_nsec) / 1e9;
             latencies[received_count++] = latency;
         }
     }
@@ -602,7 +619,10 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
         .sent_requests = 0,
         .test_duration_ms = test_duration_ms,
         .done = 0,
-        .timer_interval_ms = 0  /* Immediate mode (send immediately, then wait for responses) */
+        .timer_interval_ms = 0,  /* Immediate mode (send immediately, then wait for responses) */
+        .successful_response_count = 0,
+        .result_sum = 0,
+        .shutdown_requested = 0
     };
     
     printf("About to create clients...\n");
@@ -657,7 +677,7 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
     uv_close((uv_handle_t*)&batch_timer, NULL);
 
     /* Results */
-    print_test_results(state.sent_requests, state.responses_received, state.failed, &start, &end, num_clients);
+    print_test_results(state.sent_requests, state.responses_received, state.failed, &start, &end, num_clients, &state.successful_response_count, &state.result_sum);
 
     /* Cleanup */
     for (int i = 0; i < num_clients; i++) {
@@ -679,7 +699,10 @@ void* thread_func(void* arg) {
         .ready_to_send = 0,
         .sent_requests = 0,
         .test_duration_ms = ctx->test_duration_ms,
-        .done = 0
+        .done = 0,
+        .successful_response_count = 0,
+        .result_sum = 0,
+        .shutdown_requested = 0
     };
 
     printf("[Thread %d] Starting\n", ctx->thread_id);
@@ -820,6 +843,8 @@ void* thread_func(void* arg) {
     atomic_fetch_add(ctx->total_responses, state.responses_received);
     atomic_fetch_add(ctx->total_failures, state.failed);
     atomic_fetch_add(ctx->total_requests, state.sent_requests);
+    atomic_fetch_add(ctx->total_successful_responses, atomic_load(&state.successful_response_count));
+    atomic_fetch_add(ctx->total_result_sum, atomic_load(&state.result_sum));
     
     printf("[Thread %d] Completed: %d requests sent, %d responses received, %d failures\n", 
            ctx->thread_id, state.sent_requests, state.responses_received, state.failed);
@@ -837,6 +862,8 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     atomic_int total_responses = 0;
     atomic_int total_failures = 0;
     atomic_int total_requests = 0;
+    atomic_int total_successful_responses = 0;
+    atomic_int total_result_sum = 0;
 
     printf("=== Multi-Thread Test ===\n");
     printf("Threads: %d\n", num_threads);
@@ -864,6 +891,8 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
         contexts[i].total_responses = &total_responses;
         contexts[i].total_failures = &total_failures;
         contexts[i].total_requests = &total_requests;
+        contexts[i].total_successful_responses = &total_successful_responses;
+        contexts[i].total_result_sum = &total_result_sum;
         contexts[i].low_latency = low_latency;
         contexts[i].timer_interval_ms = timer_interval_ms;  /* Pass timer interval */
 
@@ -880,29 +909,41 @@ void run_multi_thread_test(const char* address, int num_threads, int clients_per
     int responses = atomic_load(&total_responses);
     int failures = atomic_load(&total_failures);
     int requests = atomic_load(&total_requests);
+    int successful_responses = atomic_load(&total_successful_responses);
+    int result_sum = atomic_load(&total_result_sum);
 
     printf("\n=== Test Results ===\n");
     printf("Time: %.3f s\n", elapsed);
     printf("Total requests: %d\n", requests);
     printf("Total responses: %d\n", responses);
+    printf("Successful responses: %d\n", successful_responses);
     printf("Total failures: %d\n", failures);
-    printf("Success rate: %.1f%%\n", requests > 0 ? (responses * 100.0) / requests : 0);
+    int total_requests_attempted = requests + failures;
+    printf("Success rate: %.1f%% (successful / total attempted)\n", 
+           total_requests_attempted > 0 ? (successful_responses * 100.0) / total_requests_attempted : 0);
+    if (successful_responses > 0) {
+        printf("Result average: %.1f (to verify correctness)\n", (double)result_sum / successful_responses);
+    }
     printf("Throughput: %.0f ops/s\n", responses / elapsed);
     print_memory_usage("MULTI-THREAD");
     printf("====================\n");
 }
 
 /* Server mode - integrated server functionality */
-void run_server_mode(const char* address) {
-    if (!address) {
-        fprintf(stderr, "Invalid address\n");
+void run_server_mode(const char* address, server_context_t* ctx) {
+    if (!address || !ctx) {
+        fprintf(stderr, "Invalid parameters\n");
         return;
     }
+    
+    /* Initialize server context */
+    memset(ctx, 0, sizeof(*ctx));
     
     /* Create event loop */
     uv_loop_t loop;
     uv_loop_init(&loop);
-    g_server_loop = &loop;
+    loop.data = ctx;  /* Pass context to callbacks */
+    ctx->loop = &loop;
     
     /* Create config */
     uvrpc_config_t* config = uvrpc_config_new();
@@ -917,9 +958,9 @@ void run_server_mode(const char* address) {
     uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     /* Create server */
-    g_server = uvrpc_server_create(config);
+    ctx->server = uvrpc_server_create(config);
     
-    if (!g_server) {
+    if (!ctx->server) {
         fprintf(stderr, "Failed to create server\n");
         uvrpc_config_free(config);
         uv_loop_close(&loop);
@@ -929,33 +970,33 @@ void run_server_mode(const char* address) {
     uvrpc_config_free(config);  /* Free config after successful server creation */
     
     /* Register handlers manually */
-    uvrpc_server_register(g_server, "Add", benchmark_add_handler, NULL);
+    uvrpc_server_register(ctx->server, "Add", benchmark_add_handler, NULL);
     
     /* Start server */
-    int ret = uvrpc_server_start(g_server);
+    int ret = uvrpc_server_start(ctx->server);
     if (ret != UVRPC_OK) {
         fprintf(stderr, "Failed to start server: %d\n", ret);
-        uvrpc_server_free(g_server);
+        uvrpc_server_free(ctx->server);
         uv_loop_close(&loop);
         return;
     }
     
     /* Record server start time for throughput calculation */
-    clock_gettime(CLOCK_MONOTONIC, &g_server_start_time);
+    clock_gettime(CLOCK_MONOTONIC, &ctx->start_time);
     
     printf("Server started on %s\n", address);
     printf("Press Ctrl+C to stop the server\n");
     fflush(stdout);
     
     /* Start stats timer (print every 1 second) */
-    uv_timer_init(&loop, &g_stats_timer);
-    uv_timer_start(&g_stats_timer, on_stats_timer, 1000, 1000);
+    uv_timer_init(&loop, &ctx->stats_timer);
+    uv_timer_start(&ctx->stats_timer, on_stats_timer, 1000, 1000);
     
     /* Setup server timeout timer if timeout is configured */
-    if (g_server_timeout_ms > 0) {
-        uv_timer_init(&loop, &g_server_timeout_timer);
-        uv_timer_start(&g_server_timeout_timer, on_server_timeout, g_server_timeout_ms, 0);
-        printf("[SERVER] Auto-shutdown in %d ms\n", g_server_timeout_ms);
+    if (ctx->timeout_ms > 0) {
+        uv_timer_init(&loop, &ctx->timeout_timer);
+        uv_timer_start(&ctx->timeout_timer, on_server_timeout, ctx->timeout_ms, 0);
+        printf("[SERVER] Auto-shutdown in %d ms\n", ctx->timeout_ms);
         fflush(stdout);
     }
     
@@ -975,25 +1016,25 @@ void run_server_mode(const char* address) {
     fflush(stdout);
     
     /* Cleanup */
-    uv_timer_stop(&g_stats_timer);
-    uv_close((uv_handle_t*)&g_stats_timer, NULL);
+    uv_timer_stop(&ctx->stats_timer);
+    uv_close((uv_handle_t*)&ctx->stats_timer, NULL);
     
     /* Stop and close timeout timer if it was configured */
-    if (g_server_timeout_ms > 0) {
-        uv_timer_stop(&g_server_timeout_timer);
-        uv_close((uv_handle_t*)&g_server_timeout_timer, NULL);
+    if (ctx->timeout_ms > 0) {
+        uv_timer_stop(&ctx->timeout_timer);
+        uv_close((uv_handle_t*)&ctx->timeout_timer, NULL);
     }
     
     /* Print final statistics */
     struct timespec end_time;
     clock_gettime(CLOCK_MONOTONIC, &end_time);
     
-    uint64_t total_requests = uvrpc_server_get_total_requests(g_server);
-    uint64_t total_responses = uvrpc_server_get_total_responses(g_server);
+    uint64_t total_requests = uvrpc_server_get_total_requests(ctx->server);
+    uint64_t total_responses = uvrpc_server_get_total_responses(ctx->server);
     
     /* Calculate total elapsed time in seconds */
-    double elapsed = (end_time.tv_sec - g_server_start_time.tv_sec) + 
-                     (end_time.tv_nsec - g_server_start_time.tv_nsec) / 1e9;
+    double elapsed = (end_time.tv_sec - ctx->start_time.tv_sec) + 
+                     (end_time.tv_nsec - ctx->start_time.tv_nsec) / 1e9;
     
     /* Calculate total throughput */
     double total_throughput = elapsed > 0 ? total_responses / elapsed : 0;
@@ -1014,12 +1055,13 @@ void run_server_mode(const char* address) {
     }
     fflush(stdout);
     
-    uvrpc_server_free(g_server);
+    uvrpc_server_free(ctx->server);
+    ctx->server = NULL;
     printf("Server stopped\n");
     fflush(stdout);
     
-    g_server = NULL;
-    g_server_loop = NULL;
+    ctx->server = NULL;
+    ctx->loop = NULL;
     uv_loop_close(&loop);
 }
 
@@ -1048,31 +1090,32 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     }
     
     /* Allocate latency tracking arrays */
-    g_latency_state.start_times = malloc(iterations * sizeof(struct timespec));
-    if (!g_latency_state.start_times) {
+    latency_test_state_t latency_state = {NULL, NULL, NULL, 0};
+    latency_state.start_times = malloc(iterations * sizeof(struct timespec));
+    if (!latency_state.start_times) {
         fprintf(stderr, "Failed to allocate start_times array\n");
         uv_loop_close(&loop);
         return;
     }
     
-    g_latency_state.end_times = malloc(iterations * sizeof(struct timespec));
-    if (!g_latency_state.end_times) {
+    latency_state.end_times = malloc(iterations * sizeof(struct timespec));
+    if (!latency_state.end_times) {
         fprintf(stderr, "Failed to allocate end_times array\n");
-        free(g_latency_state.start_times);
+        free(latency_state.start_times);
         uv_loop_close(&loop);
         return;
     }
     
-    g_latency_state.received = calloc(iterations, sizeof(int));
-    if (!g_latency_state.received) {
+    latency_state.received = calloc(iterations, sizeof(int));
+    if (!latency_state.received) {
         fprintf(stderr, "Failed to allocate received array\n");
-        free(g_latency_state.start_times);
-        free(g_latency_state.end_times);
+        free(latency_state.start_times);
+        free(latency_state.end_times);
         uv_loop_close(&loop);
         return;
     }
     
-    g_latency_state.total = iterations;
+    latency_state.total = iterations;
     
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -1083,14 +1126,19 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
         int32_t b = 20;
         int32_t params[2] = {a, b};
         
-        clock_gettime(CLOCK_MONOTONIC, &g_latency_state.start_times[i]);
+        clock_gettime(CLOCK_MONOTONIC, &latency_state.start_times[i]);
+        
+        /* Create context for callback */
+        latency_request_context_t* req_ctx = malloc(sizeof(latency_request_context_t));
+        req_ctx->state = &latency_state;
+        req_ctx->req_id = i;
         
         /* Use uvrpc_client_call API */
-        uvrpc_client_call(client, "Add", (uint8_t*)params, sizeof(params), on_latency_response, (void*)(long)i);
+        uvrpc_client_call(client, "Add", (uint8_t*)params, sizeof(params), on_latency_response, req_ctx);
         
         /* Wait for response */
         int wait = 0;
-        while (g_latency_state.received[i] == 0 && wait < MAX_LATENCY_WAIT) {
+        while (latency_state.received[i] == 0 && wait < MAX_LATENCY_WAIT) {
             uv_run(&loop, UV_RUN_ONCE);
             wait++;
         }
@@ -1100,15 +1148,15 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
     double total_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
     /* Print latency statistics */
-    print_latency_results(iterations);
+    print_latency_results(iterations, &latency_state);
     
     printf("Total time: %.3f s\n", total_time);
     printf("Average QPS: %.0f\n", iterations / total_time);
 
     /* Cleanup */
-    free(g_latency_state.start_times);
-    free(g_latency_state.end_times);
-    free(g_latency_state.received);
+    free(latency_state.start_times);
+    free(latency_state.end_times);
+    free(latency_state.received);
 
     uvrpc_client_free(client);
     uv_loop_close(&loop);
@@ -1116,7 +1164,7 @@ void run_latency_test(const char* address, int iterations, int low_latency) {
 
 /* Fork mode client process */
 static void run_fork_client_process(int loop_idx, int client_idx, const char* address,
-                                     int total_requests, int low_latency) {
+                                     int total_requests, int low_latency, fork_context_t* fork_ctx) {
     uv_loop_t loop;
     uv_loop_init(&loop);
     
@@ -1161,7 +1209,7 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
     struct timeval start, end;
     gettimeofday(&start, NULL);
     
-    for (int i = 0; i < total_requests && !g_shutdown_requested; i++) {
+    for (int i = 0; i < total_requests; i++) {
         int32_t a = 42;
         int32_t b = 58;
         
@@ -1191,7 +1239,7 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
     gettimeofday(&end, NULL);
     
     /* Update shared memory */
-    if (g_shared_stats) {
+    if (fork_ctx && fork_ctx->shared_stats) {
         int idx = loop_idx * MAX_CLIENTS + client_idx;
         int total_clients = MAX_PROCESSES * MAX_CLIENTS;
         
@@ -1199,12 +1247,12 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
             fprintf(stderr, "[FORK CLIENT %d-%d] Invalid index %d >= %d\n", 
                     loop_idx, client_idx, idx, total_clients);
         } else {
-            g_shared_stats[idx].pid = getpid();
-            g_shared_stats[idx].loop_idx = loop_idx;
-            g_shared_stats[idx].client_idx = client_idx;
-            g_shared_stats[idx].completed = completed;
-            g_shared_stats[idx].errors = errors;
-            g_shared_stats[idx].latency_us = 
+            fork_ctx->shared_stats[idx].pid = getpid();
+            fork_ctx->shared_stats[idx].loop_idx = loop_idx;
+            fork_ctx->shared_stats[idx].client_idx = client_idx;
+            fork_ctx->shared_stats[idx].completed = completed;
+            fork_ctx->shared_stats[idx].errors = errors;
+            fork_ctx->shared_stats[idx].latency_us = 
                 (end.tv_sec - start.tv_sec) * 1000000LL + (end.tv_usec - start.tv_usec);
         }
     }
@@ -1219,33 +1267,33 @@ static void run_fork_client_process(int loop_idx, int client_idx, const char* ad
 
 /* Fork mode main */
 static void run_fork_mode(const char* address, int num_loops, int clients_per_loop,
-                          int test_duration_ms, int low_latency) {
+                             int total_requests, int low_latency, fork_context_t* fork_ctx) {
     /* Initialize shared memory */
     int total_clients = num_loops * clients_per_loop;
-    g_shm_size = total_clients * sizeof(client_stats_t);
+    fork_ctx->shm_size = total_clients * sizeof(client_stats_t);
     
-    g_shm_fd = shm_open(g_shm_name, O_CREAT | O_RDWR, 0600);
-    if (g_shm_fd == -1) {
+    fork_ctx->shm_fd = shm_open(fork_ctx->shm_name, O_CREAT | O_RDWR, 0600);
+    if (fork_ctx->shm_fd == -1) {
         perror("shm_open");
         return;
     }
     
-    if (ftruncate(g_shm_fd, g_shm_size) == -1) {
+    if (ftruncate(fork_ctx->shm_fd, fork_ctx->shm_size) == -1) {
         perror("ftruncate");
-        close(g_shm_fd);
-        shm_unlink(g_shm_name);
+        close(fork_ctx->shm_fd);
+        shm_unlink(fork_ctx->shm_name);
         return;
     }
     
-    g_shared_stats = mmap(NULL, g_shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, g_shm_fd, 0);
-    if (g_shared_stats == MAP_FAILED) {
+    fork_ctx->shared_stats = mmap(NULL, fork_ctx->shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, fork_ctx->shm_fd, 0);
+    if (fork_ctx->shared_stats == MAP_FAILED) {
         perror("mmap");
-        close(g_shm_fd);
-        shm_unlink(g_shm_name);
+        close(fork_ctx->shm_fd);
+        shm_unlink(fork_ctx->shm_name);
         return;
     }
     
-    memset(g_shared_stats, 0, g_shm_size);
+    memset(fork_ctx->shared_stats, 0, fork_ctx->shm_size);
     
     /* Fork client processes */
     pid_t pids[MAX_PROCESSES * MAX_CLIENTS];
@@ -1260,7 +1308,7 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
             } else if (pid == 0) {
                 /* Child process */
                 int requests_per_client = 1000; /* Default requests per client */
-                run_fork_client_process(i, j, address, requests_per_client, low_latency);
+                run_fork_client_process(i, j, address, requests_per_client, low_latency, fork_ctx);
                 exit(0);
             } else {
                 /* Parent process */
@@ -1283,8 +1331,8 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
     int total_errors = 0;
     
     for (int i = 0; i < total_clients; i++) {
-        total_completed += g_shared_stats[i].completed;
-        total_errors += g_shared_stats[i].errors;
+        total_completed += fork_ctx->shared_stats[i].completed;
+        total_errors += fork_ctx->shared_stats[i].errors;
     }
     
     printf("Total requests completed: %d\n", total_completed);
@@ -1296,9 +1344,9 @@ static void run_fork_mode(const char* address, int num_loops, int clients_per_lo
     print_memory_usage("FORK");
     
     /* Cleanup shared memory */
-    munmap(g_shared_stats, g_shm_size);
-    close(g_shm_fd);
-    shm_unlink(g_shm_name);
+    munmap(fork_ctx->shared_stats, fork_ctx->shm_size);
+    close(fork_ctx->shm_fd);
+    shm_unlink(fork_ctx->shm_name);
 }
 
 void print_usage(const char* prog_name) {
@@ -1427,9 +1475,10 @@ int main(int argc, char** argv) {
     
     /* Handle different modes */
     if (server_mode) {
-        g_server_timeout_ms = server_timeout_ms;  /* Set global timeout */
+        server_context_t server_ctx = {0};
+        server_ctx.timeout_ms = server_timeout_ms;  /* Set timeout in server context */
         printf("Mode: Server (SERVER_CLIENT)\n\n");
-        run_server_mode(address);
+        run_server_mode(address, &server_ctx);
         _exit(0);
     }
     
@@ -1466,7 +1515,13 @@ int main(int argc, char** argv) {
             printf("Total clients: %d\n", total_clients);
             printf("Test Mode: Throughput\n\n");
             
-            run_fork_mode(address, num_threads, clients_per_thread, test_duration_ms, low_latency);
+            fork_context_t fork_ctx = {
+                .shared_stats = NULL,
+                .shm_size = 0,
+                .shm_fd = -1,
+                .shm_name = "/uvrpc_benchmark_shm"
+            };
+            run_fork_mode(address, num_threads, clients_per_thread, test_duration_ms, low_latency, &fork_ctx);
         } else {
             printf("Mode: Client (SERVER_CLIENT) - Thread (Shared Loop)\n");
             printf("Threads: %d\n", num_threads);
@@ -1495,7 +1550,7 @@ int main(int argc, char** argv) {
 static void publish_callback(int status, void* ctx) {
     (void)ctx;
     if (status != UVRPC_OK) {
-        atomic_fetch_add(&g_response_sum, 1);  /* Count as error */
+        /* Error handling - no global counter needed for broadcast mode */
     }
 }
 
