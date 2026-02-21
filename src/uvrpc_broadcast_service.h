@@ -10,6 +10,7 @@
 #define UVRPC_BROADCAST_SERVICE_H
 
 #include "../include/uvrpc.h"
+#include "../include/uvrpc_allocator.h"
 #include "rpc_broadcast_reader.h"
 #include "rpc_broadcast_builder.h"
 #include "uvrpc_broadcast.h"
