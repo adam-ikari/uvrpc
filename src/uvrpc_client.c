@@ -12,7 +12,6 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
-#include "../include/uvasync.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
@@ -35,22 +34,6 @@ typedef struct pending_callback {
     uvrpc_callback_t callback;
     void* ctx;
 } pending_callback_t;
-
-/* Forward declarations */
-static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
-                                                 const uint8_t* params, size_t params_size,
-                                                 uvrpc_callback_t callback, void* ctx);
-
-/* Task wrapper for RPC calls through scheduler */
-typedef struct {
-    uvrpc_client_t* client;
-    char* method;
-    uint8_t* params;
-    size_t params_size;
-    uvrpc_callback_t callback;
-    void* ctx;
-    int should_free_params;
-} rpc_task_t;
 
 /* Client structure */
 struct uvrpc_client {
@@ -78,7 +61,6 @@ struct uvrpc_client {
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
     uint64_t timeout_ms;        /* Default timeout */
-    uvasync_scheduler_t* scheduler;  /* Async scheduler for request concurrency control */
 
     /* Batch processing */
     int batching_enabled;       /* Enable request batching */
@@ -87,52 +69,19 @@ struct uvrpc_client {
 
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
+
+    /* Pump interval for auto-flush (0 = manual, >0 = auto in ms) */
+    int pump_interval;          /* Pump interval in ms */
+    uv_timer_t pump_timer;      /* Timer for periodic pump */
 };
 
-/* RPC task function for scheduler */
-static void rpc_task_fn(void* data, uvrpc_promise_t* promise) {
-    rpc_task_t* task = (rpc_task_t*)data;
+/* Pump timer callback for auto-flush */
+static void pump_timer_callback(uv_timer_t* handle);
 
-    if (!task || !task->client || !task->method) {
-        if (promise) {
-            uvrpc_promise_reject(promise, UVASYNC_ERROR_INVALID_PARAM, "Invalid task parameters");
-        }
-        if (task) {
-            if (task->should_free_params && task->params) {
-                uvrpc_free(task->params);
-            }
-            if (task->method) {
-                uvrpc_free(task->method);
-            }
-            uvrpc_free(task);
-        }
-        return;
-    }
-
-    /* Perform actual RPC call */
-    int ret = uvrpc_client_call_no_retry_internal(
-        task->client,
-        task->method,
-        task->params,
-        task->params_size,
-        task->callback,
-        task->ctx
-    );
-
-    /* Cleanup task data */
-    if (task->should_free_params && task->params) {
-        uvrpc_free(task->params);
-    }
-    uvrpc_free(task->method);
-    uvrpc_free(task);
-
-    /* Resolve promise with result */
-    if (promise) {
-        if (ret == UVRPC_OK) {
-            uvrpc_promise_resolve(promise, (uint8_t*)&ret, sizeof(int));
-        } else {
-            uvrpc_promise_reject(promise, ret, "RPC call failed");
-        }
+/* Start pump timer if configured */
+static void start_pump_timer(uvrpc_client_t* client) {
+    if (client->pump_interval > 0) {
+        uv_timer_start(&client->pump_timer, pump_timer_callback, client->pump_interval, 0);
     }
 }
 
@@ -277,6 +226,12 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
              * after the callback returns. Do NOT free it here to avoid double free. */}
 
+/* Pump timer callback */
+static void pump_timer_callback(uv_timer_t* handle) {
+    /* Timer fires to allow event loop to process pending writes */
+    /* No action needed - libuv handles write callbacks automatically */
+}
+
 /* Create client */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
@@ -380,20 +335,11 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     
     uvbus_config_free(bus_config);
 
-    /* Initialize uvasync scheduler for concurrency control */
-    if (client->max_concurrent > 0) {
-        uvasync_context_t* async_ctx = uvasync_context_create(client->loop);
-        if (async_ctx) {
-            client->scheduler = uvasync_scheduler_create(async_ctx, client->max_concurrent);
-            if (!client->scheduler) {
-                /* Scheduler creation failed, cleanup */
-                uvasync_context_destroy(async_ctx);
-                /* Note: Continue without scheduler - fall back to manual concurrency control */
-                client->scheduler = NULL;
-            }
-        }
-    } else {
-        client->scheduler = NULL;
+    /* Initialize pump timer */
+    client->pump_interval = config->pump_interval;
+    if (client->pump_interval > 0) {
+        uv_timer_init(client->loop, &client->pump_timer);
+        client->pump_timer.data = client;
     }
 
     return client;
@@ -462,12 +408,6 @@ void uvrpc_client_free(uvrpc_client_t* client) {
 
     uvrpc_client_disconnect(client);
 
-    /* Free uvasync scheduler */
-    if (client->scheduler) {
-        uvasync_scheduler_destroy(client->scheduler);
-        client->scheduler = NULL;
-    }
-
     /* Free UVBus */
     if (client->uvbus) {
         uvbus_free(client->uvbus);
@@ -492,6 +432,11 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     if (client->pending_callbacks) {
         uvrpc_free(client->pending_callbacks);
         client->pending_callbacks = NULL;
+    }
+
+    /* Stop pump timer */
+    if (client->pump_interval > 0) {
+        uv_timer_stop(&client->pump_timer);
     }
 
     uvrpc_free(client->address);
@@ -591,6 +536,9 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
     }
 
     uvrpc_free(req_data);
+    
+    /* Start pump timer if configured */
+    start_pump_timer(client);
 
     return UVRPC_OK;
 }
@@ -600,61 +548,28 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
                        const uint8_t* params, size_t params_size,
                        uvrpc_callback_t callback, void* ctx) {
     if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
-
-    /* If scheduler is available, use it for concurrency control */
-    if (client->scheduler) {
-        /* Create task wrapper */
-        rpc_task_t* task = (rpc_task_t*)uvrpc_calloc(1, sizeof(rpc_task_t));
-        if (!task) {
-            return UVRPC_ERROR_NO_MEMORY;
-        }
-
-        task->client = client;
-        task->method = uvrpc_strdup(method);
-        task->params = (uint8_t*)params;
-        task->params_size = params_size;
-        task->callback = callback;
-        task->ctx = ctx;
-        task->should_free_params = 0;  /* Don't free params, they're owned by caller */
-
-        if (!task->method) {
-            uvrpc_free(task);
-            return UVRPC_ERROR_NO_MEMORY;
-        }
-
-        /* Create promise for task result */
-        uvrpc_promise_t* promise = uvrpc_promise_create(client->loop);
-
-        /* Submit task to scheduler */
-        int ret = uvasync_submit(client->scheduler, rpc_task_fn, task, promise);
-
-        /* Cleanup promise (task owns the callback through rpc_task_fn) */
-        uvrpc_promise_destroy(promise);
-
-        return ret;
-    }
-
+    
     /* If retry is disabled, call directly */
     if (client->max_retries <= 0) {
         return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
     }
-
+    
     /* Retry logic - just retry without running event loop */
     /* The event loop is driven externally, retries will be handled naturally */
     int ret;
     int retries = 0;
-
+    
     do {
         ret = uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
-
+        
         if (ret == UVRPC_OK) {
             break;  /* Success - exit retry loop */
         }
-
+        
         retries++;
-
+        
     } while (retries < client->max_retries);
-
+    
     return ret;
 }
 
@@ -663,6 +578,44 @@ int uvrpc_client_call_no_retry(uvrpc_client_t* client, const char* method,
                                 const uint8_t* params, size_t params_size,
                                 uvrpc_callback_t callback, void* ctx) {
     return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
+}
+
+/* Call RPC method with oneway mode (zero overhead: no callback, no response) */
+int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
+                              const uint8_t* params, size_t params_size) {
+    if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
+    
+    if (!client->is_connected) {
+        return UVRPC_ERROR_NOT_CONNECTED;
+    }
+    
+    /* Generate message ID */
+    uint32_t msgid = uvrpc_msgid_next(client->msgid_ctx);
+    
+    /* Encode request */
+    uint8_t* req_data = NULL;
+    size_t req_size = 0;
+    
+    if (uvrpc_encode_request(msgid, method, params, params_size,
+                              &req_data, &req_size) != UVRPC_OK) {
+        return UVRPC_ERROR;
+    }
+    
+    /* Send immediately */
+    if (client->uvbus) {
+        uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
+        if (send_err != UVBUS_OK) {
+            uvrpc_free(req_data);
+            return UVRPC_ERROR;
+        }
+    }
+    
+    uvrpc_free(req_data);
+    
+    /* Start pump timer if configured */
+    start_pump_timer(client);
+    
+    return UVRPC_OK;
 }
 
 /* Free response */

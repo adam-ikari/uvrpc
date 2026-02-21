@@ -130,3 +130,9 @@ uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t m
     config->msgid_offset = msgid_offset;
     return config;
 }
+
+uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval) {
+    if (!config) return NULL;
+    config->pump_interval = pump_interval;
+    return config;
+}

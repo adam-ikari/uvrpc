@@ -271,6 +271,7 @@ struct uvrpc_config {
     int max_pending_callbacks;           /**< @brief Max pending callbacks in ring buffer (default: UVRPC_MAX_PENDING_CALLBACKS) */
     uint64_t timeout_ms;                 /**< @brief Default timeout in milliseconds (default: 0 = no timeout) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
+    int pump_interval;                   /**< @brief Pump interval in ms for auto-flush (0 = immediate, default: 0) */
 };
 
 /**
@@ -432,6 +433,14 @@ uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, uint64_t timeou
  * @return Configuration structure for chaining
  */
 uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t msgid_offset);
+
+/**
+ * @brief Set pump interval for auto-flush
+ * @param config Configuration object
+ * @param pump_interval Pump interval in milliseconds (0 = immediate flush, default: 0)
+ * @return Configuration object for chaining
+ */
+uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval);
 
 /** @} */
 
@@ -677,6 +686,21 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
                              int count);
 
 /**
+ * @brief Call RPC method with oneway mode (no response expected)
+ * 
+ * Zero-overhead: no callback registration, no response handling.
+ * Useful for fire-and-forget operations like logging, notifications, etc.
+ * 
+ * @param client Client instance
+ * @param method Method name
+ * @param params Request parameters
+ * @param params_size Size of parameters
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
+                              const uint8_t* params, size_t params_size);
+
+/**
  * @brief Set maximum concurrent requests
  * 
  * @param client Client instance
@@ -780,13 +804,29 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
                              uvrpc_publish_callback_t callback, void* ctx);
 
 /**
+ * @brief Publish message (raw, without broadcast encoding)
+ *
+ * Sends the message directly without broadcast encoding.
+ * Used when message is already encoded in broadcast format.
+ *
+ * @param publisher Publisher instance
+ * @param data Message data (already encoded)
+ * @param size Message size
+ * @param callback Publish callback
+ * @param ctx User context
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_publisher_publish_raw(uvrpc_publisher_t* publisher,
+                                 const uint8_t* data, size_t size,
+                                 uvrpc_publish_callback_t callback, void* ctx);
+
+/**
  * @brief Create a new subscriber
- * 
+ *
  * @param config Configuration structure
  * @return New subscriber instance, or NULL on failure
  */
 uvrpc_subscriber_t* uvrpc_subscriber_create(uvrpc_config_t* config);
-
 /**
  * @brief Connect subscriber to publisher
  * 
