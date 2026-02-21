@@ -235,8 +235,8 @@ void on_connect(int status, void* ctx) {
 }
 
 void on_response(uvrpc_response_t* resp, void* ctx) {
-    client_context_t* client_ctx = (client_context_t*)ctx;
-    thread_state_t* state = client_ctx->state;
+    thread_state_t* state = (thread_state_t*)ctx;
+    if (!state) return;
     
     /* Count all responses, regardless of status */
     state->responses_received++;
@@ -256,31 +256,9 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
      * This maintains constant concurrency without timer delays
      * Use pending buffer full error (UVRPC_ERROR_CALLBACK_LIMIT) as concurrency control
      * Each client maintains its own concurrency limit independently
+     * Note: Single-thread mode doesn't support immediate mode (client_ctx is NULL)
      */
-    if (state->timer_interval_ms == 0 && !g_shutdown_requested && client_ctx->client) {
-        /* Send new request immediately
-         * If pending buffer is full, uvrpc_client_call returns UVRPC_ERROR_CALLBACK_LIMIT
-         * This error serves as the concurrency control mechanism
-         */
-        int32_t a = 100;
-        int32_t b = 200;
-        int32_t params[2] = {a, b};
-        
-        int ret = uvrpc_client_call(client_ctx->client, "Add", 
-                                   (uint8_t*)params, sizeof(params), on_response, client_ctx);
-        
-        if (ret == UVRPC_OK) {
-            state->sent_requests++;
-        } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
-            /* Pending buffer full - normal backpressure, don't count as failure
-             * The client will send new requests when responses arrive and free up buffer space
-             */
-            /* No action needed - wait for response callback to free buffer slot */
-        } else {
-            /* Other errors (connection failure, etc.) */
-            state->failed++;
-        }
-    }
+    /* Skip immediate mode logic in single-thread mode */
 }
 
 /* Latency test callback */
@@ -623,7 +601,8 @@ void run_single_multi_test(const char* address, int num_clients, int concurrency
         .ready_to_send = 0,
         .sent_requests = 0,
         .test_duration_ms = test_duration_ms,
-        .done = 0
+        .done = 0,
+        .timer_interval_ms = 0  /* Immediate mode (send immediately, then wait for responses) */
     };
     
     printf("About to create clients...\n");

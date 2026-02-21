@@ -29,7 +29,7 @@
 
 /** @defgroup ServerSettings Server Settings */
 /** @{ */
-#define UVBUS_BACKLOG 128                /**< @brief Server backlog */
+#define UVBUS_BACKLOG 1024               /**< @brief Server backlog (increased for high concurrency) */
 #define UVBUS_MAX_ENDPOINTS 256          /**< @brief Maximum number of endpoints */
 /** @} */
 
