@@ -152,6 +152,7 @@ target_include_directories(uvrpc_shared PUBLIC ${FLATCC_INCLUDE_DIR})
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schema)
 set(RPC_SCHEMA ${SCHEMA_DIR}/rpc.fbs)
 set(BROADCAST_SCHEMA ${SCHEMA_DIR}/broadcast.fbs)
+set(RPC_BROADCAST_SCHEMA ${SCHEMA_DIR}/rpc_broadcast.fbs)
 set(GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated)
 
 # Find flatcc compiler
@@ -185,7 +186,17 @@ add_custom_command(
     COMMENT "Generating FlatCC code from broadcast schema"
 )
 
-add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/broadcast_reader.h ${GENERATED_DIR}/broadcast_builder.h)
+# Custom command to generate RPC broadcast service FlatCC code
+add_custom_command(
+    OUTPUT ${GENERATED_DIR}/rpc_broadcast_reader.h ${GENERATED_DIR}/rpc_broadcast_builder.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
+    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${RPC_BROADCAST_SCHEMA}
+    DEPENDS ${RPC_BROADCAST_SCHEMA}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating FlatCC code from RPC broadcast schema"
+)
+
+add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/broadcast_reader.h ${GENERATED_DIR}/broadcast_builder.h ${GENERATED_DIR}/rpc_broadcast_reader.h ${GENERATED_DIR}/rpc_broadcast_builder.h)
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
@@ -246,6 +257,7 @@ add_subdirectory(benchmark)
     create_example_target(concurrent_demo)
     create_example_target(flatbuffers_simple_demo)
     create_example_target(rpc_dsl_demo)
+    create_example_target(broadcast_service_demo)
     create_example_target(udp_rpc_demo)
     create_example_target(uvbus_demo)
     create_example_target(uvbus_server_only)
