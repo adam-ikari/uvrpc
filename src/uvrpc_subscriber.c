@@ -90,7 +90,14 @@ static void subscriber_connect_callback(int status, void* ctx) {
 
     if (status != 0) {
         UVRPC_ERROR("Subscriber connection failed: %d", status);
+        return;
     }
+    
+    /* Send registration message to notify publisher of our presence */
+    /* This is needed for UDP broadcast to record client address */
+    uint8_t reg_msg[] = {'U', 'V', 'R', 'P', 'C', '_', 'R', 'E', 'G'};  /* Registration magic */
+    int rv = uvbus_send(subscriber->uvbus, reg_msg, sizeof(reg_msg));
+    fprintf(stderr, "[Subscriber] Sent registration message: %d\n", rv);
 }
 
 /* Create subscriber */

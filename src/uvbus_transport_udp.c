@@ -36,10 +36,15 @@ struct uvbus_udp_server {
     /* Frequently accessed fields - grouped together */
     int is_listening;
     int port;
+    int num_clients;
     
     /* Pointer fields */
     char* host;
     void* parent_transport;
+    
+    /* Client address list for broadcast - point-to-point wrapper */
+    struct sockaddr_storage* client_addrs;
+    int max_clients;
     
     /* LibUV handle - kept at end */
     uv_udp_t udp_handle;
@@ -79,10 +84,10 @@ static int parse_udp_address(const char* address, char** host, int* port) {
 }
 
 /* Server receive callback */
-static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, 
+static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                            const struct sockaddr* addr, unsigned flags) {
     uvbus_transport_t* transport = (uvbus_transport_t*)handle->data;
-    
+
     if (nread < 0) {
         if (nread != UV_EOF) {
             if (transport->error_cb) {
@@ -92,18 +97,44 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         uvrpc_free(buf->base);
         return;
     }
-    
-    if (nread > 0 && transport->recv_cb) {
-        /* Copy the client address to use as client context */
-        struct sockaddr_storage* addr_copy = (struct sockaddr_storage*)uvrpc_alloc(sizeof(struct sockaddr_storage));
-        if (addr_copy) {
-            memcpy(addr_copy, addr, sizeof(struct sockaddr_storage));
-            transport->recv_cb((const uint8_t*)buf->base, nread, addr_copy, transport->callback_ctx);
-        } else {
-            transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+
+    if (nread > 0) {
+        /* Record client address for broadcast (if not already recorded) */
+        uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
+        int found = 0;
+        for (int i = 0; i < server->num_clients; i++) {
+            if (memcmp(&server->client_addrs[i], addr, sizeof(struct sockaddr_storage)) == 0) {
+                found = 1;
+                break;
+            }
+        }
+        
+        if (!found && server->num_clients < server->max_clients) {
+            memcpy(&server->client_addrs[server->num_clients], addr, sizeof(struct sockaddr_storage));
+            server->num_clients++;
+            fprintf(stderr, "[Server] Registered new client, total: %d\n", server->num_clients);
+        }
+        
+        /* Skip registration messages (UVRPC_REG magic) */
+        if (nread >= 9 && memcmp(buf->base, "UVRPC_REG", 9) == 0) {
+            /* Registration message received - client is now registered */
+            fprintf(stderr, "[Server] Received registration message\n");
+            uvrpc_free(buf->base);
+            return;
+        }
+        
+        if (transport->recv_cb) {
+            /* Copy the client address to use as client context */
+            struct sockaddr_storage* addr_copy = (struct sockaddr_storage*)uvrpc_alloc(sizeof(struct sockaddr_storage));
+            if (addr_copy) {
+                memcpy(addr_copy, addr, sizeof(struct sockaddr_storage));
+                transport->recv_cb((const uint8_t*)buf->base, nread, addr_copy, transport->callback_ctx);
+            } else {
+                transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+            }
         }
     }
-    
+
     uvrpc_free(buf->base);
 }
 
@@ -205,6 +236,17 @@ static int udp_listen(void* impl_ptr, const char* address) {
     server->host = host;
     server->port = port;
     server->parent_transport = transport;
+    server->num_clients = 0;
+    
+    /* Initialize client address list for broadcast */
+    server->max_clients = 256;
+    server->client_addrs = (struct sockaddr_storage*)uvrpc_calloc(server->max_clients, sizeof(struct sockaddr_storage));
+    if (!server->client_addrs) {
+        uv_close((uv_handle_t*)&server->udp_handle, NULL);
+        uvrpc_free(server->host);
+        uvrpc_free(server);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
     
     /* Initialize UDP handle */
     uv_udp_init(transport->loop, &server->udp_handle);
@@ -419,50 +461,58 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     return UVBUS_OK;
 }
 
-/* Broadcast to all local network */
+/* Broadcast to all connected clients (point-to-point wrapper) */
 static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
-    
-    /* Enable broadcast on the socket */
-    if (uv_udp_set_broadcast(&server->udp_handle, 1) != 0) {
-        return UVBUS_ERROR_IO;
+
+    fprintf(stderr, "[Server] Broadcasting to %d clients\n", server->num_clients);
+
+    /* If no clients connected, return OK (nothing to send) */
+    if (server->num_clients == 0) {
+        return UVBUS_OK;
+    }
+
+    /* Send to all recorded client addresses */
+    int sent_count = 0;
+    for (int i = 0; i < server->num_clients; i++) {
+        struct sockaddr_storage* client_addr = &server->client_addrs[i];
+        
+        uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
+        if (!req) {
+            continue;
+        }
+        
+        uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
+        if (!data_copy) {
+            uvrpc_free(req);
+            continue;
+        }
+        memcpy(data_copy, data, size);
+        
+        uv_buf_t buf = uv_buf_init((char*)data_copy, size);
+        req->data = data_copy;
+        
+        if (uv_udp_send(req, &server->udp_handle, &buf, 1,
+                        (const struct sockaddr*)client_addr, on_send) == 0) {
+            sent_count++;
+        } else {
+            uvrpc_free(data_copy);
+            uvrpc_free(req);
+        }
     }
     
-    /* Create broadcast address (local broadcast) */
-    struct sockaddr_in broadcast_addr;
-    uv_ip4_addr("127.255.255.255", server->port, &broadcast_addr);
+    fprintf(stderr, "[Server] Sent to %d/%d clients\n", sent_count, server->num_clients);
     
-    uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
-    if (!req) {
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    
-    uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
-    if (!data_copy) {
-        uvrpc_free(req);
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    memcpy(data_copy, data, size);
-    
-    uv_buf_t buf = uv_buf_init((char*)data_copy, size);
-    req->data = data_copy;
-    
-    if (uv_udp_send(req, &server->udp_handle, &buf, 1, 
-                    (const struct sockaddr*)&broadcast_addr, on_send) != 0) {
-        uvrpc_free(data_copy);
-        uvrpc_free(req);
-        return UVBUS_ERROR_IO;
-    }
-    
+    /* Return OK if we sent to at least one client, or if there were no clients to send to */
     return UVBUS_OK;
 }
 

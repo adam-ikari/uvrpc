@@ -94,17 +94,26 @@ int main(int argc, char** argv) {
     const char* address = (argc > 2) ? argv[2] : "udp://0.0.0.0:5555";
 
     printf("=== UVRPC Broadcast Service Demo (DSL-Generated) ===\n");
+    fflush(stdout);
     printf("Mode: %s\n", mode);
+    fflush(stdout);
     printf("Address: %s\n\n", address);
+    fflush(stdout);
 
     if (strcmp(mode, "publisher") == 0) {
         /* Publisher mode */
+        printf("[Publisher] Creating config...\n");
+        fflush(stdout);
+        
         uvrpc_config_t* config = uvrpc_config_new();
         uvrpc_config_set_loop(config, &loop);
         uvrpc_config_set_address(config, address);
         uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
 
+        printf("[Publisher] Creating publisher...\n");
+        fflush(stdout);
+        
         uvrpc_publisher_t* publisher = uvrpc_publisher_create(config);
         uvrpc_config_free(config);
 
@@ -112,6 +121,9 @@ int main(int argc, char** argv) {
             fprintf(stderr, "Failed to create publisher\n");
             return 1;
         }
+
+        printf("[Publisher] Starting publisher...\n");
+        fflush(stdout);
 
         if (uvrpc_publisher_start(publisher) != UVRPC_OK) {
             fprintf(stderr, "Failed to start publisher\n");
@@ -121,8 +133,19 @@ int main(int argc, char** argv) {
 
         printf("[Publisher] Started successfully\n\n");
 
+        /* Wait for subscribers to connect */
+        printf("[Publisher] Waiting for subscribers to connect...\n");
+        fflush(stdout);
+        for (int i = 0; i < 30; i++) {  /* Wait up to 3 seconds */
+            uv_run(&loop, UV_RUN_NOWAIT);
+            usleep(100000);  /* 100ms */
+        }
+        printf("[Publisher] Starting broadcast...\n\n");
+        fflush(stdout);
+
         /* Publish news using auto-generated API */
         printf("[Publisher] Publishing news...\n");
+        fflush(stdout);
         uvrpc_broadcast_service_publish_news(
             publisher,
             "Breaking News",
@@ -132,10 +155,13 @@ int main(int argc, char** argv) {
             on_publish_complete,
             NULL
         );
+        printf("[Publisher] News published\n");
+        fflush(stdout);
         printf("\n");
 
         /* Publish weather update using auto-generated API */
         printf("[Publisher] Publishing weather update...\n");
+        fflush(stdout);
         uvrpc_broadcast_service_update_weather(
             publisher,
             "Beijing",
@@ -146,10 +172,13 @@ int main(int argc, char** argv) {
             on_publish_complete,
             NULL
         );
+        printf("[Publisher] Weather update published\n");
+        fflush(stdout);
         printf("\n");
 
         /* Publish event notification using auto-generated API */
         printf("[Publisher] Publishing event notification...\n");
+        fflush(stdout);
         const char* event_msg = "System alert: High CPU usage detected";
         uvrpc_broadcast_service_notify_event(
             publisher,
@@ -161,25 +190,37 @@ int main(int argc, char** argv) {
             on_publish_complete,
             NULL
         );
+        printf("[Publisher] Event notification published\n");
+        fflush(stdout);
         printf("\n");
 
         /* Run event loop for a short time */
+        printf("[Publisher] Running event loop...\n");
+        fflush(stdout);
         for (int i = 0; i < 10; i++) {
             uv_run(&loop, UV_RUN_ONCE);
             usleep(100000);  /* 100ms */
         }
+        printf("[Publisher] Event loop finished\n");
+        fflush(stdout);
 
         uvrpc_publisher_stop(publisher);
         uvrpc_publisher_free(publisher);
 
     } else if (strcmp(mode, "subscriber") == 0) {
         /* Subscriber mode */
+        printf("[Subscriber] Creating config...\n");
+        fflush(stdout);
+        
         uvrpc_config_t* config = uvrpc_config_new();
         uvrpc_config_set_loop(config, &loop);
         uvrpc_config_set_address(config, address);
         uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
 
+        printf("[Subscriber] Creating subscriber...\n");
+        fflush(stdout);
+        
         uvrpc_subscriber_t* subscriber = uvrpc_subscriber_create(config);
         uvrpc_config_free(config);
 
@@ -188,11 +229,17 @@ int main(int argc, char** argv) {
             return 1;
         }
 
+        printf("[Subscriber] Subscribing to topics...\n");
+        fflush(stdout);
+        
         /* Subscribe to all topics using auto-generated service names */
         uvrpc_subscriber_subscribe(subscriber, "PublishNews", on_news_received, NULL);
         uvrpc_subscriber_subscribe(subscriber, "UpdateWeather", on_weather_received, NULL);
         uvrpc_subscriber_subscribe(subscriber, "NotifyEvent", on_event_received, NULL);
 
+        printf("[Subscriber] Connecting...\n");
+        fflush(stdout);
+        
         if (uvrpc_subscriber_connect(subscriber) != UVRPC_OK) {
             fprintf(stderr, "Failed to connect subscriber\n");
             uvrpc_subscriber_free(subscriber);
@@ -200,11 +247,36 @@ int main(int argc, char** argv) {
         }
 
         printf("[Subscriber] Connected and listening for messages...\n\n");
+        
+        /* Run event loop briefly to ensure registration message is sent */
+        printf("[Subscriber] Running event loop to send registration...\n");
+        fflush(stdout);
+        for (int i = 0; i < 10; i++) {
+            int ret = uv_run(&loop, UV_RUN_NOWAIT);
+            fprintf(stderr, "[Subscriber] Event loop iteration %d: %d\n", i, ret);
+            if (ret == 0) {
+                fprintf(stderr, "[Subscriber] No more events, breaking...\n");
+                break;
+            }
+            usleep(10000);  /* 10ms */
+        }
+        printf("[Subscriber] Registration sent, waiting for messages...\n\n");
+        fflush(stdout);
 
-        /* Run event loop */
-        for (int i = 0; i < 30; i++) {
-            uv_run(&loop, UV_RUN_ONCE);
+        /* Run event loop - wait for messages */
+        printf("[Subscriber] Listening for messages (10 seconds)...\n");
+        fflush(stdout);
+        int iterations = 0;
+        while (iterations < 100) {
+            int ret = uv_run(&loop, UV_RUN_NOWAIT);
+            if (ret > 0) {
+                fprintf(stderr, "[Subscriber] Processing events... %d\n", ret);
+            }
+            if (iterations % 10 == 0) {
+                fprintf(stderr, "[Subscriber] Listening... %d%%\n", iterations);
+            }
             usleep(100000);  /* 100ms */
+            iterations++;
         }
 
         uvrpc_subscriber_disconnect(subscriber);
