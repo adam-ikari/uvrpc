@@ -115,6 +115,7 @@ typedef struct uvbus_transport_vtable {
     void (*disconnect)(void* impl);
     int (*send)(void* impl, const uint8_t* data, size_t size);
     int (*send_to)(void* impl, const uint8_t* data, size_t size, void* target);
+    int (*broadcast)(void* impl, const uint8_t* data, size_t size);
     void (*free)(void* impl);
 } uvbus_transport_vtable_t;
 
@@ -262,6 +263,11 @@ uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size);
  * Send data to specific client (server only)
  */
 uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void* client);
+
+/**
+ * Broadcast data to all clients (server only, UDP only)
+ */
+uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size);
 
 /* Client API */
 

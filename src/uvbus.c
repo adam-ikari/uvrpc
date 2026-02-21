@@ -272,6 +272,22 @@ uvbus_error_t uvbus_connect(uvbus_t* bus) {
     return UVBUS_ERROR;
 }
 
+uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size) {
+    if (!bus || !bus->transport || !bus->transport->vtable) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    
+    if (!bus->is_active) {
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
+    
+    if (bus->transport->vtable->broadcast) {
+        return bus->transport->vtable->broadcast(bus->transport, data, size);
+    }
+    
+    return UVBUS_ERROR_NOT_IMPLEMENTED;
+}
+
 uvbus_error_t uvbus_connect_with_callback(uvbus_t* bus, uvbus_connect_callback_t callback, void* ctx) {
     if (!bus || !bus->transport || !bus->transport->vtable) {
         return UVBUS_ERROR_INVALID_PARAM;

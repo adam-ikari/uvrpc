@@ -162,6 +162,7 @@ static int udp_connect(void* impl_ptr, const char* address);
 static void udp_disconnect(void* impl_ptr);
 static int udp_send(void* impl_ptr, const uint8_t* data, size_t size);
 static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target);
+static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size);
 static void udp_free(void* impl_ptr);
 
 /* Global vtable for UDP */
@@ -171,6 +172,7 @@ static const uvbus_transport_vtable_t udp_vtable = {
     .disconnect = udp_disconnect,
     .send = udp_send,
     .send_to = udp_send_to,
+    .broadcast = udp_broadcast,
     .free = udp_free
 };
 
@@ -212,7 +214,8 @@ static int udp_listen(void* impl_ptr, const char* address) {
     struct sockaddr_in addr;
     uv_ip4_addr(host, port, &addr);
     
-    if (uv_udp_bind(&server->udp_handle, (const struct sockaddr*)&addr, 0) != 0) {
+    int bind_err = uv_udp_bind(&server->udp_handle, (const struct sockaddr*)&addr, 0);
+    if (bind_err != 0) {
         uv_close((uv_handle_t*)&server->udp_handle, NULL);
         uvrpc_free(server->host);
         uvrpc_free(server);
@@ -220,7 +223,8 @@ static int udp_listen(void* impl_ptr, const char* address) {
     }
     
     /* Start receiving */
-    if (uv_udp_recv_start(&server->udp_handle, on_server_alloc, on_server_recv) != 0) {
+    int recv_err = uv_udp_recv_start(&server->udp_handle, on_server_alloc, on_server_recv);
+    if (recv_err != 0) {
         uv_close((uv_handle_t*)&server->udp_handle, NULL);
         uvrpc_free(server->host);
         uvrpc_free(server);
@@ -407,6 +411,53 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     
     if (uv_udp_send(req, &server->udp_handle, &buf, 1, 
                     (const struct sockaddr*)addr, on_send) != 0) {
+        uvrpc_free(data_copy);
+        uvrpc_free(req);
+        return UVBUS_ERROR_IO;
+    }
+    
+    return UVBUS_OK;
+}
+
+/* Broadcast to all local network */
+static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
+    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    if (!transport) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    
+    if (!transport->is_server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    
+    uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
+    
+    /* Enable broadcast on the socket */
+    if (uv_udp_set_broadcast(&server->udp_handle, 1) != 0) {
+        return UVBUS_ERROR_IO;
+    }
+    
+    /* Create broadcast address (local broadcast) */
+    struct sockaddr_in broadcast_addr;
+    uv_ip4_addr("127.255.255.255", server->port, &broadcast_addr);
+    
+    uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
+    if (!req) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+    
+    uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
+    if (!data_copy) {
+        uvrpc_free(req);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+    memcpy(data_copy, data, size);
+    
+    uv_buf_t buf = uv_buf_init((char*)data_copy, size);
+    req->data = data_copy;
+    
+    if (uv_udp_send(req, &server->udp_handle, &buf, 1, 
+                    (const struct sockaddr*)&broadcast_addr, on_send) != 0) {
         uvrpc_free(data_copy);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;

@@ -145,7 +145,14 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
 
     /* Send message */
     if (publisher->uvbus) {
-        uvbus_client_send(publisher->uvbus, msg, total_size);
+        uvbus_error_t err = uvbus_broadcast(publisher->uvbus, msg, total_size);
+        if (err != UVBUS_OK) {
+            uvrpc_free(msg);
+            if (callback) {
+                callback(UVRPC_ERROR_TRANSPORT, ctx);
+            }
+            return UVRPC_ERROR_TRANSPORT;
+        }
     }
 
     uvrpc_free(msg);

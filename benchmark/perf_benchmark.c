@@ -1588,8 +1588,10 @@ static void* publisher_thread_func(void* arg) {
         uvrpc_config_t* config = uvrpc_config_new();
         uvrpc_config_set_loop(config, &loop);
         uvrpc_config_set_address(config, ctx->address);
+        uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
         
+        printf("[Thread %d] Creating publisher %d...\n", ctx->thread_id, i);
         publishers[i] = uvrpc_publisher_create(config);
         uvrpc_config_free(config);
         
@@ -1598,13 +1600,17 @@ static void* publisher_thread_func(void* arg) {
             continue;
         }
         
+        printf("[Thread %d] Starting publisher %d...\n", ctx->thread_id, i);
         if (uvrpc_publisher_start(publishers[i]) != UVRPC_OK) {
             fprintf(stderr, "Failed to start publisher %d in thread %d\n", i, ctx->thread_id);
             uvrpc_publisher_free(publishers[i]);
             publishers[i] = NULL;
             continue;
         }
+        printf("[Thread %d] Publisher %d started successfully\n", ctx->thread_id, i);
     }
+    
+    printf("[Thread %d] Created %d publishers successfully\n", ctx->thread_id, ctx->num_publishers);
     
     /* Prepare message */
     const char* message = "UVRPC Broadcast Benchmark Message";
@@ -1723,6 +1729,7 @@ static void* subscriber_thread_func(void* arg) {
         uvrpc_config_t* config = uvrpc_config_new();
         uvrpc_config_set_loop(config, &loop);
         uvrpc_config_set_address(config, ctx->address);
+        uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
         uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
         
         subscribers[i] = uvrpc_subscriber_create(config);
