@@ -14,6 +14,7 @@
 #include "../include/uvrpc_allocator.h"
 #include "../include/uvbus.h"
 #include "uvrpc_flatbuffers.h"
+#include "uvrpc_broadcast.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -117,35 +118,21 @@ int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
         return UVRPC_ERROR;
     }
 
-    /* Encode broadcast message: [topic_len, topic, data_len, data] */
-    size_t topic_len = strlen(topic);
-    size_t total_size = 4 + topic_len + 4 + size;
+    /* Encode broadcast message using FlatBuffers */
+    uint8_t* msg = NULL;
+    size_t msg_size = 0;
 
-    uint8_t* msg = (uint8_t*)uvrpc_alloc(total_size);
-    if (!msg) return UVRPC_ERROR_NO_MEMORY;
-
-    uint8_t* p = msg;
-
-    /* Topic length (4 bytes little-endian for consistency with FlatBuffers) */
-    *(uint32_t*)p = (uint32_t)topic_len;
-    p += 4;
-
-    /* Topic */
-    memcpy(p, topic, topic_len);
-    p += topic_len;
-
-    /* Data length (4 bytes little-endian) */
-    *(uint32_t*)p = (uint32_t)size;
-    p += 4;
-
-    /* Data */
-    if (data && size > 0) {
-        memcpy(p, data, size);
+    int ret = uvrpc_broadcast_encode(topic, data, size, &msg, &msg_size);
+    if (ret != UVRPC_OK || !msg) {
+        if (callback) {
+            callback(ret, ctx);
+        }
+        return ret;
     }
 
     /* Send message */
     if (publisher->uvbus) {
-        uvbus_error_t err = uvbus_broadcast(publisher->uvbus, msg, total_size);
+        uvbus_error_t err = uvbus_broadcast(publisher->uvbus, msg, msg_size);
         if (err != UVBUS_OK) {
             uvrpc_free(msg);
             if (callback) {

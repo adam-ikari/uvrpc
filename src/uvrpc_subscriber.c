@@ -13,6 +13,7 @@
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
 #include "../include/uvbus.h"
+#include "uvrpc_broadcast.h"
 #include <uthash.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,35 +51,13 @@ struct uvrpc_subscriber {
 static void subscriber_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     uvrpc_subscriber_t* subscriber = (uvrpc_subscriber_t*)server_ctx;
 
-    if (size < 8) {
-        return;
-    }
+    /* Decode broadcast message using FlatBuffers */
+    char* topic = NULL;
+    const uint8_t* msg_data = NULL;
+    size_t msg_data_size = 0;
 
-    uint8_t* p = (uint8_t*)data;
-
-    /* Parse topic length (little-endian for consistency with FlatBuffers) */
-    uint32_t topic_len = *(uint32_t*)p;
-    p += 4;
-
-    if (size < 8 + topic_len) {
-        return;
-    }
-
-    /* Extract topic */
-    char* topic = (char*)uvrpc_alloc(topic_len + 1);
-    if (!topic) {
-        return;
-    }
-    memcpy(topic, p, topic_len);
-    topic[topic_len] = '\0';
-    p += topic_len;
-
-    /* Parse data length (little-endian) */
-    uint32_t data_size = *(uint32_t*)p;
-    p += 4;
-
-    if (size < 8 + topic_len + data_size) {
-        uvrpc_free(topic);
+    int ret = uvrpc_broadcast_decode(data, size, &topic, &msg_data, &msg_data_size);
+    if (ret != UVRPC_OK || !topic) {
         return;
     }
 
@@ -89,19 +68,19 @@ static void subscriber_recv_callback(const uint8_t* data, size_t size, void* cli
     if (entry && entry->callback) {
         /* Call callback with the data */
         uint8_t* data_copy = NULL;
-        if (data_size > 0) {
-            data_copy = (uint8_t*)uvrpc_alloc(data_size);
+        if (msg_data_size > 0) {
+            data_copy = (uint8_t*)uvrpc_alloc(msg_data_size);
             if (data_copy) {
-                memcpy(data_copy, p, data_size);
+                memcpy(data_copy, msg_data, msg_data_size);
             }
         }
 
-        entry->callback(topic, data_copy, data_size, entry->ctx);
+        entry->callback(topic, data_copy, msg_data_size, entry->ctx);
 
         if (data_copy) uvrpc_free(data_copy);
     }
 
-    uvrpc_free(topic);
+    uvrpc_broadcast_free_decoded(topic);
 }
 
 /* Connect callback */
