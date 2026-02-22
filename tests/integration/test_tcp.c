@@ -98,8 +98,8 @@ int main(int argc, char** argv) {
     printf("Server started on %s\n", server_addr);
     
     /* Give server time to start listening */
-    uv_run(loop, UV_RUN_ONCE);
-    uv_run(loop, UV_RUN_ONCE);
+    uv_run(loop, UV_RUN_NOWAIT);
+    uv_run(loop, UV_RUN_NOWAIT);
     
     /* Create client configuration */
     char client_addr[128];

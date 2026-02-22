@@ -61,7 +61,7 @@ static inproc_endpoint_t* inproc_find_endpoint(const char* name) {
     pthread_rwlock_rdlock(&g_endpoint_rwlock);
     unsigned int hash = hash_string(name);
     inproc_endpoint_t* endpoint = g_endpoint_hash[hash];
-    
+
     while (endpoint) {
         if (strcmp(endpoint->name, name) == 0) {
             pthread_rwlock_unlock(&g_endpoint_rwlock);
@@ -69,7 +69,7 @@ static inproc_endpoint_t* inproc_find_endpoint(const char* name) {
         }
         endpoint = endpoint->next;
     }
-    
+
     pthread_rwlock_unlock(&g_endpoint_rwlock);
     return NULL;
 }
@@ -186,17 +186,17 @@ static int inproc_listen(void* impl_ptr, const char* address) {
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     /* Skip protocol prefix */
     const char* name = address;
     if (strncmp(address, "inproc://", 9) == 0) {
         name += 9;
     }
-    
+
     /* Check if endpoint already exists */
     inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
     if (endpoint) {
@@ -223,15 +223,15 @@ static int inproc_listen(void* impl_ptr, const char* address) {
     
     /* Add to global list */
     inproc_add_endpoint(endpoint);
-    
+
     transport->impl.inproc_server = (void*)endpoint;
     transport->is_connected = 1;
-    
+
     /* Set bus as active */
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
-    
+
     return UVBUS_OK;
 }
 
@@ -241,22 +241,29 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     /* Skip protocol prefix */
     const char* name = address;
     if (strncmp(address, "inproc://", 9) == 0) {
         name += 9;
     }
-    
+
     /* Find endpoint */
     inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
     if (!endpoint) {
+        /* INPROC is for in-process communication only.
+         * If the endpoint is not found, it means the server is not running
+         * in the same process. */
+        fprintf(stderr, "[INPROC] ERROR: Endpoint '%s' not found.\n", name);
+        fprintf(stderr, "[INPROC] INPROC transport is for in-process communication only.\n");
+        fprintf(stderr, "[INPROC] Make sure the server is running in the same process as the client.\n");
         return UVBUS_ERROR_NOT_FOUND;
     }
+
     
     /* Create client */
     inproc_client_t* client = (inproc_client_t*)uvrpc_alloc(sizeof(inproc_client_t));

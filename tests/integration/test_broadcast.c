@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
     
     /* Give publisher time to start */
     for (int i = 0; i < 10; i++) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_NOWAIT);
     }
     
     /* Create subscriber configuration */

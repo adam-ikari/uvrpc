@@ -31,6 +31,9 @@
 /* Forward declarations */
 static void pump_timer_callback(uv_timer_t* handle);
 static void start_pump_timer(uvrpc_client_t* client);
+static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
+                                                const uint8_t* params, size_t params_size,
+                                                uvrpc_callback_t callback, void* ctx);
 
 /* Pending callback - using direct indexing ring buffer */
 typedef struct pending_callback {
@@ -226,11 +229,12 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         uvrpc_free(pending);
 
         /* Decrease concurrent count */
-            client->current_concurrent--;
-            }
-        
-            /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
-             * after the callback returns. Do NOT free it here to avoid double free. */}
+        client->current_concurrent--;
+    }
+
+    /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
+     * after the callback returns. Do NOT free it here to avoid double free. */
+}
 
 /* Create client */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {

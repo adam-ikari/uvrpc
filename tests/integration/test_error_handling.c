@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
     printf("Server started on %s\n", server_addr);
     
     for (int i = 0; i < 10; i++) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_NOWAIT);
     }
     
     uvrpc_config_t* client_config = uvrpc_config_new();

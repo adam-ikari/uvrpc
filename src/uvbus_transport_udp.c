@@ -87,8 +87,14 @@ static int parse_udp_address(const char* address, char** host, int* port) {
 /* Server receive callback */
 static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                            const struct sockaddr* addr, unsigned flags) {
+    (void)flags;
     uvbus_transport_t* transport = (uvbus_transport_t*)handle->data;
-    
+
+    if (nread == 0) {
+        uvrpc_free(buf->base);
+        return;
+    }
+
     if (nread < 0) {
         if (nread != UV_EOF) {
             if (transport->error_cb) {
@@ -164,7 +170,7 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
 
 /* Server alloc callback */
 static void on_server_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-    fprintf(stderr, "[Server] on_server_alloc called: suggested_size=%zu\n", suggested_size);
+    (void)suggested_size;
     buf->base = (char*)uvrpc_alloc(UVBUS_MAX_BUFFER_SIZE);
     if (buf->base) {
         buf->len = UVBUS_MAX_BUFFER_SIZE;
@@ -523,7 +529,7 @@ static int udp_send(void* impl_ptr, const uint8_t* data, size_t size) {
         uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
         req->data = frame_data;
         
-        if (uv_udp_send(req, &client->udp_handle, &buf, 1, 
+        if (uv_udp_send(req, &client->udp_handle, &buf, 1,
                         (const struct sockaddr*)&client->server_addr, on_send) != 0) {
             uvrpc_free(frame_data);
             uvrpc_free(req);
@@ -546,11 +552,14 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     }
     
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
-    struct sockaddr_in* addr = (struct sockaddr_in*)target;
-    if (!addr) {
+    if (!target) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
+    /* target is struct sockaddr_storage*, need to cast it properly */
+    struct sockaddr_storage* addr_storage = (struct sockaddr_storage*)target;
+    struct sockaddr* addr = (struct sockaddr*)addr_storage;
+
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
     uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
@@ -576,7 +585,7 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
     req->data = frame_data;
     
-    if (uv_udp_send(req, &server->udp_handle, &buf, 1, 
+    if (uv_udp_send(req, &server->udp_handle, &buf, 1,
                     (const struct sockaddr*)addr, on_send) != 0) {
         uvrpc_free(frame_data);
         uvrpc_free(req);

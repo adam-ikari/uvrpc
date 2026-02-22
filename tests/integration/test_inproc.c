@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
     
     /* Give server time to start listening */
     for (int i = 0; i < 10; i++) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_NOWAIT);
     }
     
     /* Create client configuration */
