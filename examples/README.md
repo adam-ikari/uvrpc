@@ -159,7 +159,13 @@ FlatBuffers 深度集成示例，展示完整的 FlatBuffers DSL 使用流程。
 ### 广播模式示例
 
 #### 17. broadcast_publisher.c / broadcast_subscriber.c
-发布-订阅模式的示例。
+**DSL 驱动的广播模式示例**，展示如何使用 DSL 生成的广播服务 API。
+
+这两个示例使用 FlatBuffers DSL 自动生成的代码：
+- `uvrpc_broadcast_service_publish_news()` - 发布新闻
+- `uvrpc_broadcast_service_update_weather()` - 更新天气
+- `uvrpc_broadcast_service_notify_event()` - 发送事件通知
+- 解码函数用于接收和解析消息
 
 ```bash
 # 终端 1：启动发布者
@@ -169,7 +175,23 @@ FlatBuffers 深度集成示例，展示完整的 FlatBuffers DSL 使用流程。
 ./dist/bin/broadcast_subscriber
 ```
 
-#### 18. test_multi_services.c
+**关键特性**：
+- 类型安全：使用 FlatBuffers schema 定义的类型
+- 无需手动编码：自动处理消息序列化/反序列化
+- 易于扩展：在 `rpc_broadcast.fbs` 中添加新方法即可
+
+#### 18. broadcast_service_demo.c
+**完整的 DSL 广播服务演示**，展示广播服务的所有功能。
+
+```bash
+# 发布者模式
+./dist/bin/broadcast_service_demo publisher
+
+# 订阅者模式
+./dist/bin/broadcast_service_demo subscriber
+```
+
+#### 19. test_multi_services.c
 多服务测试，展示同时运行多个发布-订阅服务。
 
 ```bash
@@ -178,37 +200,189 @@ FlatBuffers 深度集成示例，展示完整的 FlatBuffers DSL 使用流程。
 
 ### RPC DSL 示例
 
-#### 19. rpc_dsl_demo.c
+#### 20. rpc_dsl_demo.c
 RPC DSL 示例，展示如何使用 FlatBuffers DSL 定义 RPC 接口。
 
 ```bash
 ./dist/bin/rpc_dsl_demo
 ```
 
-#### 20. rpc_dsl_usage_example.c
+#### 21. rpc_dsl_usage_example.c
 RPC DSL 使用示例，更详细的 DSL 用法展示。
 
 ```bash
 ./dist/bin/rpc_dsl_usage_example
 ```
 
+#### 22. broadcast_service_demo.c
+**DSL 驱动的广播服务完整示例**，展示：
+- 使用 FlatBuffers schema (`rpc_broadcast.fbs`) 定义广播服务
+- 自动生成的类型安全 API
+- 三种不同的消息类型（新闻、天气、事件）
+- 完整的发布-订阅流程
+
+```bash
+# 发布者模式
+./dist/bin/broadcast_service_demo publisher
+
+# 订阅者模式
+./dist/bin/broadcast_service_demo subscriber
+```
+
+**DSL 生成的 API**（位于 `src/uvrpc_broadcast_service.h`）：
+```c
+// 发布函数
+uvrpc_broadcast_service_publish_news()
+uvrpc_broadcast_service_update_weather()
+uvrpc_broadcast_service_notify_event()
+
+// 解码函数
+uvrpc_broadcast_service_decode_publish_news()
+uvrpc_broadcast_service_decode_update_weather()
+uvrpc_broadcast_service_decode_notify_event()
+```
+
+### Oneway RPC 示例
+
+#### 23. test_oneway.c
+Oneway RPC 基础测试示例，展示如何使用返回 `EmptyResponse` 的 oneway 方法。
+
+```bash
+# 需要先生成代码
+python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc \
+    schema/benchmark_server.fbs -o generated
+
+# 编译并运行
+./test_oneway
+```
+
+**关键特性**：
+- Oneway 方法不需要等待响应
+- 无 callback 参数
+- 不生成 `*_sync()` 变体
+- 使用 `uvrpc_client_call_oneway()` 内部实现
+
+#### 24. log_simple_demo.c
+简单的日志服务示例，展示基础的 oneway 日志记录。
+
+```bash
+# 运行快速脚本
+./scripts/run_log_service_demo.sh
+
+# 或手动编译运行
+python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc \
+    schema/log_service.fbs -o generated/log_service
+gcc -I. -Igenerated -Iinclude -Ideps/libuv/include \
+    -Ideps/mimalloc/include -Lbuild -Ldeps/mimalloc/out/release \
+    examples/log_simple_demo.c \
+    generated/log_service/log_logservice_client.c \
+    generated/log_service/log_logservice_server_stub.c \
+    generated/log_service/log_logservice_rpc_common.c \
+    -o log_simple_demo -luvrpc -luv -lmimalloc -lpthread
+./log_simple_demo
+```
+
+**功能**：
+- 单条日志记录
+- 不同日志级别（DEBUG、INFO、WARNING、ERROR、FATAL）
+- 时间戳和源信息
+- 简单的服务器端格式化输出
+
+#### 25. log_service_demo.c
+完整的日志服务示例，展示分布式日志服务的所有功能。
+
+```bash
+# 手动编译运行
+python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc \
+    schema/log_service.fbs -o generated/log_service
+gcc -I. -Igenerated -Iinclude -Ideps/libuv/include \
+    -Ideps/mimalloc/include -Lbuild -Ldeps/mimalloc/out/release \
+    examples/log_service_demo.c \
+    generated/log_service/log_logservice_client.c \
+    generated/log_service/log_logservice_server_stub.c \
+    generated/log_service/log_logservice_rpc_common.c \
+    -o log_service_demo -luvrpc -luv -lmimalloc -lpthread
+./log_service_demo
+```
+
+**完整功能**：
+- **单条日志** - 带完整元数据（级别、时间戳、源、线程ID、组件）
+- **批量日志** - 一次发送多条日志记录
+- **快速日志** - 简化的日志 API（仅级别和消息）
+- **高吞吐量** - 10+ 条日志的并发发送演示
+
+**使用场景**：
+- 微服务集中日志
+- 审计跟踪
+- 指标收集
+- 事件流
+- 调试追踪
+
+**Schema 定义**（`schema/log_service.fbs`）：
+```flatbuffers
+enum LogLevel:byte {
+    DEBUG = 0,
+    INFO = 1,
+    WARNING = 2,
+    ERROR = 3,
+    FATAL = 4
+}
+
+table LogEntry {
+    level: LogLevel;
+    message: string;
+    timestamp: int64;
+    source: string;
+    thread_id: uint64;
+    component: string;
+}
+
+rpc_service LogService {
+    Log(LogEntry):EmptyResponse;           /* 单条日志 - oneway */
+    LogBatch(LogBatchRequest):EmptyResponse; /* 批量日志 - oneway */
+    QuickLog(QuickLogRequest):EmptyResponse;  /* 快速日志 - oneway */
+}
+```
+
+**生成的 API**：
+```c
+// 所有方法都是 oneway，无 callback 参数
+uvrpc_error_t uvrpc_logservice_Log(uvrpc_client_t* client,
+                                    LogLevel level,
+                                    const char* message,
+                                    int64_t timestamp,
+                                    const char* source,
+                                    uint64_t thread_id,
+                                    const char* component);
+
+uvrpc_error_t uvrpc_logservice_LogBatch(uvrpc_client_t* client,
+                                         const LogEntry* entries_data,
+                                         size_t entries_size);
+
+uvrpc_error_t uvrpc_logservice_QuickLog(uvrpc_client_t* client,
+                                         LogLevel level,
+                                         const char* message);
+```
+
+详细文档请查看 [LOG_SERVICE_README.md](LOG_SERVICE_README.md)。
+
 ### 工具和调试示例
 
-#### 21. debug_test.c
+#### 23. debug_test.c
 调试工具，展示如何调试 UVRPC 应用。
 
 ```bash
 ./dist/bin/debug_test
 ```
 
-#### 22. test_retry.c
+#### 24. test_retry.c
 重试机制测试，展示失败重试逻辑。
 
 ```bash
 ./dist/bin/test_retry
 ```
 
-#### 23. rpc_user_impl.c
+#### 25. rpc_user_impl.c
 用户自定义实现示例，展示如何实现自定义的 RPC 处理器。
 
 ```bash
@@ -217,55 +391,53 @@ RPC DSL 使用示例，更详细的 DSL 用法展示。
 
 ### 分离的 UVBus 示例
 
-#### 24. uvbus_server_only.c
+#### 26. uvbus_server_only.c
 仅服务器端 UVBus 示例。
 
 ```bash
 ./dist/bin/uvbus_server_only
 ```
 
-#### 25. uvbus_client_only.c
+#### 27. uvbus_client_only.c
 仅客户端 UVBus 示例。
 
 ```bash
 ./dist/bin/uvbus_client_only
 ```
 
-#### 26. uvbus_minimal_test.c
+#### 28. uvbus_minimal_test.c
 最小化的 UVBus 测试。
 
 ```bash
 ./dist/bin/uvbus_minimal_test
 ```
 
-#### 27. uvbus_simple_test.c
+#### 29. uvbus_simple_test.c
 简化的 UVBus 测试。
 
 ```bash
 ./dist/bin/uvbus_simple_test
 ```
 
-#### 28. uvbus_standalone_test.c
+#### 30. uvbus_standalone_test.c
 独立的 UVBus 测试。
 
 ```bash
 ./dist/bin/uvbus_standalone_test
 ```
 
-#### 29. uvbus_working_example.c
+#### 31. uvbus_working_example.c
 工作的 UVBus 示例。
 
 ```bash
 ./dist/bin/uvbus_working_example
 ```
 
-### 内存分配器示例
-
-#### 30. allocator_demo.c
-内存分配器示例，展示如何使用不同的内存分配器。
+#### 32. uvbus_demo.c
+UVBus 完整演示。
 
 ```bash
-./dist/bin/allocator_demo
+./dist/bin/uvbus_demo
 ```
 
 ## 编译示例
@@ -342,27 +514,30 @@ make
 
 1. **simple_server.c / simple_client.c** - 学习基本 RPC 调用
 2. **flatbuffers_simple_demo.c** - 学习 FlatBuffers 基础
-3. **broadcast_publisher.c / broadcast_subscriber.c** - 学习发布-订阅模式
+3. **broadcast_publisher.c / broadcast_subscriber.c** - 学习 DSL 驱动的发布-订阅模式
 
 ### 进阶用户
 
 1. **complete_example.c** - 学习所有功能
 2. **async_await_demo.c** - 学习异步处理
 3. **loop_injection_example.c** - 学习循环注入
-4. **perf_mode_demo.c** - 学习性能优化
+4. **broadcast_service_demo.c** - 学习完整的 DSL 广播服务
+5. **perf_mode_demo.c** - 学习性能优化
 
 ### 高级用户
 
 1. **flatbuffers_demo.c** - 学习 FlatBuffers 深度集成
 2. **rpc_dsl_demo.c** - 学习 RPC DSL
-3. **concurrent_demo.c** - 学习并发处理
-4. **gateway_demo.c** - 学习网关模式
+3. **rpc_dsl_usage_example.c** - 学习 DSL 用法
+4. **concurrent_demo.c** - 学习并发处理
+5. **gateway_demo.c** - 学习网关模式
 
 ### 性能调优
 
 1. **perf_mode_demo.c** - 性能模式
 2. **allocator_demo.c** - 内存分配器
 3. **multi_service_loop_reuse.c** - 循环复用
+4. **uvasync_demo.c** - 异步编程原语
 
 ## 常见问题
 
@@ -371,9 +546,23 @@ make
 **A**: 根据你的需求：
 - 初学者：从 simple_server/client 开始
 - 需要 RPC：查看 complete_example.c
-- 需要广播：查看 broadcast_publisher/subscriber.c
+- 需要广播：查看 broadcast_publisher/subscriber.c（DSL 驱动）
+- 需要 DSL：查看 broadcast_service_demo.c、rpc_dsl_demo.c
 - 需要高性能：查看 perf_mode_demo.c
 - 需要集成到现有应用：查看 loop_injection_example.c
+
+### Q: 什么是 DSL 驱动的 API？
+
+**A**: DSL（领域特定语言）驱动的 API 是通过 FlatBuffers schema 自动生成的：
+- 在 `schema/rpc_broadcast.fbs` 中定义服务接口
+- FlatCC 编译器自动生成类型安全的 API
+- 开发者无需手动编写序列化/反序列化代码
+- 修改 schema 后重新生成即可更新 API
+
+相关示例：
+- **broadcast_publisher.c / broadcast_subscriber.c** - DSL 广播示例
+- **broadcast_service_demo.c** - 完整 DSL 服务演示
+- **rpc_dsl_demo.c** - RPC DSL 示例
 
 ### Q: 示例程序可以用于生产环境吗？
 
@@ -419,5 +608,5 @@ make
 
 ---
 
-**最后更新**: 2026-02-18  
+**最后更新**: 2026-02-21  
 **版本**: 0.1.0

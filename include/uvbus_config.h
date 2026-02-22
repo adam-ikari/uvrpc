@@ -45,4 +45,8 @@
 #define UVBUS_MAX_TIMEOUT_MS 60000       /**< @brief Maximum timeout in milliseconds */
 /** @} */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #endif /* UVBUS_CONFIG_H */

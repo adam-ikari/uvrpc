@@ -81,33 +81,104 @@ static int parse_ipc_address(const char* address, char** socket_path) {
 /* Client read callback */
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
-    
+
     /* Get client from stream data (pipe_handle.data should point to client, not transport) */
     uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)stream->data;
-    if (!client) return;
-    
+    if (!client) {
+        uvrpc_free(buf->base);
+        return;
+    }
+
     uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
-    if (!transport) return;
-    
+    if (!transport) {
+        uvrpc_free(buf->base);
+        return;
+    }
+
     if (nread < 0) {
         if (nread != UV_EOF) {
             if (transport->error_cb) {
                 transport->error_cb(UVBUS_ERROR_IO, uv_strerror(nread), transport->callback_ctx);
             }
         }
+        uvrpc_free(buf->base);
         return;
     }
-    
-    if (nread > 0 && transport->recv_cb) {
-        /* Determine if this is server mode or client mode */
-        if (transport->is_server) {
-            /* Server mode: pass client context and server context */
-            transport->recv_cb((const uint8_t*)buf->base, nread, client, transport->callback_ctx);
+
+    if (nread > 0) {
+        /* Add data to client's read buffer */
+        if (client->read_pos + nread <= sizeof(client->read_buffer)) {
+            memcpy(client->read_buffer + client->read_pos, buf->base, nread);
+            client->read_pos += nread;
         } else {
-            /* Client mode: pass NULL for client context */
-            transport->recv_cb((const uint8_t*)buf->base, nread, NULL, transport->callback_ctx);
+            /* Buffer overflow - reset and log error */
+            UVRPC_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",
+                    client->read_pos, nread, sizeof(client->read_buffer));
+            client->read_pos = 0;
+            uvrpc_free(buf->base);
+            return;
+        }
+
+        /* Process complete frames */
+        while (client->read_pos >= 4) {
+            /* Parse frame length (big-endian) */
+            uint32_t frame_size = (uint32_t)client->read_buffer[0] << 24 |
+                                  (uint32_t)client->read_buffer[1] << 16 |
+                                  (uint32_t)client->read_buffer[2] << 8 |
+                                  (uint32_t)client->read_buffer[3];
+
+            /* Validate frame size - stricter limit for stability */
+            if (frame_size == 0 || frame_size > 64*1024) {  /* 64KB max */
+                /* Invalid frame size, reset buffer */
+                UVRPC_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
+                client->read_pos = 0;
+                break;
+            }
+
+            size_t total_size = 4 + frame_size;
+            if (client->read_pos < total_size) {
+                /* Not enough data yet */
+                break;
+            }
+
+            /* Extract frame data (skip 4-byte length prefix) */
+            if (transport->recv_cb) {
+                /* Copy frame data to heap so callback can safely access it */
+                uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
+                if (!frame_copy) {
+                    UVRPC_ERROR("Failed to allocate %u bytes for frame", frame_size);
+                    if (transport->error_cb) {
+                        transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
+                    }
+                    client->read_pos = 0;
+                    break;
+                }
+                memcpy(frame_copy, client->read_buffer + 4, frame_size);
+
+                /* Determine if this is server mode or client mode */
+                if (transport->is_server) {
+                    /* Server mode: pass client context and server context */
+                    transport->recv_cb(frame_copy, frame_size, client, transport->callback_ctx);
+                } else {
+                    /* Client mode: pass NULL for client context (not needed) */
+                    transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
+                }
+                
+                /* Always free the frame copy after callback returns
+                 * This ensures cleanup even if callback forgets to free it */
+                uvrpc_free(frame_copy);
+            }
+
+            /* Remove processed frame from buffer */
+            size_t remaining = client->read_pos - total_size;
+            if (remaining > 0 && remaining < sizeof(client->read_buffer)) {
+                memmove(client->read_buffer, client->read_buffer + total_size, remaining);
+            }
+            client->read_pos = remaining;
         }
     }
+
+    uvrpc_free(buf->base);
 }
 
 /* Client alloc callback */
@@ -124,19 +195,19 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 /* Client connect callback */
 static void on_client_connect(uv_connect_t* req, int status) {
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
-    
+
     if (status == 0) {
         transport->is_connected = 1;
-        
+
         /* Set bus as active */
         if (transport->parent_bus) {
             transport->parent_bus->is_active = 1;
         }
-        
+
         /* Start reading */
         uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)transport->impl.ipc_client;
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
-        
+
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
         }
@@ -147,47 +218,48 @@ static void on_client_connect(uv_connect_t* req, int status) {
     }
 }
 
+
 /* Server connection callback */
 static void on_server_connection(uv_stream_t* server, int status) {
     uvbus_transport_t* transport = (uvbus_transport_t*)server->data;
-    
+
     if (status < 0) {
         if (transport->error_cb) {
             transport->error_cb(UVBUS_ERROR_IO, uv_strerror(status), transport->callback_ctx);
         }
         return;
     }
-    
+
     uvbus_ipc_server_t* ipc_server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
-    
+
     /* Create new client connection */
     uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)uvrpc_alloc(sizeof(uvbus_ipc_client_t));
     if (!client) {
         return;
     }
-    
+
     memset(client, 0, sizeof(uvbus_ipc_client_t));
-    
+
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &client->pipe_handle, 0);
     client->pipe_handle.data = client;
-    
+
     /* Accept connection */
     if (uv_accept(server, (uv_stream_t*)&client->pipe_handle) == 0) {
         /* Add to client list */
         if (ipc_server->client_count >= ipc_server->client_capacity) {
             ipc_server->client_capacity *= 2;
             ipc_server->clients = (uvbus_ipc_client_t**)uvrpc_realloc(
-                ipc_server->clients, 
+                ipc_server->clients,
                 sizeof(uvbus_ipc_client_t*) * ipc_server->client_capacity
             );
         }
-        
+
         ipc_server->clients[ipc_server->client_count++] = client;
-        
+
         /* Set parent reference */
         client->parent_transport = transport;
-        
+
         /* Start reading */
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
     } else {
@@ -237,8 +309,7 @@ static int ipc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
-    printf("[IPC LISTEN] Starting server on %s\n", socket_path);
-    fflush(stdout);
+    
     
     /* Create server */
     uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)uvrpc_alloc(sizeof(uvbus_ipc_server_t));
@@ -257,6 +328,9 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &server->listen_pipe, 0);
     server->listen_pipe.data = transport;
+    
+    /* Remove stale socket file if exists */
+    unlink(socket_path);
     
     /* Bind to socket path */
     int bind_result = uv_pipe_bind(&server->listen_pipe, socket_path);
@@ -302,39 +376,39 @@ static int ipc_connect(void* impl_ptr, const char* address) {
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     /* Parse address */
     char* socket_path = NULL;
     if (parse_ipc_address(address, &socket_path) != 0) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     /* Create client */
     uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)uvrpc_alloc(sizeof(uvbus_ipc_client_t));
     if (!client) {
         uvrpc_free(socket_path);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     memset(client, 0, sizeof(uvbus_ipc_client_t));
     client->socket_path = socket_path;
     client->parent_transport = transport;
-    
+
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &client->pipe_handle, 0);
     client->pipe_handle.data = client;
-    
+
     /* Connect */
     transport->impl.ipc_client = (void*)client;
     client->connect_req.data = transport;
-    
-    uv_pipe_connect(&client->connect_req, &client->pipe_handle, 
+
+    uv_pipe_connect(&client->connect_req, &client->pipe_handle,
                     socket_path, on_client_connect);
-    
+
     return UVBUS_OK;
 }
 
@@ -384,11 +458,27 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_connected) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
-    
+
+    /* Allocate buffer with 4-byte frame length prefix */
+    size_t total_size = 4 + size;
+    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
+    if (!frame_data) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    /* Write frame length in big-endian format */
+    frame_data[0] = (size >> 24) & 0xFF;
+    frame_data[1] = (size >> 16) & 0xFF;
+    frame_data[2] = (size >> 8) & 0xFF;
+    frame_data[3] = size & 0xFF;
+
+    /* Copy payload data */
+    memcpy(frame_data + 4, data, size);
+
     if (transport->is_server) {
         uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
         /* Broadcast to all clients */
@@ -397,17 +487,18 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
             if (!req) {
                 continue;
             }
-            
-            uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
+
+            /* Copy frame data for this write */
+            uint8_t* data_copy = (uint8_t*)uvrpc_alloc(total_size);
             if (!data_copy) {
                 uvrpc_free(req);
                 continue;
             }
-            memcpy(data_copy, data, size);
-            
-            uv_buf_t buf = uv_buf_init((char*)data_copy, size);
+            memcpy(data_copy, frame_data, total_size);
+
+            uv_buf_t buf = uv_buf_init((char*)data_copy, total_size);
             req->data = data_copy;
-            
+
             uv_write(req, (uv_stream_t*)&server->clients[i]->pipe_handle, &buf, 1, on_write);
         }
     } else {
@@ -415,26 +506,21 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
         /* Send to server */
         uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
         if (!req) {
+            uvrpc_free(frame_data);
             return UVBUS_ERROR_NO_MEMORY;
         }
-        
-        uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
-        if (!data_copy) {
-            uvrpc_free(req);
-            return UVBUS_ERROR_NO_MEMORY;
-        }
-        memcpy(data_copy, data, size);
-        
-        uv_buf_t buf = uv_buf_init((char*)data_copy, size);
-        req->data = data_copy;
-        
+
+        uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
+        req->data = frame_data;
+
         if (uv_write(req, (uv_stream_t*)&client->pipe_handle, &buf, 1, on_write) != 0) {
-            uvrpc_free(data_copy);
+            uvrpc_free(frame_data);
             uvrpc_free(req);
             return UVBUS_ERROR_IO;
         }
     }
-    
+
+    /* Note: frame_data is now owned by the write request, don't free it here */
     return UVBUS_OK;
 }
 
@@ -454,23 +540,33 @@ static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
+    /* Allocate buffer with 4-byte frame length prefix */
+    size_t total_size = 4 + size;
+    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
+    if (!frame_data) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    /* Write frame length in big-endian format */
+    frame_data[0] = (size >> 24) & 0xFF;
+    frame_data[1] = (size >> 16) & 0xFF;
+    frame_data[2] = (size >> 8) & 0xFF;
+    frame_data[3] = size & 0xFF;
+
+    /* Copy payload data */
+    memcpy(frame_data + 4, data, size);
+    
     uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
     if (!req) {
+        uvrpc_free(frame_data);
         return UVBUS_ERROR_NO_MEMORY;
     }
     
-    uint8_t* data_copy = (uint8_t*)uvrpc_alloc(size);
-    if (!data_copy) {
-        uvrpc_free(req);
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    memcpy(data_copy, data, size);
-    
-    uv_buf_t buf = uv_buf_init((char*)data_copy, size);
-    req->data = data_copy;
+    uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
+    req->data = frame_data;
     
     if (uv_write(req, (uv_stream_t*)&client->pipe_handle, &buf, 1, on_write) != 0) {
-        uvrpc_free(data_copy);
+        uvrpc_free(frame_data);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;
     }

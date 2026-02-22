@@ -9,8 +9,8 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-/* Thread-safe mutex for protecting global endpoint hash table */
-static pthread_mutex_t g_endpoint_mutex = PTHREAD_MUTEX_INITIALIZER;
+/* Thread-safe rwlock for protecting global endpoint hash table */
+static pthread_rwlock_t g_endpoint_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* INPROC endpoint */
 typedef struct inproc_endpoint {
@@ -58,66 +58,66 @@ static unsigned int hash_string(const char* str) {
 
 /* Find endpoint by name */
 static inproc_endpoint_t* inproc_find_endpoint(const char* name) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_rdlock(&g_endpoint_rwlock);
     unsigned int hash = hash_string(name);
     inproc_endpoint_t* endpoint = g_endpoint_hash[hash];
     
     while (endpoint) {
         if (strcmp(endpoint->name, name) == 0) {
-            pthread_mutex_unlock(&g_endpoint_mutex);
+            pthread_rwlock_unlock(&g_endpoint_rwlock);
             return endpoint;
         }
         endpoint = endpoint->next;
     }
     
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
     return NULL;
 }
 
 /* Add endpoint to hash table */
 static void inproc_add_endpoint(inproc_endpoint_t* endpoint) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     unsigned int hash = hash_string(endpoint->name);
     endpoint->next = g_endpoint_hash[hash];
     g_endpoint_hash[hash] = endpoint;
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
 /* Remove endpoint from hash table */
 static void inproc_remove_endpoint(inproc_endpoint_t* endpoint) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     unsigned int hash = hash_string(endpoint->name);
     inproc_endpoint_t** ptr = &g_endpoint_hash[hash];
     
     while (*ptr) {
         if (*ptr == endpoint) {
             *ptr = endpoint->next;
-            pthread_mutex_unlock(&g_endpoint_mutex);
+            pthread_rwlock_unlock(&g_endpoint_rwlock);
             return;
         }
         ptr = &(*ptr)->next;
     }
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
 /* Add client to endpoint */
 static void inproc_add_client(inproc_endpoint_t* endpoint, void* client) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     if (endpoint->client_count >= endpoint->client_capacity) {
         endpoint->client_capacity *= 2;
         endpoint->clients = (void**)uvrpc_realloc(
-            endpoint->clients, 
+            endpoint->clients,
             sizeof(void*) * endpoint->client_capacity
         );
     }
-    
+
     endpoint->clients[endpoint->client_count++] = client;
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
 /* Remove client from endpoint */
 static void inproc_remove_client(inproc_endpoint_t* endpoint, void* client) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     for (int i = 0; i < endpoint->client_count; i++) {
         if (endpoint->clients[i] == client) {
             /* Shift remaining clients */
@@ -125,24 +125,24 @@ static void inproc_remove_client(inproc_endpoint_t* endpoint, void* client) {
                 endpoint->clients[j] = endpoint->clients[j + 1];
             }
             endpoint->client_count--;
-            pthread_mutex_unlock(&g_endpoint_mutex);
+            pthread_rwlock_unlock(&g_endpoint_rwlock);
             return;
         }
     }
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
 /* Send to all clients */
 static void inproc_send_to_all(inproc_endpoint_t* endpoint,
                          const uint8_t* data, size_t size) {
-    pthread_mutex_lock(&g_endpoint_mutex);
+    pthread_rwlock_rdlock(&g_endpoint_rwlock);
     /* Copy client count to avoid holding lock during callbacks */
     int client_count = endpoint->client_count;
     void** clients = (void**)uvrpc_alloc(sizeof(void*) * client_count);
     if (clients) {
         memcpy(clients, endpoint->clients, sizeof(void*) * client_count);
     }
-    pthread_mutex_unlock(&g_endpoint_mutex);
+    pthread_rwlock_unlock(&g_endpoint_rwlock);
     
     if (!clients) return;
     
@@ -284,16 +284,8 @@ static int inproc_connect(void* impl_ptr, const char* address) {
         transport->parent_bus->is_active = 1;
     }
     
-    printf("[INPROC CONNECT] connect_cb=%p, callback_ctx=%p\n", 
-           (void*)transport->connect_cb, (void*)transport->callback_ctx);
-    fflush(stdout);
-    
     if (transport->connect_cb) {
-        printf("[INPROC CONNECT] Calling connect_cb...\n");
-        fflush(stdout);
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
-        printf("[INPROC CONNECT] connect_cb returned\n");
-        fflush(stdout);
     }
     
     return UVBUS_OK;
@@ -345,11 +337,11 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_connected) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
-    
+
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
         /* Broadcast to all clients */
@@ -360,8 +352,17 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
             /* Send to server */
             inproc_endpoint_t* endpoint = client->server_endpoint;
             if (endpoint->recv_cb) {
+                /* Use the current transport's callback_ctx instead of endpoint's
+                 * This allows the server to update its context after listening */
+                void* server_ctx = NULL;
+                if (endpoint->server_transport) {
+                    server_ctx = ((uvbus_transport_t*)endpoint->server_transport)->callback_ctx;
+                }
+                if (!server_ctx) {
+                    server_ctx = endpoint->callback_ctx;
+                }
                 /* Pass client as client_ctx, and server context as server_ctx */
-                endpoint->recv_cb(data, size, client, endpoint->callback_ctx);
+                endpoint->recv_cb(data, size, client, server_ctx);
             }
         }
     }

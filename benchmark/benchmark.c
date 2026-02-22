@@ -320,8 +320,17 @@ static int test_oneway(const char* address, int num_requests, int num_clients) {
         }
     }
     
-    /* Wait for connections - single UV_RUN_DEFAULT call handles all async operations */
+    /* Wait for connections using timer */
+    uv_timer_t conn_timer;
+    uv_timer_init(&loop, &conn_timer);
+    conn_timer.data = clients;
+    loop.data = (void*)(intptr_t)num_clients;
+    uv_timer_start(&conn_timer, check_connections, 10, 10);
+    
     uv_run(&loop, UV_RUN_DEFAULT);
+    uv_timer_stop(&conn_timer);
+    uv_close((uv_handle_t*)&conn_timer, NULL);
+    uv_run(&loop, UV_RUN_NOWAIT);
     
     /* Verify all clients connected */
     int all_connected = 1;
@@ -376,13 +385,18 @@ static int test_oneway(const char* address, int num_requests, int num_clients) {
         fprintf(stderr, "[DROP] ... and %d more messages dropped\n", dropped - 10);
     }
     
-    /* Add a stop timer to terminate loop after pumping */
-    uv_timer_t stop_timer;
-    uv_timer_init(&loop, &stop_timer);
-    uv_timer_start(&stop_timer, stop_loop_timer, 100, 0); /* 100ms delay for pump */
-    
-    /* Run event loop to pump all messages via timer */
-    uv_run(&loop, UV_RUN_DEFAULT);
+    /* Run event loop to process all pending writes
+     * Transport layer uses uv_async to handle buffer full, so just let it drain */
+    while (1) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+        /* Check if all messages have been sent
+         * We can verify by checking if we've sent all requests */
+        if (sent >= num_requests && dropped == 0) {
+            break;
+        }
+        /* Small delay to avoid busy loop */
+        usleep(1000);
+    }
     
     gettimeofday(&end, NULL);
     double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
@@ -492,33 +506,33 @@ int main(int argc, char** argv) {
     printf("Clients: %d\n", num_clients);
     printf("========================================\n");
     
-    /* Wait for server */
-    printf("Waiting for server...\n");
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    int port = 5555;
+    /* Wait for server - skip check for non-TCP transports */
     if (strncmp(address, "tcp://", 6) == 0) {
+        printf("Waiting for server...\n");
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        int port = 5555;
         const char* colon = strchr(address + 6, ':');
         if (colon) port = atoi(colon + 1);
+        
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+        
+        int tries = 0;
+        while (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0 && tries < 50) {
+            usleep(100000);
+            tries++;
+        }
+        close(sock);
+        
+        if (tries >= 50) {
+            fprintf(stderr, "Server not ready at %s\n", address);
+            return 1;
+        }
+        printf("Server ready!\n");
     }
-    
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    
-    int tries = 0;
-    while (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0 && tries < 50) {
-        usleep(100000);
-        tries++;
-    }
-    close(sock);
-    
-    if (tries >= 50) {
-        fprintf(stderr, "Server not ready at %s\n", address);
-        return 1;
-    }
-    printf("Server ready!\n");
     
     int ret = 0;
     if (strcmp(test_type, "oneway") == 0) {

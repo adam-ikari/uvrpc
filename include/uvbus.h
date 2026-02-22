@@ -46,6 +46,7 @@ typedef enum {
     UVBUS_ERROR_ALREADY_EXISTS = -7,   /**< @brief Resource already exists */
     UVBUS_ERROR_NOT_FOUND = -8,        /**< @brief Resource not found */
     UVBUS_ERROR_NOT_IMPLEMENTED = -9,  /**< @brief Feature not implemented */
+    UVBUS_ERROR_BUFFER_FULL = -10,     /**< @brief Send buffer full, try again later */
     UVBUS_ERROR_MAX                    /**< @brief Maximum error code */
 } uvbus_error_t;
 
@@ -124,14 +125,14 @@ struct uvbus_config {
     uv_loop_t* loop;
     uvbus_transport_type_t transport;
     const char* address;
-    
+
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
     uvbus_connect_callback_t connect_cb;
     uvbus_close_callback_t close_cb;
     uvbus_error_callback_t error_cb;
     void* callback_ctx;
-    
+
     /* Options */
     uint64_t timeout_ms;
     int enable_timeout;
@@ -237,6 +238,12 @@ void uvbus_config_set_timeout(uvbus_config_t* config, uint64_t timeout_ms);
  */
 void uvbus_config_set_timeout_enabled(uvbus_config_t* config, int enabled);
 
+/**
+ * @brief Set send buffer threshold for async triggering
+ * @param config Configuration object
+ * @param threshold Threshold (0-100), triggers async when buffer usage exceeds this percentage
+ *                  Default: 80, Min: 50, Max: 95
+ */
 /* Server API */
 
 /**

@@ -95,12 +95,17 @@ class RPCParser:
             line = line.strip()
             if not line or line.startswith('//'):
                 continue
+            # Remove inline comments (both C /* */ and C++ //)
+            line = re.sub(r'/\*.*?\*/', '', line).strip()  # Remove /* ... */
+            line = re.sub(r'//.*$', '', line).strip()       # Remove // ...
+            if not line or not line.endswith(';'):
+                continue
             # Simple field parsing
             parts = line.split(':')
             if len(parts) == 2:
                 field_name = parts[0].strip()
                 field_type = parts[1].strip().rstrip(';')
-                
+
                 # Map FlatBuffers types to C types
                 type_mapping = {
                     'int32': 'int32_t',
@@ -114,22 +119,29 @@ class RPCParser:
                     'ubyte': 'uint8_t',
                     'byte': 'int8_t',
                 }
-                
-                # Handle array types like [ubyte]
+
+                # Handle array types like [ubyte] or [LogEntry]
                 is_array = False
+                is_struct_array = False
                 c_type = field_type
                 if field_type.startswith('[') and field_type.endswith(']'):
                     is_array = True
                     base_type = field_type[1:-1]
-                    c_type = type_mapping.get(base_type, base_type)
+                    # Check if base type is a table name (struct array)
+                    if base_type in self.tables:
+                        is_struct_array = True
+                        c_type = base_type  # Use table name for struct arrays
+                    else:
+                        c_type = type_mapping.get(base_type, base_type)
                 else:
                     c_type = type_mapping.get(field_type, field_type)
-                
+
                 fields.append({
                     'name': field_name,
                     'type': c_type,
                     'original_type': field_type,
-                    'is_array': is_array
+                    'is_array': is_array,
+                    'is_struct_array': is_struct_array
                 })
         return fields
     
@@ -140,6 +152,11 @@ class RPCParser:
             line = line.strip()
             if not line or line.startswith('//'):
                 continue
+            # Remove inline comments (both C /* */ and C++ //)
+            line = re.sub(r'/\*.*?\*/', '', line).strip()  # Remove /* ... */
+            line = re.sub(r'//.*$', '', line).strip()       # Remove // ...
+            if not line or not line.endswith(';'):
+                continue
             # Parse: MethodName(RequestType):ReturnType;
             # Format: Add(BenchmarkAddRequest):BenchmarkAddResponse;
             match = re.match(r'(\w+)\s*\(\s*(\w+)\s*\)\s*:\s*(\w+)', line)
@@ -147,16 +164,20 @@ class RPCParser:
                 method_name = match.group(1)
                 request_type = match.group(2)
                 return_type = match.group(3)
-                
+
                 # Get request fields from tables
                 request_fields = self.tables.get(request_type, [])
-                
+
+                # Check if this is a oneway method (EmptyResponse indicates oneway)
+                is_oneway = (return_type == 'EmptyResponse')
+
                 methods.append({
                     'name': method_name,
                     'return': return_type,
                     'request': request_type,
                     'response': return_type,  # Add response field
-                    'request_fields': request_fields
+                    'request_fields': request_fields,
+                    'is_oneway': is_oneway
                 })
         return methods
 
@@ -196,6 +217,7 @@ class RPCGenerator:
                 'service': service,
                 'service_name_lower': service['name'].lower(),
                 'service_name_upper': service['name'].upper(),
+                'rpc_data': rpc_data,  # Pass full rpc_data for struct array serialization
             }
             
             template = self.env.get_template('client.c.j2')

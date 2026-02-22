@@ -26,7 +26,6 @@ include_directories(
     ${DEPS_DIR}/flatcc/include
     ${DEPS_DIR}/libuv/include
     ${GENERATED_DIR}
-    ${GENERATED_DIR}/rpc_benchmark
 )
 
 # Check if mimalloc is available
@@ -42,9 +41,17 @@ endif()
 # Find required packages
 find_package(Threads REQUIRED)
 
-# Performance test programs
+# Unified benchmark - auto-starts server and runs tests
+add_executable(benchmark
+    benchmark.c
+)
 
+target_link_libraries(benchmark
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.a
+    -lm -lrt -ldl
+    ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.a
+    ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
+)
 
-# Performance benchmark (includes both SERVER_CLIENT and BROADCAST modes)
-add_executable(benchmark perf_benchmark.c)
-target_link_libraries(benchmark uvrpc Threads::Threads m rt dl)
+set_target_properties(benchmark PROPERTIES LINK_FLAGS "-static -pthread")

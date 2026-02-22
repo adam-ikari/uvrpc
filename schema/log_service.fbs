@@ -1,0 +1,54 @@
+namespace log;
+
+/* ============================================================
+   Log Service Schema
+   Demonstrates oneway RPC methods for logging
+   ============================================================ */
+
+/* Log levels */
+enum LogLevel:byte {
+    DEBUG = 0,
+    INFO = 1,
+    WARNING = 2,
+    ERROR = 3,
+    FATAL = 4
+}
+
+/* Log entry structure */
+table LogEntry {
+    level: LogLevel;
+    message: string;
+    timestamp: int64;
+    source: string;        /* Source module or service name */
+    thread_id: uint64;     /* Thread identifier */
+    component: string;     /* Component name */
+}
+
+/* Batch log request for multiple entries */
+table LogBatchRequest {
+    entries: [LogEntry];   /* Array of log entries */
+}
+
+/* Empty response for oneway methods */
+table EmptyResponse {}
+
+/* Quick log request structure */
+table QuickLogRequest {
+    level: LogLevel;
+    message: string;
+}
+
+/* ============================================================
+   Log Service Declaration
+   ============================================================ */
+
+rpc_service LogService {
+    /* Log a single entry - oneway */
+    Log(LogEntry):EmptyResponse;
+
+    /* Log multiple entries - oneway */
+    LogBatch(LogBatchRequest):EmptyResponse;
+
+    /* Quick log with just level and message - oneway */
+    QuickLog(QuickLogRequest):EmptyResponse;
+}

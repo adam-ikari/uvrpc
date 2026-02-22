@@ -74,14 +74,11 @@ set(UVRPC_SOURCES
     src/uvrpc_config.c
     src/uvrpc_context.c
     src/uvrpc_flatbuffers.c
-    src/uvrpc_broadcast.c
     src/uvrpc_server.c
     src/uvrpc_client.c
     src/uvrpc_service.c
     src/uvrpc_msgid.c
     src/uvrpc_idmap.c
-    src/uvrpc_publisher.c
-    src/uvrpc_subscriber.c
     src/uvrpc_allocator.c
     src/uvrpc_async.c
     src/uvrpc_primitives.c
@@ -151,8 +148,7 @@ target_include_directories(uvrpc_shared PUBLIC ${FLATCC_INCLUDE_DIR})
 # FlatBuffers schema
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schema)
 set(RPC_SCHEMA ${SCHEMA_DIR}/rpc.fbs)
-set(BROADCAST_SCHEMA ${SCHEMA_DIR}/broadcast.fbs)
-set(RPC_BROADCAST_SCHEMA ${SCHEMA_DIR}/rpc_broadcast.fbs)
+set(BENCHMARK_SERVER_SCHEMA ${SCHEMA_DIR}/benchmark_server.fbs)
 set(GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated)
 
 # Find flatcc compiler
@@ -166,7 +162,7 @@ if(NOT FLATCC_COMPILER)
     message(FATAL_ERROR "FlatCC compiler not found. Please build flatcc first.")
 endif()
 
-# Custom command to generate FlatCC code
+# Custom command to generate RPC FlatCC code
 add_custom_command(
     OUTPUT ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
@@ -176,27 +172,17 @@ add_custom_command(
     COMMENT "Generating FlatCC code from RPC schema"
 )
 
-# Custom command to generate broadcast FlatCC code
+# Generate FlatCC code from benchmark-server schema
 add_custom_command(
-    OUTPUT ${GENERATED_DIR}/broadcast_reader.h ${GENERATED_DIR}/broadcast_builder.h
+    OUTPUT ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
-    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${BROADCAST_SCHEMA}
-    DEPENDS ${BROADCAST_SCHEMA}
+    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${BENCHMARK_SERVER_SCHEMA}
+    DEPENDS ${BENCHMARK_SERVER_SCHEMA}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating FlatCC code from broadcast schema"
+    COMMENT "Generating FlatCC code from benchmark-server schema"
 )
 
-# Custom command to generate RPC broadcast service FlatCC code
-add_custom_command(
-    OUTPUT ${GENERATED_DIR}/rpc_broadcast_reader.h ${GENERATED_DIR}/rpc_broadcast_builder.h
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
-    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${RPC_BROADCAST_SCHEMA}
-    DEPENDS ${RPC_BROADCAST_SCHEMA}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating FlatCC code from RPC broadcast schema"
-)
-
-add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/broadcast_reader.h ${GENERATED_DIR}/broadcast_builder.h ${GENERATED_DIR}/rpc_broadcast_reader.h ${GENERATED_DIR}/rpc_broadcast_builder.h)
+add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h)
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
@@ -250,19 +236,15 @@ add_subdirectory(benchmark)
     create_example_target(allocator_demo)
     create_example_target(msgid_demo)
     create_example_target(loop_injection_example)
-    create_example_target(broadcast_publisher)
-    create_example_target(broadcast_subscriber)
     create_example_target(async_await_demo)
     create_example_target(async_chain_demo)
     create_example_target(concurrent_demo)
     create_example_target(flatbuffers_simple_demo)
     create_example_target(rpc_dsl_demo)
-    create_example_target(broadcast_service_demo)
     create_example_target(udp_rpc_demo)
     create_example_target(uvbus_demo)
     create_example_target(uvbus_server_only)
     create_example_target(uvbus_client_only)
-    create_example_target(complete_example)
     create_example_target(perf_mode_demo)
     create_example_target(primitives_demo)
     # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now

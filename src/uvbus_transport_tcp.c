@@ -42,9 +42,10 @@ struct uvbus_tcp_client {
     uv_tcp_t tcp_handle;
     uv_connect_t connect_req;
     uv_write_t write_req;
+    uv_async_t write_async;  /* Async handle for triggering writes */
     
     /* Large buffer - placed at end to improve cache locality for small fields */
-    uint8_t read_buffer[32768];  /* 32KB read buffer */
+    uint8_t read_buffer[262144];  /* 256KB read buffer */
 };
 
 /* TCP server structure - optimized for cache locality */
@@ -363,8 +364,22 @@ static void on_client_connect(uv_connect_t* req, int status) {
 
 /* Write callback */
 static void on_write(uv_write_t* req, int status) {
+    (void)status;
     uvrpc_free(req->data);
     uvrpc_free(req);
+}
+
+/* Async callback for triggering pending writes */
+static void on_write_async(uv_async_t* handle) {
+    uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)handle->data;
+    
+    /* Run event loop once to process pending writes
+     * This is called when TCP send buffer is full (UV_ENOBUFS)
+     * The event loop will process write completions and free buffer space */
+    if (client && client->parent_transport) {
+        uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
+        uv_run(transport->loop, UV_RUN_NOWAIT);
+    }
 }
 
 /* TCP vtable functions */
@@ -489,6 +504,8 @@ static int tcp_connect(void* impl_ptr, const char* address) {
     
     /* Initialize TCP handle */
     uv_tcp_init(transport->loop, &client->tcp_handle);
+    uv_async_init(transport->loop, &client->write_async, on_write_async);
+    client->write_async.data = client;  /* Set to client so on_write_async can find it */
     client->tcp_handle.data = client;  /* Set to client so on_client_read can find it */
     
     /* Optimize socket buffers for better memory usage */
@@ -538,6 +555,10 @@ static void tcp_disconnect(void* impl_ptr) {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         /* Clear the pointer first to prevent double disconnect */
         transport->impl.tcp_client = NULL;
+        /* Close write_async handle */
+        if (!uv_is_closing((uv_handle_t*)&client->write_async)) {
+            uv_close((uv_handle_t*)&client->write_async, NULL);
+        }
         /* Close client connection */
         ref_dec(&client->ref_count);
         uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
@@ -605,14 +626,26 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
         }
 
         uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
-        req->data = frame_data;
+        req->data = frame_data;  /* Set req->data for cleanup in on_write callback */
 
-        if (uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write) != 0) {
-            uvrpc_free(frame_data);
-            uvrpc_free(req);
-            return UVBUS_ERROR_IO;
-        }
-    }
+        /* Write the data */
+        int write_result = uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write);
+            if (write_result != 0) {
+                uvrpc_free(frame_data);
+                uvrpc_free(req);
+                
+                /* UV_ENOBUFS indicates buffer is completely full */
+                if (write_result == UV_ENOBUFS) {
+                    /* Trigger async processing to flush pending writes */
+                    uv_async_send(&client->write_async);
+                    /* Return error to application layer */
+                    return UVBUS_ERROR_BUFFER_FULL;
+                }
+                return UVBUS_ERROR_IO;
+            }
+        
+            /* Note: frame_data is now owned by the write request, don't free it here */
+            return UVBUS_OK;    }
 
     /* Note: frame_data is now owned by the write request, don't free it here */
     return UVBUS_OK;
@@ -659,9 +692,14 @@ static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
     req->data = frame_data;
 
-    if (uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write) != 0) {
+    int write_result = uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write);
+    if (write_result != 0) {
         uvrpc_free(frame_data);
         uvrpc_free(req);
+        if (write_result == UV_ENOBUFS) {
+            uv_async_send(&client->write_async);
+            return UVBUS_ERROR_BUFFER_FULL;
+        }
         return UVBUS_ERROR_IO;
     }
 

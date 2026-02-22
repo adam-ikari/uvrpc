@@ -1,11 +1,15 @@
 namespace uvrpc;
 
-/* Minimal RPC Frame: [type:1byte|msgid:32bit|method:params] */
+/* ============================================================
+   UVRPC Core Frame Definition
+   Used for all RPC communication
+   ============================================================ */
+
 table RpcFrame {
-    type: uint8;
-    msgid: uint32;
-    method: string;
-    params: [ubyte];
+    type: int32;          /* 0=request, 1=response, 2=notification, 3=error */
+    msgid: uint32;        /* Message ID */
+    method: string;       /* Method name (for requests) */
+    params: [ubyte];      /* Parameters or result data */
 }
 
 root_type RpcFrame;

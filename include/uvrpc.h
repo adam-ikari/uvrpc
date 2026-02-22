@@ -47,14 +47,15 @@ typedef enum {
     UVRPC_ERROR_NOT_CONNECTED = -4,    /**< @brief Not connected to server */
     UVRPC_ERROR_TIMEOUT = -5,          /**< @brief Operation timed out */
     UVRPC_ERROR_TRANSPORT = -6,        /**< @brief Transport layer error */
-    UVRPC_ERROR_CALLBACK_LIMIT = -7,   /**< @brief Callback limit exceeded */
-    UVRPC_ERROR_CANCELLED = -8,        /**< @brief Operation was cancelled */
-    UVRPC_ERROR_POOL_EXHAUSTED = -9,   /**< @brief Connection pool exhausted */
-    UVRPC_ERROR_RATE_LIMITED = -10,    /**< @brief Rate limit exceeded */
-    UVRPC_ERROR_NOT_FOUND = -11,       /**< @brief Resource not found */
-    UVRPC_ERROR_ALREADY_EXISTS = -12,  /**< @brief Resource already exists */
-    UVRPC_ERROR_INVALID_STATE = -13,   /**< @brief Invalid state for operation */
-    UVRPC_ERROR_IO = -14,              /**< @brief I/O error occurred */
+    UVRPC_ERROR_TRANSPORT_BUSY = -7,   /**< @brief Transport layer busy, retry later */
+    UVRPC_ERROR_CALLBACK_LIMIT = -8,   /**< @brief Callback limit exceeded */
+    UVRPC_ERROR_CANCELLED = -9,        /**< @brief Operation was cancelled */
+    UVRPC_ERROR_POOL_EXHAUSTED = -10,   /**< @brief Connection pool exhausted */
+    UVRPC_ERROR_RATE_LIMITED = -11,    /**< @brief Rate limit exceeded */
+    UVRPC_ERROR_NOT_FOUND = -12,       /**< @brief Resource not found */
+    UVRPC_ERROR_ALREADY_EXISTS = -13,  /**< @brief Resource already exists */
+    UVRPC_ERROR_INVALID_STATE = -14,   /**< @brief Invalid state for operation */
+    UVRPC_ERROR_IO = -15,              /**< @brief I/O error occurred */
     UVRPC_ERROR_MAX                    /**< @brief Maximum error code (for validation) */
 } uvrpc_error_t;
 

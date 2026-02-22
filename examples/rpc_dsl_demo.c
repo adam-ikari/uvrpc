@@ -4,8 +4,8 @@
  */
 
 #include "../include/uvrpc.h"
-#include "../generated/rpc_api_builder.h"
-#include "../generated/rpc_api_reader.h"
+#include "../generated/rpc_builder.h"
+#include "../generated/rpc_reader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

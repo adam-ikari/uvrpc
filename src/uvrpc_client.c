@@ -12,6 +12,7 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
+#include "../include/uvasync.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
@@ -26,6 +27,10 @@
 
 /* Error logging - always enabled */
 #define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
+/* Forward declarations */
+static void pump_timer_callback(uv_timer_t* handle);
+static void start_pump_timer(uvrpc_client_t* client);
 
 /* Pending callback - using direct indexing ring buffer */
 typedef struct pending_callback {
@@ -69,14 +74,15 @@ struct uvrpc_client {
 
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
+    uvasync_scheduler_t* scheduler;  /* Async scheduler for request concurrency control */
 
-    /* Pump interval for auto-flush (0 = manual, >0 = auto in ms) */
-    int pump_interval;          /* Pump interval in ms */
-    uv_timer_t pump_timer;      /* Timer for periodic pump */
+    /* Pump timer for auto-flush */
+    int pump_interval;          /* Pump interval in milliseconds (0 = disabled) */
+    uv_timer_t pump_timer;      /* Pump timer handle */
+
+    /* Send state */
+    int send_pending;           /* Flag indicating send is pending */
 };
-
-/* Pump timer callback for auto-flush */
-static void pump_timer_callback(uv_timer_t* handle);
 
 /* Start pump timer if configured */
 static void start_pump_timer(uvrpc_client_t* client) {
@@ -89,14 +95,14 @@ static void start_pump_timer(uvrpc_client_t* client) {
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
     client->is_connected = (status == 0);
-    
+
     /* Call user's connect callback if provided */
     if (client->user_connect_callback) {
         uvrpc_connect_callback_t cb = client->user_connect_callback;
         client->user_connect_callback = NULL;
         cb(status, client->user_connect_ctx);
     }
-    
+
     if (status != 0) {
         UVRPC_ERROR("Client connection failed: %d", status);
     }
@@ -226,12 +232,6 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
              * after the callback returns. Do NOT free it here to avoid double free. */}
 
-/* Pump timer callback */
-static void pump_timer_callback(uv_timer_t* handle) {
-    /* Timer fires to allow event loop to process pending writes */
-    /* No action needed - libuv handles write callbacks automatically */
-}
-
 /* Create client */
 uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     if (!config || !config->loop || !config->address) return NULL;
@@ -335,11 +335,18 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     
     uvbus_config_free(bus_config);
 
-    /* Initialize pump timer */
-    client->pump_interval = config->pump_interval;
-    if (client->pump_interval > 0) {
-        uv_timer_init(client->loop, &client->pump_timer);
-        client->pump_timer.data = client;
+    /* Initialize uvasync scheduler for concurrency control */
+    if (client->max_concurrent > 0) {
+        uvasync_context_t* async_ctx = uvasync_context_create(client->loop);
+        if (async_ctx) {
+            client->scheduler = uvasync_scheduler_create(async_ctx, client->max_concurrent);
+            if (!client->scheduler) {
+                uvasync_context_destroy(async_ctx);
+                client->scheduler = NULL;
+            }
+        }
+    } else {
+        client->scheduler = NULL;
     }
 
     return client;
@@ -408,6 +415,12 @@ void uvrpc_client_free(uvrpc_client_t* client) {
 
     uvrpc_client_disconnect(client);
 
+    /* Free uvasync scheduler */
+    if (client->scheduler) {
+        uvasync_scheduler_destroy(client->scheduler);
+        client->scheduler = NULL;
+    }
+
     /* Free UVBus */
     if (client->uvbus) {
         uvbus_free(client->uvbus);
@@ -432,11 +445,6 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     if (client->pending_callbacks) {
         uvrpc_free(client->pending_callbacks);
         client->pending_callbacks = NULL;
-    }
-
-    /* Stop pump timer */
-    if (client->pump_interval > 0) {
-        uv_timer_stop(&client->pump_timer);
     }
 
     uvrpc_free(client->address);
@@ -532,14 +540,29 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
 
     /* Send request (must be after callback registration to avoid race conditions) */
     if (client->uvbus) {
-        uvbus_send(client->uvbus, req_data, req_size);
+        uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
+        if (send_err != UVBUS_OK) {
+            /* Send failed - remove callback from ringbuffer */
+            if (callback) {
+                uint32_t idx = msgid & (client->max_pending_callbacks - 1);
+                if (client->pending_callbacks[idx] && 
+                    client->pending_callbacks[idx]->msgid == msgid) {
+                    uvrpc_free(client->pending_callbacks[idx]);
+                    client->pending_callbacks[idx] = NULL;
+                }
+            }
+            uvrpc_free(req_data);
+            
+            if (send_err == UVBUS_ERROR_BUFFER_FULL) {
+                client->send_pending = 1;  /* Mark send as pending for retry */
+                return UVRPC_ERROR_TRANSPORT_BUSY;
+            }
+            return UVRPC_ERROR_TRANSPORT;
+        }
     }
 
     uvrpc_free(req_data);
     
-    /* Start pump timer if configured */
-    start_pump_timer(client);
-
     return UVRPC_OK;
 }
 
@@ -606,7 +629,11 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
         uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
         if (send_err != UVBUS_OK) {
             uvrpc_free(req_data);
-            return UVRPC_ERROR;
+            if (send_err == UVBUS_ERROR_BUFFER_FULL) {
+                client->send_pending = 1;  /* Mark send as pending */
+                return UVRPC_ERROR_TRANSPORT_BUSY;
+            }
+            return UVRPC_ERROR_TRANSPORT;
         }
     }
     
@@ -714,4 +741,19 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
     }
 
     return UVRPC_OK;
+}
+
+/* Pump timer callback for auto-flush */
+static void pump_timer_callback(uv_timer_t* handle) {
+    uvrpc_client_t* client = (uvrpc_client_t*)handle->data;
+
+    if (!client || !client->uvbus) {
+        return;
+    }
+
+    /* Clear send pending flag */
+    client->send_pending = 0;
+
+    /* The pump timer is designed to trigger periodic flushes for batched sends.
+     * This is particularly useful for Oneway RPC and high-throughput scenarios. */
 }

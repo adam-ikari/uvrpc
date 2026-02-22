@@ -1,0 +1,52 @@
+namespace benchmark;
+
+/* ============================================================
+   Benchmark Server Service Definition
+   Standard FlatBuffers RPC syntax
+   ============================================================ */
+
+/* ============================================================
+   RPC Service Definitions
+   ============================================================ */
+
+/* Add Request */
+table AddRequest {
+    a: int32;
+    b: int32;
+}
+
+/* Add Response */
+table AddResponse {
+    result: int32;
+}
+
+/* Echo Request */
+table EchoRequest {
+    data: [ubyte];
+}
+
+/* Echo Response */
+table EchoResponse {
+    data: [ubyte];
+}
+
+/* Log Request */
+table LogRequest {
+    level: int32;      /* 0=debug, 1=info, 2=warning, 3=error */
+    message: string;
+    timestamp: int64;
+    source: string;    /* Source module or service name */
+}
+
+/* Empty Response for oneway methods */
+table EmptyResponse {}
+
+/* ============================================================
+   RPC Service Declaration
+   ============================================================ */
+
+rpc_service BenchmarkService {
+    Add(AddRequest):AddResponse;
+    Echo(EchoRequest):EchoResponse;
+    Log(LogRequest):EmptyResponse;  /* oneway method - use uvrpc_client_call_oneway() */
+}
