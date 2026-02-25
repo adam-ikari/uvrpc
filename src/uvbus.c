@@ -11,6 +11,7 @@
  */
 
 #include "../include/uvbus.h"
+#include "../include/uvbus_config.h"
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@ extern uvbus_transport_t* create_tcp_transport(uvbus_transport_type_t type, uv_l
 extern uvbus_transport_t* create_ipc_transport(uvbus_transport_type_t type, uv_loop_t* loop);
 extern uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, uv_loop_t* loop);
 extern uvbus_transport_t* create_udp_transport(uvbus_transport_type_t type, uv_loop_t* loop);
+extern uvbus_transport_t* create_sameloop_transport(uvbus_transport_type_t type, uv_loop_t* loop);
 
 /* Implementation */
 
@@ -110,6 +112,8 @@ static uvbus_transport_t* create_transport(uvbus_transport_type_t type, uv_loop_
             return create_ipc_transport(type, loop);
         case UVBUS_TRANSPORT_INPROC:
             return create_inproc_transport(type, loop);
+        case UVBUS_TRANSPORT_SAMELOOP:
+            return create_sameloop_transport(type, loop);
         default:
             return NULL;
     }
@@ -207,12 +211,13 @@ uvbus_error_t uvbus_listen(uvbus_t* bus) {
     fprintf(stderr, "[UVBUS] Calling listen on %s\n", bus->transport->address ? bus->transport->address : "null");
     
     if (bus->transport->vtable->listen) {
+        UVBUS_LOG("Calling listen on %s", bus->transport->address ? bus->transport->address : "null");
         uvbus_error_t result = bus->transport->vtable->listen(bus->transport, bus->transport->address);
         if (result == UVBUS_OK) {
+            UVBUS_LOG("Listen successful, bus is active");
             bus->is_active = 1;
-            fprintf(stderr, "[UVBUS] Listen successful, bus is active\n");
         } else {
-            fprintf(stderr, "[UVBUS] Listen failed: %d\n", result);
+            UVBUS_LOG("Listen failed: %d", result);
         }
         return result;
     }
@@ -229,19 +234,11 @@ void uvbus_stop(uvbus_t* bus) {
 }
 
 uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
-    if (!bus || !bus->transport || !bus->transport->vtable) {
+    /* Optimized: combine checks to reduce branch prediction overhead */
+    if (!bus || !bus->is_active || !bus->transport || !bus->transport->vtable) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-
-    if (!bus->is_active) {
-        return UVBUS_ERROR_NOT_CONNECTED;
-    }
-
-    if (bus->transport->vtable->send) {
-        return bus->transport->vtable->send(bus->transport, data, size);
-    }
-
-    return UVBUS_ERROR;
+    return bus->transport->vtable->send(bus->transport, data, size);
 }
 
 uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void* client) {

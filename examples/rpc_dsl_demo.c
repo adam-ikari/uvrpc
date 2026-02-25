@@ -111,7 +111,6 @@ int run_server(uv_loop_t* loop, const char* address) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
 
     uvrpc_server_t* server = uvrpc_server_create(config);
     uvrpc_config_free(config);

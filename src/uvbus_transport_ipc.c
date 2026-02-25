@@ -309,7 +309,8 @@ static int ipc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
-    
+    /* Remove stale socket file if exists */
+    unlink(socket_path);
     
     /* Create server */
     uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)uvrpc_alloc(sizeof(uvbus_ipc_server_t));
@@ -322,15 +323,17 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     server->socket_path = socket_path;
     server->parent_transport = transport;
     server->clients = (uvbus_ipc_client_t**)uvrpc_alloc(sizeof(uvbus_ipc_client_t*) * 10);
+    if (!server->clients) {
+        uvrpc_free(socket_path);
+        uvrpc_free(server);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
     server->client_capacity = 10;
     server->client_count = 0;
     
     /* Initialize pipe handle */
     uv_pipe_init(transport->loop, &server->listen_pipe, 0);
     server->listen_pipe.data = transport;
-    
-    /* Remove stale socket file if exists */
-    unlink(socket_path);
     
     /* Bind to socket path */
     int bind_result = uv_pipe_bind(&server->listen_pipe, socket_path);
@@ -353,7 +356,6 @@ static int ipc_listen(void* impl_ptr, const char* address) {
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
-    fflush(stdout);
     
     server->is_listening = 1;
     transport->is_connected = 1;
@@ -363,9 +365,6 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
-    
-    printf("[IPC LISTEN] Server started successfully\n");
-    fflush(stdout);
     
     return UVBUS_OK;
 }
@@ -528,22 +527,32 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
 static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     if (!transport) {
+        UVRPC_ERROR("ipc_send_to: transport is NULL");
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_server) {
+        UVRPC_ERROR("ipc_send_to: not in server mode");
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)target;
     if (!client) {
+        UVRPC_ERROR("ipc_send_to: client is NULL");
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
+    /* Check if pipe handle is closing or closed */
+    if (uv_is_closing((uv_handle_t*)&client->pipe_handle)) {
+        UVRPC_ERROR("ipc_send_to: pipe handle is closing");
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
     uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
     if (!frame_data) {
+        UVRPC_ERROR("ipc_send_to: failed to allocate %zu bytes", total_size);
         return UVBUS_ERROR_NO_MEMORY;
     }
 
@@ -555,22 +564,25 @@ static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
 
     /* Copy payload data */
     memcpy(frame_data + 4, data, size);
-    
+
     uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
     if (!req) {
         uvrpc_free(frame_data);
+        UVRPC_ERROR("ipc_send_to: failed to allocate write request");
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
     req->data = frame_data;
-    
-    if (uv_write(req, (uv_stream_t*)&client->pipe_handle, &buf, 1, on_write) != 0) {
+
+    int write_result = uv_write(req, (uv_stream_t*)&client->pipe_handle, &buf, 1, on_write);
+    if (write_result != 0) {
+        UVRPC_ERROR("ipc_send_to: uv_write failed with error %d (%s)", write_result, uv_strerror(write_result));
         uvrpc_free(frame_data);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;
     }
-    
+
     return UVBUS_OK;
 }
 

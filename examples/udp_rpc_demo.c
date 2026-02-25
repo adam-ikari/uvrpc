@@ -49,8 +49,7 @@ int run_server(uv_loop_t* loop, const char* address) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_transport(config, UVBUS_TRANSPORT_UDP);
 
     uvrpc_server_t* server = uvrpc_server_create(config);
     if (!server) {
@@ -94,8 +93,7 @@ int run_client(uv_loop_t* loop, const char* address) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_transport(config, UVBUS_TRANSPORT_UDP);
 
     uvrpc_client_t* client = uvrpc_client_create(config);
     if (!client) {

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 /* Forward declarations */
 typedef struct uvbus_udp_client uvbus_udp_client_t;
@@ -29,7 +30,7 @@ struct uvbus_udp_client {
     struct sockaddr_in server_addr;
     
     /* Large buffer - placed at end to improve cache locality for small fields */
-    uint8_t read_buffer[65536];  /* 64KB read buffer */
+    uint8_t read_buffer[UVBUS_MAX_BUFFER_SIZE];  /* 1MB read buffer */
 };
 
 /* UDP server structure - optimized for cache locality */
@@ -153,15 +154,11 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         }
         
         if (transport->recv_cb) {
-            /* Copy the client address to use as client context */
-            struct sockaddr_storage* addr_copy = (struct sockaddr_storage*)uvrpc_alloc(sizeof(struct sockaddr_storage));
-            if (addr_copy) {
-                memcpy(addr_copy, addr, sizeof(struct sockaddr_storage));
-                /* Pass frame data (skip 4-byte length prefix) */
-                transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, addr_copy, transport->callback_ctx);
-            } else {
-                transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, NULL, transport->callback_ctx);
-            }
+            /* Pass frame data (skip 4-byte length prefix) and client address as context
+             * Note: We pass the address directly from buf, not a copy. The address is
+             * valid only during the callback. If the RPC layer needs to keep it, it should
+             * make its own copy. */
+            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, (void*)addr, transport->callback_ctx);
         }
     }
 
@@ -171,16 +168,18 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
 /* Server alloc callback */
 static void on_server_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
     (void)suggested_size;
-    buf->base = (char*)uvrpc_alloc(UVBUS_MAX_BUFFER_SIZE);
+    (void)handle;
+    /* Use 64KB buffer for receiving UDP packets - smaller than max to reduce memory pressure */
+    buf->base = (char*)uvrpc_alloc(65536);
     if (buf->base) {
-        buf->len = UVBUS_MAX_BUFFER_SIZE;
+        buf->len = 65536;
     } else {
         buf->len = 0;
     }
 }
 
 /* Client receive callback */
-static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, 
+static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                            const struct sockaddr* addr, unsigned flags) {
     /* Get client from handle data */
     uvbus_udp_client_t* client = (uvbus_udp_client_t*)handle->data;
@@ -194,7 +193,7 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         uvrpc_free(buf->base);
         return;
     }
-    
+
     if (nread < 0) {
         if (nread != UV_EOF) {
             if (transport->error_cb) {
@@ -206,6 +205,40 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     }
 
     if (nread > 0) {
+        /* Debug: Count all received packets */
+        static __thread int total_recv = 0;
+        total_recv++;
+        if (total_recv % 1000 == 0) {
+            fprintf(stderr, "[Client] Received %d packets total\n", total_recv);
+        }
+
+        /* Filter: Only accept packets from the server we connected to
+         * This prevents receiving responses intended for other clients */
+        if (addr && addr->sa_family == AF_INET) {
+            const struct sockaddr_in* from_addr = (const struct sockaddr_in*)addr;
+            const struct sockaddr_in* server_addr = &client->server_addr;
+
+            /* Compare IP address and port */
+            if (from_addr->sin_addr.s_addr != server_addr->sin_addr.s_addr ||
+                from_addr->sin_port != server_addr->sin_port) {
+                /* Packet not from our server, ignore it */
+                uvrpc_free(buf->base);
+                return;
+            }
+        } else if (addr && addr->sa_family == AF_INET6) {
+            /* IPv6 support - compare addresses */
+            const struct sockaddr_in6* from_addr = (const struct sockaddr_in6*)addr;
+            const struct sockaddr_in6* server_addr = (const struct sockaddr_in6*)&client->server_addr;
+
+            if (memcmp(&from_addr->sin6_addr, &server_addr->sin6_addr, sizeof(struct in6_addr)) != 0 ||
+                from_addr->sin6_port != server_addr->sin6_port) {
+                /* Packet not from our server, ignore it */
+                uvrpc_free(buf->base);
+                return;
+            }
+        }
+
+
         /* Add data to client's read buffer */
         if (client->read_pos + nread <= sizeof(client->read_buffer)) {
             memcpy(client->read_buffer + client->read_pos, buf->base, nread);
@@ -218,6 +251,7 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
             uvrpc_free(buf->base);
             return;
         }
+
 
         /* Process complete frames */
         while (client->read_pos >= 4) {
@@ -277,9 +311,12 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
 
 /* Client alloc callback */
 static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-    buf->base = (char*)uvrpc_alloc(UVBUS_MAX_BUFFER_SIZE);
+    (void)suggested_size;
+    (void)handle;
+    /* Use 64KB buffer for receiving UDP packets */
+    buf->base = (char*)uvrpc_alloc(65536);
     if (buf->base) {
-        buf->len = UVBUS_MAX_BUFFER_SIZE;
+        buf->len = 65536;
     } else {
         buf->len = 0;
     }
@@ -343,10 +380,9 @@ static int udp_listen(void* impl_ptr, const char* address) {
     server->num_clients = 0;
     
     /* Initialize client address list for broadcast */
-    server->max_clients = 256;
+    server->max_clients = 1024;  /* Increased from 256 to 1024 */
     server->client_addrs = (struct sockaddr_storage*)uvrpc_calloc(server->max_clients, sizeof(struct sockaddr_storage));
     if (!server->client_addrs) {
-        uv_close((uv_handle_t*)&server->udp_handle, NULL);
         uvrpc_free(server->host);
         uvrpc_free(server);
         return UVBUS_ERROR_NO_MEMORY;
@@ -356,6 +392,16 @@ static int udp_listen(void* impl_ptr, const char* address) {
     uv_udp_init(transport->loop, &server->udp_handle);
     server->udp_handle.data = transport;
     
+    /* Increase UDP buffer size for better performance
+     * Note: These functions may not be available in older libuv versions,
+     * so we use setsockopt directly as a fallback */
+    int bufsize = 1024 * 1024;  /* 1MB */
+    uv_os_fd_t fd;
+    if (uv_fileno((uv_handle_t*)&server->udp_handle, &fd) == 0) {
+        setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+    }
+    
     /* Bind to address */
     struct sockaddr_in addr;
     uv_ip4_addr(host, port, &addr);
@@ -363,25 +409,22 @@ static int udp_listen(void* impl_ptr, const char* address) {
     int bind_err = uv_udp_bind(&server->udp_handle, (const struct sockaddr*)&addr, 0);
     if (bind_err != 0) {
         fprintf(stderr, "[Server] Failed to bind to %s:%d: %s\n", host, port, uv_strerror(bind_err));
-        uv_close((uv_handle_t*)&server->udp_handle, NULL);
+        uvrpc_free(server->client_addrs);
         uvrpc_free(server->host);
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
-    
-    fprintf(stderr, "[Server] Successfully bound to %s:%d\n", host, port);
     
     /* Start receiving */
     int recv_err = uv_udp_recv_start(&server->udp_handle, on_server_alloc, on_server_recv);
     if (recv_err != 0) {
         fprintf(stderr, "[Server] Failed to start receiving: %s\n", uv_strerror(recv_err));
         uv_close((uv_handle_t*)&server->udp_handle, NULL);
+        uvrpc_free(server->client_addrs);
         uvrpc_free(server->host);
         uvrpc_free(server);
         return UVBUS_ERROR_IO;
     }
-    
-    fprintf(stderr, "[Server] Successfully listening on %s:%d\n", host, port);
     
     server->is_listening = 1;
     transport->is_connected = 1;
@@ -425,6 +468,16 @@ static int udp_connect(void* impl_ptr, const char* address) {
     uv_udp_init(transport->loop, &client->udp_handle);
     client->udp_handle.data = client;  /* Set to client so on_client_recv can find it */
     
+    /* Increase UDP buffer size for better performance
+     * Note: These functions may not be available in older libuv versions,
+     * so we use setsockopt directly as a fallback */
+    int bufsize = 1024 * 1024;  /* 1MB */
+    uv_os_fd_t fd;
+    if (uv_fileno((uv_handle_t*)&client->udp_handle, &fd) == 0) {
+        setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+    }
+    
     /* Set up server address */
     uv_ip4_addr(host, port, &client->server_addr);
     
@@ -467,17 +520,24 @@ static void udp_disconnect(void* impl_ptr) {
     
     if (transport->is_server && transport->impl.udp_server) {
         uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
+        /* Clear parent reference to prevent access during cleanup */
+        server->parent_transport = NULL;
         /* Close UDP handle */
-        uv_close((uv_handle_t*)&server->udp_handle, NULL);
-        
+        if (!uv_is_closing((uv_handle_t*)&server->udp_handle)) {
+            uv_close((uv_handle_t*)&server->udp_handle, NULL);
+        }
+        uvrpc_free(server->client_addrs);
         uvrpc_free(server->host);
         uvrpc_free(server);
         transport->impl.udp_server = NULL;
     } else if (!transport->is_server && transport->impl.udp_client) {
         uvbus_udp_client_t* client = (uvbus_udp_client_t*)transport->impl.udp_client;
+        /* Clear parent reference */
+        client->parent_transport = NULL;
         /* Close UDP handle */
-        uv_close((uv_handle_t*)&client->udp_handle, NULL);
-        
+        if (!uv_is_closing((uv_handle_t*)&client->udp_handle)) {
+            uv_close((uv_handle_t*)&client->udp_handle, NULL);
+        }
         uvrpc_free(client->host);
         uvrpc_free(client);
         transport->impl.udp_client = NULL;
@@ -546,11 +606,11 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
     if (!target) {
         return UVBUS_ERROR_INVALID_PARAM;
@@ -559,6 +619,13 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     /* target is struct sockaddr_storage*, need to cast it properly */
     struct sockaddr_storage* addr_storage = (struct sockaddr_storage*)target;
     struct sockaddr* addr = (struct sockaddr*)addr_storage;
+
+    /* Debug: Count sent responses */
+    static int send_count = 0;
+    send_count++;
+    if (send_count % 1000 == 0) {
+        fprintf(stderr, "[Server] Sent %d responses\n", send_count);
+    }
 
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
@@ -575,25 +642,29 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
 
     /* Copy payload data */
     memcpy(frame_data + 4, data, size);
-    
+
     uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
     if (!req) {
         uvrpc_free(frame_data);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     uv_buf_t buf = uv_buf_init((char*)frame_data, total_size);
     req->data = frame_data;
-    
-    if (uv_udp_send(req, &server->udp_handle, &buf, 1,
-                    (const struct sockaddr*)addr, on_send) != 0) {
+
+    int send_result = uv_udp_send(req, &server->udp_handle, &buf, 1,
+                    (const struct sockaddr*)addr, on_send);
+
+    if (send_result != 0) {
+        fprintf(stderr, "[Server] Send failed: %s\n", uv_strerror(send_result));
         uvrpc_free(frame_data);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;
     }
-    
+
     return UVBUS_OK;
 }
+
 
 /* Broadcast to all connected clients (point-to-point wrapper) */
 

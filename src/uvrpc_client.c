@@ -97,10 +97,14 @@ static void start_pump_timer(uvrpc_client_t* client) {
 /* Transport connect callback */
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
+
+    fprintf(stderr, "[CLIENT] Connection callback: status=%d, client=%p\n", status, client);
+
     client->is_connected = (status == 0);
 
     /* Call user's connect callback if provided */
     if (client->user_connect_callback) {
+        fprintf(stderr, "[CLIENT] Calling user connect callback\n");
         uvrpc_connect_callback_t cb = client->user_connect_callback;
         client->user_connect_callback = NULL;
         cb(status, client->user_connect_ctx);
@@ -116,7 +120,10 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     (void)client_ctx;  /* Not used for client mode */
     uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
 
+    UVRPC_LOG("Received %zu bytes", size);
+
     if (!client || !client->uvbus) {
+        UVRPC_LOG("Invalid client or uvbus");
         uvrpc_free((void*)data);
         return;
     }
@@ -124,7 +131,10 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     /* Get frame type */
     int frame_type = uvrpc_get_frame_type(data, size);
     
+    UVRPC_LOG("Frame type: %d", frame_type);
+    
     if (frame_type < 0) {
+        UVRPC_LOG("Invalid frame type");
         uvrpc_free((void*)data);
         return;
     }
@@ -299,30 +309,8 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     
     uvbus_config_set_loop(bus_config, config->loop);
     
-    /* Map UVRPC transport type to UVBus transport type */
-    uvbus_transport_type_t uvbus_type;
-    switch (config->transport) {
-        case UVRPC_TRANSPORT_TCP:
-            uvbus_type = UVBUS_TRANSPORT_TCP;
-            break;
-        case UVRPC_TRANSPORT_UDP:
-            uvbus_type = UVBUS_TRANSPORT_UDP;
-            break;
-        case UVRPC_TRANSPORT_IPC:
-            uvbus_type = UVBUS_TRANSPORT_IPC;
-            break;
-        case UVRPC_TRANSPORT_INPROC:
-            uvbus_type = UVBUS_TRANSPORT_INPROC;
-            break;
-        default:
-            uvbus_config_free(bus_config);
-            uvrpc_msgid_ctx_free(client->msgid_ctx);
-            uvrpc_free(client->address);
-            uvrpc_free(client);
-            return NULL;
-    }
-    
-    uvbus_config_set_transport(bus_config, uvbus_type);
+    /* Transport type is now uvbus_transport_type_t, no mapping needed */
+    uvbus_config_set_transport(bus_config, config->transport);
     uvbus_config_set_address(bus_config, client->address);
     uvbus_config_set_recv_callback(bus_config, client_recv_callback, client);
     uvbus_config_set_connect_callback(bus_config, client_connect_callback, client);
@@ -493,12 +481,17 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
                                                 uvrpc_callback_t callback, void* ctx) {
     if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
     
+    UVRPC_LOG("Calling method '%s', is_connected=%d", method, client->is_connected);
+    
     if (!client->is_connected) {
+        UVRPC_LOG("Not connected!");
         return UVRPC_ERROR_NOT_CONNECTED;
     }
     
     /* Generate message ID using context */
     uint32_t msgid = uvrpc_msgid_next(client->msgid_ctx);
+    
+    UVRPC_LOG("Generated msgid=%u", msgid);
     
     /* Encode request */
     uint8_t* req_data = NULL;
@@ -506,8 +499,11 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
     
     if (uvrpc_encode_request(msgid, method, params, params_size,
                               &req_data, &req_size) != UVRPC_OK) {
+        UVRPC_LOG("Failed to encode request");
         return UVRPC_ERROR;
     }
+    
+    UVRPC_LOG("Encoded request: %zu bytes", req_size);
     
     /* Register callback using direct indexing */
     if (callback) {
@@ -544,25 +540,32 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
 
     /* Send request (must be after callback registration to avoid race conditions) */
     if (client->uvbus) {
+        UVRPC_LOG("Sending %zu bytes via uvbus...", req_size);
+        
         uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
+        
+        UVRPC_LOG("uvbus_send returned: %d", send_err);
+        
         if (send_err != UVBUS_OK) {
             /* Send failed - remove callback from ringbuffer */
             if (callback) {
                 uint32_t idx = msgid & (client->max_pending_callbacks - 1);
-                if (client->pending_callbacks[idx] && 
+                if (client->pending_callbacks[idx] &&
                     client->pending_callbacks[idx]->msgid == msgid) {
                     uvrpc_free(client->pending_callbacks[idx]);
                     client->pending_callbacks[idx] = NULL;
                 }
             }
             uvrpc_free(req_data);
-            
+
             if (send_err == UVBUS_ERROR_BUFFER_FULL) {
                 client->send_pending = 1;  /* Mark send as pending for retry */
                 return UVRPC_ERROR_TRANSPORT_BUSY;
             }
             return UVRPC_ERROR_TRANSPORT;
         }
+        
+        UVRPC_LOG("Send successful");
     }
 
     uvrpc_free(req_data);

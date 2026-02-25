@@ -26,6 +26,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* Debug logging macro - compiles out in release builds */
+#ifdef UVBUS_DEBUG
+#define UVBUS_LOG(fmt, ...) fprintf(stderr, "[UVBUS] " fmt "\n", ##__VA_ARGS__)
+#else
+#define UVBUS_LOG(fmt, ...) ((void)0)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,10 +63,11 @@ typedef enum {
  * Defines the available transport protocols.
  */
 typedef enum {
-    UVBUS_TRANSPORT_TCP = 0,    /**< @brief TCP transport */
-    UVBUS_TRANSPORT_UDP = 1,    /**< @brief UDP transport */
-    UVBUS_TRANSPORT_IPC = 2,    /**< @brief Unix domain socket (IPC) */
-    UVBUS_TRANSPORT_INPROC = 3  /**< @brief In-process transport */
+    UVBUS_TRANSPORT_TCP = 0,         /**< @brief TCP transport */
+    UVBUS_TRANSPORT_UDP = 1,         /**< @brief UDP transport */
+    UVBUS_TRANSPORT_IPC = 2,         /**< @brief Unix domain socket (IPC) */
+    UVBUS_TRANSPORT_INPROC = 3,      /**< @brief In-process transport (thread-safe) */
+    UVBUS_TRANSPORT_SAMELOOP = 4   /**< @brief Same-loop transport (zero-lock, zero-copy, requires same uv_loop_t instance) */
 } uvbus_transport_type_t;
 
 /**

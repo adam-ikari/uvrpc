@@ -1,170 +1,159 @@
-/* Test oneway RPC method functionality */
+/**
+ * UVRPC Oneway RPC Test
+ * Tests Oneway RPC mode (fire-and-forget, no response)
+ */
+
+#include "../include/uvrpc.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <uv.h>
-#include "benchmark_benchmarkservice_api.h"
-#include "include/uvrpc.h"
+#include <string.h>
+#include <unistd.h>
 
-/* User-implemented handler for all RPC requests */
-uvrpc_error_t uvrpc_benchmarkservice_handle_request(const char* method_name,
-                                                      const void* request,
-                                                      uvrpc_request_t* req) {
-    printf("Server received method: %s\n", method_name);
+volatile int g_connected = 0;
+volatile int g_request_count = 0;
 
-    if (strcmp(method_name, "Log") == 0) {
-        /* Handle oneway Log method */
-        benchmark_LogRequest_t* log_req = benchmark_LogRequest_as_root(request);
-
-        const char* level_str = "UNKNOWN";
-        switch (log_req->level) {
-            case 0: level_str = "DEBUG"; break;
-            case 1: level_str = "INFO"; break;
-            case 2: level_str = "WARNING"; break;
-            case 3: level_str = "ERROR"; break;
-        }
-
-        printf("  [%s] %s (source: %s, timestamp: %ld)\n",
-               level_str,
-               log_req->message ? log_req->message : "(null)",
-               log_req->source ? log_req->source : "(null)",
-               (long)log_req->timestamp);
-
-        /* Oneway method - send empty response (server will not wait) */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        benchmark_EmptyResponse_start_as_root(&builder);
-        benchmark_EmptyResponse_end_as_root(&builder);
-
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-        uvrpc_error_t ret = uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-
-        free(buf);
-        flatcc_builder_clear(&builder);
-
-        return ret;
-    } else if (strcmp(method_name, "Add") == 0) {
-        /* Handle regular Add method */
-        benchmark_AddRequest_t* add_req = benchmark_AddRequest_as_root(request);
-
-        int32_t result = add_req->a + add_req->b;
-        printf("  Add: %d + %d = %d\n", add_req->a, add_req->b, result);
-
-        /* Send response */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        benchmark_AddResponse_start_as_root(&builder);
-        benchmark_AddResponse_result_add(&builder, result);
-        benchmark_AddResponse_end_as_root(&builder);
-
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-        uvrpc_error_t ret = uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-
-        free(buf);
-        flatcc_builder_clear(&builder);
-
-        return ret;
-    }
-
-    return UVRPC_ERROR_NOT_FOUND;
-}
-
-/* Client connection callback */
-void on_client_connect(uvrpc_client_t* client, uvrpc_error_t status, void* ctx) {
-    if (status == UVRPC_OK) {
-        printf("Client connected successfully\n");
-
-        /* Test oneway Log method */
-        printf("\n=== Testing Oneway Log Method ===\n");
-        uvrpc_error_t ret = uvrpc_benchmarkservice_Log(
-            client,
-            1,  /* INFO level */
-            "Test oneway log message",
-            time(NULL),
-            "test_oneway.c"
-        );
-
-        if (ret == UVRPC_OK) {
-            printf("Oneway Log method called successfully (fire-and-forget)\n");
-        } else {
-            printf("Failed to call oneway Log method: %d\n", ret);
-        }
-
-        /* Test regular Add method */
-        printf("\n=== Testing Regular Add Method ===\n");
-        benchmark_AddResponse_table_t response;
-
-        ret = uvrpc_benchmarkservice_Add_sync(client, &response, 10, 20, 5000);
-        if (ret == UVRPC_OK) {
-            printf("Add result: %d\n", response.result);
-        } else {
-            printf("Failed to call Add method: %d\n", ret);
-        }
-
-        /* Multiple oneway calls */
-        printf("\n=== Testing Multiple Oneway Calls ===\n");
-        for (int i = 0; i < 3; i++) {
-            char msg[64];
-            snprintf(msg, sizeof(msg), "Oneway message #%d", i);
-            uvrpc_benchmarkservice_Log(client, 1, msg, time(NULL), "test_oneway.c");
-        }
-        printf("Sent 3 oneway log messages\n");
-
-        /* Stop the event loop */
-        uv_stop(uvrpc_client_get_loop(client));
+/* Connection callback */
+void on_connect(int status, void* ctx) {
+    (void)ctx;
+    if (status == 0) {
+        g_connected = 1;
+        printf("[CLIENT] Connected successfully\n");
     } else {
-        printf("Client connection failed: %d\n", status);
-        uv_stop(uvrpc_client_get_loop(client));
+        fprintf(stderr, "[CLIENT] Connection failed: %d\n", status);
     }
 }
 
-int main() {
+/* Simple handler for oneway calls */
+void log_handler(uvrpc_request_t* req, void* ctx) {
+    (void)ctx;
+    
+    if (req->params_size >= 8) {
+        int32_t a = *(int32_t*)req->params;
+        int32_t b = *(int32_t*)(req->params + 4);
+        printf("[HANDLER] Received oneway request: %d + %d (no response sent)\n", a, b);
+        g_request_count++;
+    }
+    
+    /* Do NOT send response for oneway requests */
+}
+
+int main(int argc, char** argv) {
+    const char* address = (argc > 1) ? argv[1] : "tcp://127.0.0.1:14141";
+    
+    printf("[MAIN] UVRPC Oneway RPC Test\n");
+    printf("[MAIN] Address: %s\n\n", address);
+    
+    /* Create loop */
     uv_loop_t loop;
-    uv_loop_init(&loop);
-
+    if (uv_loop_init(&loop) != 0) {
+        fprintf(stderr, "[MAIN] Failed to init loop\n");
+        return 1;
+    }
+    
+    /* Create server configuration */
+    uvrpc_config_t* server_config = uvrpc_config_new();
+    uvrpc_config_set_loop(server_config, &loop);
+    uvrpc_config_set_address(server_config, address);
+    
     /* Create server */
-    printf("=== Starting UVRPC Oneway Test Server ===\n");
-    uvrpc_server_t* server = uvrpc_benchmarkservice_create_server(&loop, "tcp://127.0.0.1:5555");
+    uvrpc_server_t* server = uvrpc_server_create(server_config);
     if (!server) {
-        fprintf(stderr, "Failed to create server\n");
+        fprintf(stderr, "[MAIN] Failed to create server\n");
+        uvrpc_config_free(server_config);
         return 1;
     }
-
-    uvrpc_error_t ret = uvrpc_benchmarkservice_start_server(server);
-    if (ret != UVRPC_OK) {
-        fprintf(stderr, "Failed to start server: %d\n", ret);
+    
+    /* Register handler */
+    uvrpc_server_register(server, "log", log_handler, NULL);
+    
+    /* Start server */
+    if (uvrpc_server_start(server) != UVRPC_OK) {
+        fprintf(stderr, "[MAIN] Failed to start server\n");
+        uvrpc_server_free(server);
+        uvrpc_config_free(server_config);
         return 1;
     }
-    printf("Server started on tcp://127.0.0.1:5555\n");
-
+    
+    printf("[MAIN] Server started\n");
+    
+    /* Create client configuration */
+    uvrpc_config_t* client_config = uvrpc_config_new();
+    uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_address(client_config, address);
+    
     /* Create client */
-    printf("\n=== Creating Client ===\n");
-    uvrpc_client_t* client = uvrpc_benchmarkservice_create_client(
-        &loop,
-        "tcp://127.0.0.1:5555",
-        on_client_connect,
-        NULL
-    );
-
+    uvrpc_client_t* client = uvrpc_client_create(client_config);
     if (!client) {
-        fprintf(stderr, "Failed to create client\n");
+        fprintf(stderr, "[MAIN] Failed to create client\n");
+        uvrpc_config_free(client_config);
+        uvrpc_server_free(server);
         return 1;
     }
-
-    /* Run event loop */
-    printf("\n=== Running Event Loop ===\n");
-    uv_run(&loop, UV_RUN_DEFAULT);
-
+    
+    /* Connect with callback */
+    if (uvrpc_client_connect_with_callback(client, on_connect, NULL) != UVRPC_OK) {
+        fprintf(stderr, "[MAIN] Failed to connect\n");
+        uvrpc_client_free(client);
+        uvrpc_config_free(client_config);
+        uvrpc_server_free(server);
+        return 1;
+    }
+    
+    /* Wait for connection */
+    int iterations = 0;
+    while (!g_connected && iterations < 50) {
+        uv_run(&loop, UV_RUN_ONCE);
+        iterations++;
+    }
+    
+    if (!g_connected) {
+        fprintf(stderr, "[MAIN] Connection timeout\n");
+        uvrpc_client_disconnect(client);
+        uvrpc_client_free(client);
+        uvrpc_config_free(client_config);
+        uvrpc_server_free(server);
+        return 1;
+    }
+    
+    printf("[MAIN] Client connected\n\n");
+    
+    /* Send 10 oneway requests */
+    printf("[MAIN] Sending 10 oneway requests...\n");
+    for (int i = 0; i < 10; i++) {
+        int32_t params[2] = {i, i * 2};
+        
+        int ret = uvrpc_client_call_oneway(client, "log", 
+                                            (uint8_t*)params, sizeof(params));
+        
+        if (ret == UVRPC_OK) {
+            printf("[MAIN] Oneway request #%d sent (no response expected)\n", i + 1);
+        } else {
+            fprintf(stderr, "[MAIN] Failed to send oneway request #%d: %d\n", i + 1, ret);
+        }
+        
+        /* Small delay between requests */
+        usleep(10000);  // 10ms
+    }
+    
+    printf("\n[MAIN] All oneway requests sent\n");
+    
+    /* Run event loop for a while to process all requests */
+    printf("[MAIN] Running event loop for 1 second...\n");
+    for (int i = 0; i < 100; i++) {
+        uv_run(&loop, UV_RUN_ONCE);
+        usleep(10000);  // 10ms
+    }
+    
     /* Cleanup */
-    printf("\n=== Cleanup ===\n");
-    uvrpc_benchmarkservice_free_client(client);
-    uvrpc_benchmarkservice_stop_server(server);
-    uvrpc_benchmarkservice_free_server(server);
+    printf("\n[MAIN] Shutting down...\n");
+    printf("[MAIN] Server handled %d oneway requests\n", g_request_count);
+    uvrpc_client_disconnect(client);
+    uvrpc_client_free(client);
+    uvrpc_server_free(server);
+    uvrpc_config_free(client_config);
+    uvrpc_config_free(server_config);
     uv_loop_close(&loop);
-
-    printf("\n=== Test Complete ===\n");
+    
+    printf("[MAIN] Done\n");
     return 0;
 }

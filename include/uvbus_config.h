@@ -17,8 +17,14 @@
 
 /** @defgroup BufferSettings Buffer Settings */
 /** @{ */
-#define UVBUS_MAX_BUFFER_SIZE 65536      /**< @brief Maximum buffer size */
-#define UVBUS_DEFAULT_BUFFER_SIZE 4096   /**< @brief Default buffer size */
+#define UVBUS_MAX_BUFFER_SIZE 1048576    /**< @brief Maximum buffer size (1MB for UDP) */
+#define UVBUS_DEFAULT_BUFFER_SIZE 65536  /**< @brief Default buffer size (64KB) */
+/** @} */
+
+/** @defgroup FrameSettings Frame Settings */
+/** @{ */
+#define UVBUS_MAX_FRAME_SIZE 1048576     /**< @brief Maximum frame size (1MB) */
+#define UVBUS_DEFAULT_MAX_FRAME_SIZE 65536 /**< @brief Default maximum frame size (64KB) for stability */
 /** @} */
 
 /** @defgroup ClientSettings Client Settings */
@@ -30,12 +36,16 @@
 /** @defgroup ServerSettings Server Settings */
 /** @{ */
 #define UVBUS_BACKLOG 1024               /**< @brief Server backlog (increased for high concurrency) */
-#define UVBUS_MAX_ENDPOINTS 256          /**< @brief Maximum number of endpoints */
 /** @} */
 
 /** @defgroup HashTableSettings Hash Table Settings */
 /** @{ */
 #define UVBUS_HASH_TABLE_SIZE 256        /**< @brief Hash table size */
+/** @} */
+
+/** @defgroup OptimizationSettings Optimization Settings */
+/** @{ */
+/* Compile-time optimization options (currently empty) */
 /** @} */
 
 /** @defgroup TimeoutSettings Timeout Settings */

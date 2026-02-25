@@ -31,7 +31,6 @@ int main(int argc, char** argv) {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, "127.0.0.1:5555");
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     uvrpc_client_t* client = uvrpc_client_create(config);
     uvrpc_config_free(config);

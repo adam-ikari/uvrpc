@@ -28,9 +28,6 @@ make generator-with-flatcc
 # 使用打包的代码生成器（推荐）
 ./dist/uvrpcc/uvrpcc schema/rpc_api.fbs -o generated
 
-# 生成 Broadcast 模式代码
-./dist/uvrpcc/uvrpcc schema/rpc_broadcast.fbs -o generated
-
 # 或使用 Python（需要安装依赖）
 python3 tools/rpc_dsl_generator_with_flatcc.py \
     --flatcc deps/flatcc/bin/flatcc \
@@ -61,12 +58,10 @@ rpc_service MathService {
 }
 ```
 
-#### Broadcast 模式
-
-```flatbuffers
+#### RPC 服务示例
 namespace rpc;
 
-// 定义消息类型
+// 定义请求/响应类型
 table NewsPublishRequest {
     title: string;
     content: string;
@@ -78,8 +73,8 @@ table NewsPublishResponse {
     message: string;
 }
 
-// 定义广播服务（服务名包含 "Broadcast" 表示广播模式）
-rpc_service BroadcastService {
+// 定义 RPC 服务
+rpc_service NewsService {
     PublishNews(NewsPublishRequest):NewsPublishResponse;
 }
 ```
@@ -223,116 +218,6 @@ uvrpc_math_free_client(client);
 uv_loop_close(&loop);
 ```
 
-## Broadcast 模式使用
-
-### Publisher
-
-```c
-#include "rpc_broadcast_api.h"
-
-// 1. 创建事件循环
-uv_loop_t loop;
-uv_loop_init(&loop);
-
-// 2. 创建发布者（使用生成的API）
-uvrpc_publisher_t* publisher = uvrpc_broadcast_create_publisher(&loop, "udp://0.0.0.0:5555");
-if (!publisher) {
-    fprintf(stderr, "Failed to create publisher\n");
-    return 1;
-}
-
-// 3. 启动发布者
-if (uvrpc_broadcast_start_publisher(publisher) != UVRPC_OK) {
-    fprintf(stderr, "Failed to start publisher\n");
-    return 1;
-}
-
-// 4. 定义发布回调
-void on_published(int status, void* ctx) {
-    if (status == UVRPC_OK) {
-        printf("Message published successfully\n");
-    }
-}
-
-// 5. 发布消息
-const char* title = "Breaking News";
-const char* content = "This is important news";
-int64_t timestamp = 1234567890;
-const char* author = "Admin";
-
-uvrpc_broadcast_publish_publish_news(publisher, on_published, NULL, 
-                                     title, content, timestamp, author);
-
-// 6. 运行事件循环
-uv_run(&loop, UV_RUN_DEFAULT);
-
-// 7. 清理
-uvrpc_broadcast_stop_publisher(publisher);
-uvrpc_broadcast_free_publisher(publisher);
-uv_loop_close(&loop);
-```
-
-### Subscriber
-
-```c
-#include "rpc_broadcast_api.h"
-
-// 1. 创建事件循环
-uv_loop_t loop;
-uv_loop_init(&loop);
-
-// 2. 创建订阅者（使用生成的API）
-uvrpc_subscriber_t* subscriber = uvrpc_broadcast_create_subscriber(&loop, "udp://127.0.0.1:5555");
-if (!subscriber) {
-    fprintf(stderr, "Failed to create subscriber\n");
-    return 1;
-}
-
-// 3. 连接到发布者
-if (uvrpc_broadcast_connect_subscriber(subscriber) != UVRPC_OK) {
-    fprintf(stderr, "Failed to connect\n");
-    return 1;
-}
-
-// 4. 定义接收回调
-void on_news_received(const rpc_NewsPublishResponse_table_t* response, void* ctx) {
-    printf("Received news:\n");
-    printf("  Success: %s\n", rpc_NewsPublishResponse_success(response) ? "Yes" : "No");
-    printf("  Message: %s\n", rpc_NewsPublishResponse_message(response));
-}
-
-// 5. 订阅消息
-uvrpc_broadcast_subscribe_publish_news(subscriber, on_news_received, NULL);
-
-// 6. 运行事件循环
-uv_run(&loop, UV_RUN_DEFAULT);
-
-// 7. 清理
-uvrpc_broadcast_unsubscribe_publish_news(subscriber);
-uvrpc_broadcast_disconnect_subscriber(subscriber);
-uvrpc_broadcast_free_subscriber(subscriber);
-uv_loop_close(&loop);
-```
-
-#### 订阅所有消息
-
-```c
-// 接收所有广播消息的回调
-void on_any_message(const char* method_name, const uint8_t* data, size_t size, void* ctx) {
-    printf("Received message from method: %s\n", method_name);
-    // 根据 method_name 解析不同的消息类型
-}
-
-// 订阅所有方法
-uvrpc_broadcast_subscribe_all(subscriber, on_any_message, NULL);
-
-// 运行事件循环
-uv_run(&loop, UV_RUN_DEFAULT);
-
-// 取消订阅所有
-uvrpc_broadcast_unsubscribe_all(subscriber);
-```
-
 ## 高级特性
 
 ### 自定义传输层
@@ -355,15 +240,17 @@ uvrpc_config_set_transport(config, UVRPC_TRANSPORT_IPC);
 uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
 ```
 
-### 配置通信模式
+**注意**: INPROC 传输层仅支持**同一进程内**的通信。服务器和客户端必须在同一个进程中运行，共享同一个事件循环。
 
-```c
-// Server/Client 模式（默认）
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+**INPROC 的特点**:
+- 零拷贝，性能最高
+- 适用于模块化架构中的模块间通信
+- 适用于测试和调试
+- 不支持跨进程通信
 
-// Broadcast 模式
-uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
-```
+**示例**: 参见 `examples/simple_inproc.c`
+
+### 配置传输层
 
 ### 循环注入
 
@@ -390,7 +277,5 @@ uv_run(&loop, UV_RUN_DEFAULT);
 
 - `simple_server.c` - 简单服务器
 - `simple_client.c` - 简单客户端
-- `broadcast_publisher.c` - 广播发布者
-- `broadcast_subscriber.c` - 广播订阅者
 - `async_await_demo.c` - Async/Await 示例
 - `multi_service_loop_reuse.c` - 多服务共享循环

@@ -23,6 +23,10 @@
 typedef struct uvbus_tcp_client uvbus_tcp_client_t;
 typedef struct uvbus_tcp_server uvbus_tcp_server_t;
 
+/* Forward declarations */
+static void on_client_close(uv_handle_t* handle);
+static void on_server_close(uv_handle_t* handle);
+
 /* TCP client structure - optimized for cache locality */
 struct uvbus_tcp_client {
     /* Frequently accessed fields - grouped together */
@@ -42,7 +46,6 @@ struct uvbus_tcp_client {
     uv_tcp_t tcp_handle;
     uv_connect_t connect_req;
     uv_write_t write_req;
-    uv_async_t write_async;  /* Async handle for triggering writes */
     
     /* Large buffer - placed at end to improve cache locality for small fields */
     uint8_t read_buffer[262144];  /* 256KB read buffer */
@@ -118,19 +121,31 @@ static int parse_tcp_address(const char* address, char** host, int* port) {
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
 
+    UVBUS_LOG("on_client_read called, nread=%zd", nread);
+
     uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)stream->data;
     if (!client) {
+        UVBUS_LOG("on_client_read: client is NULL");
+        uvrpc_free(buf->base);
+        return;
+    }
+
+    /* Check if client is being closed */
+    if (client->ref_count == 0) {
+        UVBUS_LOG("on_client_read: client ref_count is 0");
         uvrpc_free(buf->base);
         return;
     }
 
     uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
     if (!transport) {
+        UVBUS_LOG("on_client_read: transport is NULL");
         uvrpc_free(buf->base);
         return;
     }
 
     if (nread < 0) {
+        UVBUS_LOG("on_client_read: error nread=%zd (%s)", nread, uv_strerror(nread));
         if (nread != UV_EOF) {
             if (transport->error_cb) {
                 transport->error_cb(UVBUS_ERROR_IO, uv_strerror(nread), transport->callback_ctx);
@@ -141,16 +156,22 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
     }
 
     if (nread > 0) {
-        /* Add data to client's read buffer */
-        if (client->read_pos + nread <= sizeof(client->read_buffer)) {
+        UVBUS_LOG("on_client_read: received %zd bytes, read_pos=%zu", nread, client->read_pos);
+        
+        /* Add data to client's read buffer with strict bounds checking */
+        if (nread > 0 && client->read_pos < sizeof(client->read_buffer) &&
+            nread <= sizeof(client->read_buffer) - client->read_pos) {
             memcpy(client->read_buffer + client->read_pos, buf->base, nread);
             client->read_pos += nread;
         } else {
-            /* Buffer overflow - reset and log error */
-            UVRPC_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",
+            /* Buffer overflow detected - close connection to prevent attacks */
+            UVRPC_ERROR("Buffer overflow detected: read_pos=%zu, nread=%zd, buffer_size=%zu",
                     client->read_pos, nread, sizeof(client->read_buffer));
-            client->read_pos = 0;
             uvrpc_free(buf->base);
+            /* Close the connection instead of just resetting */
+            if (!uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+                uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
+            }
             return;
         }
 
@@ -163,7 +184,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                                   (uint32_t)client->read_buffer[3];
 
             /* Validate frame size - stricter limit for stability */
-            if (frame_size == 0 || frame_size > 64*1024) {  /* 64KB max */
+            if (frame_size == 0 || frame_size > UVBUS_DEFAULT_MAX_FRAME_SIZE) {
                 /* Invalid frame size, reset buffer */
                 UVRPC_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
                 client->read_pos = 0;
@@ -198,7 +219,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                     /* Client mode: pass NULL for client context (not needed) */
                     transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
                 }
-                
+
                 /* Always free the frame copy after callback returns
                  * This ensures cleanup even if callback forgets to free it */
                 uvrpc_free(frame_copy);
@@ -215,6 +236,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 
     uvrpc_free(buf->base);
 }
+
 
 /* Client alloc callback */
 static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
@@ -250,6 +272,14 @@ static void on_server_connection(uv_stream_t* server, int status) {
         return;
     }
     
+    /* Check client limit */
+    if (tcp_server->client_count >= UVBUS_MAX_CLIENTS) {
+        if (transport->error_cb) {
+            transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Maximum clients reached", transport->callback_ctx);
+        }
+        return;
+    }
+    
     /* Create new client connection */
     uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)uvrpc_alloc(sizeof(uvbus_tcp_client_t));
     if (!client) {
@@ -257,6 +287,9 @@ static void on_server_connection(uv_stream_t* server, int status) {
     }
     
     memset(client, 0, sizeof(uvbus_tcp_client_t));
+    
+    /* Initialize reference count */
+    ref_init(&client->ref_count);
     
     /* Initialize TCP handle */
     if (!transport->loop) {
@@ -269,27 +302,41 @@ static void on_server_connection(uv_stream_t* server, int status) {
     
     /* Optimize socket buffers for accepted connections */
     uv_tcp_nodelay(&client->tcp_handle, 1);  /* Disable Nagle algorithm */
-    /* Note: Default socket buffer sizes are used, auto-tuned by the OS */
-    client->tcp_handle.data = client;
     
     /* Accept connection */
     if (uv_accept(server, (uv_stream_t*)&client->tcp_handle) == 0) {
-        /* Add to client list */
+        /* Expand client list if needed */
         if (tcp_server->client_count >= tcp_server->client_capacity) {
-            tcp_server->client_capacity *= 2;
-            tcp_server->clients = (uvbus_tcp_client_t**)uvrpc_realloc(
-                tcp_server->clients, 
-                sizeof(uvbus_tcp_client_t*) * tcp_server->client_capacity
+            int new_capacity = tcp_server->client_capacity * 2;
+            if (new_capacity > UVBUS_MAX_CLIENTS) {
+                new_capacity = UVBUS_MAX_CLIENTS;
+            }
+            uvbus_tcp_client_t** new_clients = (uvbus_tcp_client_t**)uvrpc_realloc(
+                tcp_server->clients,
+                sizeof(uvbus_tcp_client_t*) * new_capacity
             );
+            if (!new_clients) {
+                uv_close((uv_handle_t*)&client->tcp_handle, NULL);
+                uvrpc_free(client);
+                return;
+            }
+            tcp_server->clients = new_clients;
+            tcp_server->client_capacity = new_capacity;
         }
         
+        /* Add to client list */
         tcp_server->clients[tcp_server->client_count++] = client;
         
         /* Set parent reference */
         client->parent_transport = transport;
         
         /* Start reading */
-        uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read);
+        if (uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read) != 0) {
+            /* Failed to start reading, remove from list and close */
+            tcp_server->client_count--;
+            uv_close((uv_handle_t*)&client->tcp_handle, NULL);
+            uvrpc_free(client);
+        }
     } else {
         uv_close((uv_handle_t*)&client->tcp_handle, NULL);
         uvrpc_free(client);
@@ -300,6 +347,9 @@ static void on_server_connection(uv_stream_t* server, int status) {
 static void on_client_close(uv_handle_t* handle) {
     uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)handle->data;
     if (!client) return;
+    
+    /* Clear the handle data to prevent double free */
+    handle->data = NULL;
     
     if (ref_dec(&client->ref_count) == 0) {
         /* Free resources when ref count reaches 0 */
@@ -364,22 +414,14 @@ static void on_client_connect(uv_connect_t* req, int status) {
 
 /* Write callback */
 static void on_write(uv_write_t* req, int status) {
-    (void)status;
+    UVBUS_LOG("Write completed, status=%d", status);
+    
+    if (status != 0) {
+        UVBUS_LOG("Write failed: %s", uv_strerror(status));
+    }
+    
     uvrpc_free(req->data);
     uvrpc_free(req);
-}
-
-/* Async callback for triggering pending writes */
-static void on_write_async(uv_async_t* handle) {
-    uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)handle->data;
-    
-    /* Run event loop once to process pending writes
-     * This is called when TCP send buffer is full (UV_ENOBUFS)
-     * The event loop will process write completions and free buffer space */
-    if (client && client->parent_transport) {
-        uvbus_transport_t* transport = (uvbus_transport_t*)client->parent_transport;
-        uv_run(transport->loop, UV_RUN_NOWAIT);
-    }
 }
 
 /* TCP vtable functions */
@@ -504,8 +546,6 @@ static int tcp_connect(void* impl_ptr, const char* address) {
     
     /* Initialize TCP handle */
     uv_tcp_init(transport->loop, &client->tcp_handle);
-    uv_async_init(transport->loop, &client->write_async, on_write_async);
-    client->write_async.data = client;  /* Set to client so on_write_async can find it */
     client->tcp_handle.data = client;  /* Set to client so on_client_read can find it */
     
     /* Optimize socket buffers for better memory usage */
@@ -538,8 +578,23 @@ static void tcp_disconnect(void* impl_ptr) {
         /* Close all client connections */
         for (int i = 0; i < server->client_count; i++) {
             if (server->clients[i]) {
-                ref_dec(&server->clients[i]->ref_count);
-                uv_close((uv_handle_t*)&server->clients[i]->tcp_handle, on_client_close);
+                uvbus_tcp_client_t* client = server->clients[i];
+                /* Remove from list first to prevent double close */
+                server->clients[i] = NULL;
+                /* Clear parent reference to prevent access during cleanup */
+                client->parent_transport = NULL;
+                /* Close TCP handle */
+                if (!uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+                    /* Increment ref count to ensure client stays alive until on_client_close */
+                    ref_inc(&client->ref_count);
+                    uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
+                } else {
+                    /* Handle already closing, free immediately */
+                    if (client->host) {
+                        uvrpc_free(client->host);
+                    }
+                    uvrpc_free(client);
+                }
             }
         }
         uvrpc_free(server->clients);
@@ -548,20 +603,27 @@ static void tcp_disconnect(void* impl_ptr) {
         
         /* Close listen handle */
         ref_dec(&server->ref_count);
-        uv_close((uv_handle_t*)&server->listen_handle, on_server_close);
+        if (!uv_is_closing((uv_handle_t*)&server->listen_handle)) {
+            uv_close((uv_handle_t*)&server->listen_handle, on_server_close);
+        }
         
         transport->impl.tcp_server = NULL;
     } else if (!transport->is_server && transport->impl.tcp_client) {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
         /* Clear the pointer first to prevent double disconnect */
         transport->impl.tcp_client = NULL;
-        /* Close write_async handle */
-        if (!uv_is_closing((uv_handle_t*)&client->write_async)) {
-            uv_close((uv_handle_t*)&client->write_async, NULL);
+        /* Clear parent reference */
+        client->parent_transport = NULL;
+        /* Close TCP handle */
+        if (!uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+            uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
+        } else {
+            /* Handle already closing, free immediately */
+            if (client->host) {
+                uvrpc_free(client->host);
+            }
+            uvrpc_free(client);
         }
-        /* Close client connection */
-        ref_dec(&client->ref_count);
-        uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
     }
     
     transport->is_connected = 0;
@@ -630,22 +692,21 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
 
         /* Write the data */
         int write_result = uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_write);
-            if (write_result != 0) {
-                uvrpc_free(frame_data);
-                uvrpc_free(req);
-                
-                /* UV_ENOBUFS indicates buffer is completely full */
-                if (write_result == UV_ENOBUFS) {
-                    /* Trigger async processing to flush pending writes */
-                    uv_async_send(&client->write_async);
-                    /* Return error to application layer */
-                    return UVBUS_ERROR_BUFFER_FULL;
-                }
-                return UVBUS_ERROR_IO;
+        if (write_result != 0) {
+            uvrpc_free(frame_data);
+            uvrpc_free(req);
+            
+            /* UV_ENOBUFS indicates buffer is completely full */
+            if (write_result == UV_ENOBUFS) {
+                /* Return error to application layer - let caller handle retry/backpressure */
+                return UVBUS_ERROR_BUFFER_FULL;
             }
+            return UVBUS_ERROR_IO;
+        }
         
-            /* Note: frame_data is now owned by the write request, don't free it here */
-            return UVBUS_OK;    }
+        /* Note: frame_data is now owned by the write request, don't free it here */
+        return UVBUS_OK;
+    }
 
     /* Note: frame_data is now owned by the write request, don't free it here */
     return UVBUS_OK;
@@ -665,6 +726,11 @@ static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)target;
     if (!client) {
         return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    /* Check if TCP handle is closing or closed */
+    if (uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+        return UVBUS_ERROR_NOT_CONNECTED;
     }
 
     /* Allocate buffer with 4-byte frame length prefix */
@@ -697,7 +763,6 @@ static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
         uvrpc_free(frame_data);
         uvrpc_free(req);
         if (write_result == UV_ENOBUFS) {
-            uv_async_send(&client->write_async);
             return UVBUS_ERROR_BUFFER_FULL;
         }
         return UVBUS_ERROR_IO;

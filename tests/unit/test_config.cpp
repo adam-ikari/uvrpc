@@ -43,19 +43,11 @@ TEST_F(UVRPCConfigTest, SetEmptyAddress) {
     EXPECT_EQ(result, config);
 }
 
-TEST_F(UVRPCConfigTest, SetCommType) {
-    uvrpc_config_t* result = uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
-    EXPECT_EQ(result, config);
-    
-    result = uvrpc_config_set_comm_type(config, UVRPC_COMM_BROADCAST);
-    EXPECT_EQ(result, config);
-}
-
 TEST_F(UVRPCConfigTest, SetTransportType) {
-    uvrpc_config_t* result = uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_t* result = uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     EXPECT_EQ(result, config);
     
-    result = uvrpc_config_set_transport(config, UVRPC_TRANSPORT_IPC);
+    result = uvrpc_config_set_transport(config, UVBUS_TRANSPORT_IPC);
     EXPECT_EQ(result, config);
 }
 
@@ -108,8 +100,7 @@ TEST_F(UVRPCConfigTest, MultipleConfigurations) {
 TEST_F(UVRPCConfigTest, SetMultipleOptions) {
     // Set multiple options in sequence
     uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     uvrpc_config_set_performance_mode(config, UVRPC_PERF_HIGH_THROUGHPUT);
     uvrpc_config_set_pool_size(config, 10);
     uvrpc_config_set_max_concurrent(config, 100);

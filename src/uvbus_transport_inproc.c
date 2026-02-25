@@ -32,6 +32,7 @@ typedef struct inproc_client {
     void* server_endpoint;
     void* client_transport;
     int is_active;
+    volatile int ref_count;  /* Atomic reference count for thread safety */
     
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
@@ -136,7 +137,6 @@ static void inproc_remove_client(inproc_endpoint_t* endpoint, void* client) {
 static void inproc_send_to_all(inproc_endpoint_t* endpoint,
                          const uint8_t* data, size_t size) {
     pthread_rwlock_rdlock(&g_endpoint_rwlock);
-    /* Copy client count to avoid holding lock during callbacks */
     int client_count = endpoint->client_count;
     void** clients = (void**)uvrpc_alloc(sizeof(void*) * client_count);
     if (clients) {
@@ -146,16 +146,10 @@ static void inproc_send_to_all(inproc_endpoint_t* endpoint,
     
     if (!clients) return;
     
-    /* Trigger callbacks without holding the lock */
     for (int i = 0; i < client_count; i++) {
         inproc_client_t* client = (inproc_client_t*)clients[i];
-        if (client && client->is_active) {
-            /* Use client's own callback instead of endpoint's */
-            if (client->recv_cb) {
-                /* Pass client as client_ctx, and server context (if any) as server_ctx */
-                /* For INPROC, client->callback_ctx is the server context */
-                client->recv_cb(data, size, client, client->callback_ctx);
-            }
+        if (client && client->is_active && client->recv_cb) {
+            client->recv_cb(data, size, client, client->callback_ctx);
         }
     }
     
@@ -274,6 +268,7 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     client->server_endpoint = endpoint;
     client->client_transport = transport;
     client->is_active = 1;
+    client->ref_count = 1;  /* Initialize reference count */
     
     /* Set client's own callbacks */
     client->recv_cb = transport->recv_cb;
@@ -315,6 +310,10 @@ static void inproc_disconnect(void* impl_ptr) {
             if (endpoint->clients[i]) {
                 inproc_client_t* client = (inproc_client_t*)endpoint->clients[i];
                 client->is_active = 0;
+                /* Decrement reference count, free if reaches zero */
+                if (__sync_sub_and_fetch(&client->ref_count, 1) == 0) {
+                    uvrpc_free(client);
+                }
             }
         }
         
@@ -331,7 +330,10 @@ static void inproc_disconnect(void* impl_ptr) {
         }
         
         client->is_active = 0;
-        uvrpc_free(client);
+        /* Decrement reference count, free if reaches zero */
+        if (__sync_sub_and_fetch(&client->ref_count, 1) == 0) {
+            uvrpc_free(client);
+        }
         transport->impl.inproc_client = NULL;
     }
     
@@ -351,16 +353,12 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
 
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
-        /* Broadcast to all clients */
         inproc_send_to_all(endpoint, data, size);
     } else if (!transport->is_server && transport->impl.inproc_client) {
         inproc_client_t* client = (inproc_client_t*)transport->impl.inproc_client;
         if (client->server_endpoint) {
-            /* Send to server */
             inproc_endpoint_t* endpoint = client->server_endpoint;
             if (endpoint->recv_cb) {
-                /* Use the current transport's callback_ctx instead of endpoint's
-                 * This allows the server to update its context after listening */
                 void* server_ctx = NULL;
                 if (endpoint->server_transport) {
                     server_ctx = ((uvbus_transport_t*)endpoint->server_transport)->callback_ctx;
@@ -368,7 +366,6 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
                 if (!server_ctx) {
                     server_ctx = endpoint->callback_ctx;
                 }
-                /* Pass client as client_ctx, and server context as server_ctx */
                 endpoint->recv_cb(data, size, client, server_ctx);
             }
         }

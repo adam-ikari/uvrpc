@@ -1,15 +1,24 @@
+// UVRPC RPC Schema
+// FlatBuffers schema for RPC messages with frame type support
+
 namespace uvrpc;
 
-/* ============================================================
-   UVRPC Core Frame Definition
-   Used for all RPC communication
-   ============================================================ */
+enum RpcFrameType:uint8 {
+  Unknown = 0,
+  Request = 1,
+  Response = 2,
+  Error = 3
+}
 
+// Frame wrapper
 table RpcFrame {
-    type: int32;          /* 0=request, 1=response, 2=notification, 3=error */
-    msgid: uint32;        /* Message ID */
-    method: string;       /* Method name (for requests) */
-    params: [ubyte];      /* Parameters or result data */
+  type: RpcFrameType;
+  msgid: uint32;
+  method: string;
+  params: [ubyte];
+  status: uint32;
+  error_message: string;
+  result: [ubyte];
 }
 
 root_type RpcFrame;

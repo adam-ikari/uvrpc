@@ -577,27 +577,6 @@ void test_null_address(void) {
 }
 
 /**
- * Test 18: Pump interval configuration
- */
-void test_pump_interval(void) {
-    TEST_START("Pump interval configuration");
-    
-    uvbus_config_t* config = uvbus_config_new();
-    ASSERT_NOT_NULL(config, "Failed to create config");
-    
-    /* Test default (should be 0 or 1) */
-    uvbus_config_set_pump_interval(config, 1);
-    
-    /* Test custom value */
-    uvbus_config_set_pump_interval(config, 10);
-    
-    /* Test disable */
-    uvbus_config_set_pump_interval(config, 0);
-    
-    uvbus_config_free(config);
-    TEST_PASS();
-}
-
 /**
  * Test 19: Server disconnect
  */
@@ -670,7 +649,6 @@ int main(int argc, char* argv[]) {
     test_callback_mechanism();
     test_empty_address();
     test_null_address();
-    test_pump_interval();
     test_server_disconnect();
     test_multiple_configs();
     

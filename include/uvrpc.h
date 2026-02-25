@@ -98,18 +98,7 @@ typedef enum {
 #endif
 
 /**
- * @brief Transport types for UVRPC communication
- * 
- * Defines the underlying transport protocol used for communication.
- */
-typedef enum {
-    UVRPC_TRANSPORT_TCP = 0,    /**< @brief TCP network transport (reliable, connection-oriented) */
-    UVRPC_TRANSPORT_UDP = 1,    /**< @brief UDP transport (fast, connectionless) */
-    UVRPC_TRANSPORT_IPC = 2,    /**< @brief Unix domain socket (IPC) for local communication */
-    UVRPC_TRANSPORT_INPROC = 3  /**< @brief In-process transport for same-process communication */
-} uvrpc_transport_type;
-
-/**
+ /**
  * @brief Performance modes for UVRPC operations
  * 
  * Controls how requests are processed to optimize for either
@@ -121,18 +110,8 @@ typedef enum {
 } uvrpc_perf_mode_t;
 
 /**
- * @brief Communication types for UVRPC
- * 
- * Defines the communication pattern: request-response or publish-subscribe.
- */
-typedef enum {
-    UVRPC_COMM_SERVER_CLIENT = 0,  /**< @brief Server/Client mode (request-response) */
-    UVRPC_COMM_BROADCAST = 1        /**< @brief Broadcast mode (publish-subscribe) */
-} uvrpc_comm_type_t;
-
-/**
- * @brief Context cleanup callback type
- * 
+ * @brief Cleanup callback for context data
+ *
  * @param data User data to be cleaned up
  * @param user_data Additional user data passed to cleanup
  */
@@ -199,8 +178,6 @@ void* uvrpc_context_get_data(uvrpc_context_t* ctx);
 typedef struct uvrpc_config uvrpc_config_t;
 typedef struct uvrpc_server uvrpc_server_t;
 typedef struct uvrpc_client uvrpc_client_t;
-typedef struct uvrpc_publisher uvrpc_publisher_t;
-typedef struct uvrpc_subscriber uvrpc_subscriber_t;
 typedef struct uvrpc_request uvrpc_request_t;
 typedef struct uvrpc_response uvrpc_response_t;
 
@@ -229,24 +206,6 @@ typedef void (*uvrpc_callback_t)(uvrpc_response_t* resp, void* ctx);
 typedef void (*uvrpc_connect_callback_t)(int status, void* ctx);
 
 /**
- * @brief Publish callback type (broadcast mode)
- * 
- * @param status Publish status (0 for success, negative for error)
- * @param ctx User context provided during publish
- */
-typedef void (*uvrpc_publish_callback_t)(int status, void* ctx);
-
-/**
- * @brief Subscribe callback type (broadcast mode)
- * 
- * @param topic Topic name
- * @param data Published data
- * @param size Data size
- * @param ctx User context provided during subscription
- */
-typedef void (*uvrpc_subscribe_callback_t)(const char* topic, const uint8_t* data, size_t size, void* ctx);
-
-/**
  * @brief Error callback type
  * 
  * @param error_code Error code from uvrpc_error_t
@@ -264,8 +223,7 @@ typedef void (*uvrpc_error_callback_t)(uvrpc_error_t error_code, const char* err
 struct uvrpc_config {
     uv_loop_t* loop;                     /**< @brief libuv event loop (required) */
     char* address;                       /**< @brief Server or client address (required) */
-    uvrpc_transport_type transport;      /**< @brief Transport type (TCP/UDP/IPC/INPROC) */
-    uvrpc_comm_type_t comm_type;         /**< @brief Communication type (SERVER_CLIENT or BROADCAST) */
+    uvbus_transport_type_t transport;    /**< @brief Transport type (TCP/UDP/IPC/INPROC/SAMELOOP) */
     uvrpc_perf_mode_t performance_mode;  /**< @brief Performance mode (LOW_LATENCY or HIGH_THROUGHPUT) */
     int pool_size;                       /**< @brief Connection pool size (default: UVRPC_DEFAULT_POOL_SIZE) */
     int max_concurrent;                  /**< @brief Max concurrent requests (default: UVRPC_MAX_CONCURRENT_REQUESTS) */
@@ -364,22 +322,14 @@ uvrpc_config_t* uvrpc_config_set_loop(uvrpc_config_t* config, uv_loop_t* loop);
 uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* address);
 
 /**
+ /**
  * @brief Set the transport type
  * 
  * @param config Configuration structure
- * @param transport Transport type (TCP/UDP/IPC/INPROC)
+ * @param transport Transport type (TCP/UDP/IPC/INPROC/SAMELOOP)
  * @return Configuration structure for chaining
  */
-uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvrpc_transport_type transport);
-
-/**
- * @brief Set the communication type
- * 
- * @param config Configuration structure
- * @param comm_type Communication type (SERVER_CLIENT or BROADCAST)
- * @return Configuration structure for chaining
- */
-uvrpc_config_t* uvrpc_config_set_comm_type(uvrpc_config_t* config, uvrpc_comm_type_t comm_type);
+uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transport_type_t transport);
 
 /**
  * @brief Set the performance mode
@@ -765,112 +715,6 @@ void uvrpc_response_free(uvrpc_response_t* resp);
  * @param config Configuration structure
  * @return New publisher instance, or NULL on failure
  */
-uvrpc_publisher_t* uvrpc_publisher_create(uvrpc_config_t* config);
-
-/**
- * @brief Start the publisher
- * 
- * @param publisher Publisher instance
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_publisher_start(uvrpc_publisher_t* publisher);
-
-/**
- * @brief Stop the publisher
- * 
- * @param publisher Publisher instance
- */
-void uvrpc_publisher_stop(uvrpc_publisher_t* publisher);
-
-/**
- * @brief Free the publisher
- * 
- * @param publisher Publisher instance
- */
-void uvrpc_publisher_free(uvrpc_publisher_t* publisher);
-
-/**
- * @brief Publish a message to a topic
- * 
- * @param publisher Publisher instance
- * @param topic Topic name
- * @param data Message data
- * @param size Data size
- * @param callback Publish callback
- * @param ctx User context
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_publisher_publish(uvrpc_publisher_t* publisher, const char* topic,
-                             const uint8_t* data, size_t size,
-                             uvrpc_publish_callback_t callback, void* ctx);
-
-/**
- * @brief Publish message (raw, without broadcast encoding)
- *
- * Sends the message directly without broadcast encoding.
- * Used when message is already encoded in broadcast format.
- *
- * @param publisher Publisher instance
- * @param data Message data (already encoded)
- * @param size Message size
- * @param callback Publish callback
- * @param ctx User context
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_publisher_publish_raw(uvrpc_publisher_t* publisher,
-                                 const uint8_t* data, size_t size,
-                                 uvrpc_publish_callback_t callback, void* ctx);
-
-/**
- * @brief Create a new subscriber
- *
- * @param config Configuration structure
- * @return New subscriber instance, or NULL on failure
- */
-uvrpc_subscriber_t* uvrpc_subscriber_create(uvrpc_config_t* config);
-/**
- * @brief Connect subscriber to publisher
- * 
- * @param subscriber Subscriber instance
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_subscriber_connect(uvrpc_subscriber_t* subscriber);
-
-/**
- * @brief Disconnect subscriber
- * 
- * @param subscriber Subscriber instance
- */
-void uvrpc_subscriber_disconnect(uvrpc_subscriber_t* subscriber);
-
-/**
- * @brief Free the subscriber
- * 
- * @param subscriber Subscriber instance
- */
-void uvrpc_subscriber_free(uvrpc_subscriber_t* subscriber);
-
-/**
- * @brief Subscribe to a topic
- * 
- * @param subscriber Subscriber instance
- * @param topic Topic name
- * @param callback Subscription callback
- * @param ctx User context
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_subscriber_subscribe(uvrpc_subscriber_t* subscriber, const char* topic,
-                                 uvrpc_subscribe_callback_t callback, void* ctx);
-
-/**
- * @brief Unsubscribe from a topic
- * 
- * @param subscriber Subscriber instance
- * @param topic Topic name
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_subscriber_unsubscribe(uvrpc_subscriber_t* subscriber, const char* topic);
-
 /**
  * @brief Convert error code to human-readable error message
  * 

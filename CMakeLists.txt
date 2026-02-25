@@ -53,6 +53,17 @@ endif()
 
 message(STATUS "UVRPC Allocator: ${UVRPC_ALLOCATOR_DEFAULT}")
 
+# Debug logging options
+option(UVRPC_DEBUG_LOGGING "Enable debug logging (adds UVRPC_DEBUG and UVBUS_DEBUG macros)" OFF)
+
+if(UVRPC_DEBUG_LOGGING)
+    add_definitions(-DUVRPC_DEBUG)
+    add_definitions(-DUVBUS_DEBUG)
+    message(STATUS "Debug logging: ENABLED")
+else()
+    message(STATUS "Debug logging: DISABLED")
+endif()
+
 # Find required packages
 find_package(Threads REQUIRED)
 
@@ -71,7 +82,6 @@ include_directories(
 
 # Source files
 set(UVRPC_SOURCES
-    src/uvrpc_config.c
     src/uvrpc_context.c
     src/uvrpc_flatbuffers.c
     src/uvrpc_server.c
@@ -82,22 +92,31 @@ set(UVRPC_SOURCES
     src/uvrpc_allocator.c
     src/uvrpc_async.c
     src/uvrpc_primitives.c
+    src/uvrpc_config.c
     src/uvrpc_strerror.c
+    src/uvasync.c
     src/uvbus.c
     src/uvbus_transport_tcp.c
     src/uvbus_transport_udp.c
     src/uvbus_transport_ipc.c
     src/uvbus_transport_inproc.c
-    src/uvasync.c
+    src/uvbus_transport_sameloop.c
 )
 
 # Headers
 set(UVRPC_HEADERS
     include/uvrpc.h
-    include/uvrpc_async.h
+    include/uvrpc_allocator.h
+    include/uvrpc_context.h
+    include/uvrpc_flatbuffers.h
+    include/uvrpc_idmap.h
+    include/uvrpc_msgid.h
     include/uvrpc_primitives.h
+    include/uvrpc_strerror.h
+    include/uvrpc_async.h
+    include/uvrpc_service.h
     include/uvbus.h
-    include/uvasync.h
+    include/uvbus_config.h
     src/uvrpc_flatbuffers.h
     src/uvrpc_service.h
 )
@@ -231,6 +250,7 @@ add_subdirectory(benchmark)
     # Create example targets
     create_example_target(simple_server)
     create_example_target(simple_client)
+    create_example_target(simple_inproc)
     create_example_target(debug_test)
     create_example_target(gateway_demo)
     create_example_target(allocator_demo)
@@ -247,6 +267,12 @@ add_subdirectory(benchmark)
     create_example_target(uvbus_client_only)
     create_example_target(perf_mode_demo)
     create_example_target(primitives_demo)
+    create_example_target(test_oneway)
+    create_example_target(test_sameloop)
+    create_example_target(test_sameloop_recursion)
+    create_example_target(test_sameloop_stress)
+    create_example_target(test_sameloop_multiclient)
+    create_example_target(sameloop_rpc_demo)
     # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now
 endif()
 

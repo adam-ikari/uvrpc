@@ -11,6 +11,7 @@
  */
 
 #include "../include/uvrpc.h"
+#include "../include/uvbus.h"
 #include "../include/uvrpc_allocator.h"
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +22,7 @@ uvrpc_config_t* uvrpc_config_new(void) {
 
     config->loop = NULL;
     config->address = NULL;
-    config->transport = UVRPC_TRANSPORT_TCP;  /* Default to TCP */
+    config->transport = UVBUS_TRANSPORT_TCP;  /* Default to TCP */
     config->performance_mode = UVRPC_PERF_LOW_LATENCY;  /* Default to low latency */
     config->pool_size = UVRPC_DEFAULT_POOL_SIZE;
     config->max_concurrent = UVRPC_MAX_CONCURRENT_REQUESTS;
@@ -62,28 +63,24 @@ uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* add
 
     /* Auto-detect transport type from address prefix */
     if (strncmp(address, "inproc://", 9) == 0) {
-        config->transport = UVRPC_TRANSPORT_INPROC;
+        config->transport = UVBUS_TRANSPORT_INPROC;
     } else if (strncmp(address, "ipc://", 6) == 0) {
-        config->transport = UVRPC_TRANSPORT_IPC;
+        config->transport = UVBUS_TRANSPORT_IPC;
     } else if (strncmp(address, "tcp://", 6) == 0) {
-        config->transport = UVRPC_TRANSPORT_TCP;
+        config->transport = UVBUS_TRANSPORT_TCP;
     } else if (strncmp(address, "udp://", 6) == 0) {
-        config->transport = UVRPC_TRANSPORT_UDP;
+        config->transport = UVBUS_TRANSPORT_UDP;
+    } else if (strncmp(address, "sameloop://", 11) == 0) {
+        config->transport = UVBUS_TRANSPORT_SAMELOOP;
     }
     /* For addresses without prefix, keep the current/transport default */
 
     return config;
 }
 
-uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvrpc_transport_type transport) {
+uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transport_type_t transport) {
     if (!config) return NULL;
     config->transport = transport;
-    return config;
-}
-
-uvrpc_config_t* uvrpc_config_set_comm_type(uvrpc_config_t* config, uvrpc_comm_type_t comm_type) {
-    if (!config) return NULL;
-    config->comm_type = comm_type;
     return config;
 }
 

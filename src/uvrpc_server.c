@@ -82,7 +82,20 @@ struct uvrpc_server {
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
 
-    if (!server) return;
+    UVRPC_LOG("Received %zu bytes, server=%p", size, server);
+
+    if (!server) {
+        return;
+    }
+
+    /* Debug: log client_ctx */
+    static int recv_count = 0;
+    recv_count++;
+    if (recv_count % 1000 == 0) {
+        UVRPC_LOG("Received %d requests, client_ctx=%p", recv_count, client_ctx);
+    } else {
+        UVRPC_LOG("Request #%d, client_ctx=%p", recv_count, client_ctx);
+    }
 
     /* Decode request */
     uint32_t msgid = 0;
@@ -90,9 +103,19 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     const uint8_t* params = NULL;
     size_t params_size = 0;
 
+    UVRPC_LOG("Decoding request...");
+    
     if (uvrpc_decode_request(data, size, &msgid, &method, &params, &params_size) != UVRPC_OK) {
+        UVRPC_LOG("Failed to decode request (size=%zu)", size);
         UVRPC_ERROR("Failed to decode request (size=%zu)", size);
+        /* Note: client_ctx is managed by the transport layer, not freed here */
         return;
+    }
+
+    UVRPC_LOG("Decoded: msgid=%u, method=%s, params_size=%zu", msgid, method ? method : "(null)", params_size);
+
+    if (recv_count % 1000 == 0) {
+        fprintf(stderr, "[SERVER] Decoded request: msgid=%u, method=%s\n", msgid, method ? method : "(null)");
     }
 
     /* Create lowercase copy for case-insensitive matching */
@@ -118,7 +141,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     if (entry && entry->handler) {
         /* Increment request counter */
         server->total_requests++;
-        
+
         /* Create request structure */
         uvrpc_request_t req;
         req.server = server;
@@ -128,9 +151,11 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         req.params_size = params_size;
         req.client_ctx = client_ctx;
         req.user_data = NULL;
-        
-        /* Call handler */
+
+        /* Call handler - handler is responsible for sending response */
         entry->handler(&req, entry->ctx);
+
+        /* Note: client_ctx is managed by the transport layer, not freed here */
 
         /* Free decoded method */
         if (method) uvrpc_free(method);
@@ -143,8 +168,15 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         uvrpc_encode_error(msgid, 2, "Method not found", &resp_data, &resp_size);
 
         if (resp_data) {
+            /* Send error response via UVBus */
+            uvbus_t* uvbus = server->uvbus;
+            if (uvbus) {
+                uvbus_send_to(uvbus, resp_data, resp_size, client_ctx);
+            }
             uvrpc_free(resp_data);
         }
+
+        /* Note: client_ctx is managed by the transport layer, not freed here */
 
         if (method) uvrpc_free(method);
     }
@@ -202,30 +234,8 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     
     uvbus_config_set_loop(bus_config, config->loop);
     
-    /* Map UVRPC transport type to UVBus transport type */
-    uvbus_transport_type_t uvbus_type;
-    switch (config->transport) {
-        case UVRPC_TRANSPORT_TCP:
-            uvbus_type = UVBUS_TRANSPORT_TCP;
-            break;
-        case UVRPC_TRANSPORT_UDP:
-            uvbus_type = UVBUS_TRANSPORT_UDP;
-            break;
-        case UVRPC_TRANSPORT_IPC:
-            uvbus_type = UVBUS_TRANSPORT_IPC;
-            break;
-        case UVRPC_TRANSPORT_INPROC:
-            uvbus_type = UVBUS_TRANSPORT_INPROC;
-            break;
-        default:
-            uvbus_config_free(bus_config);
-            uvrpc_free(server->pending_requests);
-            uvrpc_free(server->address);
-            uvrpc_free(server);
-            return NULL;
-    }
-    
-    uvbus_config_set_transport(bus_config, uvbus_type);
+    /* Transport type is now uvbus_transport_type_t, no mapping needed */
+    uvbus_config_set_transport(bus_config, config->transport);
     uvbus_config_set_address(bus_config, server->address);
     
     /* Set up receive callback */
@@ -366,8 +376,12 @@ uvrpc_context_t* uvrpc_server_get_context(uvrpc_server_t* server) {
 /* Send response */
 void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                                   const uint8_t* result, size_t result_size) {
+    static int send_count = 0;
+    send_count++;
+
     if (!req || !req->server || !req->client_ctx) {
-        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL\n");
+        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)\n",
+                req, req ? req->server : NULL, req ? req->client_ctx : NULL);
         return;
     }
 
@@ -384,11 +398,21 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         uvbus_error_t err = uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx);
         if (err == UVBUS_OK) {
             server->total_responses++;
+            if (send_count % 1000 == 0) {
+                fprintf(stderr, "[SERVER] Sent %d responses, client_ctx=%p\n", send_count, req->client_ctx);
+            }
         } else {
-            UVRPC_ERROR("Failed to send response: %d", err);
+            UVRPC_ERROR("Failed to send response: %d (client_ctx=%p)", err, req->client_ctx);
         }
         uvrpc_free(resp_data);
     }
+    
+    /* Note: client_ctx is managed by the transport layer, not freed here
+     * TCP: client_ctx is a long-lived client structure
+     * UDP: client_ctx is a pointer to the address in the receive buffer
+     * IPC: client_ctx is a long-lived client structure
+     * INPROC: client_ctx is a long-lived endpoint structure
+     */
 }
 
 /* Free request */
@@ -414,7 +438,7 @@ int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t resu
 
     /* Send response via UVBus */
     uvbus_t* uvbus = req->server->uvbus;
-    uvbus_error_t err = uvbus_send_to(uvbus, response_data, 
+    uvbus_error_t err = uvbus_send_to(uvbus, response_data,
                                        response_size, req->client_ctx);
 
     uvrpc_free(response_data);
@@ -424,6 +448,9 @@ int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t resu
     }
 
     req->server->total_responses++;
+    
+    /* Note: client_ctx is managed by the transport layer, not freed here */
+
     return UVRPC_OK;
 }
 
@@ -444,7 +471,7 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
 
     /* Send response via UVBus */
     uvbus_t* uvbus = req->server->uvbus;
-    uvbus_error_t err = uvbus_send_to(uvbus, response_data, 
+    uvbus_error_t err = uvbus_send_to(uvbus, response_data,
                                        response_size, req->client_ctx);
 
     uvrpc_free(response_data);
@@ -454,5 +481,8 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
     }
 
     req->server->total_responses++;
+    
+    /* Note: client_ctx is managed by the transport layer, not freed here */
+
     return UVRPC_OK;
 }

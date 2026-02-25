@@ -80,7 +80,6 @@ uvrpc_server_t* create_server(uv_loop_t* loop, const char* address) {
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
     /* Transport type auto-detected from address prefix */
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
     
     printf("[INIT] Creating server...\n");
     fflush(stdout);

@@ -15,10 +15,6 @@ add_executable(test_inproc
     test_inproc.c
 )
 
-add_executable(test_broadcast
-    test_broadcast.c
-)
-
 add_executable(test_udp
     test_udp.c
 )
@@ -28,8 +24,7 @@ add_executable(test_multi_client
 )
 
 add_executable(test_reconnect
-    test_reconnect.c
-)
+    test_reconnect.c)
 
 add_executable(test_error_handling
     test_error_handling.c
@@ -53,14 +48,6 @@ target_link_libraries(test_ipc
 )
 
 target_link_libraries(test_inproc
-    uvrpc
-    ${LIBUV_LIBRARIES}
-    pthread
-    m
-    rt
-)
-
-target_link_libraries(test_broadcast
     uvrpc
     ${LIBUV_LIBRARIES}
     pthread
@@ -126,18 +113,6 @@ target_include_directories(test_ipc
 )
 
 target_include_directories(test_inproc
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../generated
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
-)
-
-target_include_directories(test_broadcast
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../../include

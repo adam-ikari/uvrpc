@@ -48,8 +48,12 @@ int main() {
     uvbus_t* client = uvbus_client_new(config);
     if (!client) {
         printf("Failed to create client\n");
+        uvbus_config_free(config);
         return 1;
     }
+    
+    /* IMPORTANT: Set callback context AFTER client is created */
+    client->transport->callback_ctx = client;
     
     printf("Connecting to server...\n");
     uvbus_connect(client);

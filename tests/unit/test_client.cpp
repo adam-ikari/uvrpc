@@ -54,7 +54,7 @@ TEST_F(UVRPCClientTest, CreateAndDestroyConfig) {
     ASSERT_NE(test_config, nullptr);
     
     /* Verify default values */
-    EXPECT_EQ(test_config->transport, UVRPC_TRANSPORT_TCP);
+    EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_TCP);
     EXPECT_EQ(test_config->performance_mode, UVRPC_PERF_LOW_LATENCY);
     EXPECT_EQ(test_config->pool_size, UVRPC_DEFAULT_POOL_SIZE);
     EXPECT_EQ(test_config->max_concurrent, UVRPC_MAX_CONCURRENT_REQUESTS);
@@ -73,8 +73,7 @@ TEST_F(UVRPCClientTest, ConfigSetters) {
     /* Test all setters return the config for chaining */
     EXPECT_EQ(uvrpc_config_set_loop(test_config, nullptr), test_config);
     EXPECT_EQ(uvrpc_config_set_address(test_config, "tcp://127.0.0.1:5555"), test_config);
-    EXPECT_EQ(uvrpc_config_set_transport(test_config, UVRPC_TRANSPORT_TCP), test_config);
-    EXPECT_EQ(uvrpc_config_set_comm_type(test_config, UVRPC_COMM_SERVER_CLIENT), test_config);
+    EXPECT_EQ(uvrpc_config_set_transport(test_config, UVBUS_TRANSPORT_TCP), test_config);
     EXPECT_EQ(uvrpc_config_set_performance_mode(test_config, UVRPC_PERF_HIGH_THROUGHPUT), test_config);
     EXPECT_EQ(uvrpc_config_set_pool_size(test_config, 10), test_config);
     EXPECT_EQ(uvrpc_config_set_max_concurrent(test_config, 100), test_config);
@@ -108,19 +107,19 @@ TEST_F(UVRPCClientTest, ConfigAutoDetectTransport) {
     
     /* TCP address */
     uvrpc_config_set_address(test_config, "tcp://127.0.0.1:5555");
-    EXPECT_EQ(test_config->transport, UVRPC_TRANSPORT_TCP);
+    EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_TCP);
     
     /* IPC address */
     uvrpc_config_set_address(test_config, "ipc:///tmp/test.sock");
-    EXPECT_EQ(test_config->transport, UVRPC_TRANSPORT_IPC);
+    EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_IPC);
     
     /* INPROC address */
     uvrpc_config_set_address(test_config, "inproc://test");
-    EXPECT_EQ(test_config->transport, UVRPC_TRANSPORT_INPROC);
+    EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_INPROC);
     
     /* UDP address */
     uvrpc_config_set_address(test_config, "udp://127.0.0.1:5555");
-    EXPECT_EQ(test_config->transport, UVRPC_TRANSPORT_UDP);
+    EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_UDP);
     
     uvrpc_config_free(test_config);
 }

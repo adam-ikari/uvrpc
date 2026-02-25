@@ -32,8 +32,7 @@ int main(void) {
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
     uvrpc_config_set_address(server_config, "inproc://async_test");
-    uvrpc_config_set_transport(server_config, UVRPC_TRANSPORT_INPROC);
-    uvrpc_config_set_comm_type(server_config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_INPROC);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     uvrpc_server_register(server, "echo", echo_handler, NULL);
@@ -44,8 +43,7 @@ int main(void) {
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
     uvrpc_config_set_address(client_config, "inproc://async_test");
-    uvrpc_config_set_transport(client_config, UVRPC_TRANSPORT_INPROC);
-    uvrpc_config_set_comm_type(client_config, UVRPC_COMM_SERVER_CLIENT);
+    uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_INPROC);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect(client);

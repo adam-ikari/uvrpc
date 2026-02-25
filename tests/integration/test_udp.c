@@ -82,8 +82,7 @@ int main(int argc, char** argv) {
     uvrpc_config_t* server_config = uvrpc_config_new();
     server_config = uvrpc_config_set_loop(server_config, loop);
     server_config = uvrpc_config_set_address(server_config, server_addr);
-    server_config = uvrpc_config_set_transport(server_config, UVRPC_TRANSPORT_UDP);
-    server_config = uvrpc_config_set_comm_type(server_config, UVRPC_COMM_SERVER_CLIENT);
+    server_config = uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_UDP);
     
     /* Create server */
     uvrpc_server_t* server = uvrpc_server_create(server_config);
@@ -109,8 +108,7 @@ int main(int argc, char** argv) {
     uvrpc_config_t* client_config = uvrpc_config_new();
     client_config = uvrpc_config_set_loop(client_config, loop);
     client_config = uvrpc_config_set_address(client_config, client_addr);
-    client_config = uvrpc_config_set_transport(client_config, UVRPC_TRANSPORT_UDP);
-    client_config = uvrpc_config_set_comm_type(client_config, UVRPC_COMM_SERVER_CLIENT);
+    client_config = uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_UDP);
     
     /* Create client */
     uvrpc_client_t* client = uvrpc_client_create(client_config);

@@ -45,11 +45,17 @@ int main() {
     uvbus_t* server = uvbus_server_new(config);
     if (!server) {
         printf("Failed to create server\n");
+        uvbus_config_free(config);
         return 1;
     }
     
+    /* IMPORTANT: Set callback context AFTER server is created */
+    server->transport->callback_ctx = server;
+    
     if (uvbus_listen(server) != UVBUS_OK) {
         printf("Failed to listen\n");
+        uvbus_free(server);
+        uvbus_config_free(config);
         return 1;
     }
     

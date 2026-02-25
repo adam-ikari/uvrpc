@@ -55,7 +55,7 @@ Complete documentation is available in [docs/en/](docs/en/):
 
 | Transport | Throughput | Latency | Use Case |
 |-----------|-----------|---------|----------|
-| INPROC | 125,000+ ops/s | 0.03 ms | In-process |
+| INPROC | 125,000+ ops/s | 0.03 ms | In-process (single process only) |
 | IPC | 91,895 ops/s | 0.10 ms | Local IPC |
 | UDP | 91,685 ops/s | 0.15 ms | High-throughput |
 | TCP | 86,930 ops/s | 0.18 ms | Reliable network |

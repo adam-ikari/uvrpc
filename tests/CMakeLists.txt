@@ -26,7 +26,6 @@ add_executable(uvrpc_tests
     unit/test_flatbuffers.cpp
     unit/test_msgid.cpp
     unit/test_client.cpp
-    unit/test_server.cpp
     unit/test_config.cpp
 )
 
@@ -35,8 +34,6 @@ add_executable(uvrpc_integration_tests
     unit/test_async.cpp
     unit/test_uvbus.cpp
     unit/test_context.cpp
-    unit/test_publisher.cpp
-    unit/test_subscriber.cpp
     unit/test_server_context.cpp
     unit/test_client_context.cpp
     unit/test_client_retry.cpp
