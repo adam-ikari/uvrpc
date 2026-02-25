@@ -41,12 +41,12 @@ endif()
 # Find required packages
 find_package(Threads REQUIRED)
 
-# Unified benchmark - auto-starts server and runs tests
-add_executable(benchmark
-    benchmark.c
+# Unified benchmark - comprehensive benchmark suite (like 3DMark)
+add_executable(uvrpc_benchmark
+    uvrpc_benchmark.c
 )
 
-target_link_libraries(benchmark
+target_link_libraries(uvrpc_benchmark
     ${PROJECT_ROOT}/dist/lib/libuvrpc.a
     -lm -lrt -ldl
     ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
@@ -54,4 +54,4 @@ target_link_libraries(benchmark
     ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
 )
 
-set_target_properties(benchmark PROPERTIES LINK_FLAGS "-static -pthread")
+set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-static -pthread")

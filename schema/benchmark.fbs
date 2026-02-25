@@ -1,0 +1,29 @@
+// UVRPC Benchmark Schema
+// Simple schema for performance testing
+
+namespace benchmark;
+
+// Empty request/response for latency testing
+table EmptyRequest {
+}
+
+table EmptyResponse {
+}
+
+// Add operation for arithmetic testing
+table AddRequest {
+  a: int32;
+  b: int32;
+}
+
+table AddResponse {
+  result: int32;
+}
+
+// Broadcast message for pub-sub testing
+table BroadcastMessage {
+  value: int32;
+  timestamp: int64;
+}
+
+root_type AddRequest;
