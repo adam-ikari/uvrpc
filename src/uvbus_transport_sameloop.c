@@ -22,12 +22,13 @@
  * Data Structures
  * ======================================== */
 
-/* Server endpoint */
+/* Server registry - allows finding server by name without globals */
 typedef struct sameloop_server {
     char* name;
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
     uv_loop_t* loop;
+    struct sameloop_server* next;  /* Linked list for registry */
 } sameloop_server_t;
 
 /* Client endpoint - optimized with direct callback pointers */
@@ -39,13 +40,48 @@ typedef struct sameloop_client {
     void* callback_ctx;
 } sameloop_client_t;
 
-/* Global server registry and client (single client for SAMELOOP) */
-static sameloop_server_t* g_server = NULL;
-static sameloop_client_t g_client;  /* Static allocation, no heap allocation */
+/* Server registry (static, not global) */
+static sameloop_server_t* server_registry = NULL;
+
+/* Forward declarations */
+static sameloop_server_t* find_server(const char* name);
+static void add_server(sameloop_server_t* server);
+static void remove_server(sameloop_server_t* server);
 
 /* ========================================
  * SAMELOOP Transport Implementation
  * ======================================== */
+
+/* Find server by name in registry */
+static sameloop_server_t* find_server(const char* name) {
+    sameloop_server_t* server = server_registry;
+    while (server) {
+        if (strcmp(server->name, name) == 0) {
+            return server;
+        }
+        server = server->next;
+    }
+    return NULL;
+}
+
+/* Add server to registry */
+static void add_server(sameloop_server_t* server) {
+    server->next = server_registry;
+    server_registry = server;
+}
+
+/* Remove server from registry */
+static void remove_server(sameloop_server_t* server) {
+    sameloop_server_t** ptr = &server_registry;
+    while (*ptr) {
+        if (*ptr == server) {
+            *ptr = server->next;
+            server->next = NULL;
+            return;
+        }
+        ptr = &(*ptr)->next;
+    }
+}
 
 /* Listen - create server endpoint */
 static int sameloop_listen(void* impl_ptr, const char* address) {
@@ -55,7 +91,8 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
     }
     
     /* Check if server already exists */
-    if (g_server) {
+    sameloop_server_t* existing = find_server(address);
+    if (existing) {
         return UVBUS_ERROR_ALREADY_EXISTS;
     }
     
@@ -75,8 +112,10 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
     server->callback_ctx = transport->callback_ctx;
     server->loop = transport->loop;
     
-    /* Store globally */
-    g_server = server;
+    /* Add to registry */
+    add_server(server);
+    
+    /* Store in transport impl */
     transport->impl.sameloop_server = server;
     transport->is_connected = 1;
     
@@ -95,20 +134,26 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
-    /* Check if server exists */
-    if (!g_server || strcmp(g_server->name, address) != 0) {
+    /* Find server in registry */
+    sameloop_server_t* server = find_server(address);
+    if (!server) {
         return UVBUS_ERROR_NOT_FOUND;
     }
     
-    /* Use static client - no heap allocation */
+    /* Create client with heap allocation (required for multiple instances) */
+    sameloop_client_t* client = (sameloop_client_t*)uvrpc_alloc(sizeof(sameloop_client_t));
+    if (!client) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+    
     /* Inline server callbacks to avoid pointer indirection */
-    g_client.server_recv_cb = g_server->recv_cb;
-    g_client.server_callback_ctx = g_server->callback_ctx;
+    client->server_recv_cb = server->recv_cb;
+    client->server_callback_ctx = server->callback_ctx;
     
-    g_client.recv_cb = transport->recv_cb;
-    g_client.callback_ctx = transport->callback_ctx;
+    client->recv_cb = transport->recv_cb;
+    client->callback_ctx = transport->callback_ctx;
     
-    transport->impl.sameloop_client = &g_client;
+    transport->impl.sameloop_client = client;
     transport->is_connected = 1;
     
     /* Set bus as active */
@@ -131,8 +176,18 @@ static void sameloop_disconnect(void* impl_ptr) {
         return;
     }
     
-    /* No need to free client - it's static */
-    transport->impl.sameloop_client = NULL;
+    if (transport->is_server && transport->impl.sameloop_server) {
+        sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
+        remove_server(server);
+        uvrpc_free(server->name);
+        uvrpc_free(server);
+        transport->impl.sameloop_server = NULL;
+    } else if (!transport->is_server && transport->impl.sameloop_client) {
+        sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
+        uvrpc_free(client);
+        transport->impl.sameloop_client = NULL;
+    }
+    
     transport->is_connected = 0;
 }
 
