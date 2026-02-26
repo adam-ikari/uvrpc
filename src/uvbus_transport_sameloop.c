@@ -52,6 +52,14 @@ static void remove_server(sameloop_server_t* server);
  * SAMELOOP Transport Implementation
  * ======================================== */
 
+/* Direct function pointers for inline dispatch (bypasses vtable) */
+static int (*sameloop_send_direct)(void*, const uint8_t*, size_t) = NULL;
+static int (*sameloop_send_to_direct)(void*, const uint8_t*, size_t, void*) = NULL;
+
+/* Performance statistics */
+static volatile uint64_t fast_path_calls = 0;
+volatile uint64_t vtable_calls = 0;  /* Exported for uvbus.c */
+
 /* Find server by name in registry */
 static sameloop_server_t* find_server(const char* name) {
     sameloop_server_t* server = server_registry;
@@ -192,9 +200,11 @@ static void sameloop_disconnect(void* impl_ptr) {
     transport->is_connected = 0;
 }
 
-/* Send - from client to server */
-static int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
+/* Send - from client to server (inline dispatch for performance) */
+int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    
+    fast_path_calls++;  /* Count fast path calls */
     
     /* Fast path - assume client send (most common case) */
     if (!transport->is_connected) {
@@ -243,6 +253,18 @@ static const uvbus_transport_vtable_t sameloop_vtable = {
     .broadcast = sameloop_broadcast,
     .free = sameloop_free
 };
+
+/* Setup direct function pointers for inline dispatch */
+static void setup_direct_dispatch() {
+    sameloop_send_direct = sameloop_send;
+    sameloop_send_to_direct = sameloop_send_to;
+}
+
+/* Get performance statistics */
+void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable) {
+    if (fast) *fast = fast_path_calls;
+    if (vtable) *vtable = vtable_calls;
+}
 
 /* ========================================
  * Transport Factory

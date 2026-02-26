@@ -22,6 +22,9 @@ extern uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, u
 extern uvbus_transport_t* create_udp_transport(uvbus_transport_type_t type, uv_loop_t* loop);
 extern uvbus_transport_t* create_sameloop_transport(uvbus_transport_type_t type, uv_loop_t* loop);
 
+/* Fast path function for SAMELOOP transport */
+extern int sameloop_send(void* impl, const uint8_t* data, size_t size);
+
 /* Implementation */
 
 uvbus_config_t* uvbus_config_new(void) {
@@ -155,6 +158,11 @@ uvbus_t* uvbus_server_new(uvbus_config_t* config) {
     bus->transport->error_cb = config->error_cb;
     bus->transport->callback_ctx = config->callback_ctx;
     
+    /* Setup fast path for SAMELOOP transport */
+    if (config->transport == UVBUS_TRANSPORT_SAMELOOP) {
+        bus->fast_send = sameloop_send;
+    }
+    
     return bus;
 }
 
@@ -194,6 +202,11 @@ uvbus_t* uvbus_client_new(uvbus_config_t* config) {
     bus->transport->close_cb = config->close_cb;
     bus->transport->error_cb = config->error_cb;
     bus->transport->callback_ctx = config->callback_ctx;
+    
+    /* Setup fast path for SAMELOOP transport */
+    if (config->transport == UVBUS_TRANSPORT_SAMELOOP) {
+        bus->fast_send = sameloop_send;
+    }
     
     return bus;
 }
@@ -235,6 +248,12 @@ uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
 
+    /* Fast path for SAMELOOP transport (bypasses vtable) */
+    if (bus->fast_send) {
+        return bus->fast_send(bus->transport, data, size);
+    }
+
+    /* Standard vtable dispatch */
     if (bus->transport->vtable->send) {
         return bus->transport->vtable->send(bus->transport, data, size);
     }

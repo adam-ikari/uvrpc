@@ -189,6 +189,9 @@ struct uvbus {
     uvbus_config_t config;
     uvbus_transport_t* transport;
     int is_active;
+    
+    /* Fast path function pointer for SAMELOOP transport (bypasses vtable) */
+    int (*fast_send)(void* impl, const uint8_t* data, size_t size);
 };
 
 /* Core API */
@@ -356,6 +359,13 @@ uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, uv_loop_
  * Free UVBus
  */
 void uvbus_free(uvbus_t* bus);
+
+/**
+ * Get SAMELOOP performance statistics (for debugging)
+ * @param fast Pointer to store fast path call count
+ * @param vtable Pointer to store vtable call count
+ */
+void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable);
 
 #ifdef __cplusplus
 }

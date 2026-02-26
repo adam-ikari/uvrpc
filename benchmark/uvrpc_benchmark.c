@@ -853,6 +853,24 @@ int main(int argc, char* argv[]) {
     /* Run benchmark suite */
     int result = benchmark_suite_run(suite);
     
+    /* Print SAMELOOP fast path statistics if applicable */
+    if (suite->transport == TRANSPORT_SAMELOOP) {
+        extern void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable);
+        uint64_t fast = 0, vtable = 0;
+        uvbus_sameloop_get_stats(&fast, &vtable);
+        printf("\n[SAMELOOP Statistics]\n");
+        printf("  Fast path calls: %lu\n", fast);
+        printf("  Vtable calls: %lu\n", vtable);
+        if (vtable == 0 && fast > 0) {
+            printf("  ✓ Fast path optimization ACTIVE (100%% bypass)\n");
+        } else if (fast > 0) {
+            double bypass_rate = (double)fast / (fast + vtable) * 100.0;
+            printf("  ⚠ Fast path bypass rate: %.1f%%\n", bypass_rate);
+        } else {
+            printf("  ! No calls recorded (stats may be reset)\n");
+        }
+    }
+    
     benchmark_suite_free(suite);
     return result;
 }
