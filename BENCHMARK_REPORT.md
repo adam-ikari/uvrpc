@@ -1,5 +1,5 @@
 # UVRPC Benchmark Report
-# Generated: Thu Feb 26 10:56:23 2026
+# Generated: Thu Feb 26 10:57:42 2026
 
 
 ## Configuration
@@ -11,4 +11,4 @@
 
 | Transport | Clients | Requests | Throughput (ops/s) | Avg Latency (ms) | P95 Latency (ms) | P99 Latency (ms) | Status |
 |-----------|---------|----------|-------------------|------------------|------------------|------------------|--------|
-| SAMELOOP  | 1       | 10000    | 4113160           | 0.000            | 0.000            | 0.000            | PASS   |
+| SAMELOOP  | 1       | 10000    | 297543            | 0.003            | 0.003            | 0.003            | PASS   |

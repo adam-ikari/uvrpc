@@ -204,15 +204,14 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
     int32_t a = benchmark_AddRequest_a(req_data);
     int32_t b = benchmark_AddRequest_b(req_data);
     
-    /* Simple random number generation to prevent compiler optimization */
-    /* This ensures the calculation cannot be optimized away */
-    volatile int32_t result = a + b;
-    (void)result; /* Use volatile to prevent optimization */
+    /* Random numbers prevent compiler optimization */
+    /* No need for volatile since each request has different values */
+    int32_t result = a + b;
     
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
     benchmark_AddResponse_start_as_root(&builder);
-    benchmark_AddResponse_result_add(&builder, a + b);
+    benchmark_AddResponse_result_add(&builder, result);
     benchmark_AddResponse_end_as_root(&builder);
     
     size_t size;
