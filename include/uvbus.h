@@ -179,6 +179,8 @@ struct uvbus_transport {
         void* ipc_client;
         void* inproc_server;
         void* inproc_client;
+        void* sameloop_server;
+        void* sameloop_client;
     } impl;
 };
 

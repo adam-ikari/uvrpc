@@ -97,29 +97,25 @@ static void start_pump_timer(uvrpc_client_t* client) {
 /* Transport connect callback */
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
-
-    fprintf(stderr, "[CLIENT] Connection callback: status=%d, client=%p\n", status, client);
-
+    
     client->is_connected = (status == 0);
-
+    
     /* Set bus->is_active for synchronous transports (INPROC, SAMELOOP) */
     if (client->uvbus && status == 0) {
         client->uvbus->is_active = 1;
     }
-
+    
     /* Call user's connect callback if provided */
     if (client->user_connect_callback) {
-        fprintf(stderr, "[CLIENT] Calling user connect callback\n");
         uvrpc_connect_callback_t cb = client->user_connect_callback;
         client->user_connect_callback = NULL;
         cb(status, client->user_connect_ctx);
     }
-
+    
     if (status != 0) {
         UVRPC_ERROR("Client connection failed: %d", status);
     }
 }
-
 /* Transport receive callback */
 static void client_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     (void)client_ctx;  /* Not used for client mode */
