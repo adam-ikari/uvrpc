@@ -40,86 +40,6 @@ typedef struct sameloop_client {
 /* Global server registry (no locks needed - same event loop) */
 static sameloop_server_t* g_server = NULL;
 
-/* Async request wrapper - prevents stack overflow */
-typedef struct async_request {
-    uint8_t* data;
-    size_t size;
-    void* client_ctx;
-    void* server_ctx;
-    uvbus_recv_callback_t callback;
-    uv_async_t async_handle;
-} async_request_t;
-
-/* ========================================
- * Async Callback Management
- * ======================================== */
-
-/* Async callback wrapper - called from event loop */
-static void async_callback_wrapper(uv_async_t* handle) {
-    async_request_t* req = (async_request_t*)handle->data;
-    
-    /* Call the actual callback */
-    if (req && req->callback) {
-        req->callback(req->data, req->size, req->client_ctx, req->server_ctx);
-    }
-    
-    /* Cleanup */
-    if (req) {
-        if (req->data) {
-            uvrpc_free(req->data);
-        }
-        uv_close((uv_handle_t*)&req->async_handle, NULL);
-        uvrpc_free(req);
-    }
-}
-
-/* Send data via async callback */
-static int send_async(uv_loop_t* loop, const uint8_t* data, size_t size,
-                      void* client_ctx, void* server_ctx, 
-                      uvbus_recv_callback_t callback) {
-    if (!loop || !data || !callback) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
-    
-    /* Allocate async request */
-    async_request_t* req = (async_request_t*)uvrpc_alloc(sizeof(async_request_t));
-    if (!req) {
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    
-    /* Copy data (could use zero-copy with reference counting, but simpler this way) */
-    req->data = (uint8_t*)uvrpc_alloc(size);
-    if (!req->data) {
-        uvrpc_free(req);
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    memcpy(req->data, data, size);
-    
-    req->size = size;
-    req->client_ctx = client_ctx;
-    req->server_ctx = server_ctx;
-    req->callback = callback;
-    
-    /* Initialize async handle */
-    if (uv_async_init(loop, &req->async_handle, async_callback_wrapper) != 0) {
-        uvrpc_free(req->data);
-        uvrpc_free(req);
-        return UVBUS_ERROR;
-    }
-    
-    req->async_handle.data = req;
-    
-    /* Send async signal */
-    if (uv_async_send(&req->async_handle) != 0) {
-        uv_close((uv_handle_t*)&req->async_handle, NULL);
-        uvrpc_free(req->data);
-        uvrpc_free(req);
-        return UVBUS_ERROR;
-    }
-    
-    return UVBUS_OK;
-}
-
 /* ========================================
  * SAMELOOP Transport Implementation
  * ======================================== */
@@ -242,16 +162,19 @@ static int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
         /* Server broadcast to all clients (not implemented for SAMELOOP) */
         return UVBUS_ERROR_INVALID_PARAM;
     } else {
-        /* Client send to server */
+        /* Client send to server - direct callback like INPROC */
         sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
         if (!client || !client->server) {
             return UVBUS_ERROR_NOT_CONNECTED;
         }
         
-        /* Send via async callback to server */
-        return send_async(client->server->loop, data, size, 
-                          client, client->server->callback_ctx, 
-                          client->server->recv_cb);
+        /* Direct callback - no async overhead */
+        if (client->server->recv_cb) {
+            void* server_ctx = client->server->callback_ctx;
+            client->server->recv_cb(data, size, client, server_ctx);
+        }
+        
+        return UVBUS_OK;
     }
 }
 
@@ -268,10 +191,12 @@ static int sameloop_send_to(void* impl_ptr, const uint8_t* data, size_t size, vo
         return UVBUS_ERROR_INVALID_PARAM;
     }
     
-    /* Send via async callback to client */
-    return send_async(transport->loop, data, size, 
-                      client, client->callback_ctx, 
-                      client->recv_cb);
+    /* Direct callback - no async overhead */
+    if (client->recv_cb) {
+        client->recv_cb(data, size, client, client->callback_ctx);
+    }
+    
+    return UVBUS_OK;
 }
 
 /* Broadcast - not implemented for SAMELOOP */
