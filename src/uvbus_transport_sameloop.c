@@ -140,20 +140,21 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_NOT_FOUND;
     }
     
-    /* Create client with heap allocation (required for multiple instances) */
-    sameloop_client_t* client = (sameloop_client_t*)uvrpc_alloc(sizeof(sameloop_client_t));
-    if (!client) {
+    /* Allocate client inline in transport impl to avoid separate heap allocation */
+    /* This reduces memory fragmentation and allocation overhead */
+    transport->impl.sameloop_client = (sameloop_client_t*)uvrpc_alloc(sizeof(sameloop_client_t));
+    if (!transport->impl.sameloop_client) {
         return UVBUS_ERROR_NO_MEMORY;
     }
     
     /* Inline server callbacks to avoid pointer indirection */
+    sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
     client->server_recv_cb = server->recv_cb;
     client->server_callback_ctx = server->callback_ctx;
     
     client->recv_cb = transport->recv_cb;
     client->callback_ctx = transport->callback_ctx;
     
-    transport->impl.sameloop_client = client;
     transport->is_connected = 1;
     
     /* Set bus as active */
@@ -194,29 +195,17 @@ static void sameloop_disconnect(void* impl_ptr) {
 /* Send - from client to server */
 static int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
-    if (!transport || !data) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
     
+    /* Fast path - assume client send (most common case) */
     if (!transport->is_connected) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
     
-    if (transport->is_server) {
-        /* Server broadcast to all clients (not implemented for SAMELOOP) */
-        return UVBUS_ERROR_INVALID_PARAM;
-    } else {
-        /* Client send to server - use inlined callbacks */
-        sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
-        if (!client || !client->server_recv_cb) {
-            return UVBUS_ERROR_NOT_CONNECTED;
-        }
-        
-        /* Direct callback with no pointer indirection */
-        client->server_recv_cb(data, size, client, client->server_callback_ctx);
-        
-        return UVBUS_OK;
-    }
+    /* Direct callback - minimize indirection */
+    sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
+    client->server_recv_cb(data, size, client, client->server_callback_ctx);
+    
+    return UVBUS_OK;
 }
 
 /* Send to specific client - from server to client */
@@ -224,18 +213,8 @@ static int sameloop_send_to(void* impl_ptr, const uint8_t* data, size_t size, vo
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     sameloop_client_t* client = (sameloop_client_t*)target;
     
-    if (!transport || !data || !client) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
-    
-    if (!transport->is_server) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
-    
-    /* Direct callback - no async overhead */
-    if (client->recv_cb) {
-        client->recv_cb(data, size, client, client->callback_ctx);
-    }
+    /* Direct callback - minimize overhead */
+    client->recv_cb(data, size, client, client->callback_ctx);
     
     return UVBUS_OK;
 }
