@@ -39,8 +39,9 @@ typedef struct sameloop_client {
     void* callback_ctx;
 } sameloop_client_t;
 
-/* Global server registry (no locks needed - same event loop) */
+/* Global server registry and client (single client for SAMELOOP) */
 static sameloop_server_t* g_server = NULL;
+static sameloop_client_t g_client;  /* Static allocation, no heap allocation */
 
 /* ========================================
  * SAMELOOP Transport Implementation
@@ -99,20 +100,15 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_NOT_FOUND;
     }
     
-    /* Create client */
-    sameloop_client_t* client = (sameloop_client_t*)uvrpc_alloc(sizeof(sameloop_client_t));
-    if (!client) {
-        return UVBUS_ERROR_NO_MEMORY;
-    }
-    
+    /* Use static client - no heap allocation */
     /* Inline server callbacks to avoid pointer indirection */
-    client->server_recv_cb = g_server->recv_cb;
-    client->server_callback_ctx = g_server->callback_ctx;
+    g_client.server_recv_cb = g_server->recv_cb;
+    g_client.server_callback_ctx = g_server->callback_ctx;
     
-    client->recv_cb = transport->recv_cb;
-    client->callback_ctx = transport->callback_ctx;
+    g_client.recv_cb = transport->recv_cb;
+    g_client.callback_ctx = transport->callback_ctx;
     
-    transport->impl.sameloop_client = client;
+    transport->impl.sameloop_client = &g_client;
     transport->is_connected = 1;
     
     /* Set bus as active */
@@ -135,20 +131,8 @@ static void sameloop_disconnect(void* impl_ptr) {
         return;
     }
     
-    if (transport->is_server && transport->impl.sameloop_server) {
-        sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
-        if ((void*)server == (void*)g_server) {
-            g_server = NULL;
-        }
-        uvrpc_free(server->name);
-        uvrpc_free(server);
-        transport->impl.sameloop_server = NULL;
-    } else if (!transport->is_server && transport->impl.sameloop_client) {
-        sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
-        uvrpc_free(client);
-        transport->impl.sameloop_client = NULL;
-    }
-    
+    /* No need to free client - it's static */
+    transport->impl.sameloop_client = NULL;
     transport->is_connected = 0;
 }
 
