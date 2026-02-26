@@ -196,14 +196,29 @@ typedef struct {
     uv_loop_t* loop;
 } benchmark_ctx_t;
 
-/* Handler for add operation */
+/* Handler for add operation with computation load */
 void add_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
     
     benchmark_AddRequest_table_t req_data = benchmark_AddRequest_as_root(req->params);
     int32_t a = benchmark_AddRequest_a(req_data);
     int32_t b = benchmark_AddRequest_b(req_data);
-    int32_t result = a + b;
+    
+    /* Add computation load to prevent compiler optimization */
+    /* Simulate real-world computation with multiple operations */
+    volatile int32_t result = a + b;
+    
+    /* Perform some random computation based on inputs */
+    /* This ensures the compiler cannot optimize away the calculation */
+    uint32_t seed = (uint32_t)(a * b + result);
+    for (int i = 0; i < 10; i++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        result += (int32_t)(seed % 100);
+        result = (result * 7) / 5;  /* Simulate more complex math */
+    }
+    
+    /* Final result is still a + b, but with computation overhead */
+    result = a + b;
     
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
@@ -465,15 +480,23 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         printf("[%s] Running %d requests...\n", result->test_name, num_requests);
     }
     
-    /* Send requests */
+    /* Send requests with random values to prevent compiler optimization */
     int requests_per_client = num_requests / num_clients;
+    uint32_t rng_state = 12345;  /* Simple RNG state */
+    
     for (int i = 0; i < requests_per_client; i++) {
         for (int j = 0; j < num_clients; j++) {
+            /* Generate random numbers for each request */
+            rng_state = (rng_state * 1103515245 + 12345) & 0x7fffffff;
+            int32_t a = (int32_t)(rng_state % 1000);
+            rng_state = (rng_state * 1103515245 + 12345) & 0x7fffffff;
+            int32_t b = (int32_t)(rng_state % 1000);
+            
             flatcc_builder_t builder;
             flatcc_builder_init(&builder);
             benchmark_AddRequest_start_as_root(&builder);
-            benchmark_AddRequest_a_add(&builder, i);
-            benchmark_AddRequest_b_add(&builder, 1);
+            benchmark_AddRequest_a_add(&builder, a);
+            benchmark_AddRequest_b_add(&builder, b);
             benchmark_AddRequest_end_as_root(&builder);
             
             size_t size;
