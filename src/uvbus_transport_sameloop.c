@@ -162,11 +162,6 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
         transport->parent_bus->is_active = 1;
     }
     
-    /* Call connection callback for server */
-    if (transport->connect_cb) {
-        transport->connect_cb(UVBUS_OK, transport->callback_ctx);
-    }
-    
     return UVBUS_OK;
 }
 
@@ -195,8 +190,15 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     transport->impl.sameloop_client = client;
     transport->is_connected = 1;
     
-    /* Connection is synchronous for SAMELOOP, but we call callback */
-    /* The callback will be called by the RPC layer after connect returns */
+    /* Set bus as active */
+    if (transport->parent_bus) {
+        transport->parent_bus->is_active = 1;
+    }
+    
+    /* Call connection callback */
+    if (transport->connect_cb) {
+        transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+    }
     
     return UVBUS_OK;
 }

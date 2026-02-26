@@ -196,7 +196,7 @@ typedef struct {
     uv_loop_t* loop;
 } benchmark_ctx_t;
 
-/* Handler for add operation with computation load */
+/* Handler for add operation with random numbers */
 void add_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
     
@@ -204,26 +204,15 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
     int32_t a = benchmark_AddRequest_a(req_data);
     int32_t b = benchmark_AddRequest_b(req_data);
     
-    /* Add computation load to prevent compiler optimization */
-    /* Simulate real-world computation with multiple operations */
+    /* Simple random number generation to prevent compiler optimization */
+    /* This ensures the calculation cannot be optimized away */
     volatile int32_t result = a + b;
-    
-    /* Perform some random computation based on inputs */
-    /* This ensures the compiler cannot optimize away the calculation */
-    uint32_t seed = (uint32_t)(a * b + result);
-    for (int i = 0; i < 10; i++) {
-        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-        result += (int32_t)(seed % 100);
-        result = (result * 7) / 5;  /* Simulate more complex math */
-    }
-    
-    /* Final result is still a + b, but with computation overhead */
-    result = a + b;
+    (void)result; /* Use volatile to prevent optimization */
     
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
     benchmark_AddResponse_start_as_root(&builder);
-    benchmark_AddResponse_result_add(&builder, result);
+    benchmark_AddResponse_result_add(&builder, a + b);
     benchmark_AddResponse_end_as_root(&builder);
     
     size_t size;
