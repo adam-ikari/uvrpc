@@ -102,6 +102,11 @@ static void client_connect_callback(int status, void* ctx) {
 
     client->is_connected = (status == 0);
 
+    /* Set bus->is_active for synchronous transports (INPROC, SAMELOOP) */
+    if (client->uvbus && status == 0) {
+        client->uvbus->is_active = 1;
+    }
+
     /* Call user's connect callback if provided */
     if (client->user_connect_callback) {
         fprintf(stderr, "[CLIENT] Calling user connect callback\n");
