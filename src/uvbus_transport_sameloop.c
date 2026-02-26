@@ -30,9 +30,11 @@ typedef struct sameloop_server {
     uv_loop_t* loop;
 } sameloop_server_t;
 
-/* Client endpoint */
+/* Client endpoint - optimized with direct callback pointers */
 typedef struct sameloop_client {
-    sameloop_server_t* server;
+    /* Direct pointers to avoid indirection */
+    uvbus_recv_callback_t server_recv_cb;  /* Inlined from server */
+    void* server_callback_ctx;              /* Inlined from server */
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
 } sameloop_client_t;
@@ -103,7 +105,10 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_NO_MEMORY;
     }
     
-    client->server = g_server;
+    /* Inline server callbacks to avoid pointer indirection */
+    client->server_recv_cb = g_server->recv_cb;
+    client->server_callback_ctx = g_server->callback_ctx;
+    
     client->recv_cb = transport->recv_cb;
     client->callback_ctx = transport->callback_ctx;
     
@@ -162,17 +167,14 @@ static int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
         /* Server broadcast to all clients (not implemented for SAMELOOP) */
         return UVBUS_ERROR_INVALID_PARAM;
     } else {
-        /* Client send to server - direct callback like INPROC */
+        /* Client send to server - use inlined callbacks */
         sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
-        if (!client || !client->server) {
+        if (!client || !client->server_recv_cb) {
             return UVBUS_ERROR_NOT_CONNECTED;
         }
         
-        /* Direct callback - no async overhead */
-        if (client->server->recv_cb) {
-            void* server_ctx = client->server->callback_ctx;
-            client->server->recv_cb(data, size, client, server_ctx);
-        }
+        /* Direct callback with no pointer indirection */
+        client->server_recv_cb(data, size, client, client->server_callback_ctx);
         
         return UVBUS_OK;
     }
