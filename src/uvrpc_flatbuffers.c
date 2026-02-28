@@ -24,7 +24,7 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
         params_ref = flatbuffers_uint8_vec_create(&builder, params, params_size);
     }
 
-    /* type: 0 = request, 1 = response, 2 = stream, -1 = error */
+    /* type: 0 = request, 1 = response, 2 = stream, 3 = notification, 4 = error */
     uint8_t type = 0;
 
     uvrpc_RpcFrame_start_as_root(&builder);
@@ -56,7 +56,7 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
         result_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
     }
 
-    /* type: 0 = request, 1 = response, 2 = stream, -1 = error */
+    /* type: 0 = request, 1 = response, 2 = stream, 3 = notification, 4 = error */
     uint8_t type = 1;
 
     uvrpc_RpcFrame_start_as_root(&builder);
@@ -87,7 +87,7 @@ int uvrpc_encode_stream(uint32_t msgid, const uint8_t* chunk, size_t chunk_size,
         chunk_ref = flatbuffers_uint8_vec_create(&builder, chunk, chunk_size);
     }
 
-    /* type: 0 = request, 1 = response, 2 = stream, -1 = error, 4 = stream */
+    /* type: 0 = request, 1 = response, 2 = stream, 3 = notification, 4 = error, 4 = stream */
     uint8_t type = 4;
 
     uvrpc_RpcFrame_start_as_root(&builder);
@@ -223,8 +223,8 @@ int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* error_mes
     flatbuffers_uint8_vec_ref_t params_ref = flatbuffers_uint8_vec_create(&builder, error_data, error_data_size);
     uvrpc_free(error_data);
 
-    /* type: 0 = request, 1 = response, 2 = stream, -1 = error */
-    int8_t type = -1;
+    /* type: 0 = request, 1 = response, 2 = stream, 3 = notification, 4 = error */
+    uint8_t type = 4;
 
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, type);

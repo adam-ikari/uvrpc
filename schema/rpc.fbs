@@ -3,12 +3,12 @@
 
 namespace uvrpc;
 
-enum RpcFrameType:int8 {
+enum RpcFrameType:uint8 {
   Unknown = 0,
   Request = 1,
   Response = 2,
-  Error = -1,
-  Stream = 3
+  Stream = 3,
+  Error = 4
 }
 
 // Frame wrapper
