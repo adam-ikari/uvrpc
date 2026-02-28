@@ -163,3 +163,19 @@ jobs:
         cd benchmark
         ./simple_stress_test.sh || true
         ./test_all_transports.sh || true
+    
+    - name: Run fork/exec benchmark tests
+      run: |
+        cd benchmark
+        echo "Testing IPC transport with fork/exec"
+        timeout 60 ./dist/bin/uvrpc_benchmark --transport ipc --requests 1000 --warmup 100 || true
+        echo "Testing TCP transport with fork/exec"
+        timeout 60 ./dist/bin/uvrpc_benchmark --transport tcp --requests 1000 --warmup 100 || true
+        echo "Testing UDP transport with fork/exec"
+        timeout 90 ./dist/bin/uvrpc_benchmark --transport udp --requests 1000 --warmup 100 || true
+    
+    - name: Check for zombie processes
+      if: always()
+      run: |
+        pkill -9 uvrpc_benchmark || true
+        ps aux | grep uvrpc_benchmark || echo "No zombie processes"
