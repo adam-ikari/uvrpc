@@ -39,6 +39,9 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <uv.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 /* Configuration Constants */
 #define DEFAULT_REQUESTS 10000
@@ -194,6 +197,7 @@ typedef struct {
     int target_requests;
     int num_clients;
     uv_loop_t* loop;
+    uv_async_t* async_handle;  /* Async handle for connection completion */
 } benchmark_ctx_t;
 
 /* Handler for add operation with random numbers */
@@ -221,31 +225,53 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
     flatcc_builder_clear(&builder);
 }
 
+/* Async callback to handle connection completion */
+void on_async_connection_complete(uv_async_t* handle) {
+    benchmark_ctx_t* bench = (benchmark_ctx_t*)handle->data;
+    fflush(stdout);
+    
+    /* Set the flag to notify the main loop */
+    __sync_bool_compare_and_swap(&bench->all_connected, 0, 1);
+    fflush(stdout);
+    
+    /* Stop the event loop so uv_run returns */
+    uv_stop(bench->loop);
+}
+
 /* Connection callback */
 void on_connect(int status, void* ctx) {
     benchmark_ctx_t* bench = (benchmark_ctx_t*)ctx;
+    
     
     if (!bench) {
         return;
     }
     
     if (status == UVRPC_OK) {
-        __sync_add_and_fetch(&bench->connected_count, 1);
+        int new_count = __sync_add_and_fetch(&bench->connected_count, 1);
     } else {
-        __sync_add_and_fetch(&bench->failed_connections, 1);
+        int failed = __sync_add_and_fetch(&bench->failed_connections, 1);
     }
     
     /* Check if all clients are connected */
     if (bench->connected_count + bench->failed_connections >= bench->num_clients) {
-        __sync_bool_compare_and_swap(&bench->all_connected, 0, 1);
+        fflush(stdout);
+        /* Send async signal to notify event loop */
+        if (bench->async_handle) {
+            uv_async_send(bench->async_handle);
+        }
     }
+    fflush(stdout);
 }
 
 /* Response callback */
 void on_response(uvrpc_response_t* resp, void* ctx) {
     benchmark_ctx_t* bench = (benchmark_ctx_t*)ctx;
     
+    fflush(stdout);
+    
     if (!bench || !bench->stats || !resp) {
+        fflush(stdout);
         return;
     }
     
@@ -254,13 +280,24 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
         int32_t result = benchmark_AddResponse_result(resp_data);
         (void)result;
         __sync_add_and_fetch(&bench->stats->successful_requests, 1);
+        fflush(stdout);
     } else {
         __sync_add_and_fetch(&bench->stats->failed_requests, 1);
+        fflush(stdout);
     }
     
     __sync_add_and_fetch(&bench->stats->total_requests, 1);
     
-    if (bench->stats->total_requests >= (uint64_t)bench->target_requests) {
+           bench->stats->total_requests, bench->target_requests,
+    fflush(stdout);
+    
+    /* Check if we've received all expected responses (successful + failed) */
+    uint64_t received_responses = bench->stats->successful_requests + bench->stats->failed_requests;
+    fflush(stdout);
+    
+    /* Use response count to determine completion */
+    if (received_responses >= (uint64_t)bench->target_requests) {
+        fflush(stdout);
         __sync_bool_compare_and_swap(&bench->completed, 0, 1);
         clock_gettime(CLOCK_MONOTONIC, &bench->stats->end_time);
     }
@@ -309,6 +346,10 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
                result->test_name, result->transport, num_clients, num_requests);
     }
     
+    /* Check if transport requires fork (TCP, UDP, IPC need separate processes) */
+    int needs_fork = (transport == TRANSPORT_TCP || transport == TRANSPORT_UDP || transport == TRANSPORT_IPC);
+    pid_t server_pid = -1;
+    
     uv_loop_t loop;
     if (uv_loop_init(&loop) != 0) {
         fprintf(stderr, "Failed to init loop\n");
@@ -336,106 +377,247 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         return -1;
     }
     
-    if (uvrpc_server_start(server) != UVRPC_OK) {
-        fprintf(stderr, "Failed to start server\n");
-        uvrpc_server_free(server);
-        uvrpc_config_free(server_config);
-        uv_loop_close(&loop);
-        return -1;
-    }
-    
-    /* Wait for server to be ready */
-    for (int i = 0; i < 20; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
-    
-    printf("[%s] Server started on %s\n", result->test_name, address);
-    
-    /* Create clients */
-    uvrpc_client_t** clients = calloc(num_clients, sizeof(uvrpc_client_t*));
-    if (!clients) {
-        fprintf(stderr, "Failed to allocate clients array\n");
-        uvrpc_server_free(server);
-        uvrpc_config_free(server_config);
-        uv_loop_close(&loop);
-        return -1;
-    }
-    
-    benchmark_ctx_t* bench_ctx = (benchmark_ctx_t*)malloc(sizeof(benchmark_ctx_t));
+    if (!needs_fork) {
+            /* INPROC and SAMELOOP: run server in same process */
+            if (uvrpc_server_start(server) != UVRPC_OK) {
+                fprintf(stderr, "Failed to start server\n");
+                uvrpc_server_free(server);
+                uvrpc_config_free(server_config);
+                uv_loop_close(&loop);
+                return -1;
+            }
+            
+            /* Wait for server to be ready */
+            for (int i = 0; i < 20; i++) {
+                uv_run(&loop, UV_RUN_DEFAULT);
+            }
+            
+            printf("[%s] Server started on %s\n", result->test_name, address);
+        } else {
+                /* TCP/UDP/IPC: use exec to start independent server process */
+                int server_ready_pipe[2];
+                if (pipe(server_ready_pipe) < 0) {
+                    fprintf(stderr, "Failed to create server ready pipe\n");
+                    uvrpc_server_free(server);
+                    uvrpc_config_free(server_config);
+                    uv_loop_close(&loop);
+                    return -1;
+                }
+                
+                server_pid = fork();
+                if (server_pid < 0) {
+                    fprintf(stderr, "Failed to fork server process\n");
+                    close(server_ready_pipe[0]);
+                    close(server_ready_pipe[1]);
+                    uvrpc_server_free(server);
+                    uvrpc_config_free(server_config);
+                    uv_loop_close(&loop);
+                    return -1;
+                }
+                
+                if (server_pid == 0) {
+                    /* Child process: exec server binary */
+                    close(server_ready_pipe[0]);
+                    
+                    /* Redirect pipe write end to stdout for ready notification */
+                    dup2(server_ready_pipe[1], STDOUT_FILENO);
+                    close(server_ready_pipe[1]);
+                    
+                    /* Create a simple server using the same binary with --server flag */
+                    char transport_str[32];
+                    snprintf(transport_str, sizeof(transport_str), "%d", transport);
+                    
+                    /* Execute this binary in server mode */
+                    execl("./dist/bin/uvrpc_benchmark", "./dist/bin/uvrpc_benchmark", "--server", 
+                           "--transport", transport_str, "--address", address, (char*)NULL);
+                    
+                    /* If exec fails, exit with error */
+                    exit(1);
+                }
+                
+                /* Parent process: wait for server to be ready */
+                close(server_ready_pipe[1]);
+                char ready_buf[256];
+                ssize_t ready_len = 0;
+                size_t total_read = 0;
+                
+                /* Read until newline or buffer full */
+                while (total_read < sizeof(ready_buf) - 1) {
+                    ssize_t n = read(server_ready_pipe[0], ready_buf + total_read, sizeof(ready_buf) - total_read - 1);
+                    if (n <= 0) {
+                        break;
+                    }
+                    total_read += n;
+                    ready_buf[total_read] = '\0';
+                    
+                    /* Check if we got a complete line */
+                    if (strchr(ready_buf, '\n') != NULL) {
+                        break;
+                    }
+                }
+                close(server_ready_pipe[0]);
+                
+                if (total_read <= 0) {
+                    fprintf(stderr, "Failed to receive server ready notification\n");
+                    kill(server_pid, SIGKILL);
+                    waitpid(server_pid, NULL, 0);
+                    return -1;
+                }
+                
+                /* Check if server is ready (look for "ready" in output) */
+                if (strstr(ready_buf, "ready") == NULL) {
+                    fprintf(stderr, "Server did not send ready signal. Received: %s\n", ready_buf);
+                    kill(server_pid, SIGKILL);
+                    waitpid(server_pid, NULL, 0);
+                    return -1;
+                }
+                
+                printf("[%s] Server started on %s (pid=%d)\n", result->test_name, address, server_pid);
+                
+                /* Free server config - not needed in parent process */
+                uvrpc_config_free(server_config);
+                server_config = NULL;  /* Important: set to NULL to avoid double-free */
+                server = NULL;
+            }/* Create benchmark context */
+    benchmark_ctx_t* bench_ctx = calloc(1, sizeof(benchmark_ctx_t));
     if (!bench_ctx) {
         fprintf(stderr, "Failed to allocate benchmark context\n");
         uvrpc_server_free(server);
         uvrpc_config_free(server_config);
         uv_loop_close(&loop);
-        free(clients);
+        return -1;
+    }
+    bench_ctx->loop = &loop;
+    bench_ctx->num_clients = num_clients;
+    bench_ctx->target_requests = num_requests;
+    bench_ctx->latency_tracker = latency_tracker_create(num_requests);
+    bench_ctx->stats = calloc(1, sizeof(benchmark_stats_t));
+    
+    /* Create async handle for connection completion notification */
+    bench_ctx->async_handle = calloc(1, sizeof(uv_async_t));
+    if (!bench_ctx->async_handle) {
+        fprintf(stderr, "Failed to allocate async handle\n");
+        if (bench_ctx->latency_tracker) latency_tracker_free(bench_ctx->latency_tracker);
+        if (bench_ctx->stats) free(bench_ctx->stats);
+        free(bench_ctx);
+        uvrpc_server_free(server);
+        uvrpc_config_free(server_config);
+        uv_loop_close(&loop);
+        return -1;
+    }
+    uv_async_init(&loop, bench_ctx->async_handle, on_async_connection_complete);
+    bench_ctx->async_handle->data = bench_ctx;
+    
+    if (!bench_ctx->latency_tracker || !bench_ctx->stats) {
+        fprintf(stderr, "Failed to allocate benchmark context fields\n");
+        if (bench_ctx->latency_tracker) latency_tracker_free(bench_ctx->latency_tracker);
+        if (bench_ctx->stats) free(bench_ctx->stats);
+        if (bench_ctx->async_handle) uv_close((uv_handle_t*)bench_ctx->async_handle, NULL);
+        free(bench_ctx->async_handle);
+        free(bench_ctx);
+        uvrpc_server_free(server);
+        uvrpc_config_free(server_config);
+        uv_loop_close(&loop);
         return -1;
     }
     
-    memset(bench_ctx, 0, sizeof(benchmark_ctx_t));
-    bench_ctx->stats = &result->stats;
-    bench_ctx->target_requests = num_requests;
-    bench_ctx->loop = &loop;
-    bench_ctx->num_clients = num_clients;
-    bench_ctx->latency_tracker = latency_tracker_create(10000);
-    
-    printf("[%s] Creating %d client(s)...\n", result->test_name, num_clients);
+    /* Create clients */
+    printf("[%s] Creating %d clients...\n", result->test_name, num_clients);
+    uvrpc_client_t** clients = calloc(num_clients, sizeof(uvrpc_client_t*));
+    if (!clients) {
+        fprintf(stderr, "Failed to allocate clients array\n");
+        latency_tracker_free(bench_ctx->latency_tracker);
+        free(bench_ctx->stats);
+        free(bench_ctx);
+        uvrpc_server_free(server);
+        uvrpc_config_free(server_config);
+        uv_loop_close(&loop);
+        return -1;
+    }
     
     for (int i = 0; i < num_clients; i++) {
         uvrpc_config_t* client_config = uvrpc_config_new();
         uvrpc_config_set_loop(client_config, &loop);
         uvrpc_config_set_address(client_config, address);
+        uvrpc_config_set_transport(client_config, (uvbus_transport_type_t)transport);
         
+        printf("[%s] Creating client %d...\n", result->test_name, i);
         clients[i] = uvrpc_client_create(client_config);
         if (!clients[i]) {
             fprintf(stderr, "Failed to create client %d\n", i);
-            uvrpc_config_free(client_config);
             for (int j = 0; j < i; j++) {
                 uvrpc_client_free(clients[j]);
             }
             free(clients);
+            latency_tracker_free(bench_ctx->latency_tracker);
+            free(bench_ctx->stats);
+            free(bench_ctx);
             uvrpc_server_free(server);
             uvrpc_config_free(server_config);
             uv_loop_close(&loop);
             return -1;
         }
         
+        /* Connect client with callback to track connection status */
+        printf("[%s] Calling uvrpc_client_connect_with_callback for client %d...\n", result->test_name, i);
         if (uvrpc_client_connect_with_callback(clients[i], on_connect, bench_ctx) != UVRPC_OK) {
-            fprintf(stderr, "Failed to initiate connect for client %d\n", i);
+            fprintf(stderr, "Failed to connect client %d\n", i);
             uvrpc_client_free(clients[i]);
             for (int j = 0; j < i; j++) {
                 uvrpc_client_free(clients[j]);
             }
             free(clients);
+            latency_tracker_free(bench_ctx->latency_tracker);
+            free(bench_ctx->stats);
+            free(bench_ctx);
             uvrpc_server_free(server);
             uvrpc_config_free(server_config);
             uv_loop_close(&loop);
             return -1;
         }
+        printf("[%s] Client %d created and connecting...\n", result->test_name, i);
         
         uvrpc_config_free(client_config);
     }
+    printf("[%s] All clients created, waiting for connections...\n", result->test_name);
     
     /* Wait for all connections to complete using event loop */
-    int connect_timeout = 0;
-    while (__sync_fetch_and_add(&bench_ctx->all_connected, 0) == 0 && connect_timeout < 5000) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        connect_timeout++;
-    }
+    printf("[%s] Waiting for connections (initial count: %d)...\n", result->test_name, bench_ctx->connected_count);
+    
+    /* Run event loop with UV_RUN_DEFAULT until async callback sets all_connected */
+    /* This is the correct way to use libuv event loop */
+    uv_run(&loop, UV_RUN_DEFAULT);
+    
+    printf("[%s] DEBUG: Event loop exit, all_connected=%d, connected=%d/%d\n", 
+           result->test_name, __sync_fetch_and_add(&bench_ctx->all_connected, 0),
+           bench_ctx->connected_count, num_clients);
+    fflush(stdout);
     
     if (__sync_fetch_and_add(&bench_ctx->all_connected, 0) == 0) {
-        fprintf(stderr, "Error: Only %d/%d clients connected (timeout after %d iterations)\n", 
-                __sync_fetch_and_add(&bench_ctx->connected_count, 0), num_clients, connect_timeout);
-    } else if (verbose) {
+        fprintf(stderr, "Error: Only %d/%d clients connected\n", 
+                bench_ctx->connected_count, num_clients);
+    } else {
         printf("[%s] All %d clients connected successfully\n", result->test_name, num_clients);
+        fflush(stdout);
     }
+    
+    printf("[%s] DEBUG: Line 551, about to check warmup\n", result->test_name);
+    fflush(stdout);
     
     /* Warmup phase */
-    if (warmup > 0 && verbose) {
+    if (warmup > 0) {
         printf("[%s] Warmup: %d requests...\n", result->test_name, warmup);
+        fflush(stdout);
     }
     
+    printf("[%s] DEBUG: Line 558, about to start warmup loop\n", result->test_name);
+    fflush(stdout);
+    
     for (int i = 0; i < warmup; i++) {
+        printf("[%s] DEBUG: Warmup iteration %d\n", result->test_name, i);
+        fflush(stdout);
         for (int j = 0; j < num_clients; j++) {
+            printf("[%s] Warmup request %d, client %d\n", result->test_name, i, j);
             flatcc_builder_t builder;
             flatcc_builder_init(&builder);
             benchmark_AddRequest_start_as_root(&builder);
@@ -445,7 +627,8 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             
             size_t size;
             void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-            uvrpc_client_call(clients[j], "add", buf, size, NULL, NULL);
+            int ret = uvrpc_client_call(clients[j], "add", buf, size, NULL, NULL);
+            printf("[%s] Warmup request %d, client %d returned: %d\n", result->test_name, i, j, ret);
             free(buf);
             flatcc_builder_clear(&builder);
         }
@@ -453,13 +636,20 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     }
     
     /* Wait for warmup to complete */
+    printf("[%s] Waiting for warmup to complete...\n", result->test_name);
+    fflush(stdout);
     for (int i = 0; i < 50; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
     }
+    printf("[%s] Warmup completed\n", result->test_name);
+    fflush(stdout);
     
     /* Reset stats for actual test */
     memset(&result->stats, 0, sizeof(benchmark_stats_t));
     bench_ctx->completed = 0;
+    bench_ctx->stats->total_requests = 0;  /* Reset total_requests after warmup */
+    bench_ctx->stats->successful_requests = 0;
+    bench_ctx->stats->failed_requests = 0;
     
     /* Start timing */
     clock_gettime(CLOCK_MONOTONIC, &result->stats.start_time);
@@ -467,6 +657,8 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     if (verbose) {
         printf("[%s] Running %d requests...\n", result->test_name, num_requests);
     }
+    
+    fflush(stdout);
     
     /* Send requests with random values to prevent compiler optimization */
     int requests_per_client = num_requests / num_clients;
@@ -492,13 +684,17 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             if (test_type == TEST_ONEWAY) {
                 uvrpc_client_call_oneway(clients[j], "add", buf, size);
             } else {
+                fflush(stdout);
                 uvrpc_client_call(clients[j], "add", buf, size, on_response, bench_ctx);
+                fflush(stdout);
             }
             free(buf);
             flatcc_builder_clear(&builder);
         }
         uv_run(&loop, UV_RUN_NOWAIT);
     }
+    
+    fflush(stdout);
     
     /* Wait for completion */
     int timeout = 0;
@@ -512,9 +708,18 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         result->stats.successful_requests = num_requests;
     } else {
         /* Regular RPC: Wait for all responses */
+        fflush(stdout);
+        
         while (__sync_fetch_and_add(&bench_ctx->completed, 0) == 0 && timeout < 1000) {
             uv_run(&loop, UV_RUN_NOWAIT);
             timeout++;
+            
+            if (timeout % 100 == 0) {
+                       __sync_fetch_and_add(&bench_ctx->completed, 0),
+                       bench_ctx->stats->successful_requests,
+                       bench_ctx->stats->failed_requests,
+                fflush(stdout);
+            }
         }
         
         /* Force completion if timeout */
@@ -522,6 +727,17 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             fprintf(stderr, "Warning: Test timed out after %d iterations\n", timeout);
             clock_gettime(CLOCK_MONOTONIC, &result->stats.end_time);
             __sync_bool_compare_and_swap(&bench_ctx->completed, 0, 1);
+        }
+        
+        /* Copy stats from bench_ctx to result, but preserve timing */
+               bench_ctx->stats->successful_requests,
+               bench_ctx->stats->failed_requests,
+        fflush(stdout);
+        result->stats.successful_requests = bench_ctx->stats->successful_requests;
+        result->stats.failed_requests = bench_ctx->stats->failed_requests;
+        result->stats.total_requests = bench_ctx->stats->total_requests;
+        if (bench_ctx->stats->end_time.tv_sec != 0) {
+            result->stats.end_time = bench_ctx->stats->end_time;
         }
     }
     
@@ -563,11 +779,55 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         uvrpc_client_free(clients[i]);
     }
     free(clients);
-    uvrpc_server_free(server);
-    uvrpc_config_free(server_config);
-    uv_loop_close(&loop);
+    /* Cleanup server and config if they exist */
+    if (server) {
+        uvrpc_server_free(server);
+    }
+    if (server_config) {
+        uvrpc_config_free(server_config);
+    }
+    
+    /* Kill server process if forked */
+    fflush(stdout);
+    if (needs_fork && server_pid > 0) {
+        fflush(stdout);
+        kill(server_pid, SIGKILL);
+        int status;
+        pid_t result = waitpid(server_pid, &status, 0);
+        if (result == -1) {
+            perror("waitpid failed");
+        } else {
+            fflush(stdout);
+        }
+    }
+    
+    /* Close async handle */
+    fflush(stdout);
+    if (bench_ctx->async_handle) {
+        uv_close((uv_handle_t*)bench_ctx->async_handle, NULL);
+        free(bench_ctx->async_handle);
+    }
+    
+    /* Force stop the event loop to exit any pending callbacks */
+    fflush(stdout);
+    uv_stop(&loop);
+    
+    /* Run a few iterations to process close callbacks */
+    for (int i = 0; i < 10; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    
+    fflush(stdout);
+    int close_result = uv_loop_close(&loop);
+    if (close_result != 0) {
+        fflush(stdout);
+    }
+    
+    fflush(stdout);
     latency_tracker_free(bench_ctx->latency_tracker);
     free(bench_ctx);
+    
+    fflush(stdout);
     
     return 0;
 }
@@ -759,6 +1019,80 @@ static void print_usage(const char* program_name) {
 }
 
 int main(int argc, char* argv[]) {
+    /* Disable buffering for immediate output */
+    setbuf(stdout, NULL);
+    setbuf(stderr, NULL);
+    
+    /* Check if running in server mode */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--server") == 0) {
+            /* Server mode: start a simple server */
+            int transport = TRANSPORT_TCP;
+            const char* address = "tcp://127.0.0.1:5555";
+            
+            /* Parse arguments */
+            for (int j = i + 1; j < argc; j++) {
+                if (strcmp(argv[j], "--transport") == 0 && j + 1 < argc) {
+                    transport = atoi(argv[++j]);
+                } else if (strcmp(argv[j], "--address") == 0 && j + 1 < argc) {
+                    address = argv[++j];
+                }
+            }
+            
+            /* Start server */
+            uv_loop_t loop;
+            if (uv_loop_init(&loop) != 0) {
+                fprintf(stderr, "Server: Failed to init loop\n");
+                return 1;
+            }
+            
+            uvrpc_config_t* config = uvrpc_config_new();
+            uvrpc_config_set_loop(config, &loop);
+            uvrpc_config_set_address(config, address);
+            uvrpc_config_set_transport(config, (uvbus_transport_type_t)transport);
+            
+            uvrpc_server_t* server = uvrpc_server_create(config);
+            if (!server) {
+                fprintf(stderr, "Server: Failed to create server\n");
+                uvrpc_config_free(config);
+                uv_loop_close(&loop);
+                return 1;
+            }
+            
+            if (uvrpc_server_register(server, "add", add_handler, NULL) != UVRPC_OK) {
+                fprintf(stderr, "Server: Failed to register handler\n");
+                uvrpc_server_free(server);
+                uvrpc_config_free(config);
+                uv_loop_close(&loop);
+                return 1;
+            }
+            
+            if (uvrpc_server_start(server) != UVRPC_OK) {
+                fprintf(stderr, "Server: Failed to start server\n");
+                uvrpc_server_free(server);
+                uvrpc_config_free(config);
+                uv_loop_close(&loop);
+                return 1;
+            }
+            
+            /* Send ready notification BEFORE running event loop */
+            printf("ready\n");
+            fflush(stdout);
+            
+            /* Close stderr to avoid interfering with pipe communication */
+            fclose(stderr);
+            
+            /* Run server event loop */
+            uv_run(&loop, UV_RUN_DEFAULT);
+            
+            /* Cleanup */
+            uvrpc_server_free(server);
+            uvrpc_config_free(config);
+            uv_loop_close(&loop);
+            return 0;
+        }
+    }
+    
     benchmark_suite_t* suite = benchmark_suite_create();
     if (!suite) {
         fprintf(stderr, "Failed to create benchmark suite\n");

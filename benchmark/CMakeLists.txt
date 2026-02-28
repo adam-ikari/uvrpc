@@ -44,9 +44,28 @@ find_package(Threads REQUIRED)
 # Unified benchmark - comprehensive benchmark suite (like 3DMark)
 add_executable(uvrpc_benchmark
     uvrpc_benchmark.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_client.c
 )
 
 target_link_libraries(uvrpc_benchmark
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.so
+    -lm -lrt -ldl
+    ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.so
+    ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
+)
+
+set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-pthread")
+
+# DSL-generated API benchmark
+add_executable(benchmark_dsl
+    benchmark_dsl.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_client.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_server_stub.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_rpc_common.c
+)
+
+target_link_libraries(benchmark_dsl
     ${PROJECT_ROOT}/dist/lib/libuvrpc.a
     -lm -lrt -ldl
     ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
@@ -54,4 +73,52 @@ target_link_libraries(uvrpc_benchmark
     ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
 )
 
-set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-static -pthread")
+set_target_properties(benchmark_dsl PROPERTIES LINK_FLAGS "-static -pthread")
+
+
+# Production Benchmark - simple performance testing without scoring
+add_executable(production_benchmark
+    production_benchmark.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_client.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_server_stub.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_rpc_common.c
+)
+
+target_link_libraries(production_benchmark
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.a
+    -lm -lrt -ldl
+    ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.a
+    ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
+)
+
+set_target_properties(production_benchmark PROPERTIES LINK_FLAGS "-static -pthread")
+add_executable(test_ipc_simple
+    test_ipc_simple.c
+    ${GENERATED_DIR}/benchmark_benchmarkservice_server_stub.c
+)
+
+target_link_libraries(test_ipc_simple
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.a
+    -lm -lrt -ldl
+    ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.a
+    ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
+)
+
+set_target_properties(test_ipc_simple PROPERTIES LINK_FLAGS "-static -pthread")
+
+
+add_executable(test_ipc_minimal
+    test_ipc_minimal.c
+)
+
+target_link_libraries(test_ipc_minimal
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.a
+    -lm -lrt -ldl
+    ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.a
+    ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
+)
+
+set_target_properties(test_ipc_minimal PROPERTIES LINK_FLAGS "-static -pthread")
