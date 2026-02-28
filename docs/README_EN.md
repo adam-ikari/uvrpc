@@ -88,6 +88,18 @@ A minimalist, high-performance RPC framework built on libuv event loop and FlatB
 - Batch Size: 50-100 requests
 - Client Count: 1-10
 - Success Rate: 100% for all transports
+- Fork/Exec Support: TCP, UDP, IPC transports use fork+exec for process isolation
+
+### Fork/Exec Benchmark Results
+Recent benchmark tests with fork+exec architecture (2026-02-28):
+
+| Transport | Clients | Requests | Throughput (ops/s) | Avg Latency |
+|-----------|---------|----------|-------------------|-------------|
+| **IPC** | 10 | 10,000 | 83,467 | 0.012 ms |
+| **TCP** | 10 | 10,000 | 52,103 | 0.019 ms |
+| **UDP** | 10 | 10,000 | 72,244 | 0.014 ms |
+
+The fork+exec architecture ensures proper process isolation and libuv fork compatibility for network transports.
 
 **Note**: Actual performance depends on hardware configuration, network conditions, and load scenarios. For detailed performance analysis, see [benchmark/results/PERFORMANCE_ANALYSIS.md](../../benchmark/results/PERFORMANCE_ANALYSIS.md).
 

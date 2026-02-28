@@ -50,7 +50,8 @@ export default defineConfig({
               text: 'Architecture',
               items: [
                 { text: 'Architecture', link: '/architecture/' },
-                { text: 'Integration', link: '/architecture/integration' }
+                { text: 'Integration', link: '/architecture/integration' },
+                { text: 'Fork/Exec Architecture', link: '/FORK_EXEC_ARCHITECTURE' }
               ]
             },
             {
