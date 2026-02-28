@@ -157,7 +157,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
 
     uint32_t msgid;
 
-    if (frame_type == 4) {
+    if (frame_type == 0) {
         /* Decode error frame */
         int32_t error_code = 0;
         char* error_message = NULL;
