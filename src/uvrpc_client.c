@@ -155,110 +155,15 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         return;
     }
 
-    uint32_t msgid;
-
-    if (frame_type == 0) {
-        /* Decode error frame */
-        int32_t error_code = 0;
-        char* error_message = NULL;
-
-        if (uvrpc_decode_error(data, size, &msgid, &error_code, &error_message) != UVRPC_OK) {
-            uvrpc_free((void*)data);
-            return;
-        }
-
-        /* Find pending callback using direct indexing with bitmask */
-        uint32_t idx = msgid & (client->max_pending_callbacks - 1);
-        pending_callback_t* pending = client->pending_callbacks[idx];
-
-        /* Check if callback exists and matches msgid and generation */
-        if (pending && pending->msgid == msgid && pending->generation == client->generation) {
-            /* Create error response structure */
-            uvrpc_response_t resp;
-            resp.status = UVRPC_ERROR;
-            resp.msgid = msgid;
-            resp.error_code = error_code;
-            resp.error_message = error_message;
-            resp.result = NULL;
-            resp.result_size = 0;
-            resp.user_data = NULL;
-
-            /* Remove from ring buffer before calling callback (to avoid re-entry) */
-            client->pending_callbacks[idx] = NULL;
-
-            /* Call callback */
-            if (pending->callback) {
-                pending->callback(&resp, pending->ctx);
-            }
-
-            /* Free error message */
-            if (error_message) {
-                uvrpc_free(error_message);
-            }
-
-            /* Free pending callback structure */
-            uvrpc_free(pending);
-        }
-
-        uvrpc_free((void*)data);
-        return;
-    }
-
-    /* Decode streaming frame */
-    const uint8_t* chunk = NULL;
-    size_t chunk_size = 0;
-    int is_last = 0;
-
-    if (uvrpc_decode_stream(data, size, &msgid, &chunk, &chunk_size, &is_last) == UVRPC_OK) {
-        /* Find pending callback using direct indexing with bitmask */
-        uint32_t idx = msgid & (client->max_pending_callbacks - 1);
-        pending_callback_t* pending = client->pending_callbacks[idx];
-        
-        /* Check if callback exists and matches msgid and generation */
-        if (pending && pending->msgid == msgid && pending->generation == client->generation) {
-            /* Create response structure for streaming chunk */
-            uvrpc_response_t resp;
-            resp.status = UVRPC_OK;
-            resp.msgid = msgid;
-            resp.error_code = 0;
-            resp.error_message = NULL;
-            resp.is_stream = 1;
-            resp.is_last_chunk = is_last;
-
-            /* Copy chunk data to avoid use-after-free */
-            uint8_t* chunk_copy = NULL;
-            if (chunk && chunk_size > 0) {
-                chunk_copy = uvrpc_alloc(chunk_size);
-                if (chunk_copy) {
-                    memcpy(chunk_copy, chunk, chunk_size);
-                }
-            }
-            resp.result = chunk_copy;
-            resp.result_size = chunk_size;
-            resp.user_data = NULL;
-
-            /* Call callback */
-            if (pending->callback) {
-                pending->callback(&resp, pending->ctx);
-            }
-
-            /* Free chunk data */
-            if (chunk_copy) {
-                uvrpc_free(chunk_copy);
-            }
-
-            /* If this is the last chunk, free the pending callback */
-            if (is_last) {
-                client->pending_callbacks[idx] = NULL;
-                uvrpc_free(pending);
-            }
-        }
-
+    /* Only handle Response frames (type=1), ignore Request frames (type=0) */
+    if (frame_type != 1) {
+        UVRPC_LOG("Not a response frame, ignoring");
         uvrpc_free((void*)data);
         return;
     }
 
     /* Decode response frame */
+    uint32_t msgid;
     const uint8_t* result = NULL;
     size_t result_size = 0;
 

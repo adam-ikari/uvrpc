@@ -1,25 +1,12 @@
-// UVRPC RPC Schema
-// FlatBuffers schema for RPC messages with frame type support
+// UVRPC RPC Schema - Minimal Design
 
 namespace uvrpc;
 
-enum RpcFrameType:uint8 {
-  Error = 0,
-  Request = 1,
-  Response = 2,
-  Stream = 3
-}
-
-// Frame wrapper
 table RpcFrame {
-  type: RpcFrameType;
   msgid: uint32;
-  method: string;
-  params: [ubyte];
-  status: uint32;
-  error_message: string;
-  result: [ubyte];
-  is_last_chunk: bool = false;
+  type: uint8;    // 0=Request, 1=Response
+  method: string;  // only for Request
+  data: [ubyte];  // params for Request, result for Response
 }
 
 root_type RpcFrame;

@@ -165,7 +165,18 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
 
-        uvrpc_encode_error(msgid, 2, "Method not found", &resp_data, &resp_size);
+        /* Error encoded in response data payload: code + message */
+        int32_t error_code = 2;
+        const char* error_msg = "Method not found";
+        size_t error_msg_len = strlen(error_msg);
+        size_t payload_size = sizeof(int32_t) + error_msg_len;
+        uint8_t* payload = uvrpc_alloc(payload_size);
+        if (payload) {
+            memcpy(payload, &error_code, sizeof(int32_t));
+            memcpy(payload + sizeof(int32_t), error_msg, error_msg_len);
+            uvrpc_encode_response(msgid, payload, payload_size, &resp_data, &resp_size);
+            uvrpc_free(payload);
+        }
 
         if (resp_data) {
             /* Send error response via UVBus */
@@ -460,12 +471,28 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
         return UVRPC_ERROR_INVALID_PARAM;
     }
 
-    /* Encode error response */
+    /* Encode error in response data payload: code + message */
+    size_t error_msg_len = error_message ? strlen(error_message) : 0;
+    size_t payload_size = sizeof(int32_t) + error_msg_len;
+    uint8_t* payload = uvrpc_alloc(payload_size);
+    if (!payload) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    memcpy(payload, &error_code, sizeof(int32_t));
+    if (error_message && error_msg_len > 0) {
+        memcpy(payload + sizeof(int32_t), error_message, error_msg_len);
+    }
+
+    /* Encode response with error payload */
     uint8_t* response_data;
     size_t response_size;
 
-    if (uvrpc_encode_error(req->msgid, error_code, error_message,
-                           &response_data, &response_size) != UVRPC_OK) {
+    int ret = uvrpc_encode_response(req->msgid, payload, payload_size,
+                                     &response_data, &response_size);
+    uvrpc_free(payload);
+
+    if (ret != UVRPC_OK) {
         return UVRPC_ERROR_TRANSPORT;
     }
 
@@ -487,34 +514,16 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
     return UVRPC_OK;
 }
 
-/* Send streaming chunk */
+/* Send streaming chunk - now implemented as multiple Response frames */
 int uvrpc_response_send_stream(uvrpc_request_t* req, const uint8_t* chunk, 
                                 size_t chunk_size, int is_last) {
     if (!req || !req->server || !req->client_ctx) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
 
-    /* Encode streaming chunk */
-    uint8_t* stream_data;
-    size_t stream_size;
-
-    if (uvrpc_encode_stream(req->msgid, chunk, chunk_size, is_last,
-                            &stream_data, &stream_size) != UVRPC_OK) {
-        return UVRPC_ERROR_TRANSPORT;
-    }
-
-    /* Send stream chunk via UVBus */
-    uvbus_t* uvbus = req->server->uvbus;
-    uvbus_error_t err = uvbus_send_to(uvbus, stream_data,
-                                       stream_size, req->client_ctx);
-
-    uvrpc_free(stream_data);
-
-    if (err != UVBUS_OK) {
-        return UVRPC_ERROR_TRANSPORT;
-    }
-
-    req->server->total_responses++;
-    
-    return UVRPC_OK;
+    /* Streaming is now implemented using multiple Response frames.
+     * The caller should use uvrpc_response_send() for each chunk.
+     * The is_last flag is handled by the application protocol.
+     */
+    return uvrpc_response_send(req, chunk, chunk_size);
 }
