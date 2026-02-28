@@ -262,6 +262,8 @@ struct uvrpc_response {
     char* error_message;      /**< @brief Error message (if error_code != 0) */
     uint8_t* result;          /**< @brief Response result data (valid only during callback) */
     size_t result_size;       /**< @brief Size of result buffer */
+    int is_stream;            /**< @brief 1 if this is a streaming response, 0 otherwise */
+    int is_last_chunk;        /**< @brief 1 if this is the last chunk of streaming response */
     void* user_data;          /**< @brief User-defined data */
 };
 
@@ -494,7 +496,22 @@ int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t resu
  * @param error_message Error message
  * @return UVRPC_OK on success, error code on failure
  */
-int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const char* error_message);
+int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const char*error_message);
+
+/**
+ * @brief Send a streaming chunk to the client
+ * 
+ * This function allows the server to send multiple chunks of data to the client
+ * for streaming responses. The client will receive each chunk via the same callback.
+ * 
+ * @param req Request object
+ * @param chunk Chunk data
+ * @param chunk_size Size of chunk data
+ * @param is_last Set to 1 if this is the last chunk, 0 otherwise
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_response_send_stream(uvrpc_request_t* req, const uint8_t* chunk, 
+                                size_t chunk_size, int is_last);
 
 /** @} */
 

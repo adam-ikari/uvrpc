@@ -486,3 +486,35 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
 
     return UVRPC_OK;
 }
+
+/* Send streaming chunk */
+int uvrpc_response_send_stream(uvrpc_request_t* req, const uint8_t* chunk, 
+                                size_t chunk_size, int is_last) {
+    if (!req || !req->server || !req->client_ctx) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    /* Encode streaming chunk */
+    uint8_t* stream_data;
+    size_t stream_size;
+
+    if (uvrpc_encode_stream(req->msgid, chunk, chunk_size, is_last,
+                            &stream_data, &stream_size) != UVRPC_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    /* Send stream chunk via UVBus */
+    uvbus_t* uvbus = req->server->uvbus;
+    uvbus_error_t err = uvbus_send_to(uvbus, stream_data,
+                                       stream_size, req->client_ctx);
+
+    uvrpc_free(stream_data);
+
+    if (err != UVBUS_OK) {
+        return UVRPC_ERROR_TRANSPORT;
+    }
+
+    req->server->total_responses++;
+    
+    return UVRPC_OK;
+}

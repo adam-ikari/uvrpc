@@ -7,7 +7,8 @@ enum RpcFrameType:uint8 {
   Unknown = 0,
   Request = 1,
   Response = 2,
-  Error = 3
+  Error = 3,
+  Stream = 4
 }
 
 // Frame wrapper
@@ -19,6 +20,7 @@ table RpcFrame {
   status: uint32;
   error_message: string;
   result: [ubyte];
+  is_last_chunk: bool = false;
 }
 
 root_type RpcFrame;

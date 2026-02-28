@@ -96,25 +96,40 @@ static void start_pump_timer(uvrpc_client_t* client) {
 
 /* Transport connect callback */
 static void client_connect_callback(int status, void* ctx) {
+    fprintf(stderr, "[CLIENT_CB] ENTER: status=%d, ctx=%p\n", status, ctx);
+    
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
     
-    client->is_connected = (status == 0);
+    UVRPC_LOG("client_connect_callback: status=%d, client=%p, user_callback=%p, user_ctx=%p", 
+              status, (void*)client, (void*)client->user_connect_callback, (void*)client->user_connect_ctx);
     
-    /* Set bus->is_active for synchronous transports (INPROC, SAMELOOP) */
-    if (client->uvbus && status == 0) {
-        client->uvbus->is_active = 1;
-    }
-    
-    /* Call user's connect callback if provided */
-    if (client->user_connect_callback) {
-        uvrpc_connect_callback_t cb = client->user_connect_callback;
-        client->user_connect_callback = NULL;
-        cb(status, client->user_connect_ctx);
+    if (client) {
+        client->is_connected = (status == 0);
+        
+        /* Set bus->is_active for synchronous transports (INPROC, SAMELOOP) */
+        if (client->uvbus && status == 0) {
+            client->uvbus->is_active = 1;
+        }
+        
+        /* Call user's connect callback if provided */
+        if (client->user_connect_callback) {
+            uvrpc_connect_callback_t cb = client->user_connect_callback;
+            client->user_connect_callback = NULL;
+            fprintf(stderr, "[CLIENT_CB] Calling user callback\n");
+            UVRPC_LOG("Calling user connect callback");
+            cb(status, client->user_connect_ctx);
+        } else {
+            fprintf(stderr, "[CLIENT_CB] ERROR: user_connect_callback is NULL!\n");
+            UVRPC_LOG("ERROR: user_connect_callback is NULL!");
+        }
+    } else {
+        fprintf(stderr, "[CLIENT_CB] ERROR: client is NULL!\n");
     }
     
     if (status != 0) {
         UVRPC_ERROR("Client connection failed: %d", status);
     }
+    fprintf(stderr, "[CLIENT_CB] EXIT\n");
 }
 /* Transport receive callback */
 static void client_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
@@ -189,6 +204,60 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         return;
     }
 
+    /* Decode streaming frame */
+    const uint8_t* chunk = NULL;
+    size_t chunk_size = 0;
+    int is_last = 0;
+
+    if (uvrpc_decode_stream(data, size, &msgid, &chunk, &chunk_size, &is_last) == UVRPC_OK) {
+        /* Find pending callback using direct indexing with bitmask */
+        uint32_t idx = msgid & (client->max_pending_callbacks - 1);
+        pending_callback_t* pending = client->pending_callbacks[idx];
+        
+        /* Check if callback exists and matches msgid and generation */
+        if (pending && pending->msgid == msgid && pending->generation == client->generation) {
+            /* Create response structure for streaming chunk */
+            uvrpc_response_t resp;
+            resp.status = UVRPC_OK;
+            resp.msgid = msgid;
+            resp.error_code = 0;
+            resp.error_message = NULL;
+            resp.is_stream = 1;
+            resp.is_last_chunk = is_last;
+
+            /* Copy chunk data to avoid use-after-free */
+            uint8_t* chunk_copy = NULL;
+            if (chunk && chunk_size > 0) {
+                chunk_copy = uvrpc_alloc(chunk_size);
+                if (chunk_copy) {
+                    memcpy(chunk_copy, chunk, chunk_size);
+                }
+            }
+            resp.result = chunk_copy;
+            resp.result_size = chunk_size;
+            resp.user_data = NULL;
+
+            /* Call callback */
+            if (pending->callback) {
+                pending->callback(&resp, pending->ctx);
+            }
+
+            /* Free chunk data */
+            if (chunk_copy) {
+                uvrpc_free(chunk_copy);
+            }
+
+            /* If this is the last chunk, free the pending callback */
+            if (is_last) {
+                client->pending_callbacks[idx] = NULL;
+                uvrpc_free(pending);
+            }
+        }
+
+        uvrpc_free((void*)data);
+        return;
+    }
+
     /* Decode response frame */
     const uint8_t* result = NULL;
     size_t result_size = 0;
@@ -210,6 +279,8 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         resp.msgid = msgid;
         resp.error_code = 0;
         resp.error_message = NULL;
+        resp.is_stream = 0;
+        resp.is_last_chunk = 0;
 
         /* Copy result data to avoid use-after-free */
         uint8_t* result_copy = NULL;
@@ -363,6 +434,9 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
 /* Connect to server with callback */
 int uvrpc_client_connect_with_callback(uvrpc_client_t* client, 
                                          uvrpc_connect_callback_t callback, void* ctx) {
+    fprintf(stderr, "[CONNECT_WITH_CB] ENTER: client=%p, callback=%p, ctx=%p\n", 
+            (void*)client, (void*)callback, ctx);
+    
     if (!client || !client->uvbus) return UVRPC_ERROR_INVALID_PARAM;
     
     if (client->is_connected) return UVRPC_OK;
@@ -371,22 +445,32 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
     client->user_connect_callback = callback;
     client->user_connect_ctx = ctx;
     
+    fprintf(stderr, "[CONNECT_WITH_CB] Stored: user_callback=%p, user_ctx=%p\n", 
+            (void*)client->user_connect_callback, (void*)client->user_connect_ctx);
+    
     /* Update UVBus config and transport callbacks */
     uvbus_t* uvbus = client->uvbus;
     uvbus->config.connect_cb = client_connect_callback;
     uvbus->config.callback_ctx = client;
     
+    fprintf(stderr, "[CONNECT_WITH_CB] Set uvbus config: connect_cb=%p (client_connect_callback=%p), callback_ctx=%p\n", 
+            (void*)uvbus->config.connect_cb, (void*)client_connect_callback, (void*)client);
+    
     /* Also update transport callbacks directly for INPROC */
     if (uvbus->transport) {
         uvbus->transport->connect_cb = client_connect_callback;
         uvbus->transport->callback_ctx = client;
+        fprintf(stderr, "[CONNECT_WITH_CB] Set transport: connect_cb=%p, callback_ctx=%p\n", 
+                (void*)uvbus->transport->connect_cb, (void*)uvbus->transport->callback_ctx);
     }
     
     uvbus_error_t err = uvbus_connect(uvbus);
     if (err != UVBUS_OK) {
+        fprintf(stderr, "[CONNECT_WITH_CB] uvbus_connect failed: %d\n", err);
         return UVRPC_ERROR_TRANSPORT;
     }
     
+    fprintf(stderr, "[CONNECT_WITH_CB] uvbus_connect returned OK\n");
     /* Note: is_connected will be set in the async callback */
     return UVRPC_OK;
 }

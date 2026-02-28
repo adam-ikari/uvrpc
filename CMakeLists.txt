@@ -272,6 +272,7 @@ add_subdirectory(benchmark)
     create_example_target(test_sameloop_recursion)
     create_example_target(test_sameloop_stress)
     create_example_target(test_sameloop_multiclient)
+    create_example_target(streaming_demo)
     create_example_target(sameloop_rpc_demo)
     # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now
 endif()

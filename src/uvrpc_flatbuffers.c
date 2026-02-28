@@ -74,6 +74,38 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
     return UVRPC_OK;
 }
 
+/* Encode streaming frame */
+int uvrpc_encode_stream(uint32_t msgid, const uint8_t* chunk, size_t chunk_size,
+                        int is_last, uint8_t** out_data, size_t* out_size) {
+    if (!out_data || !out_size) return UVRPC_ERROR_INVALID_PARAM;
+
+    flatcc_builder_t builder;
+    flatcc_builder_init(&builder);
+
+    flatbuffers_uint8_vec_ref_t chunk_ref = 0;
+    if (chunk && chunk_size > 0) {
+        chunk_ref = flatbuffers_uint8_vec_create(&builder, chunk, chunk_size);
+    }
+
+    /* type: 0 = request, 1 = response, 2 = notification, 3 = error, 4 = stream */
+    uint8_t type = 4;
+
+    uvrpc_RpcFrame_start_as_root(&builder);
+    uvrpc_RpcFrame_type_add(&builder, type);
+    uvrpc_RpcFrame_msgid_add(&builder, msgid);
+    uvrpc_RpcFrame_params_add(&builder, chunk_ref);
+    uvrpc_RpcFrame_is_last_chunk_add(&builder, is_last);
+    uvrpc_RpcFrame_end_as_root(&builder);
+
+    void* buf = flatcc_builder_finalize_buffer(&builder, out_size);
+    if (buf) {
+        *out_data = buf;
+    }
+
+    flatcc_builder_clear(&builder);
+    return UVRPC_OK;
+}
+
 /* Decode request frame */
 int uvrpc_decode_request(const uint8_t* data, size_t size,
                          uint32_t* out_msgid, char** out_method,
@@ -129,6 +161,33 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
     if (result) {
         *out_result = result;
         *out_result_size = flatbuffers_uint8_vec_len(result);
+    }
+    
+    return UVRPC_OK;
+}
+
+/* Decode streaming frame */
+int uvrpc_decode_stream(const uint8_t* data, size_t size,
+                        uint32_t* out_msgid,
+                        const uint8_t** out_chunk, size_t* out_chunk_size,
+                        int* out_is_last) {
+    if (!data || !out_msgid || !out_chunk || !out_chunk_size || !out_is_last) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+    
+    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+    
+    if (!frame) {
+        return UVRPC_ERROR;
+    }
+    
+    *out_msgid = uvrpc_RpcFrame_msgid(frame);
+    *out_is_last = uvrpc_RpcFrame_is_last_chunk(frame);
+    
+    flatbuffers_uint8_vec_t chunk = uvrpc_RpcFrame_params(frame);
+    if (chunk) {
+        *out_chunk = chunk;
+        *out_chunk_size = flatbuffers_uint8_vec_len(chunk);
     }
     
     return UVRPC_OK;

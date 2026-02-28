@@ -20,6 +20,9 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
                           uint8_t** out_data, size_t* out_size);
 
+int uvrpc_encode_stream(uint32_t msgid, const uint8_t* chunk, size_t chunk_size,
+                        int is_last, uint8_t** out_data, size_t* out_size);
+
 int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* error_message,
                        uint8_t** out_data, size_t* out_size);
 
@@ -31,6 +34,11 @@ int uvrpc_decode_request(const uint8_t* data, size_t size,
 int uvrpc_decode_response(const uint8_t* data, size_t size,
                           uint32_t* out_msgid,
                           const uint8_t** out_result, size_t* out_result_size);
+
+int uvrpc_decode_stream(const uint8_t* data, size_t size,
+                        uint32_t* out_msgid,
+                        const uint8_t** out_chunk, size_t* out_chunk_size,
+                        int* out_is_last);
 
 int uvrpc_decode_error(const uint8_t* data, size_t size,
                        uint32_t* out_msgid, int32_t* out_error_code, char** out_error_message);
