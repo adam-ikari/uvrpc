@@ -54,6 +54,7 @@ typedef enum {
     UVBUS_ERROR_NOT_FOUND = -8,        /**< @brief Resource not found */
     UVBUS_ERROR_NOT_IMPLEMENTED = -9,  /**< @brief Feature not implemented */
     UVBUS_ERROR_BUFFER_FULL = -10,     /**< @brief Send buffer full, try again later */
+    UVBUS_ERROR_MAX_CLIENTS = -11,     /**< @brief Maximum clients reached (connection limit exceeded) */
     UVBUS_ERROR_MAX                    /**< @brief Maximum error code */
 } uvbus_error_t;
 

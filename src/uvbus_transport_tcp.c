@@ -279,7 +279,7 @@ static void on_server_connection(uv_stream_t* server, int status) {
     /* Check client limit */
     if (tcp_server->client_count >= UVBUS_MAX_CLIENTS) {
         if (transport->error_cb) {
-            transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Maximum clients reached", transport->callback_ctx);
+            transport->error_cb(UVBUS_ERROR_MAX_CLIENTS, "Maximum clients reached (1024)", transport->callback_ctx);
         }
         return;
     }

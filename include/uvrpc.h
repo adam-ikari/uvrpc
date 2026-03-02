@@ -56,6 +56,7 @@ typedef enum {
     UVRPC_ERROR_ALREADY_EXISTS = -13,  /**< @brief Resource already exists */
     UVRPC_ERROR_INVALID_STATE = -14,   /**< @brief Invalid state for operation */
     UVRPC_ERROR_IO = -15,              /**< @brief I/O error occurred */
+    UVRPC_ERROR_MAX_CLIENTS = -16,     /**< @brief Maximum clients reached (server connection limit) */
     UVRPC_ERROR_MAX                    /**< @brief Maximum error code (for validation) */
 } uvrpc_error_t;
 
