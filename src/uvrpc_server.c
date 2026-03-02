@@ -58,14 +58,6 @@ typedef struct handler_entry {
 } handler_entry_t;
 
 /* Pending request - for ring buffer (used for stream connections) */
-typedef struct pending_request {
-    uint32_t msgid;              /* Message ID */
-    uint32_t generation;         /* Generation counter */
-    void* client_ctx;            /* Client context for sending response */
-    uint64_t create_time;        /* Creation timestamp (for finding oldest) */
-    int in_use;                  /* Flag to indicate if slot is in use */
-} pending_request_t;
-
 /* Server structure */
 struct uvrpc_server {
     uv_loop_t* loop;
@@ -82,12 +74,6 @@ struct uvrpc_server {
     
     /* User-defined context */
     uvrpc_context_t* ctx;
-    
-    /* Pending requests ring buffer (for stream connections) */
-    pending_request_t** pending_requests;
-    int max_pending_requests;    /* Ring buffer size (must be power of 2) */
-    int current_streams;         /* Current active stream connections */
-    uint32_t generation;         /* Generation counter */
     
     /* Statistics */
     uint64_t total_requests;
@@ -201,50 +187,6 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         /* Increment request counter */
         server->total_requests++;
 
-        /* Check if this is a stream request (starts with "sub_") */
-        int is_stream = (method && strncmp(method, "sub_", 4) == 0);
-
-        /* Save stream request to pending_requests */
-        if (is_stream) {
-            /* Find free slot in ring buffer using linear search for streams */
-            int free_idx = -1;
-            for (int i = 0; i < server->max_pending_requests; i++) {
-                pending_request_t* pending = server->pending_requests[i];
-                if (!pending || !pending->in_use || pending->generation != server->generation) {
-                    free_idx = i;
-                    break;
-                }
-            }
-            
-            if (free_idx < 0) {
-                /* No free slot - cannot accept more streams */
-                UVRPC_ERROR("No free slot for stream request (msgid=%u)", msgid);
-                /* Send error response */
-                uint8_t* resp_data = NULL;
-                size_t resp_size = 0;
-                uvrpc_encode_response(msgid, NULL, 0, &resp_data, &resp_size);
-                if (resp_data) {
-                    uvbus_send_to(server->uvbus, resp_data, resp_size, client_ctx);
-                    uvrpc_free(resp_data);
-                }
-                if (method) uvrpc_free(method);
-                return;
-            }
-            
-            /* Create new pending request */
-            pending_request_t* pending = uvrpc_calloc(1, sizeof(pending_request_t));
-            if (pending) {
-                pending->msgid = msgid;
-                pending->generation = server->generation;
-                pending->client_ctx = client_ctx;
-                pending->create_time = get_timestamp_ms();
-                pending->in_use = 1;
-                
-                server->pending_requests[free_idx] = pending;
-                server->current_streams++;
-            }
-        }
-
         /* Create request structure */
         uvrpc_request_t req;
         req.server = server;
@@ -327,26 +269,10 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     server->client_ctxs = NULL;
     server->client_ctxs_capacity = 0;
     
-    /* Initialize ring buffer */
-    server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
-                                   config->max_pending_callbacks : UVRPC_DEFAULT_PENDING_CALLBACKS;
-    server->generation = 0;
-    server->current_streams = 0;
-    
-    /* Allocate ring buffer array */
-    server->pending_requests = (pending_request_t**)uvrpc_calloc(
-        server->max_pending_requests, sizeof(pending_request_t*));
-    if (!server->pending_requests) {
-        uvrpc_free(server->address);
-        uvrpc_free(server);
-        return NULL;
-    }
-    
     /* Allocate client tracking array */
     server->client_ctxs_capacity = 128;  /* Initial capacity */
     server->client_ctxs = (void**)uvrpc_calloc(server->client_ctxs_capacity, sizeof(void*));
     if (!server->client_ctxs) {
-        uvrpc_free(server->pending_requests);
         uvrpc_free(server->address);
         uvrpc_free(server);
         return NULL;
@@ -356,7 +282,6 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     uvbus_config_t* bus_config = uvbus_config_new();
     if (!bus_config) {
         uvrpc_free(server->client_ctxs);
-        uvrpc_free(server->pending_requests);
         uvrpc_free(server->address);
         uvrpc_free(server);
         return NULL;
@@ -375,7 +300,7 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     server->uvbus = uvbus_server_new(bus_config);
     if (!server->uvbus) {
         uvbus_config_free(bus_config);
-        uvrpc_free(server->pending_requests);
+        uvrpc_free(server->client_ctxs);
         uvrpc_free(server->address);
         uvrpc_free(server);
         return NULL;
@@ -438,16 +363,6 @@ void uvrpc_server_free(uvrpc_server_t* server) {
         HASH_DEL(server->handlers, entry);
         uvrpc_free(entry->name);
         uvrpc_free(entry);
-    }
-    
-    /* Free pending requests ring buffer */
-    if (server->pending_requests) {
-        for (int i = 0; i < server->max_pending_requests; i++) {
-            if (server->pending_requests[i]) {
-                uvrpc_free(server->pending_requests[i]);
-            }
-        }
-        uvrpc_free(server->pending_requests);
     }
     
     /* Free client tracking array */
