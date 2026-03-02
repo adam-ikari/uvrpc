@@ -251,10 +251,14 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             uvrpc_free(result_copy);
         }
 
-        /* Cleanup pending callback after callback returns */
-        client->pending_callbacks[idx] = NULL;
-        cleanup_pending_callback(pending);
-        client->current_concurrent--;
+        /* Cleanup pending callback only on end marker (result_size == 0)
+         * This allows multiple responses for the same msgid (stream mode) */
+        if (result_size == 0) {
+            /* End marker - cleanup pending callback */
+            client->pending_callbacks[idx] = NULL;
+            cleanup_pending_callback(pending);
+            client->current_concurrent--;
+        }
     }
 
     /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
