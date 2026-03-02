@@ -36,6 +36,8 @@ const char* uvrpc_strerror(int error_code) {
             return "Invalid state for operation";
         case UVRPC_ERROR_IO:
             return "I/O error occurred";
+        case UVRPC_ERROR_MAX_CLIENTS:
+            return "Maximum clients reached (server connection limit)";
         default:
             return "Unknown error";
     }

@@ -491,6 +491,14 @@ uint64_t uvrpc_server_get_total_requests(uvrpc_server_t* server);
 uint64_t uvrpc_server_get_total_responses(uvrpc_server_t* server);
 
 /**
+ * @brief Get current connected clients count
+ * 
+ * @param server Server instance
+ * @return Current number of connected clients
+ */
+int uvrpc_server_get_client_count(uvrpc_server_t* server);
+
+/**
  * @brief Send a response to a request
  * 
  * @param req Request object

@@ -76,6 +76,10 @@ struct uvrpc_server {
     int current_clients;  /* Current connected clients */
     int max_clients;      /* Maximum clients (0 = unlimited) */
     
+    /* Client tracking */
+    void** client_ctxs;   /* Array of client contexts for tracking */
+    int client_ctxs_capacity;  /* Capacity of client_ctxs array */
+    
     /* User-defined context */
     uvrpc_context_t* ctx;
     
@@ -83,7 +87,6 @@ struct uvrpc_server {
     pending_request_t** pending_requests;
     int max_pending_requests;    /* Ring buffer size (must be power of 2) */
     int current_streams;         /* Current active stream connections */
-    int max_streams;             /* Maximum stream connections (default: 1000) */
     uint32_t generation;         /* Generation counter */
     
     /* Statistics */
@@ -110,20 +113,47 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         UVRPC_LOG("Request #%d, client_ctx=%p", recv_count, client_ctx);
     }
     
-    /* Check max clients (first request from new client) */
-    if (server->max_clients > 0 && server->current_clients >= server->max_clients) {
-        UVRPC_LOG("Rejecting request: max clients reached (%d)", server->max_clients);
+    /* Check if this is a new client */
+    int is_new_client = 1;
+    for (int i = 0; i < server->current_clients; i++) {
+        if (server->client_ctxs[i] == client_ctx) {
+            is_new_client = 0;
+            break;
+        }
+    }
+    
+    /* Check max clients for new client */
+    if (is_new_client && server->max_clients > 0 && server->current_clients >= server->max_clients) {
+        UVRPC_LOG("Rejecting new client: max clients reached (%d)", server->max_clients);
         /* Send error response */
         uint32_t msgid = 0;
         if (size >= 4) {
             msgid = *(uint32_t*)data;
         }
-        uint8_t error_buf[16];
+        uint8_t error_buf[32];
         error_buf[0] = 4;  /* Error type */
         *(uint32_t*)(error_buf + 1) = UVRPC_ERROR_MAX_CLIENTS;
-        *(uint32_t*)(error_buf + 5) = 0;  /* Error string length */
-        uvbus_send_to(server->uvbus, error_buf, 9, client_ctx);
+        uint32_t error_len = snprintf((char*)error_buf + 9, 23, "Maximum clients reached (%d)", server->max_clients);
+        *(uint32_t*)(error_buf + 5) = error_len;
+        uvbus_send_to(server->uvbus, error_buf, 9 + error_len, client_ctx);
         return;
+    }
+    
+    /* Add new client to tracking array */
+    if (is_new_client) {
+        /* Expand array if needed */
+        if (server->current_clients >= server->client_ctxs_capacity) {
+            int new_capacity = server->client_ctxs_capacity * 2;
+            void** new_array = (void**)uvrpc_realloc(server->client_ctxs, sizeof(void*) * new_capacity);
+            if (!new_array) {
+                UVRPC_ERROR("Failed to expand client tracking array");
+                return;
+            }
+            server->client_ctxs = new_array;
+            server->client_ctxs_capacity = new_capacity;
+        }
+        server->client_ctxs[server->current_clients++] = client_ctx;
+        UVRPC_LOG("New client connected, total clients: %d", server->current_clients);
     }
 
     /* Decode request */
@@ -173,42 +203,6 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
 
         /* Check if this is a stream request (starts with "sub_") */
         int is_stream = (method && strncmp(method, "sub_", 4) == 0);
-
-        /* If stream and at capacity, disconnect oldest stream */
-        if (is_stream && server->current_streams >= server->max_streams) {
-            /* Find oldest stream connection */
-            int oldest_idx = -1;
-            uint64_t oldest_time = UINT64_MAX;
-            
-            for (int i = 0; i < server->max_pending_requests; i++) {
-                pending_request_t* pending = server->pending_requests[i];
-                if (pending && pending->in_use && pending->generation == server->generation) {
-                    if (pending->create_time < oldest_time) {
-                        oldest_time = pending->create_time;
-                        oldest_idx = i;
-                    }
-                }
-            }
-            
-            /* Disconnect oldest stream */
-            if (oldest_idx >= 0) {
-                pending_request_t* oldest = server->pending_requests[oldest_idx];
-                
-                /* Send end marker to oldest stream */
-                uint8_t* resp_data = NULL;
-                size_t resp_size = 0;
-                uvrpc_encode_response(oldest->msgid, NULL, 0, &resp_data, &resp_size);
-                if (resp_data) {
-                    uvbus_send_to(server->uvbus, resp_data, resp_size, oldest->client_ctx);
-                    uvrpc_free(resp_data);
-                }
-                
-                /* Free oldest stream */
-                uvrpc_free(oldest);
-                server->pending_requests[oldest_idx] = NULL;
-                server->current_streams--;
-            }
-        }
 
         /* Save stream request to pending_requests */
         if (is_stream) {
@@ -330,13 +324,14 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     server->is_running = 0;
     server->current_clients = 0;
     server->max_clients = (config->max_clients > 0) ? config->max_clients : 1024;
+    server->client_ctxs = NULL;
+    server->client_ctxs_capacity = 0;
     
     /* Initialize ring buffer */
     server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
                                    config->max_pending_callbacks : UVRPC_DEFAULT_PENDING_CALLBACKS;
     server->generation = 0;
     server->current_streams = 0;
-    server->max_streams = 1000;  /* Default max stream connections */
     
     /* Allocate ring buffer array */
     server->pending_requests = (pending_request_t**)uvrpc_calloc(
@@ -346,10 +341,21 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
         uvrpc_free(server);
         return NULL;
     }
+    
+    /* Allocate client tracking array */
+    server->client_ctxs_capacity = 128;  /* Initial capacity */
+    server->client_ctxs = (void**)uvrpc_calloc(server->client_ctxs_capacity, sizeof(void*));
+    if (!server->client_ctxs) {
+        uvrpc_free(server->pending_requests);
+        uvrpc_free(server->address);
+        uvrpc_free(server);
+        return NULL;
+    }
 
     /* Create UVBus configuration */
     uvbus_config_t* bus_config = uvbus_config_new();
     if (!bus_config) {
+        uvrpc_free(server->client_ctxs);
         uvrpc_free(server->pending_requests);
         uvrpc_free(server->address);
         uvrpc_free(server);
@@ -443,6 +449,11 @@ void uvrpc_server_free(uvrpc_server_t* server) {
         }
         uvrpc_free(server->pending_requests);
     }
+    
+    /* Free client tracking array */
+    if (server->client_ctxs) {
+        uvrpc_free(server->client_ctxs);
+    }
 
     uvrpc_free(server->address);
     uvrpc_free(server);
@@ -495,6 +506,11 @@ void uvrpc_server_set_context(uvrpc_server_t* server, uvrpc_context_t* ctx) {
 /* Get context */
 uvrpc_context_t* uvrpc_server_get_context(uvrpc_server_t* server) {
     return server ? server->ctx : NULL;
+}
+
+/* Get client count */
+int uvrpc_server_get_client_count(uvrpc_server_t* server) {
+    return server ? server->current_clients : 0;
 }
 
 /* Send response */
