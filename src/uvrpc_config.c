@@ -133,3 +133,9 @@ uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_
     config->pump_interval = pump_interval;
     return config;
 }
+
+uvrpc_config_t* uvrpc_config_set_max_clients(uvrpc_config_t* config, int max_clients) {
+    if (!config) return NULL;
+    config->max_clients = max_clients;
+    return config;
+}

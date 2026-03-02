@@ -232,6 +232,7 @@ struct uvrpc_config {
     uint64_t timeout_ms;                 /**< @brief Default timeout in milliseconds (default: 0 = no timeout) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
     int pump_interval;                   /**< @brief Pump interval in ms for auto-flush (0 = immediate, default: 0) */
+    int max_clients;                     /**< @brief Maximum server clients (default: 1024, 0 = unlimited) */
 };
 
 /**
@@ -395,6 +396,16 @@ uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t m
  * @return Configuration object for chaining
  */
 uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval);
+
+/**
+ * @brief Set maximum server clients
+ * 
+ * @param config Configuration object
+ * @param max_clients Maximum clients (default: 1024, 0 = unlimited)
+ * @return Configuration object for chaining
+ * @note Only applicable to server configuration
+ */
+uvrpc_config_t* uvrpc_config_set_max_clients(uvrpc_config_t* config, int max_clients);
 
 /** @} */
 

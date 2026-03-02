@@ -73,6 +73,8 @@ struct uvrpc_server {
     uvbus_t* uvbus;
     handler_entry_t* handlers;
     int is_running;
+    int current_clients;  /* Current connected clients */
+    int max_clients;      /* Maximum clients (0 = unlimited) */
     
     /* User-defined context */
     uvrpc_context_t* ctx;
@@ -106,6 +108,22 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         UVRPC_LOG("Received %d requests, client_ctx=%p", recv_count, client_ctx);
     } else {
         UVRPC_LOG("Request #%d, client_ctx=%p", recv_count, client_ctx);
+    }
+    
+    /* Check max clients (first request from new client) */
+    if (server->max_clients > 0 && server->current_clients >= server->max_clients) {
+        UVRPC_LOG("Rejecting request: max clients reached (%d)", server->max_clients);
+        /* Send error response */
+        uint32_t msgid = 0;
+        if (size >= 4) {
+            msgid = *(uint32_t*)data;
+        }
+        uint8_t error_buf[16];
+        error_buf[0] = 4;  /* Error type */
+        *(uint32_t*)(error_buf + 1) = UVRPC_ERROR_MAX_CLIENTS;
+        *(uint32_t*)(error_buf + 5) = 0;  /* Error string length */
+        uvbus_send_to(server->uvbus, error_buf, 9, client_ctx);
+        return;
     }
 
     /* Decode request */
@@ -310,6 +328,8 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     }
     server->handlers = NULL;
     server->is_running = 0;
+    server->current_clients = 0;
+    server->max_clients = (config->max_clients > 0) ? config->max_clients : 1024;
     
     /* Initialize ring buffer */
     server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
