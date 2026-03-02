@@ -103,7 +103,15 @@ void uvrpc_{{ service_name_lower }}_free_client(uvrpc_client_t* client);
 /* Oneway method - no response expected */
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client
     {%- if method.request_fields -%}
-, const {{ namespace }}_{{ method.request }}_table_t* request
+, const {{ namespace }}_{{ method.request }}_t* request
+    {%- endif %});
+
+{% elif method.is_stream -%}
+/* Stream method - multiple responses */
+uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client,
+    uvrpc_callback_t callback, void* ctx
+    {%- if method.request_fields -%}
+, const {{ namespace }}_{{ method.request }}_t* request
     {%- endif %});
 
 {% else -%}
@@ -111,14 +119,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client,
     uvrpc_callback_t callback, void* ctx
     {%- if method.request_fields -%}
-, const {{ namespace }}_{{ method.request }}_table_t* request
+, const {{ namespace }}_{{ method.request }}_t* request
     {%- endif %});
 
 /* Sync wait API (using async/await internally) */
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client_t* client,
-    {{ namespace }}_{{ method.response }}_table_t* response
+    {{ namespace }}_{{ method.response }}_t* response
     {%- if method.request_fields -%}
-, const {{ namespace }}_{{ method.request }}_table_t* request
+, const {{ namespace }}_{{ method.request }}_t* request
     {%- endif %}
     , uint64_t timeout_ms);
 

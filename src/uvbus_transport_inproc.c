@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+/* Performance statistics */
+__attribute__((used)) volatile uint64_t inproc_fast_calls = 0;
+__attribute__((used)) volatile uint64_t inproc_vtable_calls = 0;
+
 /* Thread-safe rwlock for protecting global endpoint hash table */
 static pthread_rwlock_t g_endpoint_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -342,6 +346,9 @@ static void inproc_disconnect(void* impl_ptr) {
 
 /* INPROC send implementation */
 static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
+    static int send_count = 0;
+    send_count++;
+    
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
@@ -350,6 +357,9 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
     if (!transport->is_connected) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
+
+    /* Track fast path calls */
+    inproc_fast_calls++;
 
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
@@ -380,6 +390,9 @@ static int inproc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void
     if (!transport) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
+
+    /* Track fast path calls */
+    inproc_fast_calls++;
     
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
@@ -415,6 +428,12 @@ static void inproc_free(void* impl_ptr) {
     uvrpc_free(transport);
 }
 
+/* Export function to get INPROC statistics */
+__attribute__((used)) void uvbus_inproc_get_stats(uint64_t* fast, uint64_t* vtable) {
+    if (fast) *fast = inproc_fast_calls;
+    if (vtable) *vtable = inproc_vtable_calls;
+}
+
 /* Export function to create INPROC transport */
 uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, uv_loop_t* loop) {
     uvbus_transport_t* transport = (uvbus_transport_t*)uvrpc_alloc(sizeof(uvbus_transport_t));
@@ -426,6 +445,10 @@ uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, uv_loop_
     transport->type = type;
     transport->loop = loop;
     transport->vtable = &inproc_vtable;
+    
+    /* Set fast path function pointers */
+    transport->fast_send = inproc_send;
+    transport->fast_send_to = inproc_send_to;
     
     return transport;
 }

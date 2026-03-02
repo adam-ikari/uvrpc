@@ -102,10 +102,11 @@ int main(int argc, char** argv) {
     /* Wait for connection */
     int iterations = 0;
     while (!g_connected && iterations < 50) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         iterations++;
     }
-    
+
     if (!g_connected) {
         fprintf(stderr, "[MAIN] Connection timeout\n");
         uvrpc_client_disconnect(client);
@@ -114,33 +115,34 @@ int main(int argc, char** argv) {
         uvrpc_server_free(server);
         return 1;
     }
-    
+
     printf("[MAIN] Client connected\n\n");
-    
+
     /* Send 10 oneway requests */
     printf("[MAIN] Sending 10 oneway requests...\n");
     for (int i = 0; i < 10; i++) {
         int32_t params[2] = {i, i * 2};
-        
-        int ret = uvrpc_client_call_oneway(client, "log", 
+
+        int ret = uvrpc_client_call_oneway(client, "log",
                                             (uint8_t*)params, sizeof(params));
-        
+
         if (ret == UVRPC_OK) {
             printf("[MAIN] Oneway request #%d sent (no response expected)\n", i + 1);
         } else {
             fprintf(stderr, "[MAIN] Failed to send oneway request #%d: %d\n", i + 1, ret);
         }
-        
+
         /* Small delay between requests */
         usleep(10000);  // 10ms
     }
-    
+
     printf("\n[MAIN] All oneway requests sent\n");
-    
+
     /* Run event loop for a while to process all requests */
     printf("[MAIN] Running event loop for 1 second...\n");
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         usleep(10000);  // 10ms
     }
     

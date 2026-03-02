@@ -27,3 +27,8 @@ table BroadcastMessage {
 }
 
 root_type AddRequest;
+// RPC Service for benchmark testing
+rpc_service BenchmarkService {
+  Add(AddRequest):AddResponse;
+  Echo(EmptyRequest):EmptyResponse;
+}

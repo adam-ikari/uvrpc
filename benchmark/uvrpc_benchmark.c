@@ -47,12 +47,15 @@
 #define DEFAULT_REQUESTS 10000
 #define DEFAULT_CLIENTS 1
 #define DEFAULT_WARMUP 1000
+#define DEFAULT_TIMEOUT_SEC 10  /* Default timeout in seconds */
 #define MIN_WARMUP 100
 #define MAX_WARMUP 10000
 #define MIN_REQUESTS 10
 #define MAX_REQUESTS 10000000
 #define MIN_CLIENTS 1
 #define MAX_CLIENTS 100
+#define MIN_TIMEOUT_SEC 1
+#define MAX_TIMEOUT_SEC 300
 
 /* Transport Types */
 typedef enum {
@@ -71,7 +74,8 @@ typedef enum {
     TEST_STRESS = 2,
     TEST_SCALABILITY = 3,
     TEST_ONEWAY = 4,
-    TEST_ALL = 5
+    TEST_STREAM = 5,
+    TEST_ALL = 6
 } test_type_t;
 
 /* Benchmark Statistics */
@@ -109,6 +113,7 @@ typedef struct {
     int num_requests;
     int num_clients;
     int warmup_requests;
+    int timeout_sec;  /* Timeout in seconds */
     transport_type_t transport;
     test_type_t test_type;
     test_result_t* results;
@@ -196,6 +201,7 @@ typedef struct {
     volatile int all_connected;
     int target_requests;
     int num_clients;
+    int timeout_sec;
     uv_loop_t* loop;
     uv_async_t* async_handle;  /* Async handle for connection completion */
 } benchmark_ctx_t;
@@ -223,6 +229,31 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
     uvrpc_request_send_response(req, UVRPC_OK, buf, size);
     free(buf);
     flatcc_builder_clear(&builder);
+}
+
+/* Handler for streaming test - sends multiple response chunks */
+void stream_handler(uvrpc_request_t* req, void* ctx) {
+    (void)ctx;
+    
+    benchmark_AddRequest_table_t req_data = benchmark_AddRequest_as_root(req->params);
+    int32_t a = benchmark_AddRequest_a(req_data);
+    int32_t b = benchmark_AddRequest_b(req_data);
+    
+    /* Send 5 chunks as separate Response frames */
+    int num_chunks = 5;
+    for (int i = 0; i < num_chunks; i++) {
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        benchmark_AddResponse_start_as_root(&builder);
+        benchmark_AddResponse_result_add(&builder, a + b + i);
+        benchmark_AddResponse_end_as_root(&builder);
+        
+        size_t size;
+        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        free(buf);
+        flatcc_builder_clear(&builder);
+    }
 }
 
 /* Async callback to handle connection completion */
@@ -303,6 +334,33 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
     }
 }
 
+/* Stream response callback - similar to on_response but expects multiple chunks */
+void on_stream_response(uvrpc_response_t* resp, void* ctx) {
+    benchmark_ctx_t* bench = (benchmark_ctx_t*)ctx;
+    
+    if (!bench || !bench->stats || !resp) {
+        return;
+    }
+    
+    if (resp->status == UVRPC_OK && resp->result && resp->result_size >= 4) {
+        benchmark_AddResponse_table_t resp_data = benchmark_AddResponse_as_root(resp->result);
+        int32_t result = benchmark_AddResponse_result(resp_data);
+        (void)result;
+        __sync_add_and_fetch(&bench->stats->successful_requests, 1);
+    } else {
+        __sync_add_and_fetch(&bench->stats->failed_requests, 1);
+    }
+    
+    __sync_add_and_fetch(&bench->stats->total_requests, 1);
+    
+    /* Check if we've received all expected chunks */
+    uint64_t received_chunks = bench->stats->successful_requests + bench->stats->failed_requests;
+    if (received_chunks >= (uint64_t)bench->target_requests) {
+        __sync_bool_compare_and_swap(&bench->completed, 0, 1);
+        clock_gettime(CLOCK_MONOTONIC, &bench->stats->end_time);
+    }
+}
+
 /* ========================================
  * Test Implementation
  * ======================================== */
@@ -331,11 +389,18 @@ static const char* get_transport_address(transport_type_t transport) {
 }
 
 static int run_single_test(transport_type_t transport, test_type_t test_type, int num_clients, int num_requests,
-                          int warmup, test_result_t* result, int verbose) {    const char* address = get_transport_address(transport);
+                          int warmup, int timeout_sec, test_result_t* result, int verbose) {    const char* address = get_transport_address(transport);
     
     /* Initialize result */
     memset(result, 0, sizeof(test_result_t));
-    const char* test_name = (test_type == TEST_ONEWAY) ? "Oneway Test" : "Regular RPC Test";
+    const char* test_name;
+    if (test_type == TEST_ONEWAY) {
+        test_name = "Oneway Test";
+    } else if (test_type == TEST_STREAM) {
+        test_name = "Streaming Test";
+    } else {
+        test_name = "Regular RPC Test";
+    }
     snprintf(result->test_name, sizeof(result->test_name), "%s", test_name);
     snprintf(result->transport, sizeof(result->transport), "%s", transport_to_string(transport));
     result->num_clients = num_clients;
@@ -370,7 +435,15 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     }
     
     if (uvrpc_server_register(server, "add", add_handler, NULL) != UVRPC_OK) {
-        fprintf(stderr, "Failed to register handler\n");
+        fprintf(stderr, "Failed to register add handler\n");
+        uvrpc_server_free(server);
+        uvrpc_config_free(server_config);
+        uv_loop_close(&loop);
+        return -1;
+    }
+    
+    if (uvrpc_server_register(server, "stream", stream_handler, NULL) != UVRPC_OK) {
+        fprintf(stderr, "Failed to register stream handler\n");
         uvrpc_server_free(server);
         uvrpc_config_free(server_config);
         uv_loop_close(&loop);
@@ -478,7 +551,9 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
                 uvrpc_config_free(server_config);
                 server_config = NULL;  /* Important: set to NULL to avoid double-free */
                 server = NULL;
-            }/* Create benchmark context */
+            }
+            
+            /* Create benchmark context */
     benchmark_ctx_t* bench_ctx = calloc(1, sizeof(benchmark_ctx_t));
     if (!bench_ctx) {
         fprintf(stderr, "Failed to allocate benchmark context\n");
@@ -488,6 +563,11 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         return -1;
     }
     bench_ctx->loop = &loop;
+    bench_ctx->num_clients = num_clients;
+    bench_ctx->timeout_sec = timeout_sec;
+    /* For streaming test, each request sends 5 chunks */
+    int chunks_per_request = (test_type == TEST_STREAM) ? 5 : 1;
+    bench_ctx->target_requests = num_requests * chunks_per_request;
     bench_ctx->num_clients = num_clients;
     bench_ctx->target_requests = num_requests;
     bench_ctx->latency_tracker = latency_tracker_create(num_requests);
@@ -683,6 +763,9 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             void* buf = flatcc_builder_finalize_buffer(&builder, &size);
             if (test_type == TEST_ONEWAY) {
                 uvrpc_client_call_oneway(clients[j], "add", buf, size);
+            } else if (test_type == TEST_STREAM) {
+                /* Streaming test: use stream method and callback */
+                uvrpc_client_call(clients[j], "stream", buf, size, on_stream_response, bench_ctx);
             } else {
                 fflush(stdout);
                 uvrpc_client_call(clients[j], "add", buf, size, on_response, bench_ctx);
@@ -698,6 +781,8 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     
     /* Wait for completion */
     int timeout = 0;
+    int max_iterations = 1000;  /* Default max iterations */
+    
     if (test_type == TEST_ONEWAY) {
         /* Oneway: Wait for all sends to complete */
         for (int i = 0; i < 100; i++) {
@@ -710,7 +795,18 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         /* Regular RPC: Wait for all responses */
         fflush(stdout);
         
-        while (__sync_fetch_and_add(&bench_ctx->completed, 0) == 0 && timeout < 1000) {
+        /* For stream mode, increase timeout to accommodate multiple responses */
+        if (test_type == TEST_STREAM) {
+            max_iterations = 5000;  /* Stream needs more time */
+        }
+        
+        /* Also respect timeout_sec if specified */
+        if (bench_ctx->timeout_sec > 0) {
+            /* Convert timeout to approximate iterations (assuming ~1ms per iteration) */
+            max_iterations = bench_ctx->timeout_sec * 1000;
+        }
+        
+        while (__sync_fetch_and_add(&bench_ctx->completed, 0) == 0 && timeout < max_iterations) {
             uv_run(&loop, UV_RUN_NOWAIT);
             timeout++;
             
@@ -855,6 +951,7 @@ static benchmark_suite_t* benchmark_suite_create() {
     suite->num_requests = DEFAULT_REQUESTS;
     suite->num_clients = DEFAULT_CLIENTS;
     suite->warmup_requests = DEFAULT_WARMUP;
+    suite->timeout_sec = DEFAULT_TIMEOUT_SEC;
     suite->transport = TRANSPORT_ALL;
     suite->test_type = TEST_ALL;
     
@@ -893,21 +990,20 @@ static void benchmark_suite_print_results(benchmark_suite_t* suite) {
     printf("╚════════════════════════════════════════════════════════════════╝\n");
     printf("\n");
     
-    printf("%-20s %-12s %-10s %-12s %-12s %-12s %-10s\n", 
-           "Transport", "Clients", "Requests", "Throughput", "Avg Latency", "P95 Latency", "Status");
-    printf("%-20s %-12s %-10s %-12s %-12s %-12s %-10s\n", 
-           "─────────────────", "────────────", "──────────", "────────────", "────────────", "────────────", "──────────");
+    /* Simplified table with fewer columns */
+    printf("%-12s %-8s %-10s %-12s %-10s\n", 
+           "Transport", "Clients", "Requests", "Throughput", "Status");
+    printf("%-12s %-8s %-10s %-12s %-10s\n", 
+           "───────────", "────────", "──────────", "────────────", "──────────");
     
     int total_passed = 0;
     for (int i = 0; i < suite->num_results; i++) {
         test_result_t* r = &suite->results[i];
-        printf("%-20s %-12d %-10lu %-12.0f %-12.3f %-12.3f %-10s\n",
+        printf("%-12s %-8d %-10lu %-12.0f %-10s\n",
                r->transport,
                r->num_clients,
                r->stats.total_requests,
                r->throughput_ops,
-               r->avg_latency_ms,
-               r->p95_latency_ms,
                r->passed ? "PASS" : "FAIL");
         
         if (r->passed) total_passed++;
@@ -981,7 +1077,7 @@ static int benchmark_suite_run(benchmark_suite_t* suite) {
     for (int i = 0; i < num_transports; i++) {
         test_result_t result;
         if (run_single_test(transports[i], suite->test_type, suite->num_clients, suite->num_requests,
-                           suite->warmup_requests, &result, suite->verbose) == 0) {
+                           suite->warmup_requests, suite->timeout_sec, &result, suite->verbose) == 0) {
             benchmark_suite_add_result(suite, &result);
         }
     }
@@ -1005,7 +1101,9 @@ static void print_usage(const char* program_name) {
     printf("  --requests <num>         Number of requests per test (default: %d)\n", DEFAULT_REQUESTS);
     printf("  --clients <num>          Number of clients (default: %d)\n", DEFAULT_CLIENTS);
     printf("  --warmup <num>           Number of warmup requests (default: %d)\n", DEFAULT_WARMUP);
+    printf("  --timeout <sec>         Test timeout in seconds (default: %d)\n", DEFAULT_TIMEOUT_SEC);
     printf("  --oneway                 Test Oneway RPC (fire-and-forget, no response)\n");
+    printf("  --stream                 Test Streaming RPC (multiple response chunks)\n");
     printf("  --verbose                Enable verbose output\n");
     printf("  --quiet                  Disable verbose output\n");
     printf("  --help                   Show this help message\n");
@@ -1060,7 +1158,15 @@ int main(int argc, char* argv[]) {
             }
             
             if (uvrpc_server_register(server, "add", add_handler, NULL) != UVRPC_OK) {
-                fprintf(stderr, "Server: Failed to register handler\n");
+                fprintf(stderr, "Server: Failed to register add handler\n");
+                uvrpc_server_free(server);
+                uvrpc_config_free(config);
+                uv_loop_close(&loop);
+                return 1;
+            }
+            
+            if (uvrpc_server_register(server, "stream", stream_handler, NULL) != UVRPC_OK) {
+                fprintf(stderr, "Server: Failed to register stream handler\n");
                 uvrpc_server_free(server);
                 uvrpc_config_free(config);
                 uv_loop_close(&loop);
@@ -1106,7 +1212,9 @@ int main(int argc, char* argv[]) {
         {"requests",    required_argument, 0, 'r'},
         {"clients",     required_argument, 0, 'c'},
         {"warmup",      required_argument, 0, 'w'},
+        {"timeout",     required_argument, 0, 'T'},
         {"oneway",      no_argument,       0, 'o'},
+        {"stream",      no_argument,       0, 'S'},
         {"verbose",     no_argument,       0, 'v'},
         {"quiet",       no_argument,       0, 's'},
         {"help",        no_argument,       0, 'h'},
@@ -1114,7 +1222,7 @@ int main(int argc, char* argv[]) {
     };
     
     int opt;
-    while ((opt = getopt_long(argc, argv, "aqt:r:c:w:ovsh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "aqt:r:c:w:T:oSvsh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'a':
                 suite->run_all_transports = 1;
@@ -1164,8 +1272,20 @@ int main(int argc, char* argv[]) {
                     return 1;
                 }
                 break;
+            case 'T':
+                suite->timeout_sec = atoi(optarg);
+                if (suite->timeout_sec < MIN_TIMEOUT_SEC || suite->timeout_sec > MAX_TIMEOUT_SEC) {
+                    fprintf(stderr, "Invalid timeout value: %s (must be %d-%d seconds)\n",
+                            optarg, MIN_TIMEOUT_SEC, MAX_TIMEOUT_SEC);
+                    benchmark_suite_free(suite);
+                    return 1;
+                }
+                break;
             case 'o':
                 suite->test_type = TEST_ONEWAY;
+                break;
+            case 'S':
+                suite->test_type = TEST_STREAM;
                 break;
             case 'v':
                 suite->verbose = 1;

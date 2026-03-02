@@ -10,6 +10,10 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+/* Performance statistics */
+__attribute__((used)) volatile uint64_t tcp_fast_calls = 0;
+__attribute__((used)) volatile uint64_t tcp_vtable_calls = 0;
+
 /* Debug logging macro - compiles out in release builds */
 #ifdef UVRPC_DEBUG
 #define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
@@ -640,6 +644,9 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
 
+    /* Track fast path calls */
+    tcp_fast_calls++;
+
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
     uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
@@ -800,5 +807,15 @@ uvbus_transport_t* create_tcp_transport(uvbus_transport_type_t type, uv_loop_t* 
     transport->loop = loop;
     transport->vtable = &tcp_vtable;
     
+    /* Set fast path function pointers */
+    transport->fast_send = tcp_send;
+    transport->fast_send_to = tcp_send_to;
+    
     return transport;
+}
+
+/* Export function to get TCP statistics */
+__attribute__((used)) void uvbus_tcp_get_stats(uint64_t* fast, uint64_t* vtable) {
+    if (fast) *fast = tcp_fast_calls;
+    if (vtable) *vtable = tcp_vtable_calls;
 }

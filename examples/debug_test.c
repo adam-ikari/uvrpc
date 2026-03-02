@@ -63,10 +63,11 @@ int main() {
     printf("\nStep 6: Running loop briefly...\n");
     for (int i = 0; i < 3; i++) {
         printf("  Iteration %d: ", i);
-        int n = uv_run(&loop, UV_RUN_NOWAIT);
-        printf(" uv_run_nowait returned %d\n", n);
+        int n = uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
+        printf(" uv_run_default returned %d\n", n);
     }
-    
+
     /* Step 7: Create client */
     printf("\nStep 7: Creating client...\n");
     uvrpc_config_t* client_config = uvrpc_config_new();
@@ -74,18 +75,19 @@ int main() {
     uvrpc_config_set_address(client_config, "inproc://debug_test");
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     printf("  Client created: %p\n", (void*)client);
-    
+
     /* Step 8: Connect */
     printf("\nStep 8: Connecting client...\n");
     rv = uvrpc_client_connect(client);
     printf("  Connect result: %d\n", rv);
-    
+
     /* Step 9: Run loop for connection */
     printf("\nStep 9: Running loop for connection...\n");
     for (int i = 0; i < 3; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
-    
+
     /* Step 10: Send requests */
     printf("\nStep 10: Sending 5 requests...\n");
     for (int i = 0; i < 5; i++) {
@@ -95,11 +97,12 @@ int main() {
         printf("  Send request #%d: %d\n", i+1, rv);
         if (rv == 0) g_requests_sent++;
     }
-    
+
     /* Step 11: Run loop to process */
     printf("\nStep 11: Running loop to process requests...\n");
     for (int i = 0; i < 20; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         if (g_responses_received >= 5) break;
     }
     

@@ -194,7 +194,8 @@ int main() {
     /* Run event loop until client connects */
     printf("[MAIN] Waiting for connection...\n");
     while (g_running && !client_ctx.connected) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
 
     if (!client_ctx.connected) {
@@ -209,7 +210,7 @@ int main() {
 
     /* Send RPC calls */
     int32_t params[2];
-    
+
     /* Test 1: Add operation */
     printf("[MAIN] Test 1: add(10, 20)\n");
     params[0] = 10;
@@ -218,7 +219,8 @@ int main() {
     uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, &client_ctx);
 
     while (g_running && !client_ctx.received) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
 
     /* Test 2: Add operation */
@@ -229,7 +231,8 @@ int main() {
     uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, &client_ctx);
 
     while (g_running && !client_ctx.received) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
 
     /* Test 3: Echo operation */
@@ -239,7 +242,8 @@ int main() {
     uvrpc_client_call(client, "echo", (const uint8_t*)msg, strlen(msg), on_response, &client_ctx);
 
     while (g_running && !client_ctx.received) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
 
     printf("\n[MAIN] All tests completed\n");

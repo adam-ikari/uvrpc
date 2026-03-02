@@ -38,7 +38,7 @@ typedef struct sameloop_client {
     void* server_callback_ctx;              /* Inlined from server */
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
-} sameloop_client_t;
+} __attribute__((aligned(64))) sameloop_client_t;  /* Cache line aligned */
 
 /* Server registry (static, not global) */
 static sameloop_server_t* server_registry = NULL;
@@ -57,8 +57,8 @@ static int (*sameloop_send_direct)(void*, const uint8_t*, size_t) = NULL;
 static int (*sameloop_send_to_direct)(void*, const uint8_t*, size_t, void*) = NULL;
 
 /* Performance statistics */
-static volatile uint64_t fast_path_calls = 0;
-volatile uint64_t vtable_calls = 0;  /* Exported for uvbus.c */
+__attribute__((used)) volatile uint64_t fast_path_calls = 0;
+__attribute__((used)) volatile uint64_t vtable_calls = 0;  /* Exported for uvbus.c */
 
 /* Find server by name in registry */
 static sameloop_server_t* find_server(const char* name) {
@@ -201,32 +201,50 @@ static void sameloop_disconnect(void* impl_ptr) {
 }
 
 /* Send - from client to server (inline dispatch for performance) */
-int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
+__attribute__((hot, always_inline)) static inline int sameloop_send_inline(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     
-    fast_path_calls++;  /* Count fast path calls */
-    
     /* Fast path - assume client send (most common case) */
-    if (!transport->is_connected) {
-        return UVBUS_ERROR_NOT_CONNECTED;
+    if (__builtin_expect(!!transport->is_connected, 1)) {
+        /* Prefetch client data to reduce cache miss */
+        sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
+        __builtin_prefetch(client);
+        __builtin_prefetch(&client->server_recv_cb);
+        
+        /* Direct callback - minimize indirection */
+        client->server_recv_cb(data, size, client, client->server_callback_ctx);
+        
+        /* Count successful fast path calls */
+        fast_path_calls++;
+        return UVBUS_OK;
     }
     
-    /* Direct callback - minimize indirection */
-    sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
-    client->server_recv_cb(data, size, client, client->server_callback_ctx);
-    
-    return UVBUS_OK;
+    return UVBUS_ERROR_NOT_CONNECTED;
+}
+
+/* Wrapper function for non-inlined calls */
+__attribute__((hot)) int sameloop_send(void* impl_ptr, const uint8_t* data, size_t size) {
+    return sameloop_send_inline(impl_ptr, data, size);
 }
 
 /* Send to specific client - from server to client */
-static int sameloop_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
+__attribute__((hot, always_inline)) static inline int sameloop_send_to_inline(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     sameloop_client_t* client = (sameloop_client_t*)target;
+    
+    /* Prefetch callback pointers */
+    __builtin_prefetch(&client->recv_cb);
+    __builtin_prefetch(&client->callback_ctx);
     
     /* Direct callback - minimize overhead */
     client->recv_cb(data, size, client, client->callback_ctx);
     
     return UVBUS_OK;
+}
+
+/* Wrapper function for non-inlined calls */
+__attribute__((hot)) static int sameloop_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
+    return sameloop_send_to_inline(impl_ptr, data, size, target);
 }
 
 /* Broadcast - not implemented for SAMELOOP */
@@ -261,7 +279,7 @@ static void setup_direct_dispatch() {
 }
 
 /* Get performance statistics */
-void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable) {
+__attribute__((used)) void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable) {
     if (fast) *fast = fast_path_calls;
     if (vtable) *vtable = vtable_calls;
 }
@@ -281,6 +299,10 @@ uvbus_transport_t* create_sameloop_transport(uvbus_transport_type_t type, uv_loo
     transport->type = type;
     transport->loop = loop;
     transport->vtable = &sameloop_vtable;
+    
+    /* Set fast path function pointers */
+    transport->fast_send = sameloop_send;
+    transport->fast_send_to = sameloop_send_to;
     
     return transport;
 }

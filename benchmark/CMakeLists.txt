@@ -48,14 +48,14 @@ add_executable(uvrpc_benchmark
 )
 
 target_link_libraries(uvrpc_benchmark
-    ${PROJECT_ROOT}/dist/lib/libuvrpc.so
+    ${PROJECT_ROOT}/dist/lib/libuvrpc.a
     -lm -lrt -ldl
     ${PROJECT_ROOT}/deps/mimalloc/build_shared/libmimalloc.a
-    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.so
+    ${PROJECT_ROOT}/deps/libuv/build_shared/libuv.a
     ${PROJECT_ROOT}/deps/flatcc/lib/libflatcc.a
 )
 
-set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-pthread")
+set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-static -pthread")
 
 # DSL-generated API benchmark
 add_executable(benchmark_dsl

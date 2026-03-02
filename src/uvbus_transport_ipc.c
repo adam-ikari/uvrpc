@@ -196,6 +196,14 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 static void on_client_connect(uv_connect_t* req, int status) {
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
 
+    printf("[IPC_CB] ENTER: status=%d, connect_cb=%p, callback_ctx=%p\n", 
+           status, (void*)transport->connect_cb, (void*)transport->callback_ctx);
+    fflush(stdout);
+
+    UVRPC_LOG("IPC client connect callback: status=%d, connect_cb=%p, callback_ctx=%p", 
+              status, (void*)transport->connect_cb, (void*)transport->callback_ctx);
+    fflush(stderr);
+
     if (status == 0) {
         transport->is_connected = 1;
 
@@ -209,9 +217,17 @@ static void on_client_connect(uv_connect_t* req, int status) {
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
 
         if (transport->connect_cb) {
+            printf("[IPC_CB] Calling connect_cb with UVBUS_OK\n");
+            fflush(stdout);
+            UVRPC_LOG("Calling connect_cb with UVBUS_OK");
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+            printf("[IPC_CB] connect_cb returned\n");
+            fflush(stdout);
+        } else {
+            UVRPC_LOG("ERROR: connect_cb is NULL!");
         }
     } else {
+        UVRPC_LOG("ERROR: IPC connection failed with status=%d (%s)", status, uv_strerror(status));
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }
@@ -404,6 +420,8 @@ static int ipc_connect(void* impl_ptr, const char* address) {
     /* Connect */
     transport->impl.ipc_client = (void*)client;
     client->connect_req.data = transport;
+
+    UVRPC_LOG("IPC client connecting to %s (connect_cb=%p)", socket_path, (void*)transport->connect_cb);
 
     uv_pipe_connect(&client->connect_req, &client->pipe_handle,
                     socket_path, on_client_connect);

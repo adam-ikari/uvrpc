@@ -76,7 +76,8 @@ int run_server(uv_loop_t* loop, const char* address) {
     signal(SIGTERM, signal_handler);
 
     while (g_running) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
     }
 
     printf("\nStopping server...\n");
@@ -152,9 +153,11 @@ int run_client(uv_loop_t* loop, const char* address) {
     /* Wait for responses */
     printf("\nWaiting for responses...\n");
     while (request_count < 2) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         usleep(10000);  /* 10ms */
     }
+
 
     printf("\nAll tests completed!\n");
 

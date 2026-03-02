@@ -39,7 +39,6 @@ uvrpc_client_t* uvrpc_{{ service_name_lower }}_create_client(uv_loop_t* loop,
 
     uvrpc_config_set_loop(config, loop);
     uvrpc_config_set_address(config, address);
-    uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
 
     /* Create client */
     uvrpc_client_t* client = uvrpc_client_create(config);
@@ -82,66 +81,12 @@ void uvrpc_{{ service_name_lower }}_free_client(uvrpc_client_t* client) {
 /* {{ service.name }} Client API */
 
 {% for method in service.methods -%}
-{% if method.is_oneway -%}
-{% if method.request_fields -%}
-    /* Serialize request fields from struct */
-    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
-{% for field in method.request_fields -%}
-{% if field.is_array -%}
-{% if field.is_struct_array -%}
-    /* Struct array field: {{ field.name }} */
-    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        /* Create vector for struct array */
-        {{ field.type }}_vec_start(&builder);
-        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.type] -%}
-, request->{{ field.name }}[i].{{ struct_field['name'] }}
-                {%- endfor -%});
-        }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
-    }
-{% else -%}
-    /* Scalar array field: {{ field.name }} */
-    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
-    }
-{% endif -%}
-{% else -%}
-    {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, request->{{ field.name }});
-{% endif -%}
-{% endfor -%}
-    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
-{% else -%}
-    /* Empty request */
-    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
-    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
-{% endif -%}
-
-    size_t size;
-    void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-    if (!buf) {
-        flatcc_builder_clear(&builder);
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-
-    /* Send oneway request - no response callback needed */
-    uvrpc_error_t ret = uvrpc_client_call_oneway(client, "{{ method.name }}", buf, size);
-
-    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
-    free(buf);
-    flatcc_builder_clear(&builder);
-    return ret;
-}
-{% else -%}
-/* Async callback API */
+{% if method.is_stream -%}
+/* Stream API - generated for stream methods (sub_ prefix) */
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client,
     uvrpc_callback_t callback, void* ctx
     {%- if method.request_fields -%}
-, const {{ namespace }}_{{ method.request }}_table_t* request
+, const {{ namespace }}_{{ method.request }}_t* request
     {%- endif %}) {
 
     /* Validate parameters */
@@ -185,8 +130,183 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     }
 {% endif -%}
 {% else -%}
+{% if field.type == "const char*" -%}
+    /* String field: {{ field.name }} */
+    if (request->{{ field.name }}) {
+        flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builder, request->{{ field.name }}, strlen(request->{{ field.name }}));
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% else -%}
     {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, request->{{ field.name }});
 {% endif -%}
+{% endif -%}
+{% endfor -%}
+    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
+{% else -%}
+    /* Empty request */
+    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
+    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
+{% endif -%}
+
+    size_t size;
+    void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+
+    if (!buf) {
+        flatcc_builder_clear(&builder);
+        return UVRPC_ERROR_NO_MEMORY;
+    }
+
+    /* Send request using core API (stream mode - callback called multiple times) */
+    uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size, callback, ctx);
+
+    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+    free(buf);
+    flatcc_builder_clear(&builder);
+    return ret;
+}
+
+{% elif method.is_oneway -%}
+/* Oneway API */
+uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client
+    {%- if method.request_fields -%}
+, const {{ namespace }}_{{ method.request }}_t* request
+    {%- endif %}) {
+
+    /* Validate parameters */
+    if (!client) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+{% if method.request_fields -%}
+    if (!request) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+{% endif -%}
+
+    /* Serialize request using FlatBuffers */
+    flatcc_builder_t builder;
+    flatcc_builder_init(&builder);
+
+{% if method.request_fields -%}
+    /* Serialize request fields from struct */
+    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
+{% for field in method.request_fields -%}
+{% if field.is_array -%}
+{% if field.is_struct_array -%}
+    /* Struct array field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        /* Create vector for struct array */
+        {{ field.type }}_vec_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            {{ field.type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.type] -%}
+, request->{{ field.name }}[i].{{ struct_field['name'] }}
+                {%- endfor -%});
+        }
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% else -%}
+    /* Scalar array field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% endif -%}
+{% else -%}
+{% if field.type == "const char*" -%}
+    /* String field: {{ field.name }} */
+    if (request->{{ field.name }}) {
+        flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builder, request->{{ field.name }}, strlen(request->{{ field.name }}));
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% else -%}
+    {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, request->{{ field.name }});
+{% endif -%}
+{% endif -%}
+{% endfor -%}
+    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
+{% else -%}
+    /* Empty request */
+    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
+    {{ namespace }}_{{ method.request }}_end_as_root(&builder);
+{% endif -%}
+
+    size_t size;
+    void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+
+    if (!buf) {
+        flatcc_builder_clear(&builder);
+        return UVRPC_ERROR_NO_MEMORY;
+    }
+
+    /* Send oneway request - no response callback needed */
+    uvrpc_error_t ret = uvrpc_client_call_oneway(client, "{{ method.name }}", buf, size);
+
+    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
+    free(buf);
+    flatcc_builder_clear(&builder);
+    return ret;
+}
+{% else -%}
+/* Async callback API */
+uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* client,
+    uvrpc_callback_t callback, void* ctx
+    {%- if method.request_fields -%}
+, const {{ namespace }}_{{ method.request }}_t* request
+    {%- endif %}) {
+
+    /* Validate parameters */
+    if (!client) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+{% if method.request_fields -%}
+    if (!request) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+{% endif -%}
+
+    /* Serialize request using FlatBuffers */
+    flatcc_builder_t builder;
+    flatcc_builder_init(&builder);
+
+{% if method.request_fields -%}
+    /* Serialize request fields from struct */
+    {{ namespace }}_{{ method.request }}_start_as_root(&builder);
+{% for field in method.request_fields -%}
+{% if field.is_array -%}
+{% if field.is_struct_array -%}
+    /* Struct array field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        /* Create vector for struct array */
+        {{ field.type }}_vec_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            {{ field.type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.type] -%}
+, request->{{ field.name }}[i].{{ struct_field['name'] }}
+                {%- endfor -%});
+        }
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% else -%}
+    /* Scalar array field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+            flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        }
+    {% endif -%}
+    {% else -%}
+    {% if field.type == "const char*" -%}
+        /* String field: {{ field.name }} */
+        if (request->{{ field.name }}) {
+            flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builder, request->{{ field.name }}, strlen(request->{{ field.name }}));
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        }
+    {% else -%}
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, request->{{ field.name }});
+    {% endif -%}
+    
+    {% endif -%}
 {% endfor -%}
     {{ namespace }}_{{ method.request }}_end_as_root(&builder);
 {% else -%}
@@ -213,39 +333,153 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 }
 
 /* Sync wait API (using async/await internally) */
+
 typedef struct {
-    {{ namespace }}_{{ method.response }}_table_t response;
+
+    {{ namespace }}_{{ method.response }}_t response;
+
     int completed;
+
     uvrpc_error_t status;
+
 } sync_{{ service_name_lower }}_{{ method.name }}_ctx_t;
 
+
+
 static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_response_t* resp, void* ctx) {
+
     sync_{{ service_name_lower }}_{{ method.name }}_ctx_t* sync_ctx = (sync_{{ service_name_lower }}_{{ method.name }}_ctx_t*)ctx;
+
     sync_ctx->status = resp->status;
 
+
+
+
+
     if (resp->status == UVRPC_OK && resp->result && resp->result_size > 0) {
-        /* Parse response table */
-        sync_ctx->response = {{ namespace }}_{{ method.response }}_as_root(resp->result);
+
+        /* Parse response table and convert to struct */
+
+        {{ namespace }}_{{ method.response }}_table_t fb_response = {{ namespace }}_{{ method.response }}_as_root(resp->result);
+
+        /* Copy FlatBuffers table fields to struct */
+
+{% for field in method.response_fields -%}
+
+{% if field.is_array -%}
+
+{% if field.is_struct_array -%}
+
+        /* Struct array field: {{ field.name }} */
+
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+
+            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
+
+            if ({{ field.name }}_len > 0) {
+
+                sync_ctx->response.{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}_t));
+
+                if (sync_ctx->response.{{ field.name }}) {
+
+                    sync_ctx->response.{{ field.name }}_size = {{ field.name }}_len;
+
+                    for (size_t i = 0; i < {{ field.name }}_len; i++) {
+
+                        {{ field.type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, i);
+
+{%- for struct_field in rpc_data['tables'][field.type] -%}
+
+                        sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.type }}_{{ struct_field['name'] }}(&item);
+
+{%- endfor -%}
+
+                    }
+
+                }
+
+            }
+
+        }
+
+{% else -%}
+
+        /* Scalar array field: {{ field.name }} */
+
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+
+            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
+
+            if ({{ field.name }}_len > 0) {
+
+                sync_ctx->response.{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
+
+                if (sync_ctx->response.{{ field.name }}) {
+
+                    sync_ctx->response.{{ field.name }}_size = {{ field.name }}_len;
+
+                    const {{ field.type }}* arr = flatbuffers_uint8_vec_start({{ field.name }}_vec);
+
+                    memcpy(sync_ctx->response.{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
+
+                }
+
+            }
+
+        }
+
+{% endif -%}
+
+{% else -%}
+
+        sync_ctx->response.{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+
+{% endif -%}
+
+{% endfor -%}
+
     }
+
+
 
     sync_ctx->completed = 1;
+
 }
 
+
+
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client_t* client,
-    {{ namespace }}_{{ method.response }}_table_t* response
+
+    {{ namespace }}_{{ method.response }}_t* response
+
     {%- if method.request_fields -%}
-, const {{ namespace }}_{{ method.request }}_table_t* request
+
+, const {{ namespace }}_{{ method.request }}_t* request
+
     {%- endif %}
+
     , uint64_t timeout_ms) {
 
+
+
     /* Validate parameters */
+
     if (!client || !response) {
+
         return UVRPC_ERROR_INVALID_PARAM;
+
     }
+
 {% if method.request_fields -%}
+
     if (!request) {
+
         return UVRPC_ERROR_INVALID_PARAM;
+
     }
+
 {% endif -%}
 
     /* Create async context */
@@ -270,13 +504,37 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     {{ namespace }}_{{ method.request }}_start_as_root(&builder);
 {% for field in method.request_fields -%}
 {% if field.is_array -%}
-    /* Array field: {{ field.name }} */
+{% if field.is_struct_array -%}
+    /* Struct array field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        /* Create vector for struct array */
+        {{ field.type }}_vec_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            {{ field.type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.type] -%}
+, request->{{ field.name }}[i].{{ struct_field['name'] }}
+                {%- endfor -%});
+        }
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
+{% else -%}
+    /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
         flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
     }
+{% endif -%}
+{% else -%}
+{% if field.type == "const char*" -%}
+    /* String field: {{ field.name }} */
+    if (request->{{ field.name }}) {
+        flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builder, request->{{ field.name }}, strlen(request->{{ field.name }}));
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+    }
 {% else -%}
     {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, request->{{ field.name }});
+{% endif -%}
 {% endif -%}
 {% endfor -%}
     {{ namespace }}_{{ method.request }}_end_as_root(&builder);

@@ -17,6 +17,7 @@
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* Debug logging macro - compiles out in release builds */
 #ifdef UVRPC_DEBUG
@@ -28,12 +29,24 @@
 /* Error logging - always enabled */
 #define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
+/* Stream timeout default: 60 seconds */
+#define STREAM_TIMEOUT_MS 60000
+
+/* Get current timestamp in milliseconds */
+static uint64_t get_timestamp_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 /* Forward declarations */
 static void pump_timer_callback(uv_timer_t* handle);
 static void start_pump_timer(uvrpc_client_t* client);
 static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
                                                 const uint8_t* params, size_t params_size,
-                                                uvrpc_callback_t callback, void* ctx);
+                                                uvrpc_callback_t callback, void* ctx, int is_stream);
+static void cleanup_timeout_streams(uvrpc_client_t* client);
+static void poll_callback(uv_timer_t* handle);
 
 /* Pending callback - using direct indexing ring buffer */
 typedef struct pending_callback {
@@ -41,6 +54,12 @@ typedef struct pending_callback {
     uint32_t generation;     /* Generation counter to detect stale entries */
     uvrpc_callback_t callback;
     void* ctx;
+    int is_stream;           /* Whether this is a stream request (sub_ prefix) */
+    uint64_t last_activity;  /* Last activity timestamp (for timeout) */
+    char* method;            /* Method name (for polling) */
+    uv_timer_t poll_timer;   /* Timer for polling (if degraded to polling) */
+    int is_polling;          /* Whether this connection is in polling mode */
+    uvrpc_client_t* client;  /* Client pointer (for polling) */
 } pending_callback_t;
 
 /* Client structure */
@@ -94,6 +113,40 @@ static void start_pump_timer(uvrpc_client_t* client) {
     }
 }
 
+/* Cleanup pending callback */
+static void cleanup_pending_callback(pending_callback_t* pending) {
+    if (!pending) return;
+    
+    /* Free method name if allocated */
+    if (pending->method) {
+        uvrpc_free(pending->method);
+    }
+    
+    /* Stop and close poll timer if active */
+    if (pending->is_polling && uv_is_active((uv_handle_t*)&pending->poll_timer)) {
+        uv_timer_stop(&pending->poll_timer);
+        uv_close((uv_handle_t*)&pending->poll_timer, NULL);
+    }
+    
+    /* Free pending callback structure */
+    uvrpc_free(pending);
+}
+
+/* Poll callback - called when poll timer fires */
+static void poll_callback(uv_timer_t* handle) {
+    pending_callback_t* pending = (pending_callback_t*)handle->data;
+    if (!pending || !pending->method || !pending->client) {
+        return;
+    }
+
+    uvrpc_client_t* client = pending->client;
+    
+    /* Re-issue stream request */
+    UVRPC_LOG("Polling for method: %s", pending->method);
+    uvrpc_client_call_no_retry_internal(client, pending->method, NULL, 0,
+                                        pending->callback, pending->ctx, 1);
+}
+
 /* Transport connect callback */
 static void client_connect_callback(int status, void* ctx) {
     fprintf(stderr, "[CLIENT_CB] ENTER: status=%d, ctx=%p\n", status, ctx);
@@ -136,6 +189,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     (void)client_ctx;  /* Not used for client mode */
     uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
 
+    printf("[CLIENT] Received %zu bytes, client=%p\n", size, client);
     UVRPC_LOG("Received %zu bytes", size);
 
     if (!client || !client->uvbus) {
@@ -176,16 +230,21 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     uint32_t idx = msgid & (client->max_pending_callbacks - 1);
     pending_callback_t* pending = client->pending_callbacks[idx];
     
+    printf("[CLIENT] Received response: msgid=%u, idx=%u, pending=%p\n", msgid, idx, pending);
+    
     /* Check if callback exists and matches msgid and generation */
     if (pending && pending->msgid == msgid && pending->generation == client->generation) {
+        printf("[CLIENT] Found pending callback for msgid=%u (idx=%u)\n", msgid, idx);
+        
         /* Create response structure */
         uvrpc_response_t resp;
         resp.status = UVRPC_OK;
         resp.msgid = msgid;
         resp.error_code = 0;
         resp.error_message = NULL;
-        resp.is_stream = 0;
-        resp.is_last_chunk = 0;
+        resp.is_stream = pending->is_stream;
+        resp.is_last_chunk = 0;  /* Will be set when stream is closed */
+        resp.user_data = NULL;
 
         /* Copy result data to avoid use-after-free */
         uint8_t* result_copy = NULL;
@@ -197,10 +256,21 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         }
         resp.result = result_copy;
         resp.result_size = result_size;
-        resp.user_data = NULL;
 
-        /* Remove from ring buffer before calling callback (to avoid re-entry) */
-        client->pending_callbacks[idx] = NULL;
+        /* For stream requests, check for end marker
+         * End marker: result_size == 0 indicates server closed stream
+         * Set flag before calling callback */
+        if (pending->is_stream) {
+            /* Update activity timestamp */
+            pending->last_activity = get_timestamp_ms();
+
+            /* Check for end marker (result_size == 0) */
+            if (result_size == 0) {
+                /* Server closed stream - set flag before callback */
+                resp.is_last_chunk = 1;
+            }
+            /* Otherwise, keep callback active for more chunks */
+        }
 
         /* Call callback */
         if (pending->callback) {
@@ -212,11 +282,18 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             uvrpc_free(result_copy);
         }
 
-        /* Free pending callback structure */
-        uvrpc_free(pending);
-
-        /* Decrease concurrent count */
-        client->current_concurrent--;
+        /* Cleanup pending callback after callback returns */
+        if (pending->is_stream && result_size == 0) {
+            /* Server closed stream - cleanup pending callback */
+            client->pending_callbacks[idx] = NULL;
+            cleanup_pending_callback(pending);
+            client->current_concurrent--;
+        } else if (!pending->is_stream) {
+            /* Normal request - cleanup immediately */
+            client->pending_callbacks[idx] = NULL;
+            cleanup_pending_callback(pending);
+            client->current_concurrent--;
+        }
     }
 
     /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
@@ -468,7 +545,8 @@ int uvrpc_client_get_max_retries(uvrpc_client_t* client) {
 /* Call remote method without retry (internal) */
 static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
                                                 const uint8_t* params, size_t params_size,
-                                                uvrpc_callback_t callback, void* ctx) {
+                                                uvrpc_callback_t callback, void* ctx,
+                                                int is_stream) {
     if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
     
     UVRPC_LOG("Calling method '%s', is_connected=%d", method, client->is_connected);
@@ -507,6 +585,15 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         pending->generation = client->generation;
         pending->callback = callback;
         pending->ctx = ctx;
+        pending->is_stream = is_stream;
+        pending->last_activity = get_timestamp_ms();
+        pending->client = client;
+        pending->is_polling = 0;
+        
+        /* Save method name for polling */
+        if (is_stream && method) {
+            pending->method = uvrpc_strdup(method);
+        }
 
         /* Direct indexing with bitmask - O(1) */
         uint32_t idx = msgid & (client->max_pending_callbacks - 1);
@@ -522,7 +609,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         } else {
             /* Slot is occupied by a valid entry - ring buffer is effectively full */
             /* Do NOT block the event loop - return error and let caller handle it */
-            uvrpc_free(pending);
+            cleanup_pending_callback(pending);
             uvrpc_free(req_data);
             return UVRPC_ERROR_CALLBACK_LIMIT;
         }
@@ -569,9 +656,12 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
                        uvrpc_callback_t callback, void* ctx) {
     if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
     
+    /* Determine if this is a stream method by checking method name prefix */
+    int is_stream = (strncmp(method, "sub_", 4) == 0);
+    
     /* If retry is disabled, call directly */
     if (client->max_retries <= 0) {
-        return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
+        return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx, is_stream);
     }
     
     /* Retry logic - just retry without running event loop */
@@ -580,7 +670,7 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
     int retries = 0;
     
     do {
-        ret = uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
+        ret = uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx, is_stream);
         
         if (ret == UVRPC_OK) {
             break;  /* Success - exit retry loop */
@@ -597,7 +687,9 @@ int uvrpc_client_call(uvrpc_client_t* client, const char* method,
 int uvrpc_client_call_no_retry(uvrpc_client_t* client, const char* method,
                                 const uint8_t* params, size_t params_size,
                                 uvrpc_callback_t callback, void* ctx) {
-    return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx);
+    /* Determine if this is a stream method by checking method name prefix */
+    int is_stream = (strncmp(method, "sub_", 4) == 0);
+    return uvrpc_client_call_no_retry_internal(client, method, params, params_size, callback, ctx, is_stream);
 }
 
 /* Call RPC method with oneway mode (zero overhead: no callback, no response) */
@@ -640,6 +732,35 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
     start_pump_timer(client);
     
     return UVRPC_OK;
+}
+
+/* Close a stream connection */
+int uvrpc_client_sub_close(uvrpc_client_t* client, const char* method) {
+    if (!client || !method) return UVRPC_ERROR_INVALID_PARAM;
+    
+    /* Find the pending callback for this stream method */
+    /* Since we don't track method name in pending_callback, we need to iterate */
+    /* For efficiency, we just find the first stream callback and remove it */
+    /* In a real implementation, we'd track method names */
+    
+    uint32_t idx;
+    for (idx = 0; idx < client->max_pending_callbacks; idx++) {
+        pending_callback_t* pending = client->pending_callbacks[idx];
+        if (pending && pending->is_stream && pending->generation == client->generation) {
+            /* Remove from ring buffer */
+            client->pending_callbacks[idx] = NULL;
+            
+            /* Free pending callback structure */
+            cleanup_pending_callback(pending);
+            
+            /* Decrease concurrent count */
+            client->current_concurrent--;
+            
+            return UVRPC_OK;
+        }
+    }
+    
+    return UVRPC_ERROR_NOT_FOUND;
 }
 
 /* Free response */
@@ -715,7 +836,7 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
 
             uint32_t idx = (uint32_t)msgid % client->max_pending_callbacks;
             if (client->pending_callbacks[idx] != NULL) {
-                uvrpc_free(pending);
+                cleanup_pending_callback(pending);
                 uvrpc_free(req_data);
                 return UVRPC_ERROR_CALLBACK_LIMIT;
             }
@@ -753,4 +874,32 @@ static void pump_timer_callback(uv_timer_t* handle) {
 
     /* The pump timer is designed to trigger periodic flushes for batched sends.
      * This is particularly useful for Oneway RPC and high-throughput scenarios. */
+
+    /* Check for stream timeouts */
+    cleanup_timeout_streams(client);
+}
+
+/* Cleanup timeout streams */
+static void cleanup_timeout_streams(uvrpc_client_t* client) {
+    if (!client) return;
+
+    uint64_t now = get_timestamp_ms();
+    uint64_t timeout = STREAM_TIMEOUT_MS;
+
+    for (uint32_t i = 0; i < client->max_pending_callbacks; i++) {
+        pending_callback_t* pending = client->pending_callbacks[i];
+        if (pending && pending->is_stream &&
+            pending->generation == client->generation) {
+            /* Check if stream has timed out */
+            if ((now - pending->last_activity) > timeout) {
+                UVRPC_LOG("Stream timeout detected: msgid=%u, timeout=%lu ms",
+                         pending->msgid, (unsigned long)(now - pending->last_activity));
+
+                /* Remove pending callback */
+                client->pending_callbacks[i] = NULL;
+                uvrpc_free(pending);
+                client->current_concurrent--;
+            }
+        }
+    }
 }

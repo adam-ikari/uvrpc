@@ -248,33 +248,60 @@ add_subdirectory(benchmark)
     endfunction()
 
     # Create example targets
+    
+    # Basic RPC examples
     create_example_target(simple_server)
     create_example_target(simple_client)
     create_example_target(simple_inproc)
-    create_example_target(debug_test)
-    create_example_target(gateway_demo)
-    create_example_target(allocator_demo)
-    create_example_target(msgid_demo)
-    create_example_target(loop_injection_example)
+    create_example_target(udp_rpc_demo)
+    create_example_target(sameloop_rpc_demo)
+    
+    # Oneway RPC examples
+    create_example_target(test_oneway)
+    # Note: log_simple_demo and log_service_demo require schema generation, skipped for now
+    
+    # Streaming RPC examples
+    create_example_target(streaming_demo)
+    create_example_target(stream_realtime_demo)
+    create_example_target(stream_file_transfer_demo)
+    create_example_target(stream_pubsub_demo)
+    
+    # Advanced features
     create_example_target(async_await_demo)
     create_example_target(async_chain_demo)
     create_example_target(concurrent_demo)
-    create_example_target(flatbuffers_simple_demo)
+    create_example_target(primitives_demo)
+    create_example_target(perf_mode_demo)
+    create_example_target(pubsub_demo)
     create_example_target(rpc_dsl_demo)
-    create_example_target(udp_rpc_demo)
+    create_example_target(flatbuffers_simple_demo)
+    
+    # Loop lifecycle examples
+    create_example_target(loop_injection_example)
+    create_example_target(loop_lifecycle_demo)
+    create_example_target(dynamic_lifecycle_demo)
+    create_example_target(event_driven_lifecycle_demo)
+    
+    # UVBus examples
     create_example_target(uvbus_demo)
     create_example_target(uvbus_server_only)
     create_example_target(uvbus_client_only)
-    create_example_target(perf_mode_demo)
-    create_example_target(primitives_demo)
-    create_example_target(test_oneway)
+    
+    # SameLoop examples
     create_example_target(test_sameloop)
     create_example_target(test_sameloop_recursion)
     create_example_target(test_sameloop_stress)
     create_example_target(test_sameloop_multiclient)
-    create_example_target(streaming_demo)
-    create_example_target(sameloop_rpc_demo)
-    # Note: multi_service_loop_reuse and generated_client_example require additional schema generation, skipped for now
+    
+    # Utility and test examples
+    create_example_target(debug_test)
+    create_example_target(allocator_demo)
+    create_example_target(msgid_demo)
+    create_example_target(gateway_demo)
+    
+    # Note: multi_service_loop_reuse, generated_client_example, 
+    # stream_dsl_usage_example, and stream_benchmark_dsl 
+    # require additional schema generation, skipped for now
 endif()
 
 # Print configuration summary

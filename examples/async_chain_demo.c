@@ -97,7 +97,8 @@ int main(void) {
     
     /* Run event loop briefly to establish connection */
     for (int i = 0; i < 5; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
     
     printf("\n3. Chained async calls:\n");

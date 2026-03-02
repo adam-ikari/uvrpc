@@ -82,8 +82,9 @@ int main(int argc, char** argv) {
     int count = 0;
     while (g_running && count < 5) {
         /* User decides how to run the loop */
-        uv_run(&loop, UV_RUN_NOWAIT);
-        
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
+
         /* User can do other work here */
         if (count == 0) {
             printf("\nStep 5: Send RPC call\n");
@@ -93,7 +94,7 @@ int main(int argc, char** argv) {
                              response_callback, NULL);
             printf("  ✓ RPC call sent\n");
         }
-        
+
         count++;
         usleep(100000);  /* 100ms */
     }

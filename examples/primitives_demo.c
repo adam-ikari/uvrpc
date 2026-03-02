@@ -103,7 +103,8 @@ static void run_semaphore_demo(uv_loop_t* loop, uvrpc_client_t* client) {
     
     /* Wait for all requests to complete */
     while (requests_completed + requests_failed < TOTAL_REQUESTS) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         usleep(10000); /* 10ms */
     }
     
@@ -202,7 +203,8 @@ static void run_promise_all_demo(uv_loop_t* loop, uvrpc_client_t* client) {
     
     /* Wait for all to complete */
     while (uvrpc_promise_is_pending(&combined)) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         usleep(10000);
     }
     
@@ -276,7 +278,8 @@ static void run_promise_demo(uv_loop_t* loop, uvrpc_client_t* client) {
     
     /* Wait for promise to complete */
     while (uvrpc_promise_is_pending(&promise)) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         usleep(10000);
     }
     
@@ -349,7 +352,8 @@ static void run_waitgroup_demo(uv_loop_t* loop, uvrpc_client_t* client) {
     
     /* Wait for all tasks to complete */
     while (uvrpc_get_count(&wg) > 0) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         usleep(10000);
     }
     

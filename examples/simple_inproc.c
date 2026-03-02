@@ -187,7 +187,8 @@ int main(int argc, char** argv) {
     /* Wait for connection */
     int iterations = 0;
     while (!client_ctx.connected && g_running && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         iterations++;
     }
 
@@ -223,7 +224,8 @@ int main(int argc, char** argv) {
         /* Wait for response */
         iterations = 0;
         while (!client_ctx.received && g_running && iterations < 50) {
-            uv_run(&loop, UV_RUN_ONCE);
+            uv_run(&loop, UV_RUN_DEFAULT);
+            uv_stop(&loop);
             iterations++;
         }
 

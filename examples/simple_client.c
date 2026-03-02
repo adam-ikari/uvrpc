@@ -92,23 +92,24 @@ int main(int argc, char** argv) {
     /* Wait for connection */
     int iterations = 0;
     while (!context.connected && context.running && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         iterations++;
     }
-    
+
     if (!context.connected) {
         fprintf(stderr, "[CLIENT] Connection timeout\n");
         uvrpc_client_free(client);
         uvrpc_config_free(config);
         return 1;
     }
-    
+
     /* Call RPC */
     int32_t params[2] = {10, 20};
     printf("[CLIENT] Calling 'add' with params %d + %d\n", params[0], params[1]);
-    
+
     ret = uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, &context);
-    
+
     if (ret == UVRPC_OK) {
         printf("[CLIENT] Request sent successfully\n");
     } else if (ret == UVRPC_ERROR_CALLBACK_LIMIT) {
@@ -118,14 +119,15 @@ int main(int argc, char** argv) {
         fprintf(stderr, "[CLIENT] Failed to call: %d\n", ret);
         context.running = 0;
     }
-    
+
     /* Wait for response */
     iterations = 0;
     while (context.running && iterations < 50) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         iterations++;
     }
-    
+
     if (!context.received) {
         printf("[CLIENT] No response received\n");
     }

@@ -74,7 +74,8 @@ int main(int argc, char** argv) {
     /* Wait for connection */
     int conn_wait = 0;
     while (!g_connected && conn_wait < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         conn_wait++;
         if (conn_wait % 10 == 0) {
             fprintf(stderr, "Waiting for connection... (%d/100)\n", conn_wait);
@@ -85,21 +86,21 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Connection timeout after %d iterations\n", conn_wait);
         return 1;
     }
-    
+
     printf("Performance Mode: %s\n", (mode == UVRPC_PERF_LOW_LATENCY) ? "Low Latency" : "High Throughput");
     printf("Iterations: %d\n", iterations);
     fflush(stdout);
-    
+
     /* Performance test */
     int32_t params[2] = {10, 20};
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
-    
+
     /* Send requests in batches */
     int sent = 0;
     while (sent < iterations) {
         int batch_end = (sent + 100 < iterations) ? sent + 100 : iterations;
-        
+
         /* Send a batch of requests */
         for (int i = sent; i < batch_end; i++) {
             int ret = uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params), on_response, NULL);
@@ -108,17 +109,20 @@ int main(int argc, char** argv) {
             }
         }
         sent = batch_end;
-        
+
         /* Run event loop once to allow data to be sent */
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
     }
-    
+
     /* Wait for all remaining responses */
     int resp_wait = 0;
     while (!g_done && g_responses_received < iterations && resp_wait < 10000) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         resp_wait++;
     }
+
     
     clock_gettime(CLOCK_MONOTONIC, &end);
 

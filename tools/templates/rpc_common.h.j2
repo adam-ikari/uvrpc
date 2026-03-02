@@ -2,14 +2,64 @@
 #ifndef {{ namespace|upper }}_{{ service_name_upper }}_RPC_COMMON_H
 #define {{ namespace|upper }}_{{ service_name_upper }}_RPC_COMMON_H
 
-#include "{{ namespace|lower }}_builder.h"
-#include "{{ namespace|lower }}_reader.h"
+#include "{{ schema_basename|lower }}_builder.h"
+#include "{{ schema_basename|lower }}_reader.h"
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_async.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* ============================================================
+   Request/Response Struct Definitions
+   These are plain C structs for easy use by users.
+   They will be serialized to/from FlatBuffers internally.
+   ============================================================ */
+
+{% set all_types = [] -%}
+{% for method in service.methods -%}
+{%- if method.request not in all_types -%}
+{%- set _ = all_types.append(method.request) -%}
+typedef struct {
+{%- for field in method.request_fields -%}
+{%- if field.is_array -%}
+{%- if field.is_struct_array -%}
+    {{ field.type }}_t* {{ field.name }};
+    size_t {{ field.name }}_size;
+{%- else -%}
+    {{ field.type }}* {{ field.name }};
+    size_t {{ field.name }}_size;
+{%- endif -%}
+{%- else -%}
+    {{ field.type }} {{ field.name }};
+{%- endif -%}
+{%- endfor -%}
+} {{ namespace }}_{{ method.request }}_t;
+
+{%- endif -%}
+{%- if method.response not in all_types -%}
+{%- set _ = all_types.append(method.response) -%}
+typedef struct {
+{%- for field in method.response_fields -%}
+{%- if field.is_array -%}
+{%- if field.is_struct_array -%}
+    {{ field.type }}_t* {{ field.name }};
+    size_t {{ field.name }}_size;
+{%- else -%}
+    {{ field.type }}* {{ field.name }};
+    size_t {{ field.name }}_size;
+{%- endif -%}
+{%- else -%}
+    {{ field.type }} {{ field.name }};
+{%- endif -%}
+{%- endfor -%}
+} {{ namespace }}_{{ method.response }}_t;
+
+{%- endif -%}
+{%- endfor -%}
 
 /* Async utility function declarations */
 {% for method in service.methods -%}
@@ -18,8 +68,8 @@ extern "C" {
  * Execute multiple {{ method.name }} calls concurrently and wait for all to complete (Promise.all)
  * @param ctx async context
  * @param clients array of RPC clients
- * @param requests array of request tables
- * @param results output array of response tables (caller must free each result)
+ * @param requests array of request structs
+ * @param results output array of response structs (caller must free each result)
  * @param count number of calls
  * @param timeout_ms timeout in milliseconds (0 for no timeout)
  * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout
@@ -27,8 +77,8 @@ extern "C" {
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
     uvrpc_async_ctx_t* ctx,
     uvrpc_client_t** clients,
-    const {{ namespace }}_{{ method.request }}_table_t* requests,
-    {{ namespace }}_{{ method.response }}_table_t*** results,
+    const {{ namespace }}_{{ method.request }}_t* requests,
+    {{ namespace }}_{{ method.response }}_t** results,
     int count,
     uint64_t timeout_ms);
 
@@ -36,8 +86,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
  * Execute multiple {{ method.name }} calls concurrently and wait for any to complete (Promise.any)
  * @param ctx async context
  * @param clients array of RPC clients
- * @param requests array of request tables
- * @param result output response table
+ * @param requests array of request structs
+ * @param result output response struct
  * @param completed_index index of the completed call
  * @param count number of calls
  * @param timeout_ms timeout in milliseconds (0 for no timeout)
@@ -46,8 +96,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
 uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
     uvrpc_async_ctx_t* ctx,
     uvrpc_client_t** clients,
-    const {{ namespace }}_{{ method.request }}_table_t* requests,
-    {{ namespace }}_{{ method.response }}_table_t* result,
+    const {{ namespace }}_{{ method.request }}_t* requests,
+    {{ namespace }}_{{ method.response }}_t* result,
     int* completed_index,
     int count,
     uint64_t timeout_ms);

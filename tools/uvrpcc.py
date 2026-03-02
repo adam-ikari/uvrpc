@@ -148,15 +148,22 @@ class RPCParser:
     def _parse_methods(self, methods_str):
         """Parse RPC methods"""
         methods = []
-        for line in methods_str.split('\n'):
+        lines = methods_str.split('\n')
+        
+        for i, line in enumerate(lines):
             line = line.strip()
             if not line or line.startswith('//'):
                 continue
-            # Remove inline comments (both C /* */ and C++ //)
-            line = re.sub(r'/\*.*?\*/', '', line).strip()  # Remove /* ... */
-            line = re.sub(r'//.*$', '', line).strip()       # Remove // ...
+            
+            # Check for stream attribute in FlatBuffers attribute syntax (stream)
+            is_stream = '(stream)' in line
+
+            # Remove FlatBuffers attributes like (stream), (oneway), etc.
+            line = re.sub(r'\s*\([^)]*\)\s*;', ';', line).strip()
+            
             if not line or not line.endswith(';'):
                 continue
+            
             # Parse: MethodName(RequestType):ReturnType;
             # Format: Add(BenchmarkAddRequest):BenchmarkAddResponse;
             match = re.match(r'(\w+)\s*\(\s*(\w+)\s*\)\s*:\s*(\w+)', line)
@@ -165,8 +172,11 @@ class RPCParser:
                 request_type = match.group(2)
                 return_type = match.group(3)
 
-                # Get request fields from tables
+                # Get request fields from tables (already processed with c_type, is_array, etc.)
                 request_fields = self.tables.get(request_type, [])
+
+                # Get response fields from tables
+                response_fields = self.tables.get(return_type, [])
 
                 # Check if this is a oneway method (EmptyResponse indicates oneway)
                 is_oneway = (return_type == 'EmptyResponse')
@@ -175,9 +185,11 @@ class RPCParser:
                     'name': method_name,
                     'return': return_type,
                     'request': request_type,
-                    'response': return_type,  # Add response field
+                    'response': return_type,
                     'request_fields': request_fields,
-                    'is_oneway': is_oneway
+                    'response_fields': response_fields,
+                    'is_oneway': is_oneway,
+                    'is_stream': is_stream
                 })
         return methods
 

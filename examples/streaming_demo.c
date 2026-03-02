@@ -29,6 +29,9 @@ static void stream_handler(uvrpc_request_t* req, void* ctx) {
         usleep(100000);  // 100ms
     }
 
+    /* Send end marker (result_size=0) to indicate stream completion */
+    uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
+
     printf("[SERVER] Streaming complete\n");
 }
 
@@ -36,11 +39,13 @@ static void stream_handler(uvrpc_request_t* req, void* ctx) {
 static void stream_callback(uvrpc_response_t* resp, void* ctx) {
     (void)ctx;
 
-    printf("[CLIENT] Received response (msgid: %u, size: %zu)\n", 
+    printf("[CLIENT] Received response (msgid: %u, size: %zu)\n",
            resp->msgid, resp->result_size);
 
     if (resp->result && resp->result_size > 0) {
         printf("[CLIENT] data: %s\n", (char*)resp->result);
+    } else if (resp->is_last_chunk) {
+        printf("[CLIENT] Stream closed by server\n");
     }
 
     if (resp->status != UVRPC_OK) {
@@ -71,7 +76,7 @@ int main(int argc, char** argv) {
     }
 
     /* Register stream handler */
-    uvrpc_server_register(server, "stream", stream_handler, NULL);
+    uvrpc_server_register(server, "sub_stream", stream_handler, NULL);
     printf("[SERVER] Registered stream handler\n");
 
     /* Start server */
@@ -114,7 +119,7 @@ int main(int argc, char** argv) {
     /* Send stream request */
     printf("[CLIENT] Sending stream request...\n");
     const char* params = "Start streaming";
-    ret = uvrpc_client_call(client, "stream", 
+    ret = uvrpc_client_call(client, "sub_stream",
                             (uint8_t*)params, strlen(params) + 1,
                             stream_callback, NULL);
     if (ret != UVRPC_OK) {
@@ -123,7 +128,7 @@ int main(int argc, char** argv) {
 
     /* Run event loop for a limited time */
     printf("\n[MAIN] Running event loop for 3 seconds...\n");
-    uv_run(&loop, UV_RUN_NOWAIT);
+    uv_run(&loop, UV_RUN_DEFAULT);
     sleep(3);
     uv_stop(&loop);
 

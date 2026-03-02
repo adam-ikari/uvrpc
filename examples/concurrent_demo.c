@@ -118,7 +118,8 @@ int main(int argc, char* argv[]) {
     int pending = uvrpc_client_get_pending_count(client);
     int iterations = 0;
     while (pending > 0 && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         pending = uvrpc_client_get_pending_count(client);
         iterations++;
         usleep(10000);  /* 10ms */
@@ -168,7 +169,8 @@ int main(int argc, char* argv[]) {
     pending = uvrpc_client_get_pending_count(client);
     iterations = 0;
     while (pending > 0 && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_stop(&loop);
         pending = uvrpc_client_get_pending_count(client);
         iterations++;
         usleep(10000);

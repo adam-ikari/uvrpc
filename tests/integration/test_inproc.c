@@ -8,6 +8,7 @@
 #include <string.h>
 #include <assert.h>
 #include <uv.h>
+#include <pthread.h>
 #include "../../include/uvrpc.h"
 
 #define TEST_INPROC_ADDR "inproc://uvrpc_test"
@@ -17,10 +18,18 @@ static int server_received = 0;
 static int client_received = 0;
 static int test_complete = 0;
 
+/* Thread synchronization */
+static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_cond = PTHREAD_COND_INITIALIZER;
+static int g_server_ready = 0;
+
 /* Server handler for requests */
 static void server_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
+    
+    pthread_mutex_lock(&g_mutex);
     server_received++;
+    pthread_mutex_unlock(&g_mutex);
     
     printf("Server received INPROC request\n");
     
@@ -44,7 +53,10 @@ static void server_handler(uvrpc_request_t* req, void* ctx) {
 /* Client callback for responses */
 static void client_callback(uvrpc_response_t* resp, void* ctx) {
     (void)ctx;
+    
+    pthread_mutex_lock(&g_mutex);
     client_received++;
+    pthread_mutex_unlock(&g_mutex);
     
     printf("Client received INPROC response\n");
     
@@ -71,41 +83,100 @@ static void timeout_callback(uv_timer_t* handle) {
     printf("Timeout reached\n");
 }
 
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+/* Server thread data */
+typedef struct {
+    uv_loop_t* loop;
+    uvrpc_server_t* server;
+    int should_stop;
+} server_thread_data_t;
+
+/* Server thread function */
+static void* server_thread_func(void* arg) {
+    server_thread_data_t* data = (server_thread_data_t*)arg;
     
-    uv_loop_t* loop = uv_default_loop();
-    int should_stop = 0;
-    
-    printf("=== UVRPC INPROC End-to-End Test ===\n");
+    printf("Server thread started\n");
     
     /* Create server configuration */
     uvrpc_config_t* server_config = uvrpc_config_new();
-    server_config = uvrpc_config_set_loop(server_config, loop);
+    server_config = uvrpc_config_set_loop(server_config, data->loop);
     server_config = uvrpc_config_set_address(server_config, TEST_INPROC_ADDR);
     server_config = uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_INPROC);
     
     /* Create server */
-    uvrpc_server_t* server = uvrpc_server_create(server_config);
-    assert(server != NULL);
+    data->server = uvrpc_server_create(server_config);
+    assert(data->server != NULL);
     
     /* Register server handler */
-    uvrpc_server_register(server, "inproc_test_method", server_handler, NULL);
+    uvrpc_server_register(data->server, "inproc_test_method", server_handler, NULL);
     
     /* Start server */
-    int rv = uvrpc_server_start(server);
+    int rv = uvrpc_server_start(data->server);
     assert(rv == 0);
     printf("Server started on %s\n", TEST_INPROC_ADDR);
     
-    /* Give server time to start listening */
+    /* Run event loop briefly to ensure endpoint is registered */
     for (int i = 0; i < 10; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
+        uv_run(data->loop, UV_RUN_NOWAIT);
     }
+    
+    /* Signal that server is ready */
+    pthread_mutex_lock(&g_mutex);
+    g_server_ready = 1;
+    pthread_cond_signal(&g_cond);
+    pthread_mutex_unlock(&g_mutex);
+    
+    /* Run event loop */
+    uv_run(data->loop, UV_RUN_DEFAULT);
+    
+    printf("Server thread exiting\n");
+    
+    /* Cleanup */
+    uvrpc_server_stop(data->server);
+    uvrpc_server_free(data->server);
+    uvrpc_config_free(server_config);
+    
+    return NULL;
+}
+
+int main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+    
+    pthread_t server_thread;
+    uv_loop_t server_loop;
+    server_thread_data_t server_data;
+    uv_loop_t client_loop;
+    int should_stop = 0;
+    int server_received_copy, client_received_copy;
+    
+    printf("=== UVRPC INPROC End-to-End Test ===\n");
+    
+    /* Initialize server loop */
+    uv_loop_init(&server_loop);
+    
+    /* Initialize server thread data */
+    server_data.loop = &server_loop;
+    server_data.should_stop = 0;
+    
+    /* Create server thread */
+    int rv = pthread_create(&server_thread, NULL, server_thread_func, &server_data);
+    assert(rv == 0);
+    
+    /* Wait for server to be ready */
+    pthread_mutex_lock(&g_mutex);
+    while (!g_server_ready) {
+        pthread_cond_wait(&g_cond, &g_mutex);
+    }
+    pthread_mutex_unlock(&g_mutex);
+    
+    printf("Server is ready, starting client...\n");
+    
+    /* Initialize client loop */
+    uv_loop_init(&client_loop);
     
     /* Create client configuration */
     uvrpc_config_t* client_config = uvrpc_config_new();
-    client_config = uvrpc_config_set_loop(client_config, loop);
+    client_config = uvrpc_config_set_loop(client_config, &client_loop);
     client_config = uvrpc_config_set_address(client_config, TEST_INPROC_ADDR);
     client_config = uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_INPROC);
     
@@ -120,7 +191,7 @@ int main(int argc, char** argv) {
     
     /* Setup timeout timer */
     uv_timer_t timeout_timer;
-    uv_timer_init(loop, &timeout_timer);
+    uv_timer_init(&client_loop, &timeout_timer);
     timeout_timer.data = &should_stop;
     
     /* Run event loop to establish connection */
@@ -128,12 +199,16 @@ int main(int argc, char** argv) {
     uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
     for (int i = 0; i < 100 && !should_stop; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
     if (should_stop) {
         printf("ERROR: Connection timeout\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
+        uv_stop(&server_loop);
+        pthread_join(server_thread, NULL);
+        uv_loop_close(&server_loop);
+        uv_loop_close(&client_loop);
         return 1;
     }
     
@@ -147,50 +222,83 @@ int main(int argc, char** argv) {
     
     /* Run event loop to process RPC */
     should_stop = 0;
-    uv_timer_again(&timeout_timer);
+    uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
-    for (int i = 0; i < 200 && !should_stop && server_received == 0; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
+    for (int i = 0; i < 200 && !should_stop; i++) {
+        pthread_mutex_lock(&g_mutex);
+        server_received_copy = server_received;
+        pthread_mutex_unlock(&g_mutex);
+        
+        if (server_received_copy > 0) {
+            break;
+        }
+        
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
-    if (server_received == 0) {
+    pthread_mutex_lock(&g_mutex);
+    server_received_copy = server_received;
+    pthread_mutex_unlock(&g_mutex);
+    
+    if (server_received_copy == 0) {
         printf("ERROR: Server did not receive request\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
+        uv_stop(&server_loop);
+        pthread_join(server_thread, NULL);
+        uv_loop_close(&server_loop);
+        uv_loop_close(&client_loop);
         return 1;
     }
     
     /* Run event loop to receive response */
     should_stop = 0;
-    uv_timer_again(&timeout_timer);
+    uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
-    for (int i = 0; i < 200 && !should_stop && client_received == 0; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
+    for (int i = 0; i < 200 && !should_stop; i++) {
+        pthread_mutex_lock(&g_mutex);
+        client_received_copy = client_received;
+        pthread_mutex_unlock(&g_mutex);
+        
+        if (client_received_copy > 0) {
+            break;
+        }
+        
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
-    if (client_received == 0) {
+    pthread_mutex_lock(&g_mutex);
+    server_received_copy = server_received;
+    client_received_copy = client_received;
+    pthread_mutex_unlock(&g_mutex);
+    
+    if (client_received_copy == 0) {
         printf("ERROR: Client did not receive response\n");
     }
     
     printf("\n=== Test Results ===\n");
-    printf("Server received requests: %d\n", server_received);
-    printf("Client received responses: %d\n", client_received);
+    printf("Server received requests: %d\n", server_received_copy);
+    printf("Client received responses: %d\n", client_received_copy);
     
-    /* Cleanup */
+    /* Stop client loop */
+    uv_stop(&client_loop);
+    
+    /* Cleanup client */
     uv_close((uv_handle_t*)&timeout_timer, NULL);
     uvrpc_client_disconnect(client);
     uvrpc_client_free(client);
-    uvrpc_server_stop(server);
-    uvrpc_server_free(server);
     uvrpc_config_free(client_config);
-    uvrpc_config_free(server_config);
     
-    /* Run event loop to process cleanup */
+    /* Run client loop to process cleanup */
     for (int i = 0; i < 10; i++) {
-        uv_run(loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
+    /* Stop and close client loop */
+    uv_stop(&client_loop);
+    uv_loop_close(&client_loop);
+    
     /* Verify test results */
-    if (server_received == 1 && client_received == 1) {
+    if (server_received_copy == 1 && client_received_copy == 1) {
         printf("\n=== INPROC End-to-End Test PASSED ===\n");
         return 0;
     } else {

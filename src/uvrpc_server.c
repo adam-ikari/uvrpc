@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
 
 /* Debug logging macro - compiles out in release builds */
 #ifdef UVRPC_DEBUG
@@ -41,6 +42,13 @@ static void write_callback(uv_write_t* req, int status) {
     }
 }
 
+/* Get current timestamp in milliseconds */
+static uint64_t get_timestamp_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
 /* Handler registry */
 typedef struct handler_entry {
     char* name;
@@ -49,11 +57,12 @@ typedef struct handler_entry {
     UT_hash_handle hh;  /* uthash handle */
 } handler_entry_t;
 
-/* Pending request - for ring buffer */
+/* Pending request - for ring buffer (used for stream connections) */
 typedef struct pending_request {
     uint32_t msgid;              /* Message ID */
     uint32_t generation;         /* Generation counter */
-    uv_stream_t* client_stream;  /* Client stream for response */
+    void* client_ctx;            /* Client context for sending response */
+    uint64_t create_time;        /* Creation timestamp (for finding oldest) */
     int in_use;                  /* Flag to indicate if slot is in use */
 } pending_request_t;
 
@@ -68,9 +77,11 @@ struct uvrpc_server {
     /* User-defined context */
     uvrpc_context_t* ctx;
     
-    /* Pending requests ring buffer */
+    /* Pending requests ring buffer (for stream connections) */
     pending_request_t** pending_requests;
     int max_pending_requests;    /* Ring buffer size (must be power of 2) */
+    int current_streams;         /* Current active stream connections */
+    int max_streams;             /* Maximum stream connections (default: 1000) */
     uint32_t generation;         /* Generation counter */
     
     /* Statistics */
@@ -141,6 +152,86 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     if (entry && entry->handler) {
         /* Increment request counter */
         server->total_requests++;
+
+        /* Check if this is a stream request (starts with "sub_") */
+        int is_stream = (method && strncmp(method, "sub_", 4) == 0);
+
+        /* If stream and at capacity, disconnect oldest stream */
+        if (is_stream && server->current_streams >= server->max_streams) {
+            /* Find oldest stream connection */
+            int oldest_idx = -1;
+            uint64_t oldest_time = UINT64_MAX;
+            
+            for (int i = 0; i < server->max_pending_requests; i++) {
+                pending_request_t* pending = server->pending_requests[i];
+                if (pending && pending->in_use && pending->generation == server->generation) {
+                    if (pending->create_time < oldest_time) {
+                        oldest_time = pending->create_time;
+                        oldest_idx = i;
+                    }
+                }
+            }
+            
+            /* Disconnect oldest stream */
+            if (oldest_idx >= 0) {
+                pending_request_t* oldest = server->pending_requests[oldest_idx];
+                
+                /* Send end marker to oldest stream */
+                uint8_t* resp_data = NULL;
+                size_t resp_size = 0;
+                uvrpc_encode_response(oldest->msgid, NULL, 0, &resp_data, &resp_size);
+                if (resp_data) {
+                    uvbus_send_to(server->uvbus, resp_data, resp_size, oldest->client_ctx);
+                    uvrpc_free(resp_data);
+                }
+                
+                /* Free oldest stream */
+                uvrpc_free(oldest);
+                server->pending_requests[oldest_idx] = NULL;
+                server->current_streams--;
+            }
+        }
+
+        /* Save stream request to pending_requests */
+        if (is_stream) {
+            /* Find free slot in ring buffer using linear search for streams */
+            int free_idx = -1;
+            for (int i = 0; i < server->max_pending_requests; i++) {
+                pending_request_t* pending = server->pending_requests[i];
+                if (!pending || !pending->in_use || pending->generation != server->generation) {
+                    free_idx = i;
+                    break;
+                }
+            }
+            
+            if (free_idx < 0) {
+                /* No free slot - cannot accept more streams */
+                UVRPC_ERROR("No free slot for stream request (msgid=%u)", msgid);
+                /* Send error response */
+                uint8_t* resp_data = NULL;
+                size_t resp_size = 0;
+                uvrpc_encode_response(msgid, NULL, 0, &resp_data, &resp_size);
+                if (resp_data) {
+                    uvbus_send_to(server->uvbus, resp_data, resp_size, client_ctx);
+                    uvrpc_free(resp_data);
+                }
+                if (method) uvrpc_free(method);
+                return;
+            }
+            
+            /* Create new pending request */
+            pending_request_t* pending = uvrpc_calloc(1, sizeof(pending_request_t));
+            if (pending) {
+                pending->msgid = msgid;
+                pending->generation = server->generation;
+                pending->client_ctx = client_ctx;
+                pending->create_time = get_timestamp_ms();
+                pending->in_use = 1;
+                
+                server->pending_requests[free_idx] = pending;
+                server->current_streams++;
+            }
+        }
 
         /* Create request structure */
         uvrpc_request_t req;
@@ -224,6 +315,8 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
     server->max_pending_requests = (config->max_pending_callbacks > 0) ? 
                                    config->max_pending_callbacks : UVRPC_DEFAULT_PENDING_CALLBACKS;
     server->generation = 0;
+    server->current_streams = 0;
+    server->max_streams = 1000;  /* Default max stream connections */
     
     /* Allocate ring buffer array */
     server->pending_requests = (pending_request_t**)uvrpc_calloc(

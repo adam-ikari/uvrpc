@@ -165,7 +165,8 @@ int run_client(uv_loop_t* loop, const char* address) {
     /* Wait for connection */
     int iterations = 0;
     while (!g_connected && g_running && iterations < 100) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         iterations++;
     }
 
@@ -182,7 +183,8 @@ int run_client(uv_loop_t* loop, const char* address) {
     /* Wait for response */
     iterations = 0;
     while (g_running && iterations < 50) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
+        uv_stop(loop);
         iterations++;
     }
 
