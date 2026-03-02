@@ -4,7 +4,7 @@ A minimalist, high-performance RPC framework built on libuv event loop and FlatB
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/adam-ikari/uvrpc)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)](https://github.com/adam-ikari/uvrpc)
+[![Version](https://img.shields.io/badge/version-1.0.0a-orange.svg)](https://github.com/adam-ikari/uvrpc/releases/tag/v1.0.0a)
 
 ## 🚀 Quick Start
 
@@ -43,11 +43,13 @@ Complete documentation is available in [docs/en/](docs/en/):
 ## ✨ Features
 
 - **Zero Threads, Zero Locks, Zero Global Variables** - All I/O managed by libuv event loop
-- **High Performance** - 125,000+ ops/s (INPROC), 86,930 ops/s (TCP)
-- **Multi-Transport Support** - TCP, UDP, IPC, INPROC
+- **High Performance** - 260,000+ ops/s (INPROC Oneway), 199,565 ops/s (INPROC Normal), 73,200 ops/s (TCP)
+- **Multi-Transport Support** - TCP, UDP, IPC, INPROC, SAMELOOP
+- **Multiple RPC Modes** - Normal (request-response), Oneway (fire-and-forget), Stream (multiple responses)
 - **Zero-Copy** - FlatBuffers binary serialization
 - **Loop Injection** - Support custom libuv loop
 - **Type Safety** - FlatBuffers DSL generates type-safe APIs
+- **Fast Path Optimization** - 100% vtable bypass for SAMELOOP transport
 - **Code Generation** - Auto-generate client/server code
 - **Single-Threaded Model** - Lock-free design
 
@@ -91,6 +93,8 @@ See [examples/](examples/) for complete examples.
 - [API Reference](docs/en/API_REFERENCE.md)
 - [Coding Standards](docs/en/CODING_STANDARDS.md)
 - [Migration Guide](docs/en/MIGRATION_GUIDE.md)
+- [Performance Optimization](docs/en/PERFORMANCE_OPTIMIZATION.md)
+- [Primitives Guide](docs/en/PRIMITIVES_GUIDE.md)
 
 ## 🤝 Contributing
 
