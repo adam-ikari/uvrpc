@@ -264,8 +264,6 @@ struct uvrpc_response {
     char* error_message;      /**< @brief Error message (if error_code != 0) */
     uint8_t* result;          /**< @brief Response result data (valid only during callback) */
     size_t result_size;       /**< @brief Size of result buffer */
-    int is_stream;            /**< @brief 1 if this is a streaming response, 0 otherwise */
-    int is_last_chunk;        /**< @brief 1 if this is the last chunk of streaming response */
     void* user_data;          /**< @brief User-defined data */
 };
 
@@ -688,18 +686,6 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
  */
 int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
                               const uint8_t* params, size_t params_size);
-
-/**
- * @brief Close a stream connection
- * 
- * This function closes an active stream connection and removes the pending callback.
- * It should be called by the client when it no longer wants to receive stream data.
- * 
- * @param client Client instance
- * @param method Name of the stream method (e.g., "sub_StreamData")
- * @return UVRPC_OK on success, error code on failure
- */
-int uvrpc_client_sub_close(uvrpc_client_t* client, const char* method);
 
 /**
  * @brief Set maximum concurrent requests
