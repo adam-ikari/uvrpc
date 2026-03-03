@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
     uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
     for (int i = 0; i < 100 && !should_stop; i++) {
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     if (should_stop) {
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -337,7 +337,7 @@ int main(int argc, char** argv) {
     uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
     for (int i = 0; i < 100 && !should_stop; i++) {
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     if (should_stop) {
@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -399,7 +399,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -427,7 +427,7 @@ int main(int argc, char** argv) {
     
     /* Run client loop to process cleanup */
     for (int i = 0; i < 10; i++) {
-        uv_run(&client_loop, UV_RUN_NOWAIT);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
     }
     
     /* Close client loop */

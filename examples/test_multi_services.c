@@ -45,7 +45,7 @@ int main() {
     printf("Clients created successfully\n");
     
     /* Run loop for a short time */
-    uv_run(&loop, UV_RUN_NOWAIT);
+    uv_run(&loop, UV_RUN_DEFAULT);
     
     /* Cleanup */
     uvrpc_mathservice_free_client(math_client);

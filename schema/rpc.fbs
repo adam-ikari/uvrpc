@@ -4,7 +4,7 @@ namespace uvrpc;
 
 table RpcFrame {
   msgid: uint32;
-  type: uint8;    // 0=Request, 1=Response
+  type: uint8;    // 0=Request, 1=Response (last), 2=ResponseMore (more to come)
   method: string;  // only for Request
   data: [ubyte];  // params for Request, result for Response
 }

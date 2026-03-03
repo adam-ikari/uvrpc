@@ -2,6 +2,9 @@
  * UVRPC Frame Encoding/Decoding Implementation
  */
 
+/* Forward declaration */
+struct uvrpc_server;
+
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc.h"
 #include "rpc_reader.h"
@@ -42,7 +45,7 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
     return UVRPC_OK;
 }
 
-/* Encode response frame */
+/* Encode response frame (type=1, last response) */
 int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
                           uint8_t** out_data, size_t* out_size) {
     if (!out_data || !out_size) return UVRPC_ERROR_INVALID_PARAM;
@@ -55,8 +58,39 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
         data_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
     }
 
-    /* type: 0 = Request, 1 = Response */
+    /* type: 0 = Request, 1 = Response (last), 2 = ResponseMore */
     uint8_t type = 1;
+
+    uvrpc_RpcFrame_start_as_root(&builder);
+    uvrpc_RpcFrame_type_add(&builder, type);
+    uvrpc_RpcFrame_msgid_add(&builder, msgid);
+    uvrpc_RpcFrame_data_add(&builder, data_ref);
+    uvrpc_RpcFrame_end_as_root(&builder);
+
+    void* buf = flatcc_builder_finalize_buffer(&builder, out_size);
+    if (buf) {
+        *out_data = buf;
+    }
+
+    flatcc_builder_clear(&builder);
+    return UVRPC_OK;
+}
+
+/* Encode response frame (type=2, more responses to come) */
+int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t result_size,
+                                uint8_t** out_data, size_t* out_size) {
+    if (!out_data || !out_size) return UVRPC_ERROR_INVALID_PARAM;
+
+    flatcc_builder_t builder;
+    flatcc_builder_init(&builder);
+
+    flatbuffers_uint8_vec_ref_t data_ref = 0;
+    if (result && result_size > 0) {
+        data_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
+    }
+
+    /* type: 2 = ResponseMore (more to come) */
+    uint8_t type = 2;
 
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, type);
@@ -148,4 +182,24 @@ void uvrpc_free_decoded(char* method) {
     if (method) {
         uvrpc_free(method);
     }
+}
+
+/* Check if response type is Response (type=1, last) */
+int uvrpc_response_is_stream_end(uvrpc_response_t* resp) {
+    if (!resp) {
+        return 0;
+    }
+    
+    /* Check frame_type field directly */
+    return (resp->frame_type == 1);
+}
+
+/* Check if response type is ResponseMore (type=2, more to come) */
+int uvrpc_response_is_stream_more(uvrpc_response_t* resp) {
+    if (!resp) {
+        return 0;
+    }
+    
+    /* Check frame_type field directly */
+    return (resp->frame_type == 2);
 }

@@ -70,7 +70,7 @@ int main(void) {
 
     /* Wait for connection */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
         usleep(10000);
     }
 
@@ -91,7 +91,7 @@ int main(void) {
 
     /* Wait for response */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
         usleep(10000);
     }
 

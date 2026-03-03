@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     while (!g_connected && iter < 50 && g_running) {
         printf("Loop iteration %d (before uv_run)\n", iter);
         fflush(stdout);
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         printf("Loop iteration %d (after uv_run)\n", iter);
         fflush(stdout);
         iter++;
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     while (g_response_count == 0 && iter < 50 && g_running) {
         printf("Waiting iteration %d\n", iter);
         fflush(stdout);
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iter++;
         usleep(100000);  // 100ms
     }

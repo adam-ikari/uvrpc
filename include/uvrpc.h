@@ -264,6 +264,7 @@ struct uvrpc_response {
     char* error_message;      /**< @brief Error message (if error_code != 0) */
     uint8_t* result;          /**< @brief Response result data (valid only during callback) */
     size_t result_size;       /**< @brief Size of result buffer */
+    int frame_type;           /**< @brief Frame type (0=Request, 1=Response, 2=ResponseEnd) */
     void* user_data;          /**< @brief User-defined data */
 };
 
@@ -724,6 +725,18 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                                   const uint8_t* result, size_t result_size);
 
 /**
+ * @brief Send response (more to come)
+ * 
+ * Sends a response with type=2 (ResponseMore) to indicate more responses
+ * will follow. The client keeps the pending callback alive.
+ * 
+ * @param req Request object
+ * @param result Response data
+ * @param result_size Response data size
+ */
+void uvrpc_request_send_response_more(uvrpc_request_t* req, const uint8_t* result, size_t result_size);
+
+/**
  * @brief Free a request object
  * 
  * @param req Request object
@@ -770,6 +783,38 @@ void uvrpc_response_free(uvrpc_response_t* resp);
  * @endcode
  */
 const char* uvrpc_strerror(int error_code);
+
+/**
+ * @defgroup StreamAPI Stream Support
+ * @brief Functions for stream mode (multiple responses per request)
+ * @{
+ */
+
+/**
+ * @brief Check if response type is Response (type=1, last)
+ * 
+ * Returns 1 if the response frame type is 1 (Response, last), indicating
+ * the stream is complete. This is used by the client to detect when a
+ * stream ends and cleanup resources.
+ * 
+ * @param resp Response object
+ * @return 1 if Response (last) type, 0 otherwise
+ */
+int uvrpc_response_is_stream_end(uvrpc_response_t* resp);
+
+/**
+ * @brief Check if response type is ResponseMore (type=2)
+ * 
+ * Returns 1 if the response frame type is 2 (ResponseMore), indicating
+ * more responses will follow. This is used by the client to detect when a
+ * stream is still active.
+ * 
+ * @param resp Response object
+ * @return 1 if ResponseMore type, 0 otherwise
+ */
+int uvrpc_response_is_stream_more(uvrpc_response_t* resp);
+
+/** @} */
 
 /** @} */
 

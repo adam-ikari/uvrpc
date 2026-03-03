@@ -103,13 +103,13 @@ void uvasync_context_destroy(uvasync_context_t* ctx) {
     /* If we own the loop, close and free it */
     if (ctx->owns_loop && ctx->loop) {
         /* Run event loop one more time to process any pending cleanup callbacks */
-        uv_run(ctx->loop, UV_RUN_NOWAIT);
+        uv_run(ctx->loop, UV_RUN_DEFAULT);
 
         /* Close the loop */
         int ret = uv_loop_close(ctx->loop);
         if (ret == UV_EBUSY) {
             /* Loop is still busy, run once more to process remaining handles */
-            uv_run(ctx->loop, UV_RUN_NOWAIT);
+            uv_run(ctx->loop, UV_RUN_DEFAULT);
             uv_loop_close(ctx->loop);
         }
 
@@ -207,7 +207,7 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler) {
     int active = UVASYNC_ATOMIC_LOAD(&scheduler->active_tasks);
     if (active > 0) {
         /* Run event loop to process remaining tasks */
-        uv_run(scheduler->ctx->loop, UV_RUN_NOWAIT);
+        uv_run(ctx->loop, UV_RUN_DEFAULT);
     }
 
     /* Cleanup semaphore */
@@ -442,7 +442,7 @@ int uvasync_scheduler_wait_all(
         }
 
         /* Run event loop */
-        uv_run(scheduler->ctx->loop, UV_RUN_ONCE);
+        uv_run(ctx->loop, UV_RUN_DEFAULT);
         usleep(1000);  /* 1ms sleep */
     }
 }
@@ -516,7 +516,7 @@ int uvasync_submit_and_wait(
             return UVASYNC_ERROR_WAIT_TIMEOUT;
         }
 
-        uv_run(scheduler->ctx->loop, UV_RUN_ONCE);
+        uv_run(ctx->loop, UV_RUN_DEFAULT);
         usleep(1000);
     }
 

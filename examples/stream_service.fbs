@@ -1,0 +1,21 @@
+namespace uvrpc_stream;
+
+table StreamRequest {
+    chunk_count: int = 5;
+    chunk_size: int = 1024;
+    delay_ms: int = 0;
+}
+
+table StreamChunk {
+    chunk_id: int;
+    total_chunks: int;
+    data: [ubyte];
+    is_last: bool = false;
+}
+
+table StreamResponse {
+    status: int = 0;
+    message: string;
+}
+
+root_type StreamRequest;

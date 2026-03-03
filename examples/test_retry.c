@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
     printf("Waiting for connection...\n");
     int loop_count = 0;
     while (!g_connected && loop_count < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         loop_count++;
     }
     
@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
         flatcc_builder_clear(&builder);
         
         /* Run event loop between requests */
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     printf("\nWaiting for responses...\n");
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     /* Wait for all responses */
     loop_count = 0;
     while (g_response_count < num_requests && loop_count < 1000) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         loop_count++;
     }
     

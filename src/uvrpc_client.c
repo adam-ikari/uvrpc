@@ -193,8 +193,8 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     }
 
     /* Only handle Response frames (type=1), ignore Request frames (type=0) */
-    if (frame_type != 1) {
-        UVRPC_LOG("Not a response frame, ignoring");
+    if (frame_type != 1 && frame_type != 2) {
+        UVRPC_LOG("Not a response frame (type=%d), ignoring", frame_type);
         uvrpc_free((void*)data);
         return;
     }
@@ -226,6 +226,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         resp.error_code = 0;
         resp.error_message = NULL;
         resp.user_data = NULL;
+        resp.frame_type = frame_type;  // Store frame type for ResponseEnd detection
 
         /* Copy result data to avoid use-after-free */
         uint8_t* result_copy = NULL;
@@ -250,16 +251,22 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         if (result_copy) {
             uvrpc_free(result_copy);
         }
+/* Get frame type from the response data */
+        int frame_type = -1;
+        if (data && size > 0) {
+            frame_type = uvrpc_get_frame_type(data, size);
+        }
 
-        /* Cleanup pending callback only on end marker (result_size == 0)
-         * This allows multiple responses for the same msgid (stream mode) */
-        if (result_size == 0) {
-            /* End marker - cleanup pending callback */
+        /* Cleanup pending callback only on Response (type=1, last response)
+         * This allows multiple responses for the same msgid (stream mode)
+         * type=1: Response (last) - cleanup callback
+         * type=2: ResponseMore (more to come) - keep callback alive */
+        if (frame_type == 1) {
+            /* Response (last) - cleanup pending callback */
             client->pending_callbacks[idx] = NULL;
             cleanup_pending_callback(pending);
             client->current_concurrent--;
-        }
-    }
+        }    }
 
     /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
      * after the callback returns. Do NOT free it here to avoid double free. */

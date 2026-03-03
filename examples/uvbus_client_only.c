@@ -61,7 +61,7 @@ int main() {
     /* Wait for connection */
     int iterations = 0;
     while (!g_connected && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
     }
@@ -79,7 +79,7 @@ int main() {
     /* Wait for response */
     iterations = 0;
     while (!g_received && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
     }

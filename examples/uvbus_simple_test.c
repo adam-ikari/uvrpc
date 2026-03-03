@@ -99,7 +99,7 @@ int main() {
     
     /* Run loop longer to let server start and be ready to accept connections */
     for (int i = 0; i < 50; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         uv_sleep(10);
     }
     printf("[SERVER] Server should be ready now, is_active=%d\n", g_server->is_active);
@@ -133,7 +133,7 @@ int main() {
     /* Wait for connection */
     int iterations = 0;
     while (!g_client_connected && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
         if (iterations % 10 == 0) {
@@ -161,7 +161,7 @@ int main() {
     /* Wait for echo response */
     iterations = 0;
     while (!g_client_received && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
         if (iterations % 10 == 0) {
@@ -187,7 +187,7 @@ int main() {
     
     /* Run loop to cleanup */
     for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         uv_sleep(10);
     }
     

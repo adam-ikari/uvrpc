@@ -50,7 +50,7 @@ int main(void) {
     for (int i = 0; i < 5; i++) {
         printf("Iteration %d...\n", i);
         fflush(stdout);
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     printf("Event loop finished\n");

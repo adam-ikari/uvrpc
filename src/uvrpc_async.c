@@ -208,7 +208,7 @@ int uvrpc_client_call_async(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
         
         /* Run event loop to wait for response */
         while (ctx->pending_results[slot] == NULL && !ctx->timed_out) {
-            uv_run(ctx->loop, UV_RUN_ONCE);
+            uv_run(ctx->loop, UV_RUN_DEFAULT);
         }
         
         /* This shouldn't happen, but handle it */
@@ -333,7 +333,7 @@ int uvrpc_async_all(uvrpc_async_ctx_t* ctx,
     
     /* Wait for all to complete */
     while (ctx->completed_count < count && !timed_out) {
-        uv_run(ctx->loop, UV_RUN_ONCE);
+        uv_run(ctx->loop, UV_RUN_DEFAULT);
     }
     
     /* Stop timeout */
@@ -413,7 +413,7 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
         
         /* Wait for any to complete */
         while (!ctx->any_completed && !timed_out) {
-            uv_run(ctx->loop, UV_RUN_ONCE);
+            uv_run(ctx->loop, UV_RUN_DEFAULT);
         }
         
         /* Check if timeout occurred */

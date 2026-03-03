@@ -250,7 +250,14 @@ void stream_handler(uvrpc_request_t* req, void* ctx) {
         
         size_t size;
         void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        
+        /* Use ResponseMore for intermediate chunks, Response for last */
+        if (i < num_chunks - 1) {
+            uvrpc_request_send_response_more(req, buf, size);
+        } else {
+            uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        }
+        
         free(buf);
         flatcc_builder_clear(&builder);
     }
@@ -712,14 +719,14 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             free(buf);
             flatcc_builder_clear(&builder);
         }
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     /* Wait for warmup to complete */
     printf("[%s] Waiting for warmup to complete...\n", result->test_name);
     fflush(stdout);
     for (int i = 0; i < 50; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     printf("[%s] Warmup completed\n", result->test_name);
     fflush(stdout);
@@ -774,7 +781,7 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
             free(buf);
             flatcc_builder_clear(&builder);
         }
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     fflush(stdout);
@@ -786,7 +793,7 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     if (test_type == TEST_ONEWAY) {
         /* Oneway: Wait for all sends to complete */
         for (int i = 0; i < 100; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         clock_gettime(CLOCK_MONOTONIC, &result->stats.end_time);
         result->stats.total_requests = num_requests;
@@ -807,7 +814,7 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
         }
         
         while (__sync_fetch_and_add(&bench_ctx->completed, 0) == 0 && timeout < max_iterations) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
             timeout++;
             
             if (timeout % 100 == 0) {
@@ -868,7 +875,7 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     
     /* Run event loop to process any pending callbacks */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     for (int i = 0; i < num_clients; i++) {
@@ -910,7 +917,7 @@ static int run_single_test(transport_type_t transport, test_type_t test_type, in
     
     /* Run a few iterations to process close callbacks */
     for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     fflush(stdout);

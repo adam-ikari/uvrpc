@@ -47,7 +47,7 @@ int main(void) {
     fflush(stdout);
     
     /* Run event loop to process connection */
-    uv_run(&loop, UV_RUN_ONCE);
+    uv_run(&loop, UV_RUN_DEFAULT);
     
     /* Send 10 requests */
     printf("Sending 10 requests...\n");
@@ -64,7 +64,7 @@ int main(void) {
     /* Run event loop to process responses */
     int iterations = 0;
     while (request_count < 10 && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
     }
     

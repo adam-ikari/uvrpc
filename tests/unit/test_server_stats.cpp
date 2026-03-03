@@ -23,7 +23,7 @@ protected:
             uvrpc_config_free(config);
         }
         for (int i = 0; i < 10; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         uv_loop_close(&loop);
     }

@@ -63,7 +63,7 @@ int main() {
     printf("Running event loop...\n");
     int iterations = 0;
     while (!callback_called && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         usleep(10000);
         iterations++;
         printf("Iteration %d, callback_called=%d\n", iterations, callback_called);

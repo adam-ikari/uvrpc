@@ -141,7 +141,7 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise) {
     
     /* Run event loop until promise is settled */
     while (promise->state == UVRPC_PROMISE_PENDING) {
-        uv_run(promise->loop, UV_RUN_ONCE);
+        uv_run(.*->loop, UV_RUN_DEFAULT);
         usleep(1000);  /* 1ms sleep to avoid busy loop */
     }
     

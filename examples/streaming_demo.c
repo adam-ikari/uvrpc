@@ -1,6 +1,10 @@
 /**
  * Streaming Demo
- * Demonstrates server-to-client streaming using multiple Response frames
+ * Demonstrates server-to-client streaming using ResponseMore and Response frames
+ * 
+ * Protocol:
+ * - type=2 (ResponseMore): More responses will follow
+ * - type=1 (Response): Last response, stream complete
  */
 
 #include <uvrpc.h>
@@ -16,21 +20,25 @@ static void stream_handler(uvrpc_request_t* req, void* ctx) {
 
     printf("[SERVER] Received stream request\n");
 
-    /* Send multiple chunks as separate Response frames */
-    for (int i = 0; i < NUM_CHUNKS; i++) {
+    /* Send NUM_CHUNKS-1 chunks with type=2 (ResponseMore) */
+    for (int i = 0; i < NUM_CHUNKS - 1; i++) {
         char chunk[64];
         snprintf(chunk, sizeof(chunk), "Chunk %d of %d", i + 1, NUM_CHUNKS);
         
-        printf("[SERVER] Sending chunk: %s\n", chunk);
+        printf("[SERVER] Sending chunk (more): %s\n", chunk);
         
-        uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)chunk, strlen(chunk) + 1);
+        /* Use response_more for intermediate chunks */
+        uvrpc_request_send_response_more(req, (uint8_t*)chunk, strlen(chunk) + 1);
         
         /* Small delay between chunks */
         usleep(100000);  // 100ms
     }
 
-    /* Send end marker (result_size=0) to indicate stream completion */
-    uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
+    /* Send last chunk with type=1 (Response, last) */
+    char last_chunk[64];
+    snprintf(last_chunk, sizeof(last_chunk), "Chunk %d of %d (LAST)", NUM_CHUNKS, NUM_CHUNKS);
+    printf("[SERVER] Sending last chunk: %s\n", last_chunk);
+    uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)last_chunk, strlen(last_chunk) + 1);
 
     printf("[SERVER] Streaming complete\n");
 }
@@ -39,13 +47,16 @@ static void stream_handler(uvrpc_request_t* req, void* ctx) {
 static void stream_callback(uvrpc_response_t* resp, void* ctx) {
     (void)ctx;
 
-    printf("[CLIENT] Received response (msgid: %u, size: %zu)\n",
-           resp->msgid, resp->result_size);
+    printf("[CLIENT] Received response (msgid: %u, size: %zu, frame_type: %d)\n",
+           resp->msgid, resp->result_size, resp->frame_type);
 
     if (resp->result && resp->result_size > 0) {
-        printf("[CLIENT] data: %s\n", (char*)resp->result);
-    } else if (resp->is_last_chunk) {
-        printf("[CLIENT] Stream closed by server\n");
+        if (uvrpc_response_is_stream_more(resp)) {
+            printf("[CLIENT] More data: %s\n", (char*)resp->result);
+        } else if (uvrpc_response_is_stream_end(resp)) {
+            printf("[CLIENT] Final data: %s\n", (char*)resp->result);
+            printf("[CLIENT] Stream complete\n");
+        }
     }
 
     if (resp->status != UVRPC_OK) {

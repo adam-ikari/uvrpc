@@ -86,7 +86,7 @@ int main() {
     
     /* Run loop briefly to let server start */
     for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         uv_sleep(10);
     }
     
@@ -116,7 +116,7 @@ int main() {
     /* Wait for connection */
     int iterations = 0;
     while (!uvbus_is_connected(client) && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
     }
@@ -139,7 +139,7 @@ int main() {
     
     /* Run loop to process events */
     for (int i = 0; i < 20; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         uv_sleep(10);
     }
     

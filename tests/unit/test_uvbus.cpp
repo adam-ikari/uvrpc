@@ -12,7 +12,7 @@ protected:
     void TearDown() override {
         // Run loop to cleanup
         for (int i = 0; i < 10; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         uv_loop_close(&loop);
     }

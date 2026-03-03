@@ -43,7 +43,7 @@ int main() {
             /* Run loop briefly */
             printf("Running loop...\n");
             for (int i = 0; i < 5; i++) {
-                uv_run(&loop, UV_RUN_ONCE);
+                uv_run(&loop, UV_RUN_DEFAULT);
                 uv_sleep(10);
             }
             

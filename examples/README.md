@@ -180,23 +180,220 @@ FlatBuffers 深度集成示例，展示完整的 FlatBuffers DSL 使用流程。
 - 无需手动编码：自动处理消息序列化/反序列化
 - 易于扩展：在 `rpc_broadcast.fbs` 中添加新方法即可
 
-#### 18. broadcast_service_demo.c
-**完整的 DSL 广播服务演示**，展示广播服务的所有功能。
+### 流式响应示例
+
+#### 19. streaming_demo.c
+流式响应示例，展示服务器如何发送多个响应块。
 
 ```bash
-# 发布者模式
-./dist/bin/broadcast_service_demo publisher
-
-# 订阅者模式
-./dist/bin/broadcast_service_demo subscriber
+./dist/bin/streaming_demo
 ```
 
-#### 19. test_multi_services.c
+**关键特性**：
+- 多响应块：每个请求可以接收多个响应
+- 流式传输：适合大文件传输或实时数据流
+- 自动管理：客户端自动检测流结束
+
+#### 20. stream_api_demo.c
+**新流式 API 示例**，展示最新的流式响应 API 使用方法。
+
+**服务器 API**：
+- `uvrpc_request_send_response_more()` - 发送中间响应（type=2）
+- `uvrpc_request_send_response()` - 发送最后响应（type=1）
+
+**客户端 API**：
+- `resp->frame_type` - 帧类型字段
+- `uvrpc_response_is_stream_more()` - 检查是否还有更多响应
+- `uvrpc_response_is_stream_end()` - 检查是否为最后响应
+
+```bash
+./dist/bin/stream_api_demo
+```
+
+**协议设计**：
+- `type=2` (ResponseMore): 更多响应将到来
+- `type=1` (Response): 最后响应，流结束
+
+#### 21. test_multi_services.c
 多服务测试，展示同时运行多个发布-订阅服务。
 
 ```bash
 ./dist/bin/test_multi_services
 ```
+
+### 场景示例
+
+#### 22. scenario_1_simple_request_response.c
+**场景 1：简单的请求-响应模式**
+
+使用场景：
+- 查询操作（如用户信息查询）
+- 计算操作（如加法、乘法）
+- 状态查询（如服务健康检查）
+
+特点：
+- 单个请求 → 单个响应
+- 最常用的 RPC 模式
+- 简单直接，易于理解
+
+```bash
+# 编译
+gcc -I. -Iinclude -Ideps/libuv/include -Ideps/mimalloc/include \
+    -Lbuild -Ldeps/mimalloc/out/release \
+    examples/scenario_1_simple_request_response.c \
+    -o scenario_1_simple_request_response -luvrpc -luv -lmimalloc -lpthread
+
+# 运行
+./scenario_1_simple_request_response
+```
+
+#### 23. scenario_2_streaming_data_transfer.c
+**场景 2：流式数据传输**
+
+使用场景：
+- 大文件传输（分块发送）
+- 实时数据流（如日志、传感器数据）
+- 分页查询结果
+- 批量数据处理
+
+特点：
+- 单个请求 → 多个响应
+- 使用 `uvrpc_request_send_response_more()` 发送中间响应
+- 使用 `uvrpc_request_send_response()` 发送最后响应
+- 客户端使用 `uvrpc_response_is_stream_more()` 和 `uvrpc_response_is_stream_end()` 检测
+
+```bash
+# 编译
+gcc -I. -Iinclude -Ideps/libuv/include -Ideps/mimalloc/include \
+    -Lbuild -Ldeps/mimalloc/out/release \
+    examples/scenario_2_streaming_data_transfer.c \
+    -o scenario_2_streaming_data_transfer -luvrpc -luv -lmimalloc -lpthread
+
+# 运行
+./scenario_2_streaming_data_transfer
+```
+
+#### 24. scenario_3_oneway_logging.c
+**场景 3：单向 RPC（日志记录）**
+
+使用场景：
+- 日志记录（不需要响应）
+- 事件通知（fire-and-forget）
+- 心跳检测（只需发送，无需确认）
+- 指标上报（异步发送）
+
+特点：
+- 只发送请求，不等待响应
+- 服务器端不发送响应
+- 高吞吐量，低延迟
+- 使用 NULL callback 实现 oneway 模式
+
+```bash
+# 编译
+gcc -I. -Iinclude -Ideps/libuv/include -Ideps/mimalloc/include \
+    -Lbuild -Ldeps/mimalloc/out/release \
+    examples/scenario_3_oneway_logging.c \
+    -o scenario_3_oneway_logging -luvrpc -luv -lmimalloc -lpthread
+
+# 运行
+./scenario_3_oneway_logging
+```
+
+#### 25. scenario_4_broadcast_mode.c
+**场景 4：广播模式**
+
+使用场景：
+- 消息推送（如新闻、通知）
+- 事件广播（如系统告警）
+- 实时状态更新（如股票价格）
+- 多订阅者系统
+
+特点：
+- 一个发布者，多个订阅者
+- 发布者不关心有多少订阅者
+- 订阅者可以随时加入/离开
+- 推荐使用 UDP 传输层
+
+```bash
+# 编译
+gcc -I. -Iinclude -Ideps/libuv/include -Ideps/mimalloc/include \
+    -Lbuild -Ldeps/mimalloc/out/release \
+    examples/scenario_4_broadcast_mode.c \
+    -o scenario_4_broadcast_mode -luvrpc -luv -lmimalloc -lpthread
+
+# 运行
+./scenario_4_broadcast_mode
+```
+
+#### 26. scenario_5_mixed_mode_api.c
+**场景 5：混合模式 API**
+
+使用场景：
+- 需要多种 RPC 模式的复杂应用
+- RESTful API 风格的服务
+- 微服务架构
+
+特点：
+- 同时使用请求-响应、流式、单向、广播
+- 根据业务需求选择合适的模式
+- 灵活的架构设计
+- 展示如何在一个应用中组合使用所有 RPC 模式
+
+```bash
+# 编译
+gcc -I. -Iinclude -Ideps/libuv/include -Ideps/mimalloc/include \
+    -Lbuild -Ldeps/mimalloc/out/release \
+    examples/scenario_5_mixed_mode_api.c \
+    -o scenario_5_mixed_mode_api -luvrpc -luv -lmimalloc -lpthread
+
+# 运行
+./scenario_5_mixed_mode_api
+```
+
+### RPC 调用指南
+
+为了帮助开发者选择正确的 RPC 调用方式，我们提供了详细的调用指南：
+
+#### RPC_CALL_GUIDE.md
+完整的 RPC 调用方式选择指南，包含：
+
+1. **快速决策树** - 根据需求快速选择合适的 RPC 模式
+2. **详细场景对比** - 每种模式的使用场景、API 使用和特点
+3. **传输层选择建议** - TCP/UDP/IPC/INPROC 的使用场景
+4. **性能对比** - 各模式的吞吐量、延迟和可靠性对比
+5. **常见错误** - 避免常见的编程错误
+6. **示例程序索引** - 对应的示例程序列表
+
+```bash
+# 查看指南
+cat examples/RPC_CALL_GUIDE.md
+```
+
+**决策树概览**：
+
+```
+需要发送响应吗？
+├─ 否 → 使用 Oneway RPC (NULL callback)
+│   - 日志记录
+│   - 事件通知
+│   - 心跳检测
+│   └─ 示例: scenario_3_oneway_logging.c
+│
+└─ 是 → 需要多个响应吗？
+    ├─ 否 → 使用 Request-Response (uvrpc_request_send_response)
+    │   - 查询操作
+    │   - 计算操作
+    │   - 状态查询
+    │   └─ 示例: scenario_1_simple_request_response.c
+    │
+    └─ 是 → 使用 Streaming (uvrpc_request_send_response_more + uvrpc_request_send_response)
+        - 大文件传输
+        - 实时数据流
+        - 分页查询
+        - └─ 示例: scenario_2_streaming_data_transfer.c
+```
+
+详细的指南请查看 [RPC_CALL_GUIDE.md](RPC_CALL_GUIDE.md)。
 
 ### RPC DSL 示例
 

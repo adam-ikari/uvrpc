@@ -75,7 +75,7 @@ int main() {
         
         printf("Running event loop (UV_RUN_NOWAIT mode)\n");
         for (int i = 0; i < 10; i++) {
-            int ret = uv_run(&loop, UV_RUN_NOWAIT);
+            int ret = uv_run(&loop, UV_RUN_DEFAULT);
             printf("Iteration %d: uv_run returned %d, race_callback_count=%d\n", i, ret, race_callback_count);
             if (race_callback_count > 0) {
                 break;
@@ -124,7 +124,7 @@ int main() {
         /* Run event loop */
         printf("Running event loop (UV_RUN_NOWAIT mode)\n");
         for (int i = 0; i < 100; i++) {
-            int ret = uv_run(&loop, UV_RUN_NOWAIT);
+            int ret = uv_run(&loop, UV_RUN_DEFAULT);
             printf("Iteration %d: uv_run returned %d, combined_callback_count=%d, race_callback_count=%d\n", 
                    i, ret, combined_callback_count, race_callback_count);
             if (combined_callback_count > 0) {

@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
     /* Wait for connection */
     int iterations = 0;
     while (!g_connected && g_running && iterations < 100) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
     }
 
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     /* Wait for response */
     iterations = 0;
     while (g_running && iterations < 50) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
         iterations++;
     }
 

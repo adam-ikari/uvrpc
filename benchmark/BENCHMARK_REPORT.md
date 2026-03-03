@@ -1,9 +1,9 @@
 # UVRPC Benchmark Report
-# Generated: Mon Mar  2 17:32:20 2026
+# Generated: Tue Mar  3 00:36:42 2026
 
 
 ## Configuration
-- Default Requests: 100
+- Default Requests: 10000
 - Default Clients: 1
 - Warmup Requests: 1000
 
@@ -11,4 +11,4 @@
 
 | Transport | Clients | Requests | Throughput (ops/s) | Avg Latency (ms) | P95 Latency (ms) | P99 Latency (ms) | Status |
 |-----------|---------|----------|-------------------|------------------|------------------|------------------|--------|
-| INPROC    | 1       | 100      | 221977            | 0.005            | 0.005            | 0.005            | PASS   |
+| INPROC    | 1       | 50000    | 234122            | 0.004            | 0.004            | 0.004            | PASS   |

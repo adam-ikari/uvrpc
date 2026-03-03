@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
         
         /* Wait for connection */
         for (int i = 0; i < 50; i++) {
-            uv_run(&loop, UV_RUN_ONCE);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         
         printf("Connected!\n\n");
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         
         /* Run event loop to process requests */
         for (int i = 0; i < 50; i++) {
-            uv_run(&loop, UV_RUN_ONCE);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         
         printf("\nClient shutting down...\n");

@@ -82,7 +82,7 @@ void server_thread(void* arg) {
     
     /* Run event loop */
     while (g_server_running) {
-        uv_run(loop, UV_RUN_ONCE);
+        uv_run(loop, UV_RUN_DEFAULT);
     }
     
     /* Cleanup */
@@ -140,7 +140,7 @@ int main() {
     /* Wait for connection */
     int iterations = 0;
     while (!g_client_connected && iterations < 50) {
-        uv_run(&client_loop, UV_RUN_ONCE);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
     }
@@ -164,7 +164,7 @@ int main() {
     /* Wait for echo response */
     iterations = 0;
     while (!g_client_received && iterations < 50) {
-        uv_run(&client_loop, UV_RUN_ONCE);
+        uv_run(&client_loop, UV_RUN_DEFAULT);
         iterations++;
         uv_sleep(10);
     }

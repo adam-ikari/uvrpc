@@ -20,6 +20,9 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
                           uint8_t** out_data, size_t* out_size);
 
+int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t result_size,
+                                uint8_t** out_data, size_t* out_size);
+
 /* Frame decoding functions */
 int uvrpc_decode_request(const uint8_t* data, size_t size,
                          uint32_t* out_msgid, char** out_method,

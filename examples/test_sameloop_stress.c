@@ -148,7 +148,7 @@ int main() {
 
     /* Let the loop process messages */
     for (int i = 0; i < 10 && total_received < total_sent; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
 
     time_t end_time = time(NULL);

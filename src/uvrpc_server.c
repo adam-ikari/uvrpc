@@ -14,6 +14,7 @@
 #include "../include/uvrpc_allocator.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
+#include "rpc_builder.h"
 #include <uthash.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,9 +79,9 @@ struct uvrpc_server {
     /* Statistics */
     uint64_t total_requests;
     uint64_t total_responses;
-};
-
-/* Server receive callback */
+    };
+    
+    /* Server receive callback */
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
 
@@ -110,18 +111,47 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     
     /* Check max clients for new client */
     if (is_new_client && server->max_clients > 0 && server->current_clients >= server->max_clients) {
-        UVRPC_LOG("Rejecting new client: max clients reached (%d)", server->max_clients);
-        /* Send error response */
+        UVRPC_LOG("Rejecting new client: max clients reached (%d), current_clients=%d, client_ctx=%p", 
+                  server->max_clients, server->current_clients, client_ctx);
+        
+        /* Extract msgid from request using FlatBuffers */
         uint32_t msgid = 0;
-        if (size >= 4) {
-            msgid = *(uint32_t*)data;
+        uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+        if (frame) {
+            msgid = uvrpc_RpcFrame_msgid(frame);
         }
-        uint8_t error_buf[32];
-        error_buf[0] = 4;  /* Error type */
-        *(uint32_t*)(error_buf + 1) = UVRPC_ERROR_MAX_CLIENTS;
-        uint32_t error_len = snprintf((char*)error_buf + 9, 23, "Maximum clients reached (%d)", server->max_clients);
-        *(uint32_t*)(error_buf + 5) = error_len;
-        uvbus_send_to(server->uvbus, error_buf, 9 + error_len, client_ctx);
+        
+        UVRPC_LOG("Sending error response: msgid=%u", msgid);
+        
+        /* Send error response using FlatBuffers */
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        
+        /* Create error message */
+        char error_msg[64];
+        int error_len = snprintf(error_msg, sizeof(error_msg), "Maximum clients reached (%d)", server->max_clients);
+        
+        /* Create error data: [error_code, error_len, error_message] */
+        uint8_t error_data[128];
+        *(uint32_t*)(error_data) = UVRPC_ERROR_MAX_CLIENTS;
+        *(uint32_t*)(error_data + 4) = error_len;
+        memcpy(error_data + 8, error_msg, error_len);
+        
+        flatbuffers_uint8_vec_ref_t data_ref = flatbuffers_uint8_vec_create(&builder, error_data, 8 + error_len);
+        
+        uvrpc_RpcFrame_start_as_root(&builder);
+        uvrpc_RpcFrame_type_add(&builder, 1);  // Response (last)
+        uvrpc_RpcFrame_msgid_add(&builder, msgid);
+        uvrpc_RpcFrame_data_add(&builder, data_ref);
+        uvrpc_RpcFrame_end_as_root(&builder);
+        
+        size_t resp_size;
+        void* resp_buf = flatcc_builder_finalize_buffer(&builder, &resp_size);
+        if (resp_buf) {
+            uvbus_send_to(server->uvbus, resp_buf, resp_size, client_ctx);
+            free(resp_buf);
+        }
+        flatcc_builder_clear(&builder);
         return;
     }
     
@@ -442,7 +472,7 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
 
     uvrpc_server_t* server = req->server;
 
-    /* Encode response */
+    /* Encode response (type=1, last) */
     uint8_t* resp_data = NULL;
     size_t resp_size = 0;
 
@@ -468,6 +498,40 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
      * IPC: client_ctx is a long-lived client structure
      * INPROC: client_ctx is a long-lived endpoint structure
      */
+}
+
+/* Send response (type=2, more to come) */
+void uvrpc_request_send_response_more(uvrpc_request_t* req, const uint8_t* result, size_t result_size) {
+    static int send_count = 0;
+    send_count++;
+
+    if (!req || !req->server || !req->client_ctx) {
+        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)\n",
+                req, req ? req->server : NULL, req ? req->client_ctx : NULL);
+        return;
+    }
+
+    uvrpc_server_t* server = req->server;
+
+    /* Encode response (type=2, more to come) */
+    uint8_t* resp_data = NULL;
+    size_t resp_size = 0;
+
+    if (uvrpc_encode_response_more(req->msgid, result, result_size,
+                                    &resp_data, &resp_size) == UVRPC_OK) {
+        /* Send response via UVBus */
+        uvbus_t* uvbus = server->uvbus;
+        uvbus_error_t err = uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx);
+        if (err == UVBUS_OK) {
+            server->total_responses++;
+            if (send_count % 1000 == 0) {
+                fprintf(stderr, "[SERVER] Sent %d response_more, client_ctx=%p\n", send_count, req->client_ctx);
+            }
+        } else {
+            UVRPC_ERROR("Failed to send response_more: %d (client_ctx=%p)", err, req->client_ctx);
+        }
+        uvrpc_free(resp_data);
+    }
 }
 
 /* Free request */

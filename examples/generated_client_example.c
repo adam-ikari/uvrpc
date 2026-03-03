@@ -49,7 +49,7 @@ int main() {
     
     /* Wait a bit for connection to establish */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     /* Prepare request */
@@ -72,7 +72,7 @@ int main() {
     
     /* Run event loop to handle response */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_ONCE);
+        uv_run(&loop, UV_RUN_DEFAULT);
     }
     
     /* Cleanup */

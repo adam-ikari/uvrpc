@@ -165,7 +165,7 @@ int main() {
         
         /* Run event loop until completion */
         while (!ctx.completed) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
             usleep(1000);
         }
         
@@ -208,7 +208,7 @@ int main() {
         
         /* Run event loop until completion */
         while (!ctx.completed) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
             usleep(1000);
         }
         
@@ -221,7 +221,7 @@ int main() {
         
         /* Run event loop to clean up closed handles */
         for (int i = 0; i < 1000; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
     }
     printf("\n");
@@ -258,7 +258,7 @@ int main() {
         /* Run event loop until completion or timeout */
         int iterations = 0;
         while (!ctx.completed && iterations < 100) {
-            int ret = uv_run(&loop, UV_RUN_NOWAIT);
+            int ret = uv_run(&loop, UV_RUN_DEFAULT);
             iterations++;
             usleep(1000);
         }
@@ -278,7 +278,7 @@ int main() {
         
         /* Run event loop to clean up pending callbacks */
         for (int i = 0; i < 10; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
         
         /* Cleanup */
@@ -325,7 +325,7 @@ int main() {
         
         /* Run event loop until completion */
         while (!ctx.completed) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
             usleep(1000);
         }
         
@@ -338,7 +338,7 @@ int main() {
         
         /* Run event loop to clean up closed handles */
         for (int i = 0; i < 10; i++) {
-            uv_run(&loop, UV_RUN_NOWAIT);
+            uv_run(&loop, UV_RUN_DEFAULT);
         }
     }
     printf("\n");
