@@ -45,7 +45,7 @@ TEST_F(FlatBuffersTest, EncodeRequest) {
     uvrpc_RpcFrame_type_add(&builder, 0);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
-    uvrpc_RpcFrame_params_add(&builder, params_ref);
+    uvrpc_RpcFrame_data_add(&builder, params_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
     // Finalize
@@ -64,7 +64,7 @@ TEST_F(FlatBuffersTest, EncodeRequest) {
     ASSERT_NE(decoded_method, nullptr);
     EXPECT_STREQ(decoded_method, method);
     
-    flatbuffers_uint8_vec_t decoded_params = uvrpc_RpcFrame_params(frame);
+    flatbuffers_uint8_vec_t decoded_params = uvrpc_RpcFrame_data(frame);
     ASSERT_NE(decoded_params, nullptr);
     EXPECT_EQ(flatbuffers_uint8_vec_len(decoded_params), params_size);
 }
@@ -82,7 +82,7 @@ TEST_F(FlatBuffersTest, EncodeResponse) {
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, 1);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
-    uvrpc_RpcFrame_params_add(&builder, result_ref);
+    uvrpc_RpcFrame_data_add(&builder, result_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
     // Finalize
@@ -111,7 +111,7 @@ TEST_F(FlatBuffersTest, EncodeResponseWithError) {
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, 1);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
-    uvrpc_RpcFrame_params_add(&builder, result_ref);
+    uvrpc_RpcFrame_data_add(&builder, result_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
     // Finalize
@@ -138,7 +138,7 @@ TEST_F(FlatBuffersTest, EncodeNotification) {
     uvrpc_RpcFrame_type_add(&builder, 2);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
-    uvrpc_RpcFrame_params_add(&builder, data_ref);
+    uvrpc_RpcFrame_data_add(&builder, data_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
     // Finalize
@@ -174,7 +174,7 @@ TEST_F(FlatBuffersTest, LargePayload) {
     uvrpc_RpcFrame_type_add(&builder, 0);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, method_ref);
-    uvrpc_RpcFrame_params_add(&builder, data_ref);
+    uvrpc_RpcFrame_data_add(&builder, data_ref);
     uvrpc_RpcFrame_end_as_root(&builder);
     
     // Finalize
@@ -185,7 +185,7 @@ TEST_F(FlatBuffersTest, LargePayload) {
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
     
-    flatbuffers_uint8_vec_t decoded_data = uvrpc_RpcFrame_params(frame);
+    flatbuffers_uint8_vec_t decoded_data = uvrpc_RpcFrame_data(frame);
     ASSERT_NE(decoded_data, nullptr);
     EXPECT_EQ(flatbuffers_uint8_vec_len(decoded_data), large_size);
     
@@ -219,6 +219,6 @@ TEST_F(FlatBuffersTest, EmptyParams) {
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(buffer);
     ASSERT_NE(frame, nullptr);
     
-    flatbuffers_uint8_vec_t params = uvrpc_RpcFrame_params(frame);
+    flatbuffers_uint8_vec_t params = uvrpc_RpcFrame_data(frame);
     EXPECT_EQ(params, nullptr); // NULL pointer for empty vector
 }
