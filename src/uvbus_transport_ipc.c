@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 
 /* Debug logging macro - compiles out in release builds */
 #ifdef UVRPC_DEBUG
@@ -17,6 +18,37 @@
 
 /* Error logging - always enabled */
 #define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
+/* Atomic refcount helpers */
+static int ref_inc(int* ref_count) {
+    return __sync_add_and_fetch(ref_count, 1);
+}
+
+static int ref_dec(int* ref_count) {
+    return __sync_sub_and_fetch(ref_count, 1);
+}
+
+/* Shared broadcast buffer with atomic refcount */
+typedef struct {
+    uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
+    size_t size;        /* Total frame size */
+    int ref_count;      /* Atomic refcount via __sync builtins, starts at client_count */
+} ipc_broadcast_buf_t;
+
+/* Broadcast write callback - decrements shared refcount */
+static void on_ipc_broadcast_write(uv_write_t* req, int status) {
+    if (status != 0) {
+        UVRPC_ERROR("IPC broadcast write failed: %s", uv_strerror(status));
+    }
+
+    ipc_broadcast_buf_t* shared = (ipc_broadcast_buf_t*)req->data;
+    if (shared && ref_dec(&shared->ref_count) == 0) {
+        /* Last write completed - free shared buffer and frame data */
+        uvrpc_free(shared->data);
+        uvrpc_free(shared);
+    }
+    uvrpc_free(req);
+}
 
 /* Forward declarations */
 typedef struct uvbus_ipc_client uvbus_ipc_client_t;
@@ -158,10 +190,10 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                 /* Determine if this is server mode or client mode */
                 if (transport->is_server) {
                     /* Server mode: pass client context and server context */
-                    transport->recv_cb(frame_copy, frame_size, client, transport->callback_ctx);
+                    transport->recv_cb(frame_copy, frame_size, client, transport->recv_ctx);
                 } else {
-                    /* Client mode: pass NULL for client context (not needed) */
-                    transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
+                    /* Client mode: pass recv context */
+                    transport->recv_cb(frame_copy, frame_size, transport->recv_ctx, transport->recv_ctx);
                 }
                 
                 /* Always free the frame copy after callback returns
@@ -196,10 +228,6 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 static void on_client_connect(uv_connect_t* req, int status) {
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
 
-    printf("[IPC_CB] ENTER: status=%d, connect_cb=%p, callback_ctx=%p\n", 
-           status, (void*)transport->connect_cb, (void*)transport->callback_ctx);
-    fflush(stdout);
-
     UVRPC_LOG("IPC client connect callback: status=%d, connect_cb=%p, callback_ctx=%p", 
               status, (void*)transport->connect_cb, (void*)transport->callback_ctx);
     fflush(stderr);
@@ -217,12 +245,8 @@ static void on_client_connect(uv_connect_t* req, int status) {
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
 
         if (transport->connect_cb) {
-            printf("[IPC_CB] Calling connect_cb with UVBUS_OK\n");
-            fflush(stdout);
             UVRPC_LOG("Calling connect_cb with UVBUS_OK");
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
-            printf("[IPC_CB] connect_cb returned\n");
-            fflush(stdout);
         } else {
             UVRPC_LOG("ERROR: connect_cb is NULL!");
         }
@@ -296,6 +320,7 @@ static int ipc_connect(void* impl_ptr, const char* address);
 static void ipc_disconnect(void* impl_ptr);
 static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size);
 static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target);
+static int ipc_broadcast(void* impl_ptr, const uint8_t* data, size_t size);
 static void ipc_free(void* impl_ptr);
 
 /* Global vtable for IPC */
@@ -305,6 +330,7 @@ static const uvbus_transport_vtable_t ipc_vtable = {
     .disconnect = ipc_disconnect,
     .send = ipc_send,
     .send_to = ipc_send_to,
+    .broadcast = ipc_broadcast,
     .free = ipc_free
 };
 
@@ -599,6 +625,108 @@ static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
         uvrpc_free(frame_data);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;
+    }
+
+    return UVBUS_OK;
+}
+
+/* IPC broadcast implementation - shared buffer with atomic refcount */
+static int ipc_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
+    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    if (!transport) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!data || size == 0) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!transport->is_server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!transport->is_connected) {
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
+    uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
+    if (!server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    /* No clients - nothing to do */
+    if (server->client_count == 0) {
+        return UVBUS_OK;
+    }
+
+    /* Count eligible clients (non-NULL, not closing) */
+    int eligible_count = 0;
+    for (int i = 0; i < server->client_count; i++) {
+        uvbus_ipc_client_t* client = server->clients[i];
+        if (client && !uv_is_closing((uv_handle_t*)&client->pipe_handle)) {
+            eligible_count++;
+        }
+    }
+
+    /* No eligible clients - nothing to do */
+    if (eligible_count == 0) {
+        return UVBUS_OK;
+    }
+
+    /* Allocate shared broadcast buffer */
+    ipc_broadcast_buf_t* shared = (ipc_broadcast_buf_t*)uvrpc_alloc(sizeof(ipc_broadcast_buf_t));
+    if (!shared) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    /* Allocate and fill frame data once (4-byte big-endian length prefix + payload) */
+    size_t total_size = 4 + size;
+    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
+    if (!frame_data) {
+        uvrpc_free(shared);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    frame_data[0] = (size >> 24) & 0xFF;
+    frame_data[1] = (size >> 16) & 0xFF;
+    frame_data[2] = (size >> 8) & 0xFF;
+    frame_data[3] = size & 0xFF;
+    memcpy(frame_data + 4, data, size);
+
+    shared->data = frame_data;
+    shared->size = total_size;
+    shared->ref_count = eligible_count;
+
+    /* Send the same shared buffer to every eligible client */
+    for (int i = 0; i < server->client_count; i++) {
+        uvbus_ipc_client_t* client = server->clients[i];
+        if (!client || uv_is_closing((uv_handle_t*)&client->pipe_handle)) {
+            continue;
+        }
+
+        uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
+        if (!req) {
+            /* Alloc failed - decrement refcount for this skipped client */
+            if (ref_dec(&shared->ref_count) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
+            continue;
+        }
+
+        uv_buf_t buf = uv_buf_init((char*)shared->data, shared->size);
+        req->data = shared;
+
+        int write_result = uv_write(req, (uv_stream_t*)&client->pipe_handle, &buf, 1, on_ipc_broadcast_write);
+        if (write_result != 0) {
+            uvrpc_free(req);
+            /* Decrement refcount for this failed write so the buffer is eventually freed */
+            if (ref_dec(&shared->ref_count) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
+            continue;
+        }
     }
 
     return UVBUS_OK;
