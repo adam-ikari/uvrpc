@@ -44,7 +44,7 @@ struct uvbus_udp_server {
     char* host;
     void* parent_transport;
     
-    /* Client address list for broadcast - point-to-point wrapper */
+    /* Client address list for send_to */
     struct sockaddr_storage* client_addrs;
     int max_clients;
     
@@ -289,8 +289,8 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                 }
                 memcpy(frame_copy, client->read_buffer + 4, frame_size);
 
-                /* Client mode: pass NULL for client context (not needed) */
-                transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
+                /* Client mode: pass recv context */
+                transport->recv_cb(frame_copy, frame_size, transport->recv_ctx, transport->recv_ctx);
                 
                 /* Always free the frame copy after callback returns
                  * This ensures cleanup even if callback forgets to free it */
@@ -325,6 +325,24 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 /* Send callback */
 static void on_send(uv_udp_send_t* req, int status) {
     uvrpc_free(req->data);
+    uvrpc_free(req);
+}
+
+/* Shared broadcast buffer with atomic refcount */
+typedef struct {
+    uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
+    size_t size;        /* Total frame size */
+    int ref_count;      /* Atomic refcount, starts at client_count */
+} udp_broadcast_buf_t;
+
+/* Broadcast send callback - decrements shared refcount */
+static void on_broadcast_send(uv_udp_send_t* req, int status) {
+    (void)status;
+    udp_broadcast_buf_t* shared = (udp_broadcast_buf_t*)req->data;
+    if (shared && __sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+        uvrpc_free(shared->data);
+        uvrpc_free(shared);
+    }
     uvrpc_free(req);
 }
 
@@ -379,7 +397,7 @@ static int udp_listen(void* impl_ptr, const char* address) {
     server->parent_transport = transport;
     server->num_clients = 0;
     
-    /* Initialize client address list for broadcast */
+    /* Initialize client address list */
     server->max_clients = 1024;  /* Increased from 256 to 1024 */
     server->client_addrs = (struct sockaddr_storage*)uvrpc_calloc(server->max_clients, sizeof(struct sockaddr_storage));
     if (!server->client_addrs) {
@@ -503,7 +521,24 @@ static int udp_connect(void* impl_ptr, const char* address) {
     transport->parent_bus->is_active = 1;
     transport->is_connected = 1;
     transport->impl.udp_client = (void*)client;
-    
+
+    /* Send registration message so server knows our address for broadcast */
+    {
+        uv_udp_send_t* reg_req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
+        if (reg_req) {
+            char* reg_data = (char*)uvrpc_alloc(9);
+            if (reg_data) {
+                memcpy(reg_data, "UVRPC_REG", 9);
+                uv_buf_t reg_buf = uv_buf_init(reg_data, 9);
+                reg_req->data = reg_data;
+                uv_udp_send(reg_req, &client->udp_handle, &reg_buf, 1,
+                            (const struct sockaddr*)&client->server_addr, on_send);
+            } else {
+                uvrpc_free(reg_req);
+            }
+        }
+    }
+
     if (transport->connect_cb) {
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
     }
@@ -558,7 +593,7 @@ static int udp_send(void* impl_ptr, const uint8_t* data, size_t size) {
     }
     
     if (transport->is_server) {
-        /* UDP server doesn't broadcast like TCP - needs target */
+        /* UDP server needs a target for send */
         return UVBUS_ERROR_INVALID_PARAM;
     } else {
         uvbus_udp_client_t* client = (uvbus_udp_client_t*)transport->impl.udp_client;
@@ -665,126 +700,84 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     return UVBUS_OK;
 }
 
-
-/* Broadcast to all connected clients (point-to-point wrapper) */
-
+/* UDP broadcast implementation - point-to-point send to each known client */
 static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
-
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
-
     if (!transport) {
-
         return UVBUS_ERROR_INVALID_PARAM;
-
     }
-
-
 
     if (!transport->is_server) {
-
         return UVBUS_ERROR_INVALID_PARAM;
-
     }
 
-
+    if (!transport->is_connected) {
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
 
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
-
-
-
-    /* If no clients connected, return OK (nothing to send) */
-
-    if (server->num_clients == 0) {
-
-        return UVBUS_OK;
-
+    if (!server) {
+        return UVBUS_ERROR_INVALID_PARAM;
     }
 
+    /* No clients - nothing to do */
+    if (server->num_clients == 0) {
+        return UVBUS_OK;
+    }
 
-
-    /* Allocate buffer with 4-byte frame length prefix */
-    size_t total_size = 4 + size;
-    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
-    if (!frame_data) {
+    /* Allocate shared broadcast buffer */
+    udp_broadcast_buf_t* shared = (udp_broadcast_buf_t*)uvrpc_alloc(sizeof(udp_broadcast_buf_t));
+    if (!shared) {
         return UVBUS_ERROR_NO_MEMORY;
     }
 
-    /* Write frame length in big-endian format */
+    /* Allocate and fill frame data once (4-byte big-endian length prefix + payload) */
+    size_t total_size = 4 + size;
+    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
+    if (!frame_data) {
+        uvrpc_free(shared);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
     frame_data[0] = (size >> 24) & 0xFF;
     frame_data[1] = (size >> 16) & 0xFF;
     frame_data[2] = (size >> 8) & 0xFF;
     frame_data[3] = size & 0xFF;
-
-    /* Copy payload data */
     memcpy(frame_data + 4, data, size);
 
-    /* Send to all recorded client addresses */
+    shared->data = frame_data;
+    shared->size = total_size;
+    shared->ref_count = server->num_clients;
 
-    int sent_count = 0;
-
-
-
+    /* Send to each known client address */
     for (int i = 0; i < server->num_clients; i++) {
-
-        struct sockaddr_storage* client_addr = &server->client_addrs[i];
-
-        
-
         uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
-
         if (!req) {
-
+            /* Alloc failed - decrement refcount for this skipped client */
+            if (__sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
             continue;
-
         }
 
-        
+        uv_buf_t buf = uv_buf_init((char*)shared->data, shared->size);
+        req->data = shared;
 
-        /* Copy frame data for this send */
-        uint8_t* data_copy = (uint8_t*)uvrpc_alloc(total_size);
-
-        if (!data_copy) {
-
+        struct sockaddr* addr = (struct sockaddr*)&server->client_addrs[i];
+        int send_result = uv_udp_send(req, &server->udp_handle, &buf, 1, addr, on_broadcast_send);
+        if (send_result != 0) {
             uvrpc_free(req);
-
+            /* Decrement refcount for this failed send so the buffer is eventually freed */
+            if (__sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
             continue;
-
         }
-
-        memcpy(data_copy, frame_data, total_size);
-
-        
-
-        uv_buf_t buf = uv_buf_init((char*)data_copy, total_size);
-
-        req->data = data_copy;
-
-        
-
-        if (uv_udp_send(req, &server->udp_handle, &buf, 1,
-
-                        (const struct sockaddr*)client_addr, on_send) == 0) {
-
-            sent_count++;
-
-        } else {
-
-            uvrpc_free(data_copy);
-
-            uvrpc_free(req);
-
-        }
-
     }
 
-    
-
-    uvrpc_free(frame_data);
-
-    /* Return OK if we sent to at least one client, or if there were no clients to send to */
-
     return UVBUS_OK;
-
 }
 
 /* UDP free implementation */
