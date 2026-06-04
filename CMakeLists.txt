@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(uvrpc VERSION 0.1.0 LANGUAGES C)
+project(uvrpc VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -168,6 +168,7 @@ target_include_directories(uvrpc_shared PUBLIC ${FLATCC_INCLUDE_DIR})
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schema)
 set(RPC_SCHEMA ${SCHEMA_DIR}/rpc.fbs)
 set(BENCHMARK_SERVER_SCHEMA ${SCHEMA_DIR}/benchmark_server.fbs)
+set(BENCHMARK_SCHEMA ${SCHEMA_DIR}/benchmark.fbs)
 set(GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated)
 
 # Find flatcc compiler
@@ -201,7 +202,17 @@ add_custom_command(
     COMMENT "Generating FlatCC code from benchmark-server schema"
 )
 
-add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h)
+# Generate FlatCC code from benchmark schema
+add_custom_command(
+    OUTPUT ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
+    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${BENCHMARK_SCHEMA}
+    DEPENDS ${BENCHMARK_SCHEMA}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating FlatCC code from benchmark schema"
+)
+
+add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h)
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
@@ -262,25 +273,17 @@ add_subdirectory(benchmark)
     
     # Streaming RPC examples
     create_example_target(streaming_demo)
-    create_example_target(stream_realtime_demo)
-    create_example_target(stream_file_transfer_demo)
-    create_example_target(stream_pubsub_demo)
-    
+
     # Advanced features
     create_example_target(async_await_demo)
     create_example_target(async_chain_demo)
     create_example_target(concurrent_demo)
     create_example_target(primitives_demo)
-    create_example_target(perf_mode_demo)
-    create_example_target(pubsub_demo)
     create_example_target(rpc_dsl_demo)
     create_example_target(flatbuffers_simple_demo)
-    
+
     # Loop lifecycle examples
     create_example_target(loop_injection_example)
-    create_example_target(loop_lifecycle_demo)
-    create_example_target(dynamic_lifecycle_demo)
-    create_example_target(event_driven_lifecycle_demo)
     
     # UVBus examples
     create_example_target(uvbus_demo)

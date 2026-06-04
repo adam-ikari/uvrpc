@@ -1,7 +1,4 @@
-project(uvrpc_tests VERSION 0.1.0 LANGUAGES CXX CXX)
 # UVRPC Unit Tests CMakeLists.txt
-
-cmake_minimum_required(VERSION 3.15)
 
 # Enable testing
 enable_testing()
@@ -120,30 +117,6 @@ target_include_directories(uvbus_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
 )
 
-# UVBus performance tests
-add_executable(uvbus_perf_test
-    uvbus_perf_test.c
-)
-
-target_link_libraries(uvbus_perf_test
-    uvrpc
-    pthread
-    m
-    rt
-)
-
-target_include_directories(uvbus_perf_test
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src
-    ${CMAKE_CURRENT_SOURCE_DIR}/../generated
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/uthash/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/mimalloc/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libuv/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
-)
-
 # UVBus simple test
 add_executable(uvbus_simple_test
     uvbus_simple_test.c
@@ -168,19 +141,19 @@ target_include_directories(uvbus_simple_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
 )
 
-# UVBus simple performance test
-add_executable(uvbus_perf_test_simple
-    uvbus_perf_test_simple.c
+# UVBus broadcast test
+add_executable(uvbus_broadcast_test
+    uvbus_broadcast_test.c
 )
 
-target_link_libraries(uvbus_perf_test_simple
+target_link_libraries(uvbus_broadcast_test
     uvrpc
     pthread
     m
     rt
 )
 
-target_include_directories(uvbus_perf_test_simple
+target_include_directories(uvbus_broadcast_test
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -192,11 +165,11 @@ target_include_directories(uvbus_perf_test_simple
     ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/flatcc/include
 )
 
+add_test(NAME uvbus_broadcast_tests COMMAND uvbus_broadcast_test)
+
 # Register C tests with CTest
 add_test(NAME uvbus_unit_tests COMMAND uvbus_test)
-add_test(NAME uvbus_perf_tests COMMAND uvbus_perf_test)
 add_test(NAME uvbus_simple_test COMMAND uvbus_simple_test)
-add_test(NAME uvbus_perf_test_simple COMMAND uvbus_perf_test_simple)
 
 # Integration tests
 add_subdirectory(integration)
