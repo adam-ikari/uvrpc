@@ -67,7 +67,7 @@ void uvbus_config_set_address(uvbus_config_t* config, const char* address) {
 void uvbus_config_set_recv_callback(uvbus_config_t* config, uvbus_recv_callback_t recv_cb, void* ctx) {
     if (config) {
         config->recv_cb = recv_cb;
-        config->callback_ctx = ctx;
+        config->recv_ctx = ctx;
     }
 }
 
@@ -156,6 +156,7 @@ uvbus_t* uvbus_server_new(uvbus_config_t* config) {
     bus->transport->connect_cb = config->connect_cb;
     bus->transport->close_cb = config->close_cb;
     bus->transport->error_cb = config->error_cb;
+    bus->transport->recv_ctx = config->recv_ctx;
     bus->transport->callback_ctx = config->callback_ctx;
     
     /* Setup fast path for SAMELOOP transport */
@@ -201,6 +202,7 @@ uvbus_t* uvbus_client_new(uvbus_config_t* config) {
     bus->transport->connect_cb = config->connect_cb;
     bus->transport->close_cb = config->close_cb;
     bus->transport->error_cb = config->error_cb;
+    bus->transport->recv_ctx = config->recv_ctx;
     bus->transport->callback_ctx = config->callback_ctx;
     
     /* Setup fast path for SAMELOOP transport */
@@ -277,6 +279,22 @@ uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void
     return UVBUS_ERROR;
 }
 
+uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size) {
+    if (!bus || !bus->transport || !bus->transport->vtable) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!bus->is_active) {
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
+    if (bus->transport->vtable->broadcast) {
+        return bus->transport->vtable->broadcast(bus->transport, data, size);
+    }
+
+    return UVBUS_ERROR_NOT_IMPLEMENTED;
+}
+
 uvbus_error_t uvbus_connect(uvbus_t* bus) {
     if (!bus || !bus->transport || !bus->transport->vtable) {
         return UVBUS_ERROR_INVALID_PARAM;
@@ -292,22 +310,6 @@ uvbus_error_t uvbus_connect(uvbus_t* bus) {
     }
     
     return UVBUS_ERROR;
-}
-
-uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size) {
-    if (!bus || !bus->transport || !bus->transport->vtable) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
-    
-    if (!bus->is_active) {
-        return UVBUS_ERROR_NOT_CONNECTED;
-    }
-    
-    if (bus->transport->vtable->broadcast) {
-        return bus->transport->vtable->broadcast(bus->transport, data, size);
-    }
-    
-    return UVBUS_ERROR_NOT_IMPLEMENTED;
 }
 
 uvbus_error_t uvbus_connect_with_callback(uvbus_t* bus, uvbus_connect_callback_t callback, void* ctx) {

@@ -140,7 +140,8 @@ struct uvbus_config {
     uvbus_connect_callback_t connect_cb;
     uvbus_close_callback_t close_cb;
     uvbus_error_callback_t error_cb;
-    void* callback_ctx;
+    void* recv_ctx;       /**< Context for recv_cb */
+    void* callback_ctx;   /**< Context for connect_cb, close_cb, error_cb */
 
     /* Options */
     uint64_t timeout_ms;
@@ -161,7 +162,8 @@ struct uvbus_transport {
     uvbus_connect_callback_t connect_cb;
     uvbus_close_callback_t close_cb;
     uvbus_error_callback_t error_cb;
-    void* callback_ctx;
+    void* recv_ctx;       /**< Context for recv_cb */
+    void* callback_ctx;   /**< Context for connect_cb, close_cb, error_cb */
 
     /* Flags */
     int is_server;
@@ -290,7 +292,16 @@ uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size);
 uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void* client);
 
 /**
- * Broadcast data to all clients (server only, UDP only)
+ * @brief Broadcast data to all connected clients (server only)
+ *
+ * Sends data to all connected clients. Unlike uvbus_send(), broadcast
+ * uses the transport's optimized broadcast implementation when available,
+ * which may use multicast or other efficient mechanisms.
+ *
+ * @param bus Pointer to uvbus server instance
+ * @param data Data to broadcast
+ * @param size Data size in bytes
+ * @return UVBUS_OK on success, error code on failure
  */
 uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size);
 
