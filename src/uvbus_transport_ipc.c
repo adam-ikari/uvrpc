@@ -21,11 +21,11 @@
 
 /* Atomic refcount helpers */
 static int ref_inc(int* ref_count) {
-    return __sync_add_and_fetch(ref_count, 1);
+    return ++(*ref_count);
 }
 
 static int ref_dec(int* ref_count) {
-    return __sync_sub_and_fetch(ref_count, 1);
+    return --(*ref_count);
 }
 
 /* Shared broadcast buffer with atomic refcount */

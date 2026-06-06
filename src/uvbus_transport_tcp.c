@@ -10,10 +10,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-/* Performance statistics */
-__attribute__((used)) volatile uint64_t tcp_fast_calls = 0;
-__attribute__((used)) volatile uint64_t tcp_vtable_calls = 0;
-
 /* Debug logging macro - compiles out in release builds */
 #ifdef UVRPC_DEBUG
 #define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
@@ -81,11 +77,11 @@ static void ref_init(int* ref_count) {
 }
 
 static int ref_inc(int* ref_count) {
-    return __sync_add_and_fetch(ref_count, 1);
+    return ++(*ref_count);
 }
 
 static int ref_dec(int* ref_count) {
-    return __sync_sub_and_fetch(ref_count, 1);
+    return --(*ref_count);
 }
 
 /* Parse address */
@@ -218,10 +214,10 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                 /* Determine if this is server mode or client mode */
                 if (transport->is_server) {
                     /* Server mode: pass client context and server context */
-                    transport->recv_cb(frame_copy, frame_size, client, transport->callback_ctx);
+                    transport->recv_cb(frame_copy, frame_size, client, transport->recv_ctx);
                 } else {
-                    /* Client mode: pass NULL for client context (not needed) */
-                    transport->recv_cb(frame_copy, frame_size, NULL, transport->callback_ctx);
+                    /* Client mode: pass recv context */
+                    transport->recv_cb(frame_copy, frame_size, transport->recv_ctx, transport->recv_ctx);
                 }
 
                 /* Always free the frame copy after callback returns
@@ -416,6 +412,28 @@ static void on_client_connect(uv_connect_t* req, int status) {
     }
 }
 
+/* Shared broadcast buffer with atomic refcount */
+typedef struct {
+    uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
+    size_t size;        /* Total frame size */
+    int ref_count;          /* Atomic refcount via __sync builtins, starts at client_count */
+} tcp_broadcast_buf_t;
+
+/* Broadcast write callback - decrements shared refcount */
+static void on_broadcast_write(uv_write_t* req, int status) {
+    if (status != 0) {
+        UVBUS_LOG("Broadcast write failed: %s", uv_strerror(status));
+    }
+
+    tcp_broadcast_buf_t* shared = (tcp_broadcast_buf_t*)req->data;
+    if (shared && ref_dec(&shared->ref_count) == 0) {
+        /* Last write completed - free shared buffer and frame data */
+        uvrpc_free(shared->data);
+        uvrpc_free(shared);
+    }
+    uvrpc_free(req);
+}
+
 /* Write callback */
 static void on_write(uv_write_t* req, int status) {
     UVBUS_LOG("Write completed, status=%d", status);
@@ -434,6 +452,7 @@ static int tcp_connect(void* impl_ptr, const char* address);
 static void tcp_disconnect(void* impl_ptr);
 static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size);
 static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* target);
+static int tcp_broadcast(void* impl_ptr, const uint8_t* data, size_t size);
 static void tcp_free(void* impl_ptr);
 
 /* Global vtable for TCP */
@@ -443,6 +462,7 @@ static const uvbus_transport_vtable_t tcp_vtable = {
     .disconnect = tcp_disconnect,
     .send = tcp_send,
     .send_to = tcp_send_to,
+    .broadcast = tcp_broadcast,
     .free = tcp_free
 };
 
@@ -644,9 +664,6 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_NOT_CONNECTED;
     }
 
-    /* Track fast path calls */
-    tcp_fast_calls++;
-
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
     uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
@@ -778,6 +795,109 @@ static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     return UVBUS_OK;
 }
 
+/* TCP broadcast implementation - shared buffer with atomic refcount */
+static int tcp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
+    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    if (!transport) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!transport->is_server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!transport->is_connected) {
+        return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
+    uvbus_tcp_server_t* server = (uvbus_tcp_server_t*)transport->impl.tcp_server;
+    if (!server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    /* No clients - nothing to do */
+    if (server->client_count == 0) {
+        return UVBUS_OK;
+    }
+
+    /* Allocate shared broadcast buffer */
+    tcp_broadcast_buf_t* shared = (tcp_broadcast_buf_t*)uvrpc_alloc(sizeof(tcp_broadcast_buf_t));
+    if (!shared) {
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    /* Allocate and fill frame data once (4-byte big-endian length prefix + payload) */
+    size_t total_size = 4 + size;
+    uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
+    if (!frame_data) {
+        uvrpc_free(shared);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
+    frame_data[0] = (size >> 24) & 0xFF;
+    frame_data[1] = (size >> 16) & 0xFF;
+    frame_data[2] = (size >> 8) & 0xFF;
+    frame_data[3] = size & 0xFF;
+    memcpy(frame_data + 4, data, size);
+
+    shared->data = frame_data;
+    shared->size = total_size;
+    shared->ref_count = server->client_count;
+
+    /* Count eligible clients (non-NULL, not closing) for refcount */
+    int eligible_count = 0;
+    for (int i = 0; i < server->client_count; i++) {
+        uvbus_tcp_client_t* client = server->clients[i];
+        if (client && !uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+            eligible_count++;
+        }
+    }
+
+    /* No eligible clients - clean up and return */
+    if (eligible_count == 0) {
+        uvrpc_free(frame_data);
+        uvrpc_free(shared);
+        return UVBUS_OK;
+    }
+
+    /* Set refcount to number of eligible clients that will share this buffer */
+    shared->ref_count = eligible_count;
+
+    /* Send the same shared buffer to every eligible client */
+    for (int i = 0; i < server->client_count; i++) {
+        uvbus_tcp_client_t* client = server->clients[i];
+        if (!client || uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
+            continue;
+        }
+
+        uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
+        if (!req) {
+            /* Alloc failed - decrement refcount for this skipped client */
+            if (ref_dec(&shared->ref_count) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
+            continue;
+        }
+
+        uv_buf_t buf = uv_buf_init((char*)shared->data, shared->size);
+        req->data = shared;
+
+        int write_result = uv_write(req, (uv_stream_t*)&client->tcp_handle, &buf, 1, on_broadcast_write);
+        if (write_result != 0) {
+            uvrpc_free(req);
+            /* Decrement refcount for this failed write so the buffer is eventually freed */
+            if (ref_dec(&shared->ref_count) == 0) {
+                uvrpc_free(shared->data);
+                uvrpc_free(shared);
+            }
+            continue;
+        }
+    }
+
+    return UVBUS_OK;
+}
+
 /* TCP free implementation */
 static void tcp_free(void* impl_ptr) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
@@ -812,10 +932,4 @@ uvbus_transport_t* create_tcp_transport(uvbus_transport_type_t type, uv_loop_t* 
     transport->fast_send_to = tcp_send_to;
     
     return transport;
-}
-
-/* Export function to get TCP statistics */
-__attribute__((used)) void uvbus_tcp_get_stats(uint64_t* fast, uint64_t* vtable) {
-    if (fast) *fast = tcp_fast_calls;
-    if (vtable) *vtable = tcp_vtable_calls;
 }

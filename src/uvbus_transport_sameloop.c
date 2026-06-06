@@ -22,6 +22,9 @@
  * Data Structures
  * ======================================== */
 
+/* Max clients per sameloop server (fixed-size array, no heap alloc) */
+#define SAMELOOP_MAX_CLIENTS 64
+
 /* Server registry - allows finding server by name without globals */
 typedef struct sameloop_server {
     char* name;
@@ -29,6 +32,8 @@ typedef struct sameloop_server {
     void* callback_ctx;
     uv_loop_t* loop;
     struct sameloop_server* next;  /* Linked list for registry */
+    void* clients[SAMELOOP_MAX_CLIENTS];  /* Connected client pointers for broadcast */
+    int client_count;
 } sameloop_server_t;
 
 /* Client endpoint - optimized with direct callback pointers */
@@ -47,6 +52,7 @@ static sameloop_server_t* server_registry = NULL;
 static sameloop_server_t* find_server(const char* name);
 static void add_server(sameloop_server_t* server);
 static void remove_server(sameloop_server_t* server);
+static int sameloop_broadcast(void* impl_ptr, const uint8_t* data, size_t size);
 
 /* ========================================
  * SAMELOOP Transport Implementation
@@ -55,10 +61,6 @@ static void remove_server(sameloop_server_t* server);
 /* Direct function pointers for inline dispatch (bypasses vtable) */
 static int (*sameloop_send_direct)(void*, const uint8_t*, size_t) = NULL;
 static int (*sameloop_send_to_direct)(void*, const uint8_t*, size_t, void*) = NULL;
-
-/* Performance statistics */
-__attribute__((used)) volatile uint64_t fast_path_calls = 0;
-__attribute__((used)) volatile uint64_t vtable_calls = 0;  /* Exported for uvbus.c */
 
 /* Find server by name in registry */
 static sameloop_server_t* find_server(const char* name) {
@@ -117,7 +119,7 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
     }
     
     server->recv_cb = transport->recv_cb;
-    server->callback_ctx = transport->callback_ctx;
+    server->callback_ctx = transport->recv_ctx;
     server->loop = transport->loop;
     
     /* Add to registry */
@@ -161,15 +163,21 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     client->server_callback_ctx = server->callback_ctx;
     
     client->recv_cb = transport->recv_cb;
-    client->callback_ctx = transport->callback_ctx;
+    client->callback_ctx = transport->recv_ctx;
     
     transport->is_connected = 1;
-    
+
+    /* Register client with server for broadcast support */
+    if (server->client_count < SAMELOOP_MAX_CLIENTS) {
+        server->clients[server->client_count] = client;
+        server->client_count++;
+    }
+
     /* Set bus as active */
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
-    
+
     /* Call connection callback */
     if (transport->connect_cb) {
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
@@ -193,6 +201,21 @@ static void sameloop_disconnect(void* impl_ptr) {
         transport->impl.sameloop_server = NULL;
     } else if (!transport->is_server && transport->impl.sameloop_client) {
         sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
+
+        /* Unregister client from all servers (find via registry) */
+        sameloop_server_t* s = server_registry;
+        while (s) {
+            for (int i = 0; i < s->client_count; i++) {
+                if (s->clients[i] == client) {
+                    /* Swap with last and shrink */
+                    s->clients[i] = s->clients[s->client_count - 1];
+                    s->client_count--;
+                    break;
+                }
+            }
+            s = s->next;
+        }
+
         uvrpc_free(client);
         transport->impl.sameloop_client = NULL;
     }
@@ -213,9 +236,7 @@ __attribute__((hot, always_inline)) static inline int sameloop_send_inline(void*
         
         /* Direct callback - minimize indirection */
         client->server_recv_cb(data, size, client, client->server_callback_ctx);
-        
-        /* Count successful fast path calls */
-        fast_path_calls++;
+
         return UVBUS_OK;
     }
     
@@ -237,8 +258,8 @@ __attribute__((hot, always_inline)) static inline int sameloop_send_to_inline(vo
     __builtin_prefetch(&client->callback_ctx);
     
     /* Direct callback - minimize overhead */
-    client->recv_cb(data, size, client, client->callback_ctx);
-    
+    client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
+
     return UVBUS_OK;
 }
 
@@ -247,12 +268,28 @@ __attribute__((hot)) static int sameloop_send_to(void* impl_ptr, const uint8_t* 
     return sameloop_send_to_inline(impl_ptr, data, size, target);
 }
 
-/* Broadcast - not implemented for SAMELOOP */
-static int sameloop_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
-    (void)impl_ptr;
-    (void)data;
-    (void)size;
-    return UVBUS_ERROR_NOT_IMPLEMENTED;
+/* Broadcast - direct call to all connected clients' recv_cb, zero overhead */
+__attribute__((hot)) static int sameloop_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
+    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    if (!transport || !data || size == 0) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    if (!transport->is_server || !transport->impl.sameloop_server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
+
+    /* Direct callback to each connected client - no serialization, no frame prefix */
+    for (int i = 0; i < server->client_count; i++) {
+        sameloop_client_t* client = (sameloop_client_t*)server->clients[i];
+        if (client && client->recv_cb) {
+            client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
+        }
+    }
+
+    return UVBUS_OK;
 }
 
 /* Free implementation */
@@ -276,12 +313,6 @@ static const uvbus_transport_vtable_t sameloop_vtable = {
 static void setup_direct_dispatch() {
     sameloop_send_direct = sameloop_send;
     sameloop_send_to_direct = sameloop_send_to;
-}
-
-/* Get performance statistics */
-__attribute__((used)) void uvbus_sameloop_get_stats(uint64_t* fast, uint64_t* vtable) {
-    if (fast) *fast = fast_path_calls;
-    if (vtable) *vtable = vtable_calls;
 }
 
 /* ========================================

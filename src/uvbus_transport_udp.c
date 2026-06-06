@@ -205,13 +205,6 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     }
 
     if (nread > 0) {
-        /* Debug: Count all received packets */
-        static __thread int total_recv = 0;
-        total_recv++;
-        if (total_recv % 1000 == 0) {
-            fprintf(stderr, "[Client] Received %d packets total\n", total_recv);
-        }
-
         /* Filter: Only accept packets from the server we connected to
          * This prevents receiving responses intended for other clients */
         if (addr && addr->sa_family == AF_INET) {
@@ -339,7 +332,7 @@ typedef struct {
 static void on_broadcast_send(uv_udp_send_t* req, int status) {
     (void)status;
     udp_broadcast_buf_t* shared = (udp_broadcast_buf_t*)req->data;
-    if (shared && __sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+    if (shared && --shared->ref_count == 0) {
         uvrpc_free(shared->data);
         uvrpc_free(shared);
     }
@@ -655,13 +648,6 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     struct sockaddr_storage* addr_storage = (struct sockaddr_storage*)target;
     struct sockaddr* addr = (struct sockaddr*)addr_storage;
 
-    /* Debug: Count sent responses */
-    static int send_count = 0;
-    send_count++;
-    if (send_count % 1000 == 0) {
-        fprintf(stderr, "[Server] Sent %d responses\n", send_count);
-    }
-
     /* Allocate buffer with 4-byte frame length prefix */
     size_t total_size = 4 + size;
     uint8_t* frame_data = (uint8_t*)uvrpc_alloc(total_size);
@@ -754,7 +740,7 @@ static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
         uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
         if (!req) {
             /* Alloc failed - decrement refcount for this skipped client */
-            if (__sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+            if (--shared->ref_count == 0) {
                 uvrpc_free(shared->data);
                 uvrpc_free(shared);
             }
@@ -769,7 +755,7 @@ static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
         if (send_result != 0) {
             uvrpc_free(req);
             /* Decrement refcount for this failed send so the buffer is eventually freed */
-            if (__sync_sub_and_fetch(&shared->ref_count, 1) == 0) {
+            if (--shared->ref_count == 0) {
                 uvrpc_free(shared->data);
                 uvrpc_free(shared);
             }
