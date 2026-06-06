@@ -10,7 +10,7 @@
  * Design Principles:
  * - Zero-allocation where possible (stack-allocated structures)
  * - Works with libuv event loop (no blocking calls)
- * - Thread-safe for multi-threaded event loops
+ * - Single-threaded event loop model (no thread safety needed)
  * - Minimal dependencies (only libuv and std C)
  * - Clear error handling
  * 
@@ -385,7 +385,7 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise);
  * }, NULL);
  * @endcode
  * 
- * @note Thread-safe using atomic operations.
+ * @note Single-threaded: safe for single event loop use only.
  */
 typedef struct semaphore_waiter semaphore_waiter_t;
 

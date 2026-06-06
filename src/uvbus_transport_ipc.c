@@ -19,7 +19,7 @@
 /* Error logging - always enabled */
 #define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
-/* Atomic refcount helpers */
+/* Refcount helpers for broadcast buffer (single-threaded event loop) */
 static int ref_inc(int* ref_count) {
     return ++(*ref_count);
 }
@@ -28,11 +28,11 @@ static int ref_dec(int* ref_count) {
     return --(*ref_count);
 }
 
-/* Shared broadcast buffer with atomic refcount */
+/* Shared broadcast buffer with refcount */
 typedef struct {
     uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
     size_t size;        /* Total frame size */
-    int ref_count;      /* Atomic refcount via __sync builtins, starts at client_count */
+    int ref_count;      /* Refcount for shared broadcast buffer, starts at eligible_count */
 } ipc_broadcast_buf_t;
 
 /* Broadcast write callback - decrements shared refcount */
@@ -630,7 +630,7 @@ static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     return UVBUS_OK;
 }
 
-/* IPC broadcast implementation - shared buffer with atomic refcount */
+/* IPC broadcast implementation - shared buffer with refcount */
 static int ipc_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     if (!transport) {

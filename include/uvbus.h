@@ -376,13 +376,6 @@ uvbus_transport_t* create_inproc_transport(uvbus_transport_type_t type, uv_loop_
  */
 void uvbus_free(uvbus_t* bus);
 
-/**
- * Get transport performance statistics (for debugging)
- * @param bus Pointer to uvbus instance
- * @param fast Pointer to store fast path call count
- * @param vtable Pointer to store vtable call count
- */
-void uvbus_get_stats(uvbus_t* bus, uint64_t* fast, uint64_t* vtable);
 
 #ifdef __cplusplus
 }

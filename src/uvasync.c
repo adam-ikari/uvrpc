@@ -415,12 +415,15 @@ int uvasync_scheduler_wait_all(
             return UVASYNC_OK;
         }
 
-        /* Run event loop */
+        /* No more pending handles — the event that would settle this wait
+         * cannot fire, so continuing would be a busy loop. */
         int ran = uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
         if (ran == 0) {
             break;
         }
     }
+
+    return UVASYNC_ERROR;
 }
 
 const uvasync_stats_t* uvasync_scheduler_get_stats(uvasync_scheduler_t* scheduler) {

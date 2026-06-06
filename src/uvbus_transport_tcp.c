@@ -412,11 +412,11 @@ static void on_client_connect(uv_connect_t* req, int status) {
     }
 }
 
-/* Shared broadcast buffer with atomic refcount */
+/* Shared broadcast buffer with refcount */
 typedef struct {
     uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
     size_t size;        /* Total frame size */
-    int ref_count;          /* Atomic refcount via __sync builtins, starts at client_count */
+    int ref_count;          /* Refcount for shared broadcast buffer, starts at eligible_count */
 } tcp_broadcast_buf_t;
 
 /* Broadcast write callback - decrements shared refcount */
@@ -795,7 +795,7 @@ static int tcp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     return UVBUS_OK;
 }
 
-/* TCP broadcast implementation - shared buffer with atomic refcount */
+/* TCP broadcast implementation - shared buffer with refcount */
 static int tcp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
     if (!transport) {
@@ -842,7 +842,6 @@ static int tcp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
 
     shared->data = frame_data;
     shared->size = total_size;
-    shared->ref_count = server->client_count;
 
     /* Count eligible clients (non-NULL, not closing) for refcount */
     int eligible_count = 0;

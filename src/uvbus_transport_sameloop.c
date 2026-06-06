@@ -168,10 +168,12 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     transport->is_connected = 1;
 
     /* Register client with server for broadcast support */
-    if (server->client_count < SAMELOOP_MAX_CLIENTS) {
-        server->clients[server->client_count] = client;
-        server->client_count++;
+    if (server->client_count >= SAMELOOP_MAX_CLIENTS) {
+        uvrpc_free(client);
+        return UVBUS_ERROR_MAX_CLIENTS;
     }
+    server->clients[server->client_count] = client;
+    server->client_count++;
 
     /* Set bus as active */
     if (transport->parent_bus) {

@@ -676,12 +676,13 @@ static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) 
     
     
     
-    /* If already completed, do nothing */
+    /* Single-threaded guard: only the first callback to reach here processes.
+     * Safe because uv_async_send queues callbacks for the next event loop
+     * iteration — they cannot preempt each other within the same tick. */
     if (ctx->completed) {
         return;
     }
 
-    /* Mark as completed */
     ctx->completed = 1;
     
     /* Forward result/rejection */
