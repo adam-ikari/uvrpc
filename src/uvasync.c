@@ -16,26 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
-
-/* Initialize allocator on first use */
-static volatile int g_allocator_initialized = 0;
-static void ensure_allocator_initialized(void) {
-    if (!g_allocator_initialized) {
-        uvrpc_allocator_init(UVRPC_ALLOCATOR_SYSTEM, NULL);
-        g_allocator_initialized = 1;
-    }
-}
-
-/* Atomic operations - GCC/Clang builtins */
-#if defined(__GNUC__) || defined(__clang__)
-#define UVASYNC_ATOMIC_ADD(ptr, val) __sync_add_and_fetch(ptr, val)
-#define UVASYNC_ATOMIC_SUB(ptr, val) __sync_sub_and_fetch(ptr, val)
-#define UVASYNC_ATOMIC_LOAD(ptr) __sync_fetch_and_add(ptr, 0)
-#define UVASYNC_ATOMIC_STORE(ptr, val) __sync_lock_test_and_set(ptr, val)
-#else
-#error "Atomic operations not supported for this compiler"
-#endif
 
 /* Memory allocation macros */
 #define UVASYNC_MALLOC(size) uvrpc_alloc(size)
@@ -46,8 +26,6 @@ static void ensure_allocator_initialized(void) {
  * ============================================================================ */
 
 uvasync_context_t* uvasync_context_create_new(void) {
-    ensure_allocator_initialized();
-    
     uvasync_context_t* ctx = (uvasync_context_t*)UVASYNC_MALLOC(sizeof(uvasync_context_t));
     if (!ctx) {
         return NULL;
@@ -76,8 +54,6 @@ uvasync_context_t* uvasync_context_create_new(void) {
 }
 
 uvasync_context_t* uvasync_context_create(uv_loop_t* loop) {
-    ensure_allocator_initialized();
-    
     if (!loop) {
         return NULL;
     }
@@ -155,8 +131,6 @@ uvasync_scheduler_t* uvasync_scheduler_create(
     uvasync_context_t* ctx,
     int max_concurrency
 ) {
-    ensure_allocator_initialized();
-    
     if (!ctx || !ctx->loop) {
         return NULL;
     }
@@ -204,10 +178,10 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler) {
     }
 
     /* Wait for all pending tasks to complete */
-    int active = UVASYNC_ATOMIC_LOAD(&scheduler->active_tasks);
+    int active = scheduler->active_tasks;
     if (active > 0) {
         /* Run event loop to process remaining tasks */
-        uv_run(ctx->loop, UV_RUN_DEFAULT);
+        uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
     }
 
     /* Cleanup semaphore */
@@ -235,10 +209,10 @@ static void on_task_permit_acquired(uvrpc_promise_t* permit_promise, void* user_
     task_context_t* task_ctx = (task_context_t*)user_data;
     
     /* Increment active tasks counter */
-    UVASYNC_ATOMIC_ADD(&task_ctx->scheduler->active_tasks, 1);
-    
+    ++task_ctx->scheduler->active_tasks;
+
     /* Update peak concurrency */
-    int current_active = UVASYNC_ATOMIC_LOAD(&task_ctx->scheduler->active_tasks);
+    int current_active = task_ctx->scheduler->active_tasks;
     if ((uint64_t)current_active > task_ctx->scheduler->stats->peak_concurrency) {
         task_ctx->scheduler->stats->peak_concurrency = current_active;
     }
@@ -273,19 +247,19 @@ static void on_task_complete(uvrpc_promise_t* result_promise, void* user_data) {
                                                           task_ctx->scheduler->stats->total_completed;
     
     /* Decrement active tasks counter */
-    UVASYNC_ATOMIC_SUB(&task_ctx->scheduler->active_tasks, 1);
-    
+    --task_ctx->scheduler->active_tasks;
+
     /* Release semaphore permit */
     uvrpc_semaphore_release(&task_ctx->scheduler->concurrency_limit);
-    
+
     /* Signal waitgroup */
     uvrpc_waitgroup_done(&task_ctx->scheduler->waitgroup);
-    
+
     /* Update completed/failed counters */
     if (uvrpc_promise_is_rejected(result_promise)) {
-        UVASYNC_ATOMIC_ADD(&task_ctx->scheduler->failed_tasks, 1);
+        ++task_ctx->scheduler->failed_tasks;
     } else {
-        UVASYNC_ATOMIC_ADD(&task_ctx->scheduler->completed_tasks, 1);
+        ++task_ctx->scheduler->completed_tasks;
     }
     
     /* Cleanup task context */
@@ -318,7 +292,7 @@ int uvasync_submit(
     uvrpc_waitgroup_add(&scheduler->waitgroup, 1);
     
     /* Update statistics */
-    UVASYNC_ATOMIC_ADD(&scheduler->submitted_tasks, 1);
+    ++scheduler->submitted_tasks;
     scheduler->stats->total_submitted++;
     
     /* Acquire permit through semaphore */
@@ -399,7 +373,7 @@ int uvasync_scheduler_get_active_count(uvasync_scheduler_t* scheduler) {
         return 0;
     }
     
-    return UVASYNC_ATOMIC_LOAD(&scheduler->active_tasks);
+    return scheduler->active_tasks;
 }
 
 int uvasync_scheduler_get_pending_count(uvasync_scheduler_t* scheduler) {
@@ -431,10 +405,10 @@ int uvasync_scheduler_wait_all(
         }
 
         /* Check if all tasks completed */
-        int active = UVASYNC_ATOMIC_LOAD(&scheduler->active_tasks);
-        int total = UVASYNC_ATOMIC_LOAD(&scheduler->submitted_tasks);
-        int completed = UVASYNC_ATOMIC_LOAD(&scheduler->completed_tasks) +
-                        UVASYNC_ATOMIC_LOAD(&scheduler->failed_tasks);
+        int active = scheduler->active_tasks;
+        int total = scheduler->submitted_tasks;
+        int completed = scheduler->completed_tasks +
+                        scheduler->failed_tasks;
 
         /* If no tasks submitted or all completed, return success */
         if (total == 0 || completed == total) {
@@ -442,8 +416,10 @@ int uvasync_scheduler_wait_all(
         }
 
         /* Run event loop */
-        uv_run(ctx->loop, UV_RUN_DEFAULT);
-        usleep(1000);  /* 1ms sleep */
+        int ran = uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
+        if (ran == 0) {
+            break;
+        }
     }
 }
 
@@ -453,9 +429,9 @@ const uvasync_stats_t* uvasync_scheduler_get_stats(uvasync_scheduler_t* schedule
     }
     
     /* Update live statistics */
-    scheduler->stats->total_submitted = UVASYNC_ATOMIC_LOAD(&scheduler->submitted_tasks);
-    scheduler->stats->total_completed = UVASYNC_ATOMIC_LOAD(&scheduler->completed_tasks);
-    scheduler->stats->total_failed = UVASYNC_ATOMIC_LOAD(&scheduler->failed_tasks);
+    scheduler->stats->total_submitted = scheduler->submitted_tasks;
+    scheduler->stats->total_completed = scheduler->completed_tasks;
+    scheduler->stats->total_failed = scheduler->failed_tasks;
     
     return scheduler->stats;
 }
@@ -496,7 +472,7 @@ int uvasync_submit_and_wait(
     }
 
     /* Wait for completion */
-    volatile int done = 0;
+    int done = 0;
 
     void on_task_done(uvrpc_promise_t* p, void* user_data) {
         (void)p;
@@ -516,8 +492,10 @@ int uvasync_submit_and_wait(
             return UVASYNC_ERROR_WAIT_TIMEOUT;
         }
 
-        uv_run(ctx->loop, UV_RUN_DEFAULT);
-        usleep(1000);
+        int ran = uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
+        if (ran == 0) {
+            break;
+        }
     }
 
     /* Get result */

@@ -267,10 +267,10 @@ struct uvasync_scheduler {
     uvasync_context_t* ctx;              /**< @brief Async context */
     uvrpc_semaphore_t concurrency_limit; /**< @brief Concurrency limit semaphore */
     uvrpc_waitgroup_t waitgroup;         /**< @brief Wait for all tasks */
-    volatile int active_tasks;            /**< @brief Currently running tasks (atomic) */
-    volatile int submitted_tasks;         /**< @brief Total tasks submitted (atomic) */
-    volatile int completed_tasks;         /**< @brief Total tasks completed (atomic) */
-    volatile int failed_tasks;            /**< @brief Total tasks failed (atomic) */
+    int active_tasks;                     /**< @brief Currently running tasks */
+    int submitted_tasks;                  /**< @brief Total tasks submitted */
+    int completed_tasks;                  /**< @brief Total tasks completed */
+    int failed_tasks;                     /**< @brief Total tasks failed */
     uvasync_stats_t* stats;              /**< @brief Detailed statistics (pointer to avoid incomplete type) */
 };
 

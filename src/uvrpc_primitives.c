@@ -15,21 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
-/* For atomic operations - GCC/Clang builtins */
-#if defined(__GNUC__) || defined(__clang__)
-#define UVRPC_ATOMIC_ADD(ptr, val) __sync_add_and_fetch(ptr, val)
-#define UVRPC_ATOMIC_SUB(ptr, val) __sync_sub_and_fetch(ptr, val)
-#define UVRPC_ATOMIC_LOAD(ptr) __sync_fetch_and_add(ptr, 0)
-#define UVRPC_ATOMIC_STORE(ptr, val) __sync_lock_test_and_set(ptr, val)
-#define UVRPC_ATOMIC_CAS(ptr, oldval, newval) __sync_val_compare_and_swap(ptr, oldval, newval)
-#define UVRPC_ATOMIC_COMPARE_AND_SWAP(ptr, oldval, newval) __sync_bool_compare_and_swap(ptr, oldval, newval)
-#else
-#error "Atomic operations not supported for this compiler"
-#endif
-
-/* Use uvrpc_alloc/u vrpc_free for memory allocation */
+/* Use uvrpc_alloc/uvrpc_free for memory allocation */
 #define UVRPC_MALLOC(size) uvrpc_alloc(size)
 #define UVRPC_FREE(ptr) uvrpc_free(ptr)
 
@@ -40,11 +27,13 @@
 /* Async callback for promise completion */
 static void promise_async_callback(uv_async_t* handle) {
     uvrpc_promise_t* promise = (uvrpc_promise_t*)handle->data;
-    
+
     if (promise->callback && !promise->is_callback_scheduled) {
         promise->is_callback_scheduled = 1;
         promise->callback(promise, promise->callback_data);
         promise->is_callback_scheduled = 0;
+        /* Unref after callback fires so uv_run can return */
+        uv_unref((uv_handle_t*)handle);
     }
 }
 
@@ -141,8 +130,11 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise) {
     
     /* Run event loop until promise is settled */
     while (promise->state == UVRPC_PROMISE_PENDING) {
-        uv_run(.*->loop, UV_RUN_DEFAULT);
-        usleep(1000);  /* 1ms sleep to avoid busy loop */
+        int ran = uv_run(promise->loop, UV_RUN_DEFAULT);
+        if (ran == 0) {
+            /* No more pending events - break to avoid busy loop */
+            break;
+        }
     }
     
     if (promise->state == UVRPC_PROMISE_FULFILLED) {
@@ -279,51 +271,31 @@ int32_t uvrpc_promise_get_error_code(uvrpc_promise_t* promise) {
  * ============================================================================ */
 
 /* Semaphore waiting entry */
-typedef struct semaphore_waiter {
+struct semaphore_waiter {
     uvrpc_promise_t* promise;
     struct semaphore_waiter* next;
-} semaphore_waiter_t;
+};
 
-/* Global waiter queue (simplified - single semaphore for demo) */
-/* In production, this should be per-semaphore with proper locking */
-static semaphore_waiter_t* g_waiter_queue = NULL;
-static uv_mutex_t g_waiter_mutex;
-
-/* Initialize waiter mutex (called once) */
-static void semaphore_init_mutex(void) {
-    static int initialized = 0;
-    if (!initialized) {
-        uv_mutex_init(&g_waiter_mutex);
-        initialized = 1;
-    }
-}
-
-/* Async callback for semaphore */
+/* Async callback for semaphore - processes per-semaphore waiter queue */
 static void semaphore_async_callback(uv_async_t* handle) {
     uvrpc_semaphore_t* semaphore = (uvrpc_semaphore_t*)handle->data;
-    
-    /* Process waiting queue */
-    semaphore_init_mutex();
-    uv_mutex_lock(&g_waiter_mutex);
-    
-    while (g_waiter_queue != NULL && semaphore->permits > 0) {
-        semaphore_waiter_t* waiter = g_waiter_queue;
-        g_waiter_queue = waiter->next;
-        
+
+    while (semaphore->waiter_head != NULL && semaphore->permits > 0) {
+        semaphore_waiter_t* waiter = semaphore->waiter_head;
+        semaphore->waiter_head = waiter->next;
+
         /* Acquire permit */
         semaphore->permits--;
-        
-        /* Check if this is a Promise-based waiter */
+        semaphore->waiting--;
+
+        /* Resolve the Promise */
         if (waiter->promise) {
-            /* Resolve the Promise (JavaScript-style) */
             int result = 1;
             uvrpc_promise_resolve(waiter->promise, (uint8_t*)&result, sizeof(int));
         }
-        
+
         uvrpc_free(waiter);
     }
-    
-    uv_mutex_unlock(&g_waiter_mutex);
 }
 
 /* Initialize semaphore */
@@ -340,27 +312,33 @@ int uvrpc_semaphore_init(uvrpc_semaphore_t* semaphore, uv_loop_t* loop, int perm
     semaphore->loop = loop;
     semaphore->permits = permits;
     semaphore->waiting = 0;
-    
+    semaphore->waiter_head = NULL;
+
     int ret = uv_async_init(loop, &semaphore->async_handle, semaphore_async_callback);
     if (ret != 0) {
         return UVRPC_ERROR;
     }
     semaphore->async_handle.data = semaphore;
     uv_unref((uv_handle_t*)&semaphore->async_handle);
-    
-    semaphore_init_mutex();
-    
+
     return UVRPC_OK;
 }
 
 /* Cleanup semaphore */
 void uvrpc_semaphore_cleanup(uvrpc_semaphore_t* semaphore) {
     if (!semaphore) return;
-    
+
+    /* Free remaining waiters */
+    while (semaphore->waiter_head) {
+        semaphore_waiter_t* waiter = semaphore->waiter_head;
+        semaphore->waiter_head = waiter->next;
+        uvrpc_free(waiter);
+    }
+
     if (!uv_is_closing((uv_handle_t*)&semaphore->async_handle)) {
         uv_close((uv_handle_t*)&semaphore->async_handle, NULL);
     }
-    
+
     semaphore->permits = 0;
     semaphore->waiting = 0;
 }
@@ -370,23 +348,18 @@ int uvrpc_semaphore_release(uvrpc_semaphore_t* semaphore) {
     if (!semaphore) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
-    semaphore_init_mutex();
-    uv_mutex_lock(&g_waiter_mutex);
-    
-    int has_waiters = (g_waiter_queue != NULL);
-    
+
+    int has_waiters = (semaphore->waiter_head != NULL);
+
     /* Increment permit count */
     semaphore->permits++;
-    
-    uv_mutex_unlock(&g_waiter_mutex);
-    
+
     /* If there are waiters, process them */
     if (has_waiters) {
         uv_ref((uv_handle_t*)&semaphore->async_handle);
         uv_async_send(&semaphore->async_handle);
     }
-    
+
     return UVRPC_OK;
 }
 
@@ -395,17 +368,12 @@ int uvrpc_semaphore_try_acquire(uvrpc_semaphore_t* semaphore) {
     if (!semaphore) {
         return 0;
     }
-    
-    semaphore_init_mutex();
-    uv_mutex_lock(&g_waiter_mutex);
-    
+
     if (semaphore->permits > 0) {
         semaphore->permits--;
-        uv_mutex_unlock(&g_waiter_mutex);
         return 1;
     }
-    
-    uv_mutex_unlock(&g_waiter_mutex);
+
     return 0;
 }
 
@@ -420,50 +388,43 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore) {
 }
 
 /* Acquire semaphore asynchronously (JavaScript-style) */
-int uvrpc_semaphore_acquire_async(uvrpc_semaphore_t* semaphore, 
+int uvrpc_semaphore_acquire_async(uvrpc_semaphore_t* semaphore,
                                     uvrpc_promise_t* promise) {
     if (!semaphore || !promise) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
-    semaphore_init_mutex();
-    uv_mutex_lock(&g_waiter_mutex);
-    
+
     if (semaphore->permits > 0) {
         /* Permit available immediately */
         semaphore->permits--;
-        uv_mutex_unlock(&g_waiter_mutex);
-        
+
         /* Resolve the promise */
         int result = 1;
         return uvrpc_promise_resolve(promise, (uint8_t*)&result, sizeof(int));
     }
-    
+
     /* No permit available, queue the promise */
-    /* Store promise in waiter queue */
     semaphore_waiter_t* waiter = (semaphore_waiter_t*)UVRPC_MALLOC(sizeof(semaphore_waiter_t));
     if (!waiter) {
-        uv_mutex_unlock(&g_waiter_mutex);
         return UVRPC_ERROR_NO_MEMORY;
     }
-    
+
     waiter->promise = promise;
     waiter->next = NULL;
-    
-    /* Add to queue */
-    if (g_waiter_queue == NULL) {
-        g_waiter_queue = waiter;
+
+    /* Append to per-semaphore waiter queue */
+    if (semaphore->waiter_head == NULL) {
+        semaphore->waiter_head = waiter;
     } else {
-        semaphore_waiter_t* tail = g_waiter_queue;
+        semaphore_waiter_t* tail = semaphore->waiter_head;
         while (tail->next) {
             tail = tail->next;
         }
         tail->next = waiter;
     }
-    
+
     semaphore->waiting++;
-    uv_mutex_unlock(&g_waiter_mutex);
-    
+
     return UVRPC_OK;
 }
 
@@ -521,7 +482,7 @@ int uvrpc_waitgroup_add(uvrpc_waitgroup_t* wg, int delta) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    UVRPC_ATOMIC_ADD(&wg->count, delta);
+    wg->count += delta;
     return UVRPC_OK;
 }
 
@@ -531,7 +492,7 @@ int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    int new_count = UVRPC_ATOMIC_SUB(&wg->count, 1);
+    int new_count = --wg->count;
     
     /* Note: In a real implementation, we would resolve the completion promise here */
     
@@ -540,7 +501,7 @@ int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg) {
 
 /* Get count */
 int uvrpc_get_count(uvrpc_waitgroup_t* wg) {
-    return wg ? UVRPC_ATOMIC_LOAD(&wg->count) : 0;
+    return wg ? wg->count : 0;
 }
 
 /* Get completion promise (JavaScript-style) */
@@ -564,7 +525,7 @@ typedef struct {
     uvrpc_promise_t* combined;
     int total_count;
     int completed_count;
-    volatile int rejected;
+    int rejected;
     uint8_t** results;
     size_t* result_sizes;
     uv_loop_t* loop;
@@ -573,7 +534,7 @@ typedef struct {
 /* Context for Promise.race() */
 typedef struct {
     uvrpc_promise_t* combined;
-    volatile int completed;
+    int completed;
     uv_loop_t* loop;
 } promise_race_context_t;
 
@@ -595,14 +556,14 @@ static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
     promise_all_context_t* ctx = (promise_all_context_t*)user_data;
     
     /* If already rejected, do nothing */
-    if (UVRPC_ATOMIC_LOAD(&ctx->rejected)) {
+    if (ctx->rejected) {
         return;
     }
-    
+
     /* Check if this promise rejected */
     if (uvrpc_promise_is_rejected(promise)) {
         /* Mark as rejected and reject combined promise */
-        UVRPC_ATOMIC_STORE(&ctx->rejected, 1);
+        ctx->rejected = 1;
         
         const char* error = uvrpc_promise_get_error(promise);
         int32_t error_code = uvrpc_promise_get_error_code(promise);
@@ -624,7 +585,7 @@ static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
     }
     
     /* Increment completed count */
-    int completed = UVRPC_ATOMIC_ADD(&ctx->completed_count, 1);
+    int completed = ++ctx->completed_count;
     
     /* If all completed, resolve combined promise */
     if (completed == ctx->total_count) {
@@ -716,14 +677,12 @@ static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) 
     
     
     /* If already completed, do nothing */
-    if (UVRPC_ATOMIC_LOAD(&ctx->completed)) {
+    if (ctx->completed) {
         return;
     }
-    
+
     /* Mark as completed */
-    if (UVRPC_ATOMIC_COMPARE_AND_SWAP(&ctx->completed, 0, 1) == 0) {
-        return; /* Another thread already completed */
-    }
+    ctx->completed = 1;
     
     /* Forward result/rejection */
     if (uvrpc_promise_is_fulfilled(promise)) {
@@ -816,7 +775,7 @@ static void on_promise_all_settled_callback(uvrpc_promise_t* promise, void* user
     }
     
     /* Increment completed count */
-    int completed = UVRPC_ATOMIC_ADD(&ctx->completed_count, 1);
+    int completed = ++ctx->completed_count;
     
     /* If all completed, resolve combined promise */
     if (completed == ctx->total_count) {

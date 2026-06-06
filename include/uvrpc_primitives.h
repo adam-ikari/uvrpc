@@ -387,10 +387,13 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise);
  * 
  * @note Thread-safe using atomic operations.
  */
+typedef struct semaphore_waiter semaphore_waiter_t;
+
 typedef struct uvrpc_semaphore {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
-    volatile int permits;                     /**< @brief Available permits (atomic) */
-    volatile int waiting;                     /**< @brief Number of waiting operations (atomic) */
+    int permits;                              /**< @brief Available permits */
+    int waiting;                              /**< @brief Number of waiting operations */
+    semaphore_waiter_t* waiter_head;          /**< @brief Per-semaphore waiter queue */
     uv_async_t async_handle;                  /**< @brief Async handle for notifying waiters */
 } uvrpc_semaphore_t;
 
@@ -501,7 +504,7 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore);
  */
 typedef struct uvrpc_waitgroup {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
-    volatile int count;                       /**< @brief Operation count (atomic) */
+    int count;                                /**< @brief Operation count */
     uv_async_t async_handle;                  /**< @brief Async handle for notification */
     int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
 } uvrpc_waitgroup_t;
