@@ -753,18 +753,6 @@ void uvrpc_response_free(uvrpc_response_t* resp);
 /** @} */
 
 /**
- * @defgroup BroadcastAPI Broadcast API
- * @brief Functions for publish-subscribe messaging
- * @{
- */
-
-/**
- * @brief Create a new publisher
- * 
- * @param config Configuration structure
- * @return New publisher instance, or NULL on failure
- */
-/**
  * @brief Convert error code to human-readable error message
  * 
  * This function converts UVRPC error codes to descriptive strings.
