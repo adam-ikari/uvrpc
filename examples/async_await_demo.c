@@ -21,7 +21,7 @@ int main(void) {
     printf("=== UVRPC Async/Await Demo ===\n\n");
     
     /* Create event loop */
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
     
     /* Create async context */

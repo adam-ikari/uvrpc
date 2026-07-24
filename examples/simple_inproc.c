@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     signal(SIGTERM, signal_handler);
 
     /* Create event loop */
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     if (uv_loop_init(&loop) != 0) {
         fprintf(stderr, "[MAIN] Failed to initialize event loop\n");
         return 1;

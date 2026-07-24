@@ -22,12 +22,19 @@
 #include <stddef.h>
 #include "uvbus.h"
 
-/* Debug logging macro - compiles out in release builds */
+/* Debug logging macros - debug trace compiles out in release builds.
+ *
+ * NOTE: the macro name UVRPC_ERROR is intentionally NOT used here because it
+ * collides with the UVRPC_ERROR enum value below. Use UVRPC_LOG_ERROR for
+ * always-on error/warning logging, UVRPC_LOG_DEBUG (or the legacy UVRPC_LOG
+ * alias) for trace output that compiles out unless -DUVRPC_DEBUG is set. */
 #ifdef UVRPC_DEBUG
-#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
+#define UVRPC_LOG_DEBUG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
 #else
-#define UVRPC_LOG(fmt, ...) ((void)0)
+#define UVRPC_LOG_DEBUG(fmt, ...) ((void)0)
 #endif
+#define UVRPC_LOG(fmt, ...) UVRPC_LOG_DEBUG(fmt, ##__VA_ARGS__)
+#define UVRPC_LOG_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
 #ifdef __cplusplus
 extern "C" {
@@ -99,9 +106,8 @@ typedef enum {
 #endif
 
 /**
- /**
  * @brief Performance modes for UVRPC operations
- * 
+ *
  * Controls how requests are processed to optimize for either
  * low latency or high throughput.
  */
@@ -325,9 +331,8 @@ uvrpc_config_t* uvrpc_config_set_loop(uvrpc_config_t* config, uv_loop_t* loop);
 uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* address);
 
 /**
- /**
  * @brief Set the transport type
- * 
+ *
  * @param config Configuration structure
  * @param transport Transport type (TCP/UDP/IPC/INPROC/SAMELOOP)
  * @return Configuration structure for chaining

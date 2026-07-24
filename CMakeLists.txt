@@ -67,6 +67,12 @@ endif()
 # Find required packages
 find_package(Threads REQUIRED)
 
+# Enable CTest at the top level so `ctest` run from build/ discovers tests.
+# (tests/CMakeLists.txt also calls enable_testing(); this makes it work from
+# the build root regardless, and lets us attach a default timeout below.)
+enable_testing()
+include(CTest)
+
 # Include dependency management
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Dependencies.cmake)
 
@@ -123,6 +129,7 @@ set(UVRPC_HEADERS
 
 # Static library
 add_library(uvrpc STATIC ${UVRPC_SOURCES})
+target_compile_options(uvrpc PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(uvrpc PUBLIC Threads::Threads m rt)
 target_include_directories(uvrpc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -132,6 +139,7 @@ target_include_directories(uvrpc PUBLIC
 
 # Shared library with all dependencies linked
 add_library(uvrpc_shared SHARED ${UVRPC_SOURCES})
+target_compile_options(uvrpc_shared PRIVATE -Wall -Wextra -Wpedantic)
 set_target_properties(uvrpc_shared PROPERTIES OUTPUT_NAME "uvrpc" VERSION ${PROJECT_VERSION} SOVERSION 0)
 target_link_libraries(uvrpc_shared PUBLIC Threads::Threads m rt dl)
 target_include_directories(uvrpc_shared PUBLIC

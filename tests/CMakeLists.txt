@@ -88,10 +88,10 @@ target_include_directories(uvrpc_integration_tests
 
 # Register unit tests with CTest
 include(GoogleTest)
-gtest_discover_tests(uvrpc_tests)
+gtest_discover_tests(uvrpc_tests PROPERTIES TIMEOUT 60)
 
 # Register integration tests with CTest
-gtest_discover_tests(uvrpc_integration_tests)
+gtest_discover_tests(uvrpc_integration_tests PROPERTIES TIMEOUT 60)
 
 # UVBus C tests (pure C, no GTest dependency)
 add_executable(uvbus_test
@@ -166,10 +166,12 @@ target_include_directories(uvbus_broadcast_test
 )
 
 add_test(NAME uvbus_broadcast_tests COMMAND uvbus_broadcast_test)
+set_tests_properties(uvbus_broadcast_tests PROPERTIES TIMEOUT 60)
 
 # Register C tests with CTest
 add_test(NAME uvbus_unit_tests COMMAND uvbus_test)
 add_test(NAME uvbus_simple_test COMMAND uvbus_simple_test)
+set_tests_properties(uvbus_unit_tests uvbus_simple_test PROPERTIES TIMEOUT 60)
 
 # Integration tests
 add_subdirectory(integration)

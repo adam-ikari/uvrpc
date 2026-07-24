@@ -55,7 +55,7 @@ void client_recv(const uint8_t* data, size_t size, void* client_ctx, void* serve
 }
 
 int main() {
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
     
     const char* address = "sameloop://test_recursion";

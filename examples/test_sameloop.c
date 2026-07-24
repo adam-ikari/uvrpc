@@ -35,7 +35,7 @@ int main() {
     uvbus_error_t err;
     
     /* SAMELOOP requires same event loop instance */
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
     
     const char* address = "sameloop://test_service";

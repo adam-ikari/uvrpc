@@ -105,7 +105,7 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
 }
 
 int main() {
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
     printf("=== UVRPC SAMELOOP RPC Demo ===\n");

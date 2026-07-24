@@ -83,7 +83,7 @@ void test_broadcast_null_params(void) {
 void test_broadcast_inactive_server(void) {
     TEST_START("test_broadcast_inactive_server");
 
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
     uvbus_config_t* config = uvbus_config_new();
@@ -116,7 +116,7 @@ static void run_multi_client_broadcast_test(const char* test_name,
                                              const char* address) {
     TEST_START(test_name);
 
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
     /* Create server config and server */
@@ -283,7 +283,7 @@ void test_broadcast_sameloop_multi_client(void) {
 void test_broadcast_no_clients(void) {
     TEST_START("test_broadcast_no_clients");
 
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
     uvbus_config_t* config = uvbus_config_new();

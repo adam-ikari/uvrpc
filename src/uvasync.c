@@ -353,9 +353,10 @@ int uvasync_scheduler_set_concurrency(
         return UVASYNC_ERROR_INVALID_PARAM;
     }
 
-    /* Note: This is a simplified implementation */
-    /* In a full implementation, we would adjust the semaphore's permit count */
-    /* For now, we just note that the concurrency limit should be updated */
+    /* Note: This is a simplified implementation.
+     * In a full implementation, we would adjust the semaphore's permit count;
+     * for now the concurrency limit is fixed at creation time. */
+    (void)max_concurrency;
 
     return UVASYNC_OK;
 }
@@ -405,7 +406,6 @@ int uvasync_scheduler_wait_all(
         }
 
         /* Check if all tasks completed */
-        int active = scheduler->active_tasks;
         int total = scheduler->submitted_tasks;
         int completed = scheduler->completed_tasks +
                         scheduler->failed_tasks;
@@ -449,6 +449,13 @@ void uvasync_scheduler_reset_stats(uvasync_scheduler_t* scheduler) {
  * Convenience Functions Implementation
  * ============================================================================ */
 
+/* Promise completion callback for uvasync_submit_and_wait: sets the done flag. */
+static void on_task_done(uvrpc_promise_t* p, void* user_data) {
+    (void)p;
+    int* done_ptr = (int*)user_data;
+    *done_ptr = 1;
+}
+
 int uvasync_submit_and_wait(
     uvasync_scheduler_t* scheduler,
     uvasync_task_fn_t fn,
@@ -476,12 +483,6 @@ int uvasync_submit_and_wait(
 
     /* Wait for completion */
     int done = 0;
-
-    void on_task_done(uvrpc_promise_t* p, void* user_data) {
-        (void)p;
-        int* done_ptr = (int*)user_data;
-        *done_ptr = 1;
-    }
 
     uvrpc_promise_set_callback(promise, on_task_done, (void*)&done);
 

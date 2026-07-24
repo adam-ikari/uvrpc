@@ -26,12 +26,19 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Debug logging macro - compiles out in release builds */
+/* Debug logging macros - debug trace compiles out in release builds.
+ *
+ * NOTE: the macro name UVBUS_ERROR is intentionally NOT used because it
+ * collides with the UVBUS_ERROR enum value below. Use UVBUS_LOG_ERROR for
+ * always-on error/warning logging, UVBUS_LOG_DEBUG (or the legacy UVBUS_LOG
+ * alias) for trace output that compiles out unless -DUVBUS_DEBUG is set. */
 #ifdef UVBUS_DEBUG
-#define UVBUS_LOG(fmt, ...) fprintf(stderr, "[UVBUS] " fmt "\n", ##__VA_ARGS__)
+#define UVBUS_LOG_DEBUG(fmt, ...) fprintf(stderr, "[UVBUS] " fmt "\n", ##__VA_ARGS__)
 #else
-#define UVBUS_LOG(fmt, ...) ((void)0)
+#define UVBUS_LOG_DEBUG(fmt, ...) ((void)0)
 #endif
+#define UVBUS_LOG(fmt, ...) UVBUS_LOG_DEBUG(fmt, ##__VA_ARGS__)
+#define UVBUS_LOG_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
 #ifdef __cplusplus
 extern "C" {

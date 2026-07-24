@@ -5,12 +5,9 @@
 #include "../include/uvbus.h"
 #include "../include/uvbus_config.h"
 #include "../include/uvrpc_allocator.h"
+#include "uvbus_loop_registry.h"
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
-
-/* Thread-safe rwlock for protecting global endpoint hash table */
-static pthread_rwlock_t g_endpoint_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* INPROC endpoint */
 typedef struct inproc_endpoint {
@@ -20,7 +17,7 @@ typedef struct inproc_endpoint {
     int client_count;
     int client_capacity;
     struct inproc_endpoint* next;
-    
+
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
     uvbus_error_callback_t error_cb;
@@ -33,77 +30,79 @@ typedef struct inproc_client {
     void* client_transport;
     int is_active;
     int ref_count;  /* Reference count for cleanup */
-    
+
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
     uvbus_error_callback_t error_cb;
     void* callback_ctx;
 } inproc_client_t;
 
-/* Global endpoint list */
-static inproc_endpoint_t* g_endpoint_list = NULL;
-
-/* Simple hash table for endpoints */
-#define ENDPOINT_HASH_SIZE 32
-static inproc_endpoint_t* g_endpoint_hash[UVBUS_HASH_TABLE_SIZE] = {NULL};
-
-/* Hash function */
+/* Hash function (per-loop registry stores endpoints in a hashed linked list) */
+#define UVBUS_INPROC_HASH_SIZE UVBUS_HASH_TABLE_SIZE
 static unsigned int hash_string(const char* str) {
     unsigned int hash = 5381;
     int c;
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + c;
     }
-    return hash % UVBUS_HASH_TABLE_SIZE;
+    return hash % UVBUS_INPROC_HASH_SIZE;
 }
 
-/* Find endpoint by name */
-static inproc_endpoint_t* inproc_find_endpoint(const char* name) {
-    pthread_rwlock_rdlock(&g_endpoint_rwlock);
-    unsigned int hash = hash_string(name);
-    inproc_endpoint_t* endpoint = g_endpoint_hash[hash];
+/* Per-loop endpoint buckets. The registry (uvbus_loop_registry_t) holds an
+ * array of inproc_endpoint_t* list heads; this returns the head for a name. */
+static inproc_endpoint_t** inproc_bucket(uvbus_loop_registry_t* reg, const char* name) {
+    /* inproc_endpoints is stored as an array of UVBUS_INPROC_HASH_SIZE list heads. */
+    inproc_endpoint_t** buckets = (inproc_endpoint_t**)reg->inproc_endpoints;
+    return &buckets[hash_string(name)];
+}
 
+/* Ensure the per-loop registry has an INPROC bucket array. */
+static inproc_endpoint_t** inproc_buckets_ensure(uvbus_loop_registry_t* reg) {
+    if (!reg->inproc_endpoints) {
+        reg->inproc_endpoints = uvrpc_calloc(UVBUS_INPROC_HASH_SIZE, sizeof(inproc_endpoint_t*));
+    }
+    return (inproc_endpoint_t**)reg->inproc_endpoints;
+}
+
+/* Find endpoint by name in the per-loop registry (no lock: single-threaded). */
+static inproc_endpoint_t* inproc_find_endpoint(uvbus_loop_registry_t* reg, const char* name) {
+    if (!reg) return NULL;
+    inproc_endpoint_t** buckets = (inproc_endpoint_t**)reg->inproc_endpoints;
+    if (!buckets) return NULL;
+    inproc_endpoint_t* endpoint = buckets[hash_string(name)];
     while (endpoint) {
         if (strcmp(endpoint->name, name) == 0) {
-            pthread_rwlock_unlock(&g_endpoint_rwlock);
             return endpoint;
         }
         endpoint = endpoint->next;
     }
-
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
     return NULL;
 }
 
-/* Add endpoint to hash table */
-static void inproc_add_endpoint(inproc_endpoint_t* endpoint) {
-    pthread_rwlock_wrlock(&g_endpoint_rwlock);
-    unsigned int hash = hash_string(endpoint->name);
-    endpoint->next = g_endpoint_hash[hash];
-    g_endpoint_hash[hash] = endpoint;
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
+/* Add endpoint to the per-loop registry (no lock). */
+static void inproc_add_endpoint(uvbus_loop_registry_t* reg, inproc_endpoint_t* endpoint) {
+    inproc_endpoint_t** head = inproc_bucket(reg, endpoint->name);
+    endpoint->next = *head;
+    *head = endpoint;
 }
 
-/* Remove endpoint from hash table */
-static void inproc_remove_endpoint(inproc_endpoint_t* endpoint) {
-    pthread_rwlock_wrlock(&g_endpoint_rwlock);
-    unsigned int hash = hash_string(endpoint->name);
-    inproc_endpoint_t** ptr = &g_endpoint_hash[hash];
-    
+/* Remove endpoint from the per-loop registry (no lock). */
+static void inproc_remove_endpoint(uvbus_loop_registry_t* reg, inproc_endpoint_t* endpoint) {
+    inproc_endpoint_t** head = inproc_bucket(reg, endpoint->name);
+    inproc_endpoint_t** ptr = head;
     while (*ptr) {
         if (*ptr == endpoint) {
             *ptr = endpoint->next;
-            pthread_rwlock_unlock(&g_endpoint_rwlock);
+            endpoint->next = NULL;
             return;
         }
         ptr = &(*ptr)->next;
     }
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
-/* Add client to endpoint */
+/* Add client to endpoint (no lock: single-threaded; the endpoint is owned by
+ * this loop and the caller holds no recv_cb re-entrancy here). */
 static void inproc_add_client(inproc_endpoint_t* endpoint, void* client) {
-    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     if (endpoint->client_count >= endpoint->client_capacity) {
         endpoint->client_capacity *= 2;
         endpoint->clients = (void**)uvrpc_realloc(
@@ -111,49 +110,43 @@ static void inproc_add_client(inproc_endpoint_t* endpoint, void* client) {
             sizeof(void*) * endpoint->client_capacity
         );
     }
-
     endpoint->clients[endpoint->client_count++] = client;
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
-/* Remove client from endpoint */
+/* Remove client from endpoint (no lock). */
 static void inproc_remove_client(inproc_endpoint_t* endpoint, void* client) {
-    pthread_rwlock_wrlock(&g_endpoint_rwlock);
     for (int i = 0; i < endpoint->client_count; i++) {
         if (endpoint->clients[i] == client) {
-            /* Shift remaining clients */
             for (int j = i; j < endpoint->client_count - 1; j++) {
                 endpoint->clients[j] = endpoint->clients[j + 1];
             }
             endpoint->client_count--;
-            pthread_rwlock_unlock(&g_endpoint_rwlock);
             return;
         }
     }
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
 }
 
-/* Send to all clients */
-static void inproc_send_to_all(inproc_endpoint_t* endpoint,
+/* Send to all clients. Snapshots the client list before delivering, because a
+ * recv_cb runs inline and could disconnect a client (mutating the list). No
+ * lock is needed — the loop is single-threaded — but the snapshot guards
+ * against re-entrant mutation. Returns UVBUS_ERROR_NO_MEMORY if the snapshot
+ * allocation fails (so callers can report it); UVBUS_OK otherwise. */
+static uvbus_error_t inproc_send_to_all(inproc_endpoint_t* endpoint,
                          const uint8_t* data, size_t size) {
-    pthread_rwlock_rdlock(&g_endpoint_rwlock);
     int client_count = endpoint->client_count;
+    if (client_count == 0) return UVBUS_OK;
     void** clients = (void**)uvrpc_alloc(sizeof(void*) * client_count);
-    if (clients) {
-        memcpy(clients, endpoint->clients, sizeof(void*) * client_count);
-    }
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
-    
-    if (!clients) return;
-    
+    if (!clients) return UVBUS_ERROR_NO_MEMORY;
+    memcpy(clients, endpoint->clients, sizeof(void*) * client_count);
+
     for (int i = 0; i < client_count; i++) {
         inproc_client_t* client = (inproc_client_t*)clients[i];
         if (client && client->is_active && client->recv_cb) {
             client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
         }
     }
-    
     uvrpc_free(clients);
+    return UVBUS_OK;
 }
 
 /* INPROC vtable functions */
@@ -187,6 +180,16 @@ static int inproc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
+    /* Obtain (or create) the per-loop registry. */
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    if (!reg) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    if (!inproc_buckets_ensure(reg)) {
+        uvbus_loop_registry_release(transport->loop);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+
     /* Skip protocol prefix */
     const char* name = address;
     if (strncmp(address, "inproc://", 9) == 0) {
@@ -194,31 +197,33 @@ static int inproc_listen(void* impl_ptr, const char* address) {
     }
 
     /* Check if endpoint already exists */
-    inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
+    inproc_endpoint_t* endpoint = inproc_find_endpoint(reg, name);
     if (endpoint) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_ALREADY_EXISTS;
     }
-    
+
     /* Create endpoint */
     endpoint = (inproc_endpoint_t*)uvrpc_alloc(sizeof(inproc_endpoint_t));
     if (!endpoint) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     endpoint->name = uvrpc_strdup(name);
     endpoint->server_transport = transport;
     endpoint->clients = (void**)uvrpc_alloc(sizeof(void*) * UVBUS_INITIAL_CLIENT_CAPACITY);
     endpoint->client_capacity = UVBUS_INITIAL_CLIENT_CAPACITY;
     endpoint->client_count = 0;
     endpoint->next = NULL;
-    
+
     /* Set callbacks */
     endpoint->recv_cb = transport->recv_cb;
     endpoint->error_cb = transport->error_cb;
     endpoint->callback_ctx = transport->recv_ctx;
 
-    /* Add to global list */
-    inproc_add_endpoint(endpoint);
+    /* Add to per-loop registry */
+    inproc_add_endpoint(reg, endpoint);
 
     transport->impl.inproc_server = (void*)endpoint;
     transport->is_connected = 1;
@@ -242,6 +247,13 @@ static int inproc_connect(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
+    /* Obtain the per-loop registry (retained so it stays alive for this
+     * client's lifetime; released in inproc_free). */
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    if (!reg) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     /* Skip protocol prefix */
     const char* name = address;
     if (strncmp(address, "inproc://", 9) == 0) {
@@ -249,49 +261,51 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     }
 
     /* Find endpoint */
-    inproc_endpoint_t* endpoint = inproc_find_endpoint(name);
+    inproc_endpoint_t* endpoint = inproc_find_endpoint(reg, name);
     if (!endpoint) {
         /* INPROC is for in-process communication only.
          * If the endpoint is not found, it means the server is not running
-         * in the same process. */
-        fprintf(stderr, "[INPROC] ERROR: Endpoint '%s' not found.\n", name);
-        fprintf(stderr, "[INPROC] INPROC transport is for in-process communication only.\n");
-        fprintf(stderr, "[INPROC] Make sure the server is running in the same process as the client.\n");
+         * in the same process/loop. */
+        UVBUS_LOG_ERROR("Endpoint '%s' not found. INPROC transport is for "
+                        "in-process communication only; the server must run in "
+                        "the same process (and same loop) as the client.", name);
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NOT_FOUND;
     }
 
-    
+
     /* Create client */
     inproc_client_t* client = (inproc_client_t*)uvrpc_alloc(sizeof(inproc_client_t));
     if (!client) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     client->server_endpoint = endpoint;
     client->client_transport = transport;
     client->is_active = 1;
     client->ref_count = 1;  /* Initialize reference count */
-    
+
     /* Set client's own callbacks */
     client->recv_cb = transport->recv_cb;
     client->error_cb = transport->error_cb;
     client->callback_ctx = transport->recv_ctx;
-    
+
     /* Add to endpoint */
     inproc_add_client(endpoint, client);
-    
+
     transport->impl.inproc_client = (void*)client;
     transport->is_connected = 1;
-    
+
     /* Set bus as active */
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
-    
+
     if (transport->connect_cb) {
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
     }
-    
+
     return UVBUS_OK;
 }
 
@@ -301,44 +315,60 @@ static void inproc_disconnect(void* impl_ptr) {
     if (!transport) {
         return;
     }
-    
+
+    uvbus_loop_registry_t* reg = transport->loop
+        ? (uvbus_loop_registry_t*)transport->loop->data : NULL;
+    if (reg && reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) {
+        reg = NULL;  /* not ours; don't touch */
+    }
+
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
-        /* Remove endpoint from global list */
-        inproc_remove_endpoint(endpoint);
-        
-        /* Free all clients */
+        /* Remove endpoint from per-loop registry */
+        if (reg) {
+            inproc_remove_endpoint(reg, endpoint);
+        }
+
+        /* Detach all clients from this endpoint so a later client disconnect
+         * does not dereference the endpoint we are about to free. We do NOT
+         * free the client structs here — each client transport owns its own
+         * inproc_client_t and will free it (and release its registry ref) when
+         * it is disconnected. This avoids both a double-free and a registry
+         * refcount imbalance when the server is freed before its clients. */
         for (int i = 0; i < endpoint->client_count; i++) {
-            if (endpoint->clients[i]) {
-                inproc_client_t* client = (inproc_client_t*)endpoint->clients[i];
+            inproc_client_t* client = (inproc_client_t*)endpoint->clients[i];
+            if (client) {
                 client->is_active = 0;
-                /* Decrement reference count, free if reaches zero */
-                if (--client->ref_count == 0) {
-                    uvrpc_free(client);
-                }
+                client->server_endpoint = NULL;  /* detach; endpoint is going away */
             }
         }
-        
+
         /* Free endpoint */
         uvrpc_free(endpoint->name);
         uvrpc_free(endpoint->clients);
         uvrpc_free(endpoint);
         transport->impl.inproc_server = NULL;
+
+        /* Release the per-loop registry reference taken in listen. */
+        uvbus_loop_registry_release(transport->loop);
     } else if (!transport->is_server && transport->impl.inproc_client) {
         inproc_client_t* client = (inproc_client_t*)transport->impl.inproc_client;
         /* Remove from endpoint */
         if (client->server_endpoint) {
             inproc_remove_client(client->server_endpoint, client);
         }
-        
+
         client->is_active = 0;
         /* Decrement reference count, free if reaches zero */
         if (--client->ref_count == 0) {
             uvrpc_free(client);
         }
         transport->impl.inproc_client = NULL;
+
+        /* Release the per-loop registry reference taken in connect. */
+        uvbus_loop_registry_release(transport->loop);
     }
-    
+
     transport->is_connected = 0;
 }
 
@@ -355,7 +385,7 @@ static int inproc_send(void* impl_ptr, const uint8_t* data, size_t size) {
 
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
-        inproc_send_to_all(endpoint, data, size);
+        return inproc_send_to_all(endpoint, data, size);
     } else if (!transport->is_server && transport->impl.inproc_client) {
         inproc_client_t* client = (inproc_client_t*)transport->impl.inproc_client;
         if (client->server_endpoint) {
@@ -414,33 +444,11 @@ static int inproc_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
 
     inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
 
-    /* Zero-copy: snapshot client list under lock, then deliver without lock */
-    pthread_rwlock_rdlock(&g_endpoint_rwlock);
-    int client_count = endpoint->client_count;
-    void** clients = NULL;
-    if (client_count > 0) {
-        clients = (void**)uvrpc_alloc(sizeof(void*) * client_count);
-        if (clients) {
-            memcpy(clients, endpoint->clients, sizeof(void*) * client_count);
-        }
-    }
-    pthread_rwlock_unlock(&g_endpoint_rwlock);
-
-    if (!clients) {
-        return (client_count == 0) ? UVBUS_OK : UVBUS_ERROR_NO_MEMORY;
-    }
-
-    /* Zero-copy delivery: pass data pointer directly, no frame prefix needed
-     * since data never crosses a network boundary */
-    for (int i = 0; i < client_count; i++) {
-        inproc_client_t* client = (inproc_client_t*)clients[i];
-        if (client && client->is_active && client->recv_cb) {
-            client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
-        }
-    }
-
-    uvrpc_free(clients);
-    return UVBUS_OK;
+    /* Zero-copy broadcast: snapshot the client list, then deliver directly.
+     * The snapshot guards against re-entrant mutation (a recv_cb running
+     * inline could disconnect a client mid-iteration). No lock is needed — the
+     * loop is single-threaded by the framework's design contract. */
+    return inproc_send_to_all(endpoint, data, size);
 }
 
 /* INPROC free implementation */
@@ -451,11 +459,11 @@ static void inproc_free(void* impl_ptr) {
     }
     
     inproc_disconnect(transport);
-    
+
     if (transport->address) {
         uvrpc_free(transport->address);
     }
-    
+
     uvrpc_free(transport);
 }
 

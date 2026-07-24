@@ -23,7 +23,7 @@ UVRPC 追求极致的简洁性，每个设计决策都遵循"少即是多"的原
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 // 2. 创建服务器（自动生成服务端代码，包含处理器注册）
 Calculator_server_t* server = Calculator_server_create(config);
@@ -39,7 +39,7 @@ uv_run(&loop, UV_RUN_DEFAULT);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 // 2. 创建服务器（通用 API，支持多服务复用 loop）
 uvrpc_server_t* server = uvrpc_server_create(config);
@@ -83,7 +83,7 @@ Calculator_Add(client, request, response_callback, ctx);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
 
 // 2. 创建客户端（自动生成客户端代码）
@@ -102,7 +102,7 @@ uv_run(&loop, UV_RUN_DEFAULT);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
 
 // 2. 创建客户端（通用 API，支持多服务复用 loop）
@@ -292,22 +292,22 @@ uv_run(&loop, UV_RUN_DEFAULT);
 /* TCP 传输 */
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 /* UDP 传输 */
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_address(config, "udp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_UDP);
 
 /* IPC 传输 */
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_address(config, "ipc:///tmp/uvrpc.sock");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_IPC);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_IPC);
 
 /* INPROC 传输 */
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_address(config, "inproc://my_service");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_INPROC);
 ```
 
 **统一的调用方式**：
@@ -346,7 +346,7 @@ UVRPC 提供两种使用模式，满足不同场景需求：
 **通用 API（约 10 个函数）**：
 - `uvrpc_config_new()`, `uvrpc_config_free()`
 - `uvrpc_config_set_loop()`, `uvrpc_config_set_address()`
-- `uvrpc_config_set_transport()`, `uvrpc_config_set_comm_type()`
+- `uvrpc_config_set_transport()`
 - `uvrpc_server_create()`, `uvrpc_server_start()`, `uvrpc_server_free()`
 - `uvrpc_server_register()`
 - `uvrpc_client_create()`, `uvrpc_client_connect()`, `uvrpc_client_free()`
@@ -428,8 +428,7 @@ graph TB
     subgraph Layer2["Layer 2: RPC API 层"]
         B1[uvrpc_server_t]
         B2[uvrpc_client_t]
-        B3[uvrpc_publisher_t]
-        B4[uvrpc_subscriber_t]
+        B3[uvrpc_context_t]
     end
     
     subgraph Layer1["Layer 1: 传输层（统一抽象）"]
@@ -507,7 +506,7 @@ uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 
 /* 2. 设置传输类型和地址（仅此处不同） */
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);    // 或 UDP/IPC/INPROC
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);    // 或 UDP/IPC/INPROC
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");   // 或 udp:// /ipc:// /inproc://
 
 /* 3. 创建服务器/客户端（完全相同） */
@@ -527,11 +526,11 @@ uvrpc_client_call(client, "method", params, size, callback, NULL);
 /* 只需修改这两行，其他代码无需改变 */
 
 /* 从 TCP 切换到 UDP */
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_UDP);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_UDP);
 uvrpc_config_set_address(config, "udp://127.0.0.1:5555");
 
 /* 从 UDP 切换到 INPROC */
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_INPROC);
 uvrpc_config_set_address(config, "inproc://my_service");
 ```
 
@@ -562,21 +561,6 @@ uvrpc_config_set_address(config, "inproc://my_service");
   │ 10. decode_response()             │
   │     ↓                              │
   │ 11. callback()                     │
-  │                                   │
-```
-
-#### 发布-订阅流程
-
-```
-发布者                              订阅者
-  │                                   │
-  │  1. uvrpc_publisher_publish()     │
-  │     ↓                              │
-  │  2. transport_send()              │
-  │──────────────────────────────────>│
-  │                                   │ 3. transport_recv()
-  │                                   │    ↓
-  │                                   │ 4. callback()
   │                                   │
 ```
 
@@ -671,7 +655,7 @@ static inproc_endpoint_t* g_endpoint_list = NULL;
 **服务器启动**：
 ```c
 // 1. 创建传输
-uvrpc_transport_t* transport = uvrpc_transport_server_new(loop, UVRPC_TRANSPORT_INPROC);
+uvrpc_transport_t* transport = uvrpc_transport_server_new(loop, UVBUS_TRANSPORT_INPROC);
 
 // 2. 监听端点
 uvrpc_transport_listen(transport, "inproc://test_endpoint", recv_cb, ctx);
@@ -690,7 +674,7 @@ inproc_add_endpoint(endpoint);
 **客户端连接**：
 ```c
 // 1. 创建传输
-uvrpc_transport_t* transport = uvrpc_transport_client_new(loop, UVRPC_TRANSPORT_INPROC);
+uvrpc_transport_t* transport = uvrpc_transport_client_new(loop, UVBUS_TRANSPORT_INPROC);
 
 // 2. 连接端点
 uvrpc_transport_connect(transport, "inproc://test_endpoint", connect_cb, recv_cb, ctx);
@@ -785,7 +769,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "inproc://my_endpoint");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_INPROC);
 
 uvrpc_server_t* server = uvrpc_server_create(config);
 uvrpc_server_register(server, "add", add_handler, NULL);
@@ -800,7 +784,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "inproc://my_endpoint");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_INPROC);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_INPROC);
 
 uvrpc_client_t* client = uvrpc_client_create(config);
 uvrpc_client_connect(client);

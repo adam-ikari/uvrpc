@@ -253,7 +253,7 @@ int main() {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     
     uvrpc_server_t* server = uvrpc_server_create(config);
     
@@ -295,7 +295,7 @@ int main() {
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
     uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-    uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
+    uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     
     uvrpc_client_t* client = uvrpc_client_create(config);
     
@@ -376,13 +376,13 @@ static uvrpc_error_t convert_uvbus_error(uvbus_error_t uvbus_err) {
 /* UVRPC 内部映射传输类型 */
 static uvbus_transport_type_t convert_transport_type(uvrpc_transport_type_t uvrpc_type) {
     switch (uvrpc_type) {
-        case UVRPC_TRANSPORT_TCP:
+        case UVBUS_TRANSPORT_TCP:
             return UVBUS_TRANSPORT_TCP;
-        case UVRPC_TRANSPORT_UDP:
+        case UVBUS_TRANSPORT_UDP:
             return UVBUS_TRANSPORT_UDP;
-        case UVRPC_TRANSPORT_IPC:
+        case UVBUS_TRANSPORT_IPC:
             return UVBUS_TRANSPORT_IPC;
-        case UVRPC_TRANSPORT_INPROC:
+        case UVBUS_TRANSPORT_INPROC:
             return UVBUS_TRANSPORT_INPROC;
         default:
             return UVBUS_TRANSPORT_TCP;  /* 默认 TCP */

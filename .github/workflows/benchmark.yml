@@ -1,4 +1,4 @@
-name: Benchmark Tests
+name: Benchmark
 
 on:
   push:
@@ -6,195 +6,53 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allow manual triggering
+  schedule:
+    - cron: '17 3 * * 0'  # weekly (Sun 03:17 UTC), off-peak
 
+# Run benchmarks on demand / on PRs to main. Uses perf_benchmark (correct
+# loop usage — UV_RUN_ONCE, sequential ping-pong).
 jobs:
-  network-transports:
-    name: Network Transport Benchmark (${{ matrix.transport }})
+  benchmark:
+    name: Performance benchmark
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        transport: [ipc, tcp, udp]
-        clients: [1, 10, 50]
-        include:
-          - clients: 1
-            requests: 10000
-            timeout: 60
-          - clients: 10
-            requests: 10000
-            timeout: 120
-          - clients: 50
-            requests: 10000
-            timeout: 180
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev
-    
-    - name: Build
-      run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        make -C build -j$(nproc)
-    
-    - name: Run benchmark - ${{ matrix.transport }} (${{ matrix.clients }} clients)
-      timeout-minutes: 10
-      run: |
-        cd benchmark
-        echo "=== Testing ${{ matrix.transport }} with ${{ matrix.clients }} clients ==="
-        timeout ${{ matrix.timeout }} ./dist/bin/uvrpc_benchmark \
-          --transport ${{ matrix.transport }} \
-          --clients ${{ matrix.clients }} \
-          --requests ${{ matrix.requests }} \
-          --warmup 100 || true
-    
-    - name: Cleanup processes
-      if: always()
-      run: |
-        pkill -9 uvrpc_benchmark || true
-        ps aux | grep uvrpc_benchmark || echo "No zombie processes"
-    
-    - name: Upload benchmark results
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: benchmark-${{ matrix.transport }}-${{ matrix.clients }}clients
-        path: |
-          benchmark/BENCHMARK_REPORT.md
-          benchmark/PERFORMANCE_TEST_RESULTS.md
-        retention-days: 30
 
-  inproc-transports:
-    name: In-Process Transport Benchmark
-    runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev
-    
-    - name: Build
-      run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        make -C build -j$(nproc)
-    
-    - name: Run INPROC benchmark
-      run: |
-        cd benchmark
-        echo "=== Testing INPROC transport ==="
-        timeout 60 ./dist/bin/uvrpc_benchmark \
-          --transport inproc \
-          --requests 100000 \
-          --warmup 1000 || true
-    
-    - name: Run SAMELOOP benchmark
-      run: |
-        cd benchmark
-        echo "=== Testing SAMELOOP transport ==="
-        timeout 60 ./dist/bin/uvrpc_benchmark \
-          --transport sameloop \
-          --requests 100000 \
-          --warmup 1000 || true
-    
-    - name: Upload benchmark results
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: benchmark-inproc
-        path: |
-          benchmark/BENCHMARK_REPORT.md
-          benchmark/PERFORMANCE_TEST_RESULTS.md
-        retention-days: 30
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  stress-test:
-    name: High-Concurrency Stress Test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev
-    
-    - name: Build
-      run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        make -C build -j$(nproc)
-    
-    - name: Run stress test - 100 clients, 50K requests
-      timeout-minutes: 15
-      run: |
-        cd benchmark
-        echo "=== High-Concurrency Stress Test ==="
-        for transport in ipc tcp; do
-          echo "Testing $transport with 100 clients and 50K requests"
-          timeout 300 ./dist/bin/uvrpc_benchmark \
-            --transport $transport \
-            --clients 100 \
-            --requests 50000 \
-            --warmup 500 || true
-        done
-    
-    - name: Cleanup processes
-      if: always()
-      run: |
-        pkill -9 uvrpc_benchmark || true
-        ps aux | grep uvrpc_benchmark || echo "No zombie processes"
-    
-    - name: Upload stress test results
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: benchmark-stress-test
-        path: |
-          benchmark/BENCHMARK_REPORT.md
-          benchmark/PERFORMANCE_TEST_RESULTS.md
-        retention-days: 30
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libuv1-dev
 
-  report:
-    name: Generate Benchmark Report
-    runs-on: ubuntu-latest
-    needs: [network-transports, inproc-transports, stress-test]
-    if: always()
-    
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v3
-      with:
-        path: benchmark-results
-    
-    - name: Generate summary
-      run: |
-        echo "# Benchmark Test Summary" > summary.md
-        echo "" >> summary.md
-        echo "## Test Results" >> summary.md
-        echo "- Network Transport Benchmarks: ${{ needs.network-transports.result }}" >> summary.md
-        echo "- In-Process Transport Benchmarks: ${{ needs.inproc-transports.result }}" >> summary.md
-        echo "- Stress Tests: ${{ needs.stress-test.result }}" >> summary.md
-        echo "" >> summary.md
-        echo "For detailed results, check the uploaded artifacts." >> summary.md
-        cat summary.md
-    
-    - name: Upload summary
-      uses: actions/upload-artifact@v3
-      with:
-        name: benchmark-summary
-        path: summary.md
-        retention-days: 30
+      - name: Build (Release, logging OFF)
+        run: |
+          cmake -S . -B build \
+            -DUVRPC_ALLOCATOR_DEFAULT=system \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUVRPC_DEBUG_LOGGING=OFF
+          make -C build -j$(nproc) perf_benchmark
+
+      - name: Run perf_benchmark (all transports)
+        run: |
+          {
+            echo "## Performance benchmark (sequential ping-pong)"
+            echo ""
+            echo "Release build, system allocator, debug logging OFF, single thread, 8-byte payload."
+            echo ""
+            echo "| Transport | Round-trip latency | Throughput (1/latency) |"
+            echo "|-----------|--------------------|------------------------|"
+            for t in sameloop inproc ipc udp tcp; do
+              # Capture the two result lines and reformat as a table row.
+              out=$(./dist/bin/perf_benchmark 50000 "$t" 2>/dev/null)
+              lat=$(echo "$out" | grep -oE '[0-9.]+ us/req' | head -1)
+              thr=$(echo "$out" | grep -oE '[0-9,]+ req/s' | head -1)
+              echo "| $t | $lat | $thr |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stress run (1M requests, same-loop)
+        run: |
+          ./dist/bin/perf_benchmark 1000000 sameloop 2>/dev/null

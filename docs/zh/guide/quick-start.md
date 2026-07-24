@@ -98,13 +98,13 @@ sudo cmake --install build
 - [性能测试](/zh/guide/benchmark) - 学习如何进行性能测试
 - [设计哲学](/zh/guide/design-philosophy) - 了解 UVRPC 的设计原则
 - [单线程模型](/zh/guide/single-thread-model) - 理解单线程事件循环模型
-- [示例程序](/en/examples/) - 查看更多示例代码
+- [示例程序](https://github.com/adam-ikari/uvrpc/tree/main/examples) - 查看更多示例代码
 
 ## 获取帮助
 
 如果遇到问题：
 
 1. 查看 [文档](/zh/)
-2. 检查 [示例程序](../../examples/)
+2. 检查 [示例程序](https://github.com/adam-ikari/uvrpc/tree/main/examples)
 3. 运行测试：`make test`
 4. 提交 Issue：[GitHub Issues](https://github.com/adam-ikari/uvrpc/issues)

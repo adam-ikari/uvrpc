@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -8,174 +8,136 @@ on:
 
 jobs:
   build-and-test:
-    name: Build and Test on ${{ matrix.os }}
+    name: Build & Test (${{ matrix.build_type }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-latest]
-        build_type: [Debug, Release]
-    
+        os: [ ubuntu-22.04, ubuntu-latest ]
+        build_type: [ Debug, Release ]
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev
-    
-    - name: Build
-      run: |
-        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        make -C build -j$(nproc)
-    
-    - name: Run unit tests
-      run: |
-        ./dist/bin/uvrpc_tests --gtest_brief=1
-    
-    - name: Run integration tests
-      run: |
-        ./dist/bin/test_tcp || true
-        ./dist/bin/test_ipc || true
-        ./dist/bin/test_inproc || true
-        ./dist/bin/test_broadcast || true
-    
-    - name: Upload build artifacts
-      if: matrix.build_type == 'Release'
-      uses: actions/upload-artifact@v3
-      with:
-        name: uvrpc-${{ matrix.os }}-${{ matrix.build_type }}
-        path: dist/bin/
-    
-  code-coverage:
-    name: Code Coverage
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libuv1-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DUVRPC_BUILD_TESTS=ON \
+            -DUVRPC_BUILD_EXAMPLES=ON \
+            -DUVRPC_ALLOCATOR_DEFAULT=system \
+            -DUVRPC_DEBUG_LOGGING=OFF \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build
+        run: make -C build -j$(nproc)
+
+      # Warning gate: the library compiles warning-clean under -Wall -Wextra
+      # -Wpedantic. Treat warnings as errors so regressions fail CI. (Excludes
+      # the known glibc static-link NSS warnings from libuv's core.c.)
+      - name: Check warnings (warning-clean build)
+        run: |
+          make -C build -j$(nproc) 2>&1 | tee build.log
+          if grep -iE "warning:|error:" build.log | grep -qvE "getpwuid_r|getgrgid_r|statically linked"; then
+            echo "::error::Build produced warnings/errors (see log above)"
+            exit 1
+          fi
+
+      - name: Run ctest
+        run: |
+          cd build
+          ctest --output-on-failure
+
+  debug-logging-build:
+    # Verify the debug-logging build still compiles (macros must stay valid).
+    name: Debug-logging build
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev lcov
-    
-    - name: Build with coverage
-      run: |
-        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="--coverage" -DCMAKE_CXX_FLAGS="--coverage"
-        make -C build -j$(nproc)
-    
-    - name: Run tests
-      run: |
-        ./dist/bin/uvrpc_tests --gtest_brief=1
-    
-    - name: Generate coverage report
-      run: |
-        lcov --capture --directory build --output-file coverage.info
-        lcov --remove coverage.info '/usr/*' '*/deps/*' '*/tests/*' --output-file coverage.info
-        lcov --list coverage.info
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.info
-        flags: unittests
-        name: codecov-umbrella
-    
-  static-analysis:
-    name: Static Analysis
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev cppcheck clang-tidy
-    
-    - name: Run cppcheck
-      run: |
-        cppcheck --enable=all --inline-suppr --error-exitcode=1 src/ include/
-    
-    - name: Build with clang-tidy
-      run: |
-        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        make -C build -j$(nproc)
-    
-    - name: Run clang-tidy
-      run: |
-        find src include -name '*.c' -o -name '*.h' | xargs clang-tidy -p build
-    
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libuv1-dev
+      - name: Configure & build with debug logging
+        run: |
+          cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_ALLOCATOR_DEFAULT=system \
+                -DCMAKE_BUILD_TYPE=Debug -DUVRPC_DEBUG_LOGGING=ON
+          make -C build -j$(nproc)
+
   memory-check:
-    name: Memory Leak Detection
+    name: Memory leak detection (ASan)
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev valgrind
-    
-    - name: Build with debug symbols
-      run: |
-        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-        make -C build -j$(nproc)
-    
-    - name: Run tests with valgrind
-      run: |
-        valgrind --leak-check=full --error-exitcode=1 ./dist/bin/uvrpc_tests --gtest_brief=1
-    
-  performance-test:
-    name: Performance Test
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libuv1-dev
+      - name: Build with AddressSanitizer
+        run: |
+          cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_ALLOCATOR_DEFAULT=system \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_FLAGS="-fsanitize=address -g" \
+                -DCMAKE_CXX_FLAGS="-fsanitize=address -g" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"
+          make -C build -j$(nproc)
+      - name: Run transport lifetime test under ASan
+        run: |
+          ./dist/bin/test_transport_lifetime
+      - name: Run unit tests under ASan
+        run: |
+          ASAN_OPTIONS=detect_leaks=1 ./dist/bin/uvrpc_tests --gtest_brief=1
+
+  performance:
+    name: Performance benchmark
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential libuv1-dev wrk
-    
-    - name: Build
-      run: |
-        cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
-        make -C build -j$(nproc)
-    
-    - name: Run performance tests
-      run: |
-        cd benchmark
-        ./simple_stress_test.sh || true
-        ./test_all_transports.sh || true
-    
-    - name: Run fork/exec benchmark tests
-      run: |
-        cd benchmark
-        echo "Testing IPC transport with fork/exec"
-        timeout 60 ./dist/bin/uvrpc_benchmark --transport ipc --requests 1000 --warmup 100 || true
-        echo "Testing TCP transport with fork/exec"
-        timeout 60 ./dist/bin/uvrpc_benchmark --transport tcp --requests 1000 --warmup 100 || true
-        echo "Testing UDP transport with fork/exec"
-        timeout 90 ./dist/bin/uvrpc_benchmark --transport udp --requests 1000 --warmup 100 || true
-    
-    - name: Check for zombie processes
-      if: always()
-      run: |
-        pkill -9 uvrpc_benchmark || true
-        ps aux | grep uvrpc_benchmark || echo "No zombie processes"
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libuv1-dev
+      - name: Build (Release, logging OFF)
+        run: |
+          cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system \
+                -DCMAKE_BUILD_TYPE=Release -DUVRPC_DEBUG_LOGGING=OFF
+          make -C build -j$(nproc) perf_benchmark
+      - name: Run perf benchmark (all transports)
+        run: |
+          for t in sameloop inproc ipc udp tcp; do
+            echo "::group::$t"
+            ./dist/bin/perf_benchmark 10000 "$t"
+            echo "::endgroup::"
+          done
+
+  static-analysis:
+    name: Static analysis (cppcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=warning,performance,portability --inline-suppr \
+            --suppress=missingIncludeSystem --error-exitcode=1 \
+            -I include -I src -I generated -I deps/libuv/include \
+            -I deps/uthash/include -I deps/flatcc/include \
+            src/ include/

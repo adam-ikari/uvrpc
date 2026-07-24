@@ -1,1 +1,1 @@
-../en/build-install.md
+../build-install.md

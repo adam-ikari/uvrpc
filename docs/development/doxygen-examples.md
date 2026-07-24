@@ -56,7 +56,7 @@ This file provides examples of how to add Doxygen-formatted English comments to 
  * uvrpc_config_t* config = uvrpc_config_new();
  * uvrpc_config_set_loop(config, &loop);
  * uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
- * uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+ * uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
  * 
  * uvrpc_server_t* server = uvrpc_server_create(config);
  * if (!server) {
@@ -400,7 +400,7 @@ make -C docs/doxygen/latex
 - [Doxygen Manual](https://www.doxygen.nl/manual/)
 - [Doxygen Special Commands](https://www.doxygen.nl/manual/commands.html)
 - [Doxygen Examples](https://www.doxygen.nl/manual/examples.html)
-- [UVRPC Coding Standards](CODING_STANDARDS.md)
+- [UVRPC Coding Standards](/development/coding-standards)
 
 ---
 
