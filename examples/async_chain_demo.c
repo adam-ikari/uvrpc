@@ -66,7 +66,7 @@ int main(void) {
     printf("Demonstrates chained async calls: user -> posts -> count\n\n");
     
     /* Create event loop */
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
     
     /* Create async context */

@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
     printf("Address: %s\n\n", address);
 
     /* Initialize libuv loop */
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
     /* Create server */

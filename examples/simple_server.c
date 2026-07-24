@@ -49,7 +49,7 @@ static void update_stats(void) {
 void echo_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
     update_stats();
-    printf("[HANDLER] Received request: method=%s, msgid=%lu\n", req->method, req->msgid);
+    printf("[HANDLER] Received request: method=%s, msgid=%u\n", req->method, (unsigned)req->msgid);
     uvrpc_request_send_response(req, UVRPC_OK, req->params, req->params_size);
 }
 
@@ -57,7 +57,7 @@ void echo_handler(uvrpc_request_t* req, void* ctx) {
 void add_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;
     update_stats();
-    fprintf(stderr, "[HANDLER] Received add request: msgid=%lu\n", req->msgid);
+    fprintf(stderr, "[HANDLER] Received add request: msgid=%u\n", (unsigned)req->msgid);
     fflush(stderr);
     if (req->params_size >= 8) {
         int32_t a = *(int32_t*)req->params;

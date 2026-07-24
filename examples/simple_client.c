@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>  /* usleep */
 
 /* Client context - stores all state locally */
 typedef struct {
@@ -89,11 +90,12 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    /* Wait for connection */
+    /* Wait for connection (UV_RUN_NOWAIT: pump connect callbacks without
+     * blocking — a live TCP connection would make UV_RUN_DEFAULT hang). */
     int iterations = 0;
     while (!context.connected && context.running && iterations < 100) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        uv_stop(&loop);
+        uv_run(&loop, UV_RUN_NOWAIT);
+        usleep(10000);  /* 10ms */
         iterations++;
     }
 
@@ -120,11 +122,11 @@ int main(int argc, char** argv) {
         context.running = 0;
     }
 
-    /* Wait for response */
+    /* Wait for response (UV_RUN_NOWAIT: pump without blocking). */
     iterations = 0;
     while (context.running && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        uv_stop(&loop);
+        uv_run(&loop, UV_RUN_NOWAIT);
+        usleep(10000);  /* 10ms */
         iterations++;
     }
 

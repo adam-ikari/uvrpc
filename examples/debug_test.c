@@ -35,7 +35,7 @@ int main() {
     
     /* Step 1: Create loop */
     printf("Step 1: Creating loop...\n");
-    uv_loop_t loop;
+    uv_loop_t loop = {0};
     int rc = uv_loop_init(&loop);
     printf("  uv_loop_init: %d\n", rc);
     

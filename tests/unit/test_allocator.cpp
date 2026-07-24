@@ -6,13 +6,22 @@
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 
+/* The allocator type is fixed at compile time via UVRPC_DEFAULT_ALLOCATOR
+ * (set by CMake). Tests must expect that compile-time value, not a hardcoded
+ * one — the allocator can no longer be switched at runtime. */
+#ifndef UVRPC_DEFAULT_ALLOCATOR
+#define UVRPC_DEFAULT_ALLOCATOR 1  /* mimalloc, matches library default */
+#endif
+
 class AllocatorTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Initialize allocator with mimalloc (type = 1)
-        uvrpc_allocator_init((uvrpc_allocator_type_t)1, NULL);
+        // Register the compile-time allocator type. In system/mimalloc builds
+        // this is a no-op (type is fixed); in custom builds it would register
+        // function pointers (none here, so custom falls back to system malloc).
+        uvrpc_allocator_init((uvrpc_allocator_type_t)UVRPC_DEFAULT_ALLOCATOR, NULL);
     }
-    
+
     void TearDown() override {
         uvrpc_allocator_cleanup();
     }
@@ -117,7 +126,7 @@ TEST_F(AllocatorTest, MultipleAllocations) {
 
 TEST_F(AllocatorTest, GetAllocatorType) {
     uvrpc_allocator_type_t type = uvrpc_allocator_get_type();
-    EXPECT_EQ(type, (uvrpc_allocator_type_t)1);
+    EXPECT_EQ(type, (uvrpc_allocator_type_t)UVRPC_DEFAULT_ALLOCATOR);
 }
 
 TEST_F(AllocatorTest, GetAllocatorName) {

@@ -76,8 +76,11 @@ int run_server(uv_loop_t* loop, const char* address) {
     signal(SIGTERM, signal_handler);
 
     while (g_running) {
-        uv_run(loop, UV_RUN_DEFAULT);
-        uv_stop(loop);
+        /* UV_RUN_NOWAIT: pump I/O without blocking — a bound UDP handle would
+         * make UV_RUN_DEFAULT block forever and the g_running flag would never
+         * be re-checked. */
+        uv_run(loop, UV_RUN_NOWAIT);
+        usleep(10000);  /* 10ms */
     }
 
     printf("\nStopping server...\n");
@@ -153,8 +156,7 @@ int run_client(uv_loop_t* loop, const char* address) {
     /* Wait for responses */
     printf("\nWaiting for responses...\n");
     while (request_count < 2) {
-        uv_run(loop, UV_RUN_DEFAULT);
-        uv_stop(loop);
+        uv_run(loop, UV_RUN_NOWAIT);
         usleep(10000);  /* 10ms */
     }
 
