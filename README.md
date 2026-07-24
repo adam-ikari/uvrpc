@@ -2,7 +2,7 @@
 
 A minimalist, high-performance RPC framework built on libuv event loop and FlatBuffers serialization.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/adam-ikari/uvrpc)
+[![CI](https://github.com/adam-ikari/uvrpc/actions/workflows/ci.yml/badge.svg)](https://github.com/adam-ikari/uvrpc/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0a-orange.svg)](https://github.com/adam-ikari/uvrpc/releases/tag/v1.0.0a)
 
@@ -12,57 +12,55 @@ A minimalist, high-performance RPC framework built on libuv event loop and FlatB
 # Clone and build
 git clone https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+cmake -S . -B build
+cmake --build build -j$(nproc)
 
 # Run examples
-./simple_server &
-./simple_client
+./dist/bin/simple_server &
+./dist/bin/simple_client
 ```
 
 ## 📚 Documentation
 
 ### 🌐 Online Documentation
 - **Official Website**: [https://adam-ikari.github.io/uvrpc/](https://adam-ikari.github.io/uvrpc/)
-- **English Docs**: [https://adam-ikari.github.io/uvrpc/](https://adam-ikari.github.io/uvrpc/)
 - **中文文档**: [https://adam-ikari.github.io/uvrpc/zh/](https://adam-ikari.github.io/uvrpc/zh/)
 
-### English Documentation
-Complete documentation is available in [docs/en/](docs/en/):
-
-- [README.md](docs/en/README.md) - Project Overview
-- [Quick Start Guide](docs/en/QUICK_START.md) - 5-minute tutorial
-- [API Guide](docs/en/API_GUIDE.md) - Complete API documentation
-- [Build & Install](docs/en/BUILD_AND_INSTALL.md) - Build instructions
-- [Doxygen Docs](docs/doxygen/html/index.html) - Generated API docs
-
-### Chinese Documentation (中文文档)
-中文文档正在开发中，详见 [docs/zh/](docs/zh/README.md)。
+### Documentation
+- [Quick Start Guide](https://adam-ikari.github.io/uvrpc/quick-start) - 5-minute tutorial
+- [API Guide](https://adam-ikari.github.io/uvrpc/guide/api-guide) - Complete API documentation
+- [Build & Install](https://adam-ikari.github.io/uvrpc/build-install) - Build instructions
+- [Design Philosophy](https://adam-ikari.github.io/uvrpc/guide/design-philosophy) - Architecture & design principles
+- [Benchmark](https://adam-ikari.github.io/uvrpc/guide/benchmark) - Performance methodology & numbers
+- [Coding Standards](https://adam-ikari.github.io/uvrpc/development/coding-standards) - Contribution guidelines
 
 ## ✨ Features
 
-- **Zero Threads, Zero Locks, Zero Global Variables** - All I/O managed by libuv event loop
-- **High Performance** - 260,000+ ops/s (INPROC Oneway), 199,565 ops/s (INPROC Normal), 73,200 ops/s (TCP)
+- **Zero Threads, Zero Locks, Zero Global Variables** - All I/O managed by libuv event loop; the library has zero file-scope mutable globals (system/mimalloc builds)
+- **High Performance** - ~205,000 req/s sequential round-trip on SAMELOOP/INPROC (~4.9 µs latency)
 - **Multi-Transport Support** - TCP, UDP, IPC, INPROC, SAMELOOP
 - **Multiple RPC Modes** - Normal (request-response), Oneway (fire-and-forget), Stream (multiple responses)
-- **Zero-Copy** - FlatBuffers binary serialization
+- **Zero-Copy** - FlatBuffers binary serialization; pointer-passing for in-process transports
 - **Loop Injection** - Support custom libuv loop
 - **Type Safety** - FlatBuffers DSL generates type-safe APIs
-- **Fast Path Optimization** - 100% vtable bypass for SAMELOOP transport
-- **Code Generation** - Auto-generate client/server code
+- **Fast Path Optimization** - vtable bypass for SAMELOOP transport
 - **Single-Threaded Model** - Lock-free design
 
 ## 📊 Performance
 
-| Transport | Throughput | Latency | Use Case |
-|-----------|-----------|---------|----------|
-| INPROC | 125,000+ ops/s | 0.03 ms | In-process (single process only) |
-| IPC | 91,895 ops/s | 0.10 ms | Local IPC |
-| UDP | 91,685 ops/s | 0.15 ms | High-throughput |
-| TCP | 86,930 ops/s | 0.18 ms | Reliable network |
+Sequential ping-pong (one request in flight), 8-byte payload, Release build, single thread. Measured with `benchmark/perf_benchmark`.
 
-See [benchmark/](benchmark/) for detailed performance analysis.
+| Transport | Round-trip latency | Throughput (1/latency) | Use Case |
+|-----------|-------------------|------------------------|----------|
+| SAMELOOP  | ~4.9 µs | ~205,000 req/s | Same-loop, vtable bypass (fastest) |
+| INPROC    | ~4.9 µs | ~205,000 req/s | In-process zero-copy |
+| IPC       | ~31 µs  | ~33,000 req/s  | Local inter-process (Unix socket) |
+| UDP       | ~38 µs  | ~26,000 req/s  | Loss-tolerant, high-throughput |
+| TCP       | ~46 µs  | ~22,000 req/s  | Reliable network RPC |
+
+> Note: "throughput" above is the reciprocal of sequential round-trip latency (one request in flight), not pipelined throughput. Run `./dist/bin/perf_benchmark [requests] [transport]` to reproduce.
+
+See [benchmark/](benchmark/) for the benchmark source and methodology.
 
 ## 🎯 Examples
 
@@ -89,12 +87,11 @@ See [examples/](examples/) for complete examples.
 
 ## 📖 Learn More
 
-- [Architecture](docs/en/DESIGN_PHILOSOPHY.md)
-- [API Reference](docs/en/API_REFERENCE.md)
-- [Coding Standards](docs/en/CODING_STANDARDS.md)
-- [Migration Guide](docs/en/MIGRATION_GUIDE.md)
-- [Performance Optimization](docs/en/PERFORMANCE_OPTIMIZATION.md)
-- [Primitives Guide](docs/en/PRIMITIVES_GUIDE.md)
+- [Architecture](https://adam-ikari.github.io/uvrpc/architecture/)
+- [API Reference](https://adam-ikari.github.io/uvrpc/api/)
+- [Single Thread Model](https://adam-ikari.github.io/uvrpc/guide/single-thread-model)
+- [Coding Standards](https://adam-ikari.github.io/uvrpc/development/coding-standards)
+- [Primitives Guide](docs/PRIMITIVES_GUIDE.md)
 
 ## 🤝 Contributing
 

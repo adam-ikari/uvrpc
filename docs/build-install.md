@@ -40,7 +40,7 @@ sudo apt-get install -y build-essential cmake git
 sudo apt-get install -y libuv1-dev
 
 # 克隆项目（包含其他依赖）
-git clone --recursive https://github.com/your-org/uvrpc.git
+git clone --recursive https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
 
 # 设置其他依赖
@@ -57,7 +57,7 @@ cd uvrpc
 brew install cmake libuv
 
 # 克隆项目（包含其他依赖）
-git clone --recursive https://github.com/your-org/uvrpc.git
+git clone --recursive https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
 
 # 设置其他依赖
@@ -125,7 +125,7 @@ cmake ..
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 
 # 使用系统分配器
-cmake -DUVRPC_ALLOCATOR=SYSTEM ..
+cmake -DUVRPC_ALLOCATOR_DEFAULT=system ..
 
 # 自定义安装前缀
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
@@ -145,10 +145,10 @@ sudo make install
 | 选项 | 默认值 | 说明 |
 |-----|-------|------|
 | CMAKE_BUILD_TYPE | Release | 构建类型 (Debug/Release/RelWithDebInfo) |
-| UVRPC_ALLOCATOR | MIMALLOC | 内存分配器 (SYSTEM/MIMALLOC/CUSTOM) |
-| BUILD_TESTING | ON | 是否构建测试 |
-| BUILD_EXAMPLES | ON | 是否构建示例 |
-| BUILD_BENCHMARK | ON | 是否构建基准测试 |
+| UVRPC_ALLOCATOR_DEFAULT | mimalloc | 内存分配器 (system/mimalloc/custom) |
+| UVRPC_BUILD_TESTS | OFF | 是否构建测试 |
+| UVRPC_BUILD_EXAMPLES | ON | 是否构建示例 |
+| UVRPC_DEBUG_LOGGING | OFF | 是否启用调试日志 |
 | CMAKE_INSTALL_PREFIX | /usr/local | 安装前缀 |
 
 ## 构建产物
@@ -161,7 +161,7 @@ sudo make install
 - `dist/bin/simple_client` - 简单客户端示例
 - `dist/bin/uvrpc_tests` - 单元测试
 - `dist/bin/test_tcp` - TCP 集成测试
-- `dist/bin/uvrpc_benchmark` - 性能基准测试
+- `dist/bin/perf_benchmark` - 性能基准测试
 
 ### 头文件
 - `include/uvrpc.h` - 主头文件
@@ -197,78 +197,35 @@ sudo make install
 
 ### 性能测试
 
-```bash
-# 运行所有传输层的性能测试
-./benchmark/simple_perf_test.sh
-
-# 运行特定传输层的测试
-./benchmark/run_benchmark.sh tcp://127.0.0.1:5555 single
-./benchmark/run_benchmark.sh ipc://uvrpc_ipc_test single
-./benchmark/run_benchmark.sh udp://127.0.0.1:5556 single
-
-# 查看详细性能报告
-cat benchmark/TRANSPORT_PERFORMANCE_REPORT.md
-```
-
-### 性能测试结果
-
-最新测试结果（Release 模式，-O2 优化）：
-
-| 传输层 | 吞吐量 (ops/s) | 相对性能 | 特点 |
-|--------|----------------|----------|------|
-| **INPROC** | 471,163 | 3.9x | 零拷贝，同进程内最快 |
-| **IPC** | 199,818 | 1.6x | Unix Domain Socket，本地进程间通信 |
-| **UDP** | 133,597 | 1.1x | 无连接，高吞吐 |
-| **TCP** | 121,979 | 1.0x | 可靠传输，基准 |
-
-### 性能特点
-- **INPROC**: 零拷贝同步执行，适合同进程内高性能通信
-- **IPC**: 无网络开销，适合本地进程间通信，性能优于网络传输
-- **UDP**: 无连接协议，适合高吞吐、可容忍丢失的场景
-- **TCP**: 可靠传输，适合需要保证数据完整性的场景
-
-### 测试配置
-- 构建模式: Release (-O2 优化，无调试符号)
-- 测试时长: 3 秒
-- 批处理大小: 100 请求
-- 成功率: 所有传输层 100%
-
-## 性能测试
-
-### 吞吐量测试
+使用 `perf_benchmark` 测量各传输的往返延迟与吞吐量（顺序 ping-pong，单线程）：
 
 ```bash
-# 启动服务器
-./dist/bin/perf_server
+# 构建（Release，关闭调试日志以保证计时准确）
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUVRPC_DEBUG_LOGGING=OFF
+cmake --build build --target perf_benchmark
 
-# 运行客户端（默认模式）
-./dist/bin/perf_client 127.0.0.1:5555 10000
-
-# 使用不同迭代次数
-./dist/bin/perf_client 127.0.0.1:5555 100000
+# 运行各传输
+./dist/bin/perf_benchmark 100000 sameloop
+./dist/bin/perf_benchmark 100000 inproc
+./dist/bin/perf_benchmark 100000 ipc
+./dist/bin/perf_benchmark 100000 udp
+./dist/bin/perf_benchmark 100000 tcp
 ```
 
-### 性能模式对比
+### 性能参考
 
-```bash
-# 启动服务器
-./dist/bin/perf_server &
+顺序 ping-pong，8 字节负载，Release 构建，单线程：
 
-# 测试低延迟模式
-./dist/bin/perf_client 127.0.0.1:5555 10000
+| 传输层 | 往返延迟 | 顺序吞吐量 (1/延迟) | 适用场景 |
+|--------|----------|---------------------|----------|
+| SAMELOOP / INPROC | ~4 µs | ~245,000 req/s | 进程内零拷贝（最快）|
+| IPC | ~31 µs | ~33,000 req/s | 本地进程间（Unix 套接字）|
+| UDP | ~38 µs | ~26,000 req/s | 高吞吐、可丢包 |
+| TCP | ~46 µs | ~22,000 req/s | 可靠网络 RPC |
 
-# 测试高吞吐模式（需要修改客户端代码设置性能模式）
-```
+> "吞吐量"为顺序往返延迟的倒数（单请求在途），非流水线吞吐。实际性能取决于硬件。
 
-### 延迟测试
-
-```bash
-# 启动服务器
-./dist/bin/perf_server &
-
-# 运行延迟测试
-./dist/bin/simple_latency_test
-```
+详见 [Benchmark 指南](/guide/benchmark)。
 
 ## 安装
 
@@ -449,7 +406,7 @@ make -j$(nproc)
 # 生成配置文件
 cmake -DCMAKE_BUILD_TYPE=Release -DUVRPC_ENABLE_PGO=GENERATE ..
 make -j$(nproc)
-./dist/bin/uvrpc_benchmark
+./dist/bin/perf_benchmark 100000 inproc
 
 # 使用配置文件优化
 cmake -DCMAKE_BUILD_TYPE=Release -DUVRPC_ENABLE_PGO=USE ..
@@ -509,5 +466,5 @@ test:
 如果您在构建或安装过程中遇到问题：
 
 1. 查看本文档的故障排除部分
-2. 检查 GitHub Issues：https://github.com/your-org/uvrpc/issues
+2. 检查 GitHub Issues：https://github.com/adam-ikari/uvrpc/issues
 3. 提交新的 Issue 并提供详细的错误信息

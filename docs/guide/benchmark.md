@@ -261,6 +261,6 @@ vmstat
 
 ## Related Documentation
 
-- [Performance Report](/en/performance-report)
-- [Design Philosophy](/en/guide/design-philosophy)
-- [Single Thread Model](/en/guide/single-thread-model)
+- [Design Philosophy](/guide/design-philosophy)
+- [Single Thread Model](/guide/single-thread-model)
+- [Benchmark tool source](https://github.com/adam-ikari/uvrpc/tree/main/benchmark)

@@ -261,6 +261,6 @@ vmstat
 
 ## 参考文档
 
-- [性能测试报告](/en/performance-report)
-- [设计哲学](/en/guide/design-philosophy)
-- [单线程模型](/en/guide/single-thread-model)
+- [设计哲学](/zh/guide/design-philosophy)
+- [单线程模型](/zh/guide/single-thread-model)
+- [Benchmark 工具源码](https://github.com/adam-ikari/uvrpc/tree/main/benchmark)

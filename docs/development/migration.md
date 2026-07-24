@@ -29,8 +29,7 @@ uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 ```
 
 #### 服务端创建
@@ -188,7 +187,7 @@ uvrpc_allocator_init(UVRPC_ALLOCATOR_CUSTOM, &custom);
 5. **测试验证**
    - 运行单元测试：`./dist/bin/uvrpc_tests`
    - 运行集成测试：`./dist/bin/test_tcp`
-   - 运行性能测试：`./dist/bin/uvrpc_benchmark`
+   - 运行性能测试：`./dist/bin/perf_benchmark 100000 inproc`
 
 ### 兼容性说明
 
@@ -232,8 +231,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 uvrpc_server_t* server = uvrpc_server_create(config);
 uvrpc_server_register(server, "echo", echo_handler, NULL);
@@ -269,8 +267,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_transport(config, UVRPC_TRANSPORT_TCP);
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 uvrpc_client_t* client = uvrpc_client_create(config);
 uvrpc_client_connect(client);
@@ -307,7 +304,7 @@ A: 支持 TCP、UDP、IPC 和 INPROC，比旧版本更多。
 
 如果您在迁移过程中遇到问题：
 
-1. 查看 [API 参考文档](API_REFERENCE.md)
-2. 查看 [设计哲学文档](DESIGN_PHILOSOPHY.md)
+1. 查看 [API 参考文档](/api/)
+2. 查看 [设计哲学文档](/guide/design-philosophy)
 3. 运行示例程序：`./dist/bin/simple_server` 和 `./dist/bin/simple_client`
-4. 提交 Issue：https://github.com/your-org/uvrpc/issues
+4. 提交 Issue：https://github.com/adam-ikari/uvrpc/issues

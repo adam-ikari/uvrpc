@@ -22,7 +22,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);  // 注入用户的loop
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 // 3. 创建服务器
 uvrpc_server_t* server = uvrpc_server_create(config);
@@ -74,7 +74,7 @@ uv_loop_init(&loop);
 uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);  // 注入用户的loop
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
-uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 
 // 3. 创建客户端
 uvrpc_client_t* client = uvrpc_client_create(config);

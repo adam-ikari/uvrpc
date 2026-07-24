@@ -79,7 +79,7 @@ Use Doxygen format for all public functions:
  * uvrpc_config_t* config = uvrpc_config_new();
  * uvrpc_config_set_loop(config, &loop);
  * uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
- * uvrpc_config_set_comm_type(config, UVRPC_COMM_SERVER_CLIENT);
+ * uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
  * 
  * uvrpc_server_t* server = uvrpc_server_create(config);
  * if (!server) {
