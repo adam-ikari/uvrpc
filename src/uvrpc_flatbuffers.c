@@ -115,6 +115,13 @@ int uvrpc_decode_request(const uint8_t* data, size_t size,
         return UVRPC_ERROR_INVALID_PARAM;
     }
 
+    /* A FlatBuffers root needs at least the root uoffset (4 bytes) + a table
+     * header (4 bytes). Reject frames too small to be a valid root before the
+     * FlatCC reader trusts embedded offsets. */
+    if (size < 8) {
+        return UVRPC_ERROR;
+    }
+
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
 
     if (!frame) {
@@ -148,6 +155,12 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
                           const uint8_t** out_result, size_t* out_result_size) {
     if (!data || !out_msgid || !out_result || !out_result_size) {
         return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    /* Reject frames too small to contain a valid FlatBuffers root (root
+     * uoffset + table header) before the FlatCC reader trusts offsets. */
+    if (size < 8) {
+        return UVRPC_ERROR;
     }
     
     uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);

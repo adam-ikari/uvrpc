@@ -492,10 +492,11 @@ int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    int new_count = --wg->count;
-    
+    /* Decrement the pending operation count */
+    --wg->count;
+
     /* Note: In a real implementation, we would resolve the completion promise here */
-    
+
     return UVRPC_OK;
 }
 

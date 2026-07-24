@@ -172,7 +172,7 @@ typedef void (*uvrpc_promise_callback_t)(uvrpc_promise_t* promise, void* user_da
  * @note This structure should be allocated on stack or via uvrpc_alloc().
  *       Do not free it while callbacks may still be pending.
  */
-typedef struct uvrpc_promise {
+struct uvrpc_promise {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
     uvrpc_promise_state_t state;              /**< @brief Current state */
     uint8_t* result;                          /**< @brief Result data (if fulfilled) */
@@ -183,7 +183,7 @@ typedef struct uvrpc_promise {
     void* callback_data;                      /**< @brief User data for callback */
     uv_async_t async_handle;                  /**< @brief Async handle for callback */
     int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
-} uvrpc_promise_t;
+};
 
 /**
  * @defgroup PromiseAPI Promise API
@@ -389,13 +389,13 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise);
  */
 typedef struct semaphore_waiter semaphore_waiter_t;
 
-typedef struct uvrpc_semaphore {
+struct uvrpc_semaphore {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
     int permits;                              /**< @brief Available permits */
     int waiting;                              /**< @brief Number of waiting operations */
     semaphore_waiter_t* waiter_head;          /**< @brief Per-semaphore waiter queue */
     uv_async_t async_handle;                  /**< @brief Async handle for notifying waiters */
-} uvrpc_semaphore_t;
+};
 
 /**
  * @defgroup SemaphoreAPI Semaphore API
@@ -502,12 +502,12 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore);
  * uvrpc_promise_then(p, on_all_done, context);
  * @endcode
  */
-typedef struct uvrpc_waitgroup {
+struct uvrpc_waitgroup {
     uv_loop_t* loop;                          /**< @brief libuv event loop */
     int count;                                /**< @brief Operation count */
     uv_async_t async_handle;                  /**< @brief Async handle for notification */
     int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
-} uvrpc_waitgroup_t;
+};
 
 /**
  * @defgroup WaitGroupAPI WaitGroup API

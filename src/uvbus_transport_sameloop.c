@@ -15,6 +15,7 @@
 #include "../include/uvbus.h"
 #include "../include/uvbus_config.h"
 #include "../include/uvrpc_allocator.h"
+#include "uvbus_loop_registry.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -25,13 +26,14 @@
 /* Max clients per sameloop server (fixed-size array, no heap alloc) */
 #define SAMELOOP_MAX_CLIENTS 64
 
-/* Server registry - allows finding server by name without globals */
+/* Server registry entry - stored in the per-loop registry (uvbus_loop_registry_t)
+ * so server and client find each other by name with no file-scope global. */
 typedef struct sameloop_server {
     char* name;
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
     uv_loop_t* loop;
-    struct sameloop_server* next;  /* Linked list for registry */
+    struct sameloop_server* next;  /* Linked list within the per-loop registry */
     void* clients[SAMELOOP_MAX_CLIENTS];  /* Connected client pointers for broadcast */
     int client_count;
 } sameloop_server_t;
@@ -43,28 +45,23 @@ typedef struct sameloop_client {
     void* server_callback_ctx;              /* Inlined from server */
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
+    sameloop_server_t* server;  /* Back-pointer: avoids scanning the registry on disconnect */
 } __attribute__((aligned(64))) sameloop_client_t;  /* Cache line aligned */
 
-/* Server registry (static, not global) */
-static sameloop_server_t* server_registry = NULL;
-
 /* Forward declarations */
-static sameloop_server_t* find_server(const char* name);
-static void add_server(sameloop_server_t* server);
-static void remove_server(sameloop_server_t* server);
+static sameloop_server_t* find_server(uvbus_loop_registry_t* reg, const char* name);
+static void add_server(uvbus_loop_registry_t* reg, sameloop_server_t* server);
+static void remove_server(uvbus_loop_registry_t* reg, sameloop_server_t* server);
 static int sameloop_broadcast(void* impl_ptr, const uint8_t* data, size_t size);
 
 /* ========================================
  * SAMELOOP Transport Implementation
  * ======================================== */
 
-/* Direct function pointers for inline dispatch (bypasses vtable) */
-static int (*sameloop_send_direct)(void*, const uint8_t*, size_t) = NULL;
-static int (*sameloop_send_to_direct)(void*, const uint8_t*, size_t, void*) = NULL;
-
-/* Find server by name in registry */
-static sameloop_server_t* find_server(const char* name) {
-    sameloop_server_t* server = server_registry;
+/* Find server by name in the per-loop registry (no lock: single-threaded). */
+static sameloop_server_t* find_server(uvbus_loop_registry_t* reg, const char* name) {
+    if (!reg) return NULL;
+    sameloop_server_t* server = (sameloop_server_t*)reg->sameloop_servers;
     while (server) {
         if (strcmp(server->name, name) == 0) {
             return server;
@@ -74,15 +71,15 @@ static sameloop_server_t* find_server(const char* name) {
     return NULL;
 }
 
-/* Add server to registry */
-static void add_server(sameloop_server_t* server) {
-    server->next = server_registry;
-    server_registry = server;
+/* Add server to the per-loop registry (no lock). */
+static void add_server(uvbus_loop_registry_t* reg, sameloop_server_t* server) {
+    server->next = (sameloop_server_t*)reg->sameloop_servers;
+    reg->sameloop_servers = server;
 }
 
-/* Remove server from registry */
-static void remove_server(sameloop_server_t* server) {
-    sameloop_server_t** ptr = &server_registry;
+/* Remove server from the per-loop registry (no lock). */
+static void remove_server(uvbus_loop_registry_t* reg, sameloop_server_t* server) {
+    sameloop_server_t** ptr = (sameloop_server_t**)&reg->sameloop_servers;
     while (*ptr) {
         if (*ptr == server) {
             *ptr = server->next;
@@ -99,41 +96,52 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
     if (!transport || !address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
+    /* Obtain (or create) the per-loop registry. */
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    if (!reg) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     /* Check if server already exists */
-    sameloop_server_t* existing = find_server(address);
+    sameloop_server_t* existing = find_server(reg, address);
     if (existing) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_ALREADY_EXISTS;
     }
-    
+
     /* Create server */
     sameloop_server_t* server = (sameloop_server_t*)uvrpc_alloc(sizeof(sameloop_server_t));
     if (!server) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     server->name = uvrpc_strdup(address);
     if (!server->name) {
         uvrpc_free(server);
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     server->recv_cb = transport->recv_cb;
     server->callback_ctx = transport->recv_ctx;
     server->loop = transport->loop;
-    
-    /* Add to registry */
-    add_server(server);
-    
+    server->client_count = 0;
+    server->next = NULL;
+
+    /* Add to per-loop registry */
+    add_server(reg, server);
+
     /* Store in transport impl */
     transport->impl.sameloop_server = server;
     transport->is_connected = 1;
-    
+
     /* Set bus as active */
     if (transport->parent_bus) {
         transport->parent_bus->is_active = 1;
     }
-    
+
     return UVBUS_OK;
 }
 
@@ -143,33 +151,43 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     if (!transport || !address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-    
+
+    /* Obtain the per-loop registry (retained; released in sameloop_disconnect). */
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    if (!reg) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     /* Find server in registry */
-    sameloop_server_t* server = find_server(address);
+    sameloop_server_t* server = find_server(reg, address);
     if (!server) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NOT_FOUND;
     }
-    
+
     /* Allocate client inline in transport impl to avoid separate heap allocation */
-    /* This reduces memory fragmentation and allocation overhead */
     transport->impl.sameloop_client = (sameloop_client_t*)uvrpc_alloc(sizeof(sameloop_client_t));
     if (!transport->impl.sameloop_client) {
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_NO_MEMORY;
     }
-    
+
     /* Inline server callbacks to avoid pointer indirection */
     sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
     client->server_recv_cb = server->recv_cb;
     client->server_callback_ctx = server->callback_ctx;
-    
+    client->server = server;  /* back-pointer for O(1) unregister on disconnect */
+
     client->recv_cb = transport->recv_cb;
     client->callback_ctx = transport->recv_ctx;
-    
+
     transport->is_connected = 1;
 
     /* Register client with server for broadcast support */
     if (server->client_count >= SAMELOOP_MAX_CLIENTS) {
         uvrpc_free(client);
+        transport->impl.sameloop_client = NULL;
+        uvbus_loop_registry_release(transport->loop);
         return UVBUS_ERROR_MAX_CLIENTS;
     }
     server->clients[server->client_count] = client;
@@ -184,7 +202,7 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     if (transport->connect_cb) {
         transport->connect_cb(UVBUS_OK, transport->callback_ctx);
     }
-    
+
     return UVBUS_OK;
 }
 
@@ -194,34 +212,56 @@ static void sameloop_disconnect(void* impl_ptr) {
     if (!transport) {
         return;
     }
-    
+
+    uvbus_loop_registry_t* reg = transport->loop
+        ? (uvbus_loop_registry_t*)transport->loop->data : NULL;
+    if (reg && reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) {
+        reg = NULL;  /* not ours; don't touch */
+    }
+
     if (transport->is_server && transport->impl.sameloop_server) {
         sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
-        remove_server(server);
+        if (reg) {
+            remove_server(reg, server);
+        }
+        /* Clear the back-pointer on every connected client so a later client
+         * disconnect does not dereference this server (which we are about to
+         * free). The client transports themselves remain owned by their buses. */
+        for (int i = 0; i < server->client_count; i++) {
+            sameloop_client_t* client = (sameloop_client_t*)server->clients[i];
+            if (client) {
+                client->server = NULL;
+            }
+            server->clients[i] = NULL;
+        }
+        server->client_count = 0;
         uvrpc_free(server->name);
         uvrpc_free(server);
         transport->impl.sameloop_server = NULL;
+        /* Release the per-loop registry reference taken in listen. */
+        uvbus_loop_registry_release(transport->loop);
     } else if (!transport->is_server && transport->impl.sameloop_client) {
         sameloop_client_t* client = (sameloop_client_t*)(void*)transport->impl.sameloop_client;
 
-        /* Unregister client from all servers (find via registry) */
-        sameloop_server_t* s = server_registry;
-        while (s) {
-            for (int i = 0; i < s->client_count; i++) {
-                if (s->clients[i] == client) {
+        /* Unregister client from its server via the back-pointer (no registry scan). */
+        sameloop_server_t* server = client->server;
+        if (server) {
+            for (int i = 0; i < server->client_count; i++) {
+                if (server->clients[i] == client) {
                     /* Swap with last and shrink */
-                    s->clients[i] = s->clients[s->client_count - 1];
-                    s->client_count--;
+                    server->clients[i] = server->clients[server->client_count - 1];
+                    server->client_count--;
                     break;
                 }
             }
-            s = s->next;
         }
 
         uvrpc_free(client);
         transport->impl.sameloop_client = NULL;
+        /* Release the per-loop registry reference taken in connect. */
+        uvbus_loop_registry_release(transport->loop);
     }
-    
+
     transport->is_connected = 0;
 }
 
@@ -252,7 +292,7 @@ __attribute__((hot)) int sameloop_send(void* impl_ptr, const uint8_t* data, size
 
 /* Send to specific client - from server to client */
 __attribute__((hot, always_inline)) static inline int sameloop_send_to_inline(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
-    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    (void)impl_ptr;  /* Client context (target) carries everything needed */
     sameloop_client_t* client = (sameloop_client_t*)target;
     
     /* Prefetch callback pointers */
@@ -296,8 +336,17 @@ __attribute__((hot)) static int sameloop_broadcast(void* impl_ptr, const uint8_t
 
 /* Free implementation */
 static void sameloop_free(void* impl_ptr) {
-    (void)impl_ptr;
-    /* Cleanup handled by disconnect */
+    uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
+    if (!transport) return;
+    /* Disconnect unconditionally so the per-loop registry reference and any
+     * registered server/client entries are released even if the bus was never
+     * marked active. sameloop_disconnect is a no-op when impl is NULL. */
+    sameloop_disconnect(transport);
+
+    if (transport->address) {
+        uvrpc_free(transport->address);
+    }
+    uvrpc_free(transport);
 }
 
 /* Virtual function table */
@@ -310,12 +359,6 @@ static const uvbus_transport_vtable_t sameloop_vtable = {
     .broadcast = sameloop_broadcast,
     .free = sameloop_free
 };
-
-/* Setup direct function pointers for inline dispatch */
-static void setup_direct_dispatch() {
-    sameloop_send_direct = sameloop_send;
-    sameloop_send_to_direct = sameloop_send_to;
-}
 
 /* ========================================
  * Transport Factory
