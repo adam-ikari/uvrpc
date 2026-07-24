@@ -8,8 +8,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
 endif()
 
-# Set C standard
-set(CMAKE_C_STANDARD 11)
+# Set C standard (C99, consistent with the main project)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Paths
@@ -30,19 +30,27 @@ include_directories(
 # Find required packages
 find_package(Threads REQUIRED)
 
-# Unified benchmark - comprehensive benchmark suite
-add_executable(uvrpc_benchmark
-    uvrpc_benchmark.c
+# Per-transport round-trip latency + throughput benchmark.
+# Usage: ./dist/bin/perf_benchmark [requests] [transport]
+#   transport: sameloop | inproc | ipc | udp | tcp  (default: inproc)
+add_executable(perf_benchmark
+    perf_benchmark.c
 )
-
-target_link_libraries(uvrpc_benchmark
+target_link_libraries(perf_benchmark
     uvrpc
     Threads::Threads
     m
     rt
     dl
 )
+add_dependencies(perf_benchmark generate_flatcc)
 
-add_dependencies(uvrpc_benchmark generate_flatcc)
-
-set_target_properties(uvrpc_benchmark PROPERTIES LINK_FLAGS "-static -pthread")
+# Direct-call baseline: measures raw function-call overhead (no transport,
+# no serialization) as a reference point for SAMELOOP/INPROC overhead.
+add_executable(direct_call_benchmark
+    direct_call_benchmark.c
+)
+target_link_libraries(direct_call_benchmark
+    m
+    rt
+)

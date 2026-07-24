@@ -1,83 +1,65 @@
-# UVRPC Benchmark Programs
+# UVRPC Benchmarks
 
-## Overview
-
-This directory contains performance testing programs for UVRPC.
+Performance measurement tools for UVRPC.
 
 ## Programs
 
-### 1. perf_server
-Performance test server using generated DSL API.
+### perf_benchmark
+
+Per-transport request/response round-trip latency and throughput.
 
 **Usage:**
 ```bash
-./dist/bin/perf_server [address]
+./dist/bin/perf_benchmark [requests] [transport]
 ```
 
-**Default:** tcp://127.0.0.1:5555
+- `requests` — number of round-trips (default: `100000`)
+- `transport` — `sameloop` | `inproc` | `ipc` | `udp` | `tcp` (default: `inproc`)
 
-### 2. perf_benchmark
-Unified benchmark client supporting multiple test modes.
+**Methodology:** strict sequential ping-pong (one request in flight at a time —
+waits for each response before sending the next). The drain loop uses
+`uv_run(UV_RUN_ONCE)` (realistic blocking-wait, not busy-poll). Single-threaded:
+server and client share one `uv_loop_t`. 8-byte echo payload.
 
-**Usage:**
-```bash
-./dist/bin/perf_benchmark [options]
-```
-
-**Options:**
-- `-a <address>` - Server address (default: 127.0.0.1:5555)
-- `-i <iterations>` - Total iterations (default: 10000)
-- `-t <threads>` - Number of threads (default: 1)
-- `-c <clients>` - Clients per thread (default: 1)
-- `-b <concurrency>` - Batch size (default: 100)
-- `-l` - Enable low latency mode (default: high throughput)
-- `--latency` - Run latency test (ignores -t and -c)
-- `-h` - Show help
+**Output:** round-trip latency (µs/req) and throughput (req/s). Note that
+"throughput" reported is the reciprocal of sequential round-trip latency
+(one request in flight), **not** pipelined throughput.
 
 **Examples:**
-
-**Single client throughput test:**
 ```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -i 10000 -b 100
+# Quick run, default (inproc, 100k requests)
+./dist/bin/perf_benchmark
+
+# 100k requests over TCP
+./dist/bin/perf_benchmark 100000 tcp
+
+# 1M-request stress run on SAMELOOP
+./dist/bin/perf_benchmark 1000000 sameloop
 ```
 
-**Multi-client throughput test (10 clients):**
-```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -i 10000 -c 10 -b 100
-```
+**Important:** build with `-DUVRPC_DEBUG_LOGGING=OFF` for valid timings — debug
+logging writes to stderr on every send/recv and corrupts measurements. The
+binary prints a warning if built with logging on.
 
-**Multi-thread test (5 threads, 2 clients each):**
-```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -t 5 -c 2 -b 50
-```
+### direct_call_benchmark
 
-**Multi-thread test with low latency mode:**
-```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -t 5 -c 2 -b 50 -l
-```
+Measures raw function-call overhead with no transport, serialization, or
+networking. Establishes a baseline to contextualize the SAMELOOP/INPROC
+overhead measured by `perf_benchmark`.
 
-**Latency test:**
 ```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -i 1000 --latency
-```
-
-**Latency test with low latency mode:**
-```bash
-./dist/bin/perf_benchmark -a 127.0.0.1:5555 -i 1000 --latency -l
+./dist/bin/direct_call_benchmark
 ```
 
 ## Building
 
 ```bash
-cd build
-cmake ..
-make perf_server perf_benchmark
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DUVRPC_DEBUG_LOGGING=OFF
+cmake --build build --target perf_benchmark direct_call_benchmark
 ```
 
-## Features
+## Reference numbers
 
-- **No sleep**: All benchmark programs use event loop waiting instead of sleep
-- **Generated DSL API**: Uses FlatBuffers DSL generated code for type-safe RPC calls
-- **Configurable concurrency**: Accepts concurrency parameters from command line
-- **Multi-thread support**: Tests stability with multiple event loops in multiple threads
-- **Random parameters**: Prevents compiler optimization for realistic performance measurements
+Release build, `-O2`, system allocator, single thread, 8-byte payload. See
+`docs/guide/benchmark.md` and the project README for current numbers. Run the
+benchmark on your own hardware for representative results.
