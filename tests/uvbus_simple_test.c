@@ -68,9 +68,10 @@ int main(void) {
     }
     printf("Client connecting...\n");
 
-    /* Wait for connection */
+    /* Wait for connection (UV_RUN_NOWAIT: non-blocking pump + sleep, so a live
+     * TCP connection does not make uv_run block forever). */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         usleep(10000);
     }
 
@@ -91,7 +92,7 @@ int main(void) {
 
     /* Wait for response */
     for (int i = 0; i < 100; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         usleep(10000);
     }
 

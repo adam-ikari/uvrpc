@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <uv.h>
 #include <pthread.h>
+#include <unistd.h>  /* usleep */
 #include "../../include/uvrpc.h"
 
 #define TEST_PORT 15558
@@ -84,15 +85,31 @@ typedef struct {
     uv_loop_t* loop;
     uvrpc_server_t* server;
     int should_stop;
+    uv_async_t stop_async;  /* wakes the server loop so uv_stop takes effect */
 } server_thread_data_t;
+
+/* Async callback: stop the server loop (breaks the current uv_run so the
+ * restart loop can re-evaluate g_server_should_restart). Runs on the server
+ * thread. */
+static void stop_async_cb(uv_async_t* handle) {
+    server_thread_data_t* data = (server_thread_data_t*)handle->data;
+    data->should_stop = 1;
+    uv_stop(data->loop);
+}
 
 /* Server thread function */
 static void* server_thread_func(void* arg) {
     server_thread_data_t* data = (server_thread_data_t*)arg;
     int restart_count = 0;
-    
+
     printf("Server thread started\n");
-    
+
+    /* Wake handle for cross-thread shutdown (bound to the persistent loop,
+     * reused across server restarts). */
+    uv_async_init(data->loop, &data->stop_async, stop_async_cb);
+    data->stop_async.data = data;
+    uv_unref((uv_handle_t*)&data->stop_async);  /* don't keep the loop alive */
+
     while (1) {
         /* Create server configuration */
         char server_addr[128];
@@ -219,13 +236,13 @@ int main(int argc, char** argv) {
     uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
     for (int i = 0; i < 100 && !should_stop; i++) {
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
     if (should_stop) {
         printf("ERROR: Initial connection timeout\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
-        uv_stop(&server_loop);
+        uv_async_send(&server_data.stop_async);
         pthread_join(server_thread, NULL);
         uv_loop_close(&server_loop);
         uv_loop_close(&client_loop);
@@ -252,7 +269,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_ONCE);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -262,7 +279,7 @@ int main(int argc, char** argv) {
     if (server_received_copy == 0) {
         printf("ERROR: Server did not receive first request\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
-        uv_stop(&server_loop);
+        uv_async_send(&server_data.stop_async);
         pthread_join(server_thread, NULL);
         uv_loop_close(&server_loop);
         uv_loop_close(&client_loop);
@@ -282,7 +299,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_ONCE);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -293,7 +310,7 @@ int main(int argc, char** argv) {
     if (client_received_copy == 0) {
         printf("ERROR: Client did not receive first response\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
-        uv_stop(&server_loop);
+        uv_async_send(&server_data.stop_async);
         pthread_join(server_thread, NULL);
         uv_loop_close(&server_loop);
         uv_loop_close(&client_loop);
@@ -301,24 +318,26 @@ int main(int argc, char** argv) {
     }
     
     printf("First RPC call successful. Disconnecting client...\n");
-    
+
     /* Disconnect client */
     uvrpc_client_disconnect(client);
-    
-    /* Stop server */
-    uv_stop(&server_loop);
-    
-    /* Wait for server to stop */
-    usleep(100000); /* 100ms */
-    
-    printf("Server stopped. Restarting server...\n");
-    
-    /* Signal server to restart */
+
+    /* Signal server to restart, THEN wake it. The flag must be set before the
+     * async wake so that when the server's uv_run() breaks and it checks
+     * g_server_should_restart, it sees 1 (restart) rather than 0 (exit). */
     pthread_mutex_lock(&g_mutex);
     g_server_should_restart = 1;
     g_server_ready = 0;
     pthread_mutex_unlock(&g_mutex);
-    
+
+    /* Wake the server loop so uv_run() returns and the restart is evaluated. */
+    uv_async_send(&server_data.stop_async);
+
+    /* Wait for server to stop */
+    usleep(100000); /* 100ms */
+
+    printf("Server stopped. Restarting server...\n");
+
     /* Wait for server to restart */
     pthread_mutex_lock(&g_mutex);
     while (!g_server_ready) {
@@ -337,13 +356,13 @@ int main(int argc, char** argv) {
     uv_timer_start(&timeout_timer, timeout_callback, TIMEOUT_MS, 0);
     
     for (int i = 0; i < 100 && !should_stop; i++) {
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
     if (should_stop) {
         printf("ERROR: Reconnection timeout\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
-        uv_stop(&server_loop);
+        uv_async_send(&server_data.stop_async);
         pthread_join(server_thread, NULL);
         uv_loop_close(&server_loop);
         uv_loop_close(&client_loop);
@@ -369,7 +388,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_ONCE);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -379,7 +398,7 @@ int main(int argc, char** argv) {
     if (server_received_copy < 2) {
         printf("ERROR: Server did not receive second request\n");
         uv_close((uv_handle_t*)&timeout_timer, NULL);
-        uv_stop(&server_loop);
+        uv_async_send(&server_data.stop_async);
         pthread_join(server_thread, NULL);
         uv_loop_close(&server_loop);
         uv_loop_close(&client_loop);
@@ -399,7 +418,7 @@ int main(int argc, char** argv) {
             break;
         }
         
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_ONCE);
     }
     
     pthread_mutex_lock(&g_mutex);
@@ -425,16 +444,17 @@ int main(int argc, char** argv) {
     uvrpc_client_free(client);
     uvrpc_config_free(client_config);
     
-    /* Run client loop to process cleanup */
+    /* Run client loop to process cleanup (UV_RUN_NOWAIT: pump close callbacks
+     * without blocking — a referenced handle would make UV_RUN_DEFAULT hang). */
     for (int i = 0; i < 10; i++) {
-        uv_run(&client_loop, UV_RUN_DEFAULT);
+        uv_run(&client_loop, UV_RUN_NOWAIT);
     }
     
     /* Close client loop */
     uv_loop_close(&client_loop);
     
     /* Stop server loop */
-    uv_stop(&server_loop);
+    uv_async_send(&server_data.stop_async);
     
     /* Wait for server thread to finish */
     pthread_join(server_thread, NULL);

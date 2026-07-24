@@ -99,7 +99,7 @@ static void test_basic_stream_flow(uvrpc_client_t* client, uvrpc_server_t* serve
     int timeout_ms = 3000;  // 3 seconds
     int64_t start = uv_now(uv_default_loop());
     while (g_end_markers < 5 && (uv_now(uv_default_loop()) - start) < timeout_ms) {
-        uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+        uv_run(uv_default_loop(), UV_RUN_NOWAIT);
         usleep(10000);  // 10ms
     }
     
@@ -125,7 +125,7 @@ static void test_concurrent_streams(uvrpc_client_t* client, uvrpc_server_t* serv
     int timeout_ms = 5000;  // 5 seconds
     int64_t start = uv_now(uv_default_loop());
     while (g_end_markers < NUM_REQUESTS && (uv_now(uv_default_loop()) - start) < timeout_ms) {
-        uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+        uv_run(uv_default_loop(), UV_RUN_NOWAIT);
         usleep(10000);  // 10ms
     }
     
@@ -160,7 +160,7 @@ static void test_single_response(uvrpc_client_t* client, uvrpc_server_t* server)
     int timeout_ms = 2000;  // 2 seconds
     int64_t start = uv_now(uv_default_loop());
     while (g_single_response_received == 0 && (uv_now(uv_default_loop()) - start) < timeout_ms) {
-        uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+        uv_run(uv_default_loop(), UV_RUN_NOWAIT);
         usleep(10000);  // 10ms
     }
     
@@ -173,13 +173,13 @@ int main(void) {
     printf("UVRPC Stream Response E2E Tests\n");
     printf("========================================\n");
     
-    /* Initialize libuv loop */
-    uv_loop_t loop;
-    uv_loop_init(&loop);
-    
+    /* Use the default loop for both server and client — INPROC is a same-loop
+     * transport, and the test's uv_run() calls below drive uv_default_loop(). */
+    uv_loop_t* loop = uv_default_loop();
+
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
-    uvrpc_config_set_loop(server_config, &loop);
+    uvrpc_config_set_loop(server_config, loop);
     uvrpc_config_set_address(server_config, "inproc://test_e2e");
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
@@ -195,7 +195,7 @@ int main(void) {
     
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
-    uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_loop(client_config, loop);
     uvrpc_config_set_address(client_config, "inproc://test_e2e");
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
@@ -220,8 +220,8 @@ int main(void) {
     uvrpc_server_free(server);
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
-    uv_loop_close(&loop);
-    
+    /* uv_default_loop() is cleaned up by libuv at exit; do not close it here. */
+
     printf("\n========================================\n");
     printf("E2E Test Results: %d passed, %d failed\n", g_tests_passed, g_tests_failed);
     printf("========================================\n");
