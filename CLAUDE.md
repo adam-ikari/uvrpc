@@ -84,6 +84,15 @@ docs/             Project documentation
 | INPROC    | `inproc://name` | In-process zero-copy |
 | SAMELOOP  | `sameloop://name` | Same loop, vtable bypass |
 
+INPROC and SAMELOOP are same-loop, single-threaded transports. Server and client
+discover each other by name through a per-loop registry stored on `loop->data`.
+This means: (1) the server and client MUST share the same `uv_loop_t*`; (2) the
+loop's `data` slot is reserved for the framework when using these transports —
+zero-initialize stack-allocated loops (`uv_loop_t loop = {0};`) before
+`uv_loop_init`, since libuv preserves `loop->data` across `uv_loop_init`. There
+are no locks (single-threaded) and no file-scope globals — the registry is
+per-loop and freed when the last transport on the loop is destroyed.
+
 ## Important Notes
 
 - C99 standard (not C++)
