@@ -154,11 +154,12 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         }
         
         if (transport->recv_cb) {
-            /* Pass frame data (skip 4-byte length prefix) and client address as context
-             * Note: We pass the address directly from buf, not a copy. The address is
-             * valid only during the callback. If the RPC layer needs to keep it, it should
-             * make its own copy. */
-            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, (void*)addr, transport->callback_ctx);
+            /* Pass frame data (skip 4-byte length prefix) and client address as the
+             * client_ctx (3rd arg). The server_ctx (4th arg) must be recv_ctx —
+             * which holds the uvrpc_server_t* — so the server recv callback can
+             * dispatch to the registered handler. (callback_ctx is for
+             * connect/error callbacks and is NULL for the server.) */
+            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, (void*)addr, transport->recv_ctx);
         }
     }
 
@@ -181,6 +182,7 @@ static void on_server_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 /* Client receive callback */
 static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                            const struct sockaddr* addr, unsigned flags) {
+    (void)flags;  /* Not used: all received datagrams are processed uniformly */
     /* Get client from handle data */
     uvbus_udp_client_t* client = (uvbus_udp_client_t*)handle->data;
     if (!client) {
@@ -238,7 +240,7 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
             client->read_pos += nread;
         } else {
             /* Buffer overflow - reset and log error */
-            fprintf(stderr, "[Client] Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu\n",
+            UVBUS_LOG_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",
                     client->read_pos, nread, sizeof(client->read_buffer));
             client->read_pos = 0;
             uvrpc_free(buf->base);
@@ -257,7 +259,7 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
             /* Validate frame size - stricter limit for stability */
             if (frame_size == 0 || frame_size > 64*1024) {  /* 64KB max */
                 /* Invalid frame size, reset buffer */
-                fprintf(stderr, "[Client] Invalid frame size (%u), resetting buffer\n", frame_size);
+                UVBUS_LOG_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
                 client->read_pos = 0;
                 break;
             }
@@ -273,7 +275,7 @@ static void on_client_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
                 /* Copy frame data to heap so callback can safely access it */
                 uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
                 if (!frame_copy) {
-                    fprintf(stderr, "[Client] Failed to allocate %u bytes for frame\n", frame_size);
+                    UVBUS_LOG_ERROR("Failed to allocate %u bytes for frame", frame_size);
                     if (transport->error_cb) {
                         transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
                     }
@@ -317,15 +319,39 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 
 /* Send callback */
 static void on_send(uv_udp_send_t* req, int status) {
+    (void)status;  /* Send errors are non-fatal for UDP (loss-tolerant transport) */
     uvrpc_free(req->data);
     uvrpc_free(req);
 }
 
-/* Shared broadcast buffer with atomic refcount */
+/* Close callbacks: the udp_handle is embedded in the client/server struct, so
+ * the struct must survive until uv_close completes. These free the struct only
+ * after the handle is fully closed, avoiding a use-after-free when the loop
+ * subsequently runs. */
+static void on_udp_client_close(uv_handle_t* handle) {
+    uvbus_udp_client_t* client = (uvbus_udp_client_t*)handle->data;
+    if (!client) return;
+    uvrpc_free(client->host);
+    uvrpc_free(client);
+}
+
+static void on_udp_server_close(uv_handle_t* handle) {
+    /* handle->data is set to the server struct in udp_disconnect (it is
+     * normally the transport for recv dispatch, but recv cannot fire once
+     * closing has begun). */
+    uvbus_udp_server_t* server = (uvbus_udp_server_t*)handle->data;
+    if (!server) return;
+    uvrpc_free(server->client_addrs);
+    uvrpc_free(server->host);
+    uvrpc_free(server);
+}
+
+/* Shared broadcast buffer with refcount (single-threaded: all send completions
+ * fire on the same event-loop thread, so no atomicity is required). */
 typedef struct {
     uint8_t* data;      /* Frame data (4-byte length prefix + payload) */
     size_t size;        /* Total frame size */
-    int ref_count;      /* Atomic refcount, starts at client_count */
+    int ref_count;      /* Refcount, starts at the number of target clients */
 } udp_broadcast_buf_t;
 
 /* Broadcast send callback - decrements shared refcount */
@@ -419,21 +445,21 @@ static int udp_listen(void* impl_ptr, const char* address) {
     
     int bind_err = uv_udp_bind(&server->udp_handle, (const struct sockaddr*)&addr, 0);
     if (bind_err != 0) {
-        fprintf(stderr, "[Server] Failed to bind to %s:%d: %s\n", host, port, uv_strerror(bind_err));
-        uvrpc_free(server->client_addrs);
-        uvrpc_free(server->host);
-        uvrpc_free(server);
+        UVBUS_LOG_ERROR("Failed to bind to %s:%d: %s", host, port, uv_strerror(bind_err));
+        /* udp_handle is embedded in server and was uv_udp_init'd, so it must be
+         * closed (async) before the struct can be reaped — on_udp_server_close
+         * frees server once the close completes. The caller must pump the loop. */
+        server->udp_handle.data = server;
+        uv_close((uv_handle_t*)&server->udp_handle, on_udp_server_close);
         return UVBUS_ERROR_IO;
     }
-    
+
     /* Start receiving */
     int recv_err = uv_udp_recv_start(&server->udp_handle, on_server_alloc, on_server_recv);
     if (recv_err != 0) {
-        fprintf(stderr, "[Server] Failed to start receiving: %s\n", uv_strerror(recv_err));
-        uv_close((uv_handle_t*)&server->udp_handle, NULL);
-        uvrpc_free(server->client_addrs);
-        uvrpc_free(server->host);
-        uvrpc_free(server);
+        UVBUS_LOG_ERROR("Failed to start receiving: %s", uv_strerror(recv_err));
+        server->udp_handle.data = server;
+        uv_close((uv_handle_t*)&server->udp_handle, on_udp_server_close);
         return UVBUS_ERROR_IO;
     }
     
@@ -496,17 +522,17 @@ static int udp_connect(void* impl_ptr, const char* address) {
     struct sockaddr_in local_addr;
     uv_ip4_addr("0.0.0.0", 0, &local_addr);
     if (uv_udp_bind(&client->udp_handle, (const struct sockaddr*)&local_addr, 0) != 0) {
-        uv_close((uv_handle_t*)&client->udp_handle, NULL);
-        uvrpc_free(client->host);
-        uvrpc_free(client);
+        /* udp_handle is embedded in client and was uv_udp_init'd; close it
+         * asynchronously and let on_udp_client_close reap the struct. */
+        client->udp_handle.data = client;
+        uv_close((uv_handle_t*)&client->udp_handle, on_udp_client_close);
         return UVBUS_ERROR_IO;
     }
-    
+
     /* Start receiving */
     if (uv_udp_recv_start(&client->udp_handle, on_client_alloc, on_client_recv) != 0) {
-        uv_close((uv_handle_t*)&client->udp_handle, NULL);
-        uvrpc_free(client->host);
-        uvrpc_free(client);
+        client->udp_handle.data = client;
+        uv_close((uv_handle_t*)&client->udp_handle, on_udp_client_close);
         return UVBUS_ERROR_IO;
     }
     
@@ -550,27 +576,31 @@ static void udp_disconnect(void* impl_ptr) {
         uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
         /* Clear parent reference to prevent access during cleanup */
         server->parent_transport = NULL;
-        /* Close UDP handle */
+        /* Close UDP handle. The udp_handle is embedded in the server struct, so
+         * the struct cannot be freed until the close completes — on_udp_server_close
+         * (which reaps server) is set as handle->data and invoked once closed. */
         if (!uv_is_closing((uv_handle_t*)&server->udp_handle)) {
-            uv_close((uv_handle_t*)&server->udp_handle, NULL);
+            server->udp_handle.data = server;  /* recv can't fire once closing begins */
+            uv_close((uv_handle_t*)&server->udp_handle, on_udp_server_close);
+        } else {
+            /* Already closing: the close callback will reap it; nothing to do. */
         }
-        uvrpc_free(server->client_addrs);
-        uvrpc_free(server->host);
-        uvrpc_free(server);
         transport->impl.udp_server = NULL;
     } else if (!transport->is_server && transport->impl.udp_client) {
         uvbus_udp_client_t* client = (uvbus_udp_client_t*)transport->impl.udp_client;
         /* Clear parent reference */
         client->parent_transport = NULL;
-        /* Close UDP handle */
+        /* Close UDP handle; client is reaped by on_udp_client_close (handle->data
+         * already points to client) once the close completes. */
         if (!uv_is_closing((uv_handle_t*)&client->udp_handle)) {
-            uv_close((uv_handle_t*)&client->udp_handle, NULL);
+            client->udp_handle.data = client;
+            uv_close((uv_handle_t*)&client->udp_handle, on_udp_client_close);
+        } else {
+            /* Already closing: reaped by its close callback. */
         }
-        uvrpc_free(client->host);
-        uvrpc_free(client);
         transport->impl.udp_client = NULL;
     }
-    
+
     transport->is_connected = 0;
 }
 
@@ -677,7 +707,7 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
                     (const struct sockaddr*)addr, on_send);
 
     if (send_result != 0) {
-        fprintf(stderr, "[Server] Send failed: %s\n", uv_strerror(send_result));
+        UVBUS_LOG_ERROR("Send failed: %s", uv_strerror(send_result));
         uvrpc_free(frame_data);
         uvrpc_free(req);
         return UVBUS_ERROR_IO;

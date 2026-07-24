@@ -22,33 +22,7 @@
 #include <ctype.h>
 #include <time.h>
 
-/* Debug logging macro - compiles out in release builds */
-#ifdef UVRPC_DEBUG
-#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
-#else
-#define UVRPC_LOG(fmt, ...) ((void)0)
-#endif
-
-/* Error logging - always enabled */
-#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
-
-/* Write callback to free buffer */
-static void write_callback(uv_write_t* req, int status) {
-    (void)status;
-    if (req) {
-        if (req->data) {
-            uvrpc_free(req->data);
-        }
-        uvrpc_free(req);
-    }
-}
-
-/* Get current timestamp in milliseconds */
-static uint64_t get_timestamp_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
+/* UVRPC_LOG_DEBUG / UVRPC_LOG_ERROR / UVRPC_LOG are provided by uvrpc.h */
 
 /* Handler registry */
 typedef struct handler_entry {
@@ -91,15 +65,6 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         return;
     }
 
-    /* Debug: log client_ctx */
-    static int recv_count = 0;
-    recv_count++;
-    if (recv_count % 1000 == 0) {
-        UVRPC_LOG("Received %d requests, client_ctx=%p", recv_count, client_ctx);
-    } else {
-        UVRPC_LOG("Request #%d, client_ctx=%p", recv_count, client_ctx);
-    }
-    
     /* Check if this is a new client */
     int is_new_client = 1;
     for (int i = 0; i < server->current_clients; i++) {
@@ -162,7 +127,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
             int new_capacity = server->client_ctxs_capacity * 2;
             void** new_array = (void**)uvrpc_realloc(server->client_ctxs, sizeof(void*) * new_capacity);
             if (!new_array) {
-                UVRPC_ERROR("Failed to expand client tracking array");
+                UVRPC_LOG_ERROR("Failed to expand client tracking array");
                 return;
             }
             server->client_ctxs = new_array;
@@ -182,16 +147,12 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     
     if (uvrpc_decode_request(data, size, &msgid, &method, &params, &params_size) != UVRPC_OK) {
         UVRPC_LOG("Failed to decode request (size=%zu)", size);
-        UVRPC_ERROR("Failed to decode request (size=%zu)", size);
+        UVRPC_LOG_ERROR("Failed to decode request (size=%zu)", size);
         /* Note: client_ctx is managed by the transport layer, not freed here */
         return;
     }
 
     UVRPC_LOG("Decoded: msgid=%u, method=%s, params_size=%zu", msgid, method ? method : "(null)", params_size);
-
-    if (recv_count % 1000 == 0) {
-        fprintf(stderr, "[SERVER] Decoded request: msgid=%u, method=%s\n", msgid, method ? method : "(null)");
-    }
 
     /* Create lowercase copy for case-insensitive matching */
     char* method_lower = NULL;
@@ -236,7 +197,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         if (method) uvrpc_free(method);
     } else {
         /* Handler not found, send error response */
-        UVRPC_ERROR("Handler not found: '%s'", method);
+        UVRPC_LOG_ERROR("Handler not found: '%s'", method);
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
 
@@ -364,7 +325,7 @@ int uvrpc_server_start(uvrpc_server_t* server) {
     
     server->is_running = 1;
     
-    printf("Server started on %s\n", server->address);
+    UVRPC_LOG("Server started on %s", server->address);
     
     return UVRPC_OK;
 }
@@ -461,12 +422,11 @@ int uvrpc_server_get_client_count(uvrpc_server_t* server) {
 /* Send response */
 void uvrpc_request_send_response(uvrpc_request_t* req, int status,
                                   const uint8_t* result, size_t result_size) {
-    static int send_count = 0;
-    send_count++;
+    (void)status;  /* Application-level status code; not yet propagated in the frame */
 
     if (!req || !req->server || !req->client_ctx) {
-        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)\n",
-                req, req ? req->server : NULL, req ? req->client_ctx : NULL);
+        UVRPC_LOG_ERROR("send_response: invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)",
+                (void*)req, req ? (void*)req->server : NULL, req ? (void*)req->client_ctx : NULL);
         return;
     }
 
@@ -483,11 +443,8 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         uvbus_error_t err = uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx);
         if (err == UVBUS_OK) {
             server->total_responses++;
-            if (send_count % 1000 == 0) {
-                fprintf(stderr, "[SERVER] Sent %d responses, client_ctx=%p\n", send_count, req->client_ctx);
-            }
         } else {
-            UVRPC_ERROR("Failed to send response: %d (client_ctx=%p)", err, req->client_ctx);
+            UVRPC_LOG_ERROR("Failed to send response: %d (client_ctx=%p)", err, req->client_ctx);
         }
         uvrpc_free(resp_data);
     }
@@ -502,12 +459,9 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
 
 /* Send response (type=2, more to come) */
 void uvrpc_request_send_response_more(uvrpc_request_t* req, const uint8_t* result, size_t result_size) {
-    static int send_count = 0;
-    send_count++;
-
     if (!req || !req->server || !req->client_ctx) {
-        fprintf(stderr, "[SERVER] Invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)\n",
-                req, req ? req->server : NULL, req ? req->client_ctx : NULL);
+        UVRPC_LOG_ERROR("send_response_more: invalid request or client_ctx is NULL (req=%p, server=%p, client_ctx=%p)",
+                (void*)req, req ? (void*)req->server : NULL, req ? (void*)req->client_ctx : NULL);
         return;
     }
 
@@ -524,11 +478,8 @@ void uvrpc_request_send_response_more(uvrpc_request_t* req, const uint8_t* resul
         uvbus_error_t err = uvbus_send_to(uvbus, resp_data, resp_size, req->client_ctx);
         if (err == UVBUS_OK) {
             server->total_responses++;
-            if (send_count % 1000 == 0) {
-                fprintf(stderr, "[SERVER] Sent %d response_more, client_ctx=%p\n", send_count, req->client_ctx);
-            }
         } else {
-            UVRPC_ERROR("Failed to send response_more: %d (client_ctx=%p)", err, req->client_ctx);
+            UVRPC_LOG_ERROR("Failed to send response_more: %d (client_ctx=%p)", err, req->client_ctx);
         }
         uvrpc_free(resp_data);
     }
@@ -623,8 +574,9 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
 }
 
 /* Send streaming chunk - now implemented as multiple Response frames */
-int uvrpc_response_send_stream(uvrpc_request_t* req, const uint8_t* chunk, 
+int uvrpc_response_send_stream(uvrpc_request_t* req, const uint8_t* chunk,
                                 size_t chunk_size, int is_last) {
+    (void)is_last;  /* Handled by application protocol via separate Response frames */
     if (!req || !req->server || !req->client_ctx) {
         return UVRPC_ERROR_INVALID_PARAM;
     }

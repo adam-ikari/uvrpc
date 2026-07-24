@@ -1,18 +1,26 @@
 /**
  * @file uvrpc_allocator.c
  * @brief UVRPC Memory Allocator Implementation
- * 
- * Supports runtime allocator type selection:
- * - system: Standard malloc/free
- * - mimalloc: High-performance mimalloc
- * - custom: User-defined allocator
- * 
+ *
+ * Compile-time allocator selection (no runtime mutable global state):
+ * - system:   Standard malloc/free  (-DUVRPC_ALLOCATOR_DEFAULT=system)
+ * - mimalloc: High-performance mimalloc (-DUVRPC_ALLOCATOR_DEFAULT=mimalloc)
+ * - custom:   User-defined allocator (-DUVRPC_ALLOCATOR_DEFAULT=custom)
+ *
+ * The allocator type is fixed at compile time via UVRPC_DEFAULT_ALLOCATOR, so
+ * uvrpc_alloc/free dispatch through preprocessor selection rather than a
+ * runtime type variable. The only file-scope state is g_custom_allocator,
+ * which exists ONLY in CUSTOM builds (where the user must register function
+ * pointers once via uvrpc_allocator_init). system/mimalloc builds have ZERO
+ * allocator globals, honoring the "zero global variables" design philosophy.
+ *
  * @author UVRPC Team
  * @date 2026
  * @version 1.0
  */
 
 #include "../include/uvrpc_allocator.h"
+#include "../include/uvrpc.h"   /* for UVRPC_LOG_ERROR logging macros */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -22,7 +30,8 @@
 #define UVRPC_ALLOCATOR_MIMALLOC 1
 #define UVRPC_ALLOCATOR_CUSTOM 2
 
-/* Compile-time default allocator (can be modified via CMake) */
+/* Compile-time default allocator (set via CMake -DUVRPC_ALLOCATOR_DEFAULT).
+ * Defaults to mimalloc when not specified. */
 #ifndef UVRPC_DEFAULT_ALLOCATOR
 #define UVRPC_DEFAULT_ALLOCATOR UVRPC_ALLOCATOR_MIMALLOC
 #endif
@@ -32,167 +41,120 @@
 #include <mimalloc.h>
 #endif
 
-/* Global allocator state */
-static uvrpc_allocator_type_t g_allocator_type = UVRPC_DEFAULT_ALLOCATOR;
+/* Custom allocator state. ONLY present in CUSTOM builds: the user registers a
+ * set of function pointers once via uvrpc_allocator_init(). In system/mimalloc
+ * builds there is no allocator state at all. Written once at init; not mutated
+ * per-request. */
+#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM
 static uvrpc_custom_allocator_t g_custom_allocator = {0};
-
-/* System allocator functions */
-static void* system_alloc(size_t size) {
-    return malloc(size);
-}
-
-static void* system_calloc(size_t count, size_t size) {
-    return calloc(count, size);
-}
-
-static void* system_realloc(void* ptr, size_t size) {
-    return realloc(ptr, size);
-}
-
-static void system_free(void* ptr) {
-    free(ptr);
-}
-
-/* Mimalloc allocator functions (enabled at compile time only) */
-#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
-static void* mimalloc_alloc(size_t size) {
-    return mi_malloc(size);
-}
-
-static void* mimalloc_calloc(size_t count, size_t size) {
-    return mi_calloc(count, size);
-}
-
-static void* mimalloc_realloc(void* ptr, size_t size) {
-    return mi_realloc(ptr, size);
-}
-
-static void mimalloc_free(void* ptr) {
-    mi_free(ptr);
-}
 #endif
 
-/* Initialize allocator */
-void uvrpc_allocator_init(uvrpc_allocator_type_t type, const uvrpc_custom_allocator_t* custom) {
-    g_allocator_type = type;
+/* ---- Per-build allocator primitives ------------------------------------- */
 
-    if (type == UVRPC_ALLOCATOR_CUSTOM && custom) {
+#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_SYSTEM
+
+static void* allocator_alloc(size_t size)   { return malloc(size); }
+static void* allocator_calloc(size_t n, size_t s) { return calloc(n, s); }
+static void* allocator_realloc(void* p, size_t s) { return realloc(p, s); }
+static void  allocator_free(void* p)        { free(p); }
+
+#elif UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
+
+static void* allocator_alloc(size_t size)   { return mi_malloc(size); }
+static void* allocator_calloc(size_t n, size_t s) { return mi_calloc(n, s); }
+static void* allocator_realloc(void* p, size_t s) { return mi_realloc(p, s); }
+static void  allocator_free(void* p)        { return mi_free(p); }
+
+#else /* UVRPC_ALLOCATOR_CUSTOM */
+
+static void* allocator_alloc(size_t size) {
+    return g_custom_allocator.alloc ? g_custom_allocator.alloc(size) : malloc(size);
+}
+static void* allocator_calloc(size_t count, size_t size) {
+    return g_custom_allocator.calloc ? g_custom_allocator.calloc(count, size) : calloc(count, size);
+}
+static void* allocator_realloc(void* ptr, size_t size) {
+    return g_custom_allocator.realloc ? g_custom_allocator.realloc(ptr, size) : realloc(ptr, size);
+}
+static void  allocator_free(void* ptr) {
+    if (g_custom_allocator.free) { g_custom_allocator.free(ptr); }
+    else { free(ptr); }
+}
+
+#endif
+
+/* ---- Public API --------------------------------------------------------- */
+
+/* Initialize allocator.
+ *
+ * The allocator TYPE is fixed at compile time (UVRPC_DEFAULT_ALLOCATOR); this
+ * function cannot change it. It is retained for API compatibility and to
+ * register the custom allocator function pointers in CUSTOM builds.
+ * - In CUSTOM builds: stores *custom (validated) for use by the alloc fns.
+ * - In system/mimalloc builds: logs a warning if `type` does not match the
+ *   compile-time choice, then returns (behavior is unchanged — the type is
+ *   fixed at compile time). */
+void uvrpc_allocator_init(uvrpc_allocator_type_t type, const uvrpc_custom_allocator_t* custom) {
+    if (type != UVRPC_DEFAULT_ALLOCATOR) {
+        UVRPC_LOG_ERROR("uvrpc_allocator_init: requested type %d but allocator is "
+                        "compile-time fixed to %d; ignoring runtime type.",
+                        (int)type, (int)UVRPC_DEFAULT_ALLOCATOR);
+    }
+
+#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM
+    if (custom) {
         if (custom->alloc && custom->calloc && custom->realloc && custom->free) {
             g_custom_allocator = *custom;
         } else {
-            fprintf(stderr, "Warning: Invalid custom allocator, falling back to system\n");
-            g_allocator_type = UVRPC_ALLOCATOR_SYSTEM;
+            UVRPC_LOG_ERROR("Invalid custom allocator (missing function pointers); "
+                            "falling back to system malloc");
+            memset(&g_custom_allocator, 0, sizeof(g_custom_allocator));
         }
     }
-}
-
-/* Cleanup allocator */
-void uvrpc_allocator_cleanup(void) {
-    /* Reset to default allocator */
-    g_allocator_type = UVRPC_DEFAULT_ALLOCATOR;
-    memset(&g_custom_allocator, 0, sizeof(g_custom_allocator));
-}
-
-/* Get current allocator type */
-uvrpc_allocator_type_t uvrpc_allocator_get_type(void) {
-    return g_allocator_type;
-}
-
-/* Get current allocator name */
-const char* uvrpc_allocator_get_name(void) {
-    switch (g_allocator_type) {
-        case UVRPC_ALLOCATOR_SYSTEM:
-            return "system";
-        case UVRPC_ALLOCATOR_MIMALLOC:
-            return "mimalloc";
-        case UVRPC_ALLOCATOR_CUSTOM:
-            return g_custom_allocator.name ? g_custom_allocator.name : "custom";
-        default:
-            return "unknown";
-    }
-}
-
-/* Memory allocation functions */
-void* uvrpc_alloc(size_t size) {
-    switch (g_allocator_type) {
-        case UVRPC_ALLOCATOR_SYSTEM:
-            return system_alloc(size);
-        case UVRPC_ALLOCATOR_MIMALLOC:
-#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
-            return mimalloc_alloc(size);
 #else
-            fprintf(stderr, "Error: Mimalloc not compiled in\n");
-            return system_alloc(size);
+    (void)custom;
 #endif
-        case UVRPC_ALLOCATOR_CUSTOM:
-            return g_custom_allocator.alloc ? g_custom_allocator.alloc(size) : system_alloc(size);
-        default:
-            return system_alloc(size);
-    }
+}
+
+/* Cleanup allocator resources. No-op except in CUSTOM builds (clears the
+ * registered function pointers so allocations fall back to system malloc). */
+void uvrpc_allocator_cleanup(void) {
+#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM
+    memset(&g_custom_allocator, 0, sizeof(g_custom_allocator));
+#endif
+}
+
+/* The allocator type is fixed at compile time. */
+uvrpc_allocator_type_t uvrpc_allocator_get_type(void) {
+    return (uvrpc_allocator_type_t)UVRPC_DEFAULT_ALLOCATOR;
+}
+
+const char* uvrpc_allocator_get_name(void) {
+#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_SYSTEM
+    return "system";
+#elif UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
+    return "mimalloc";
+#else
+    return g_custom_allocator.name ? g_custom_allocator.name : "custom";
+#endif
+}
+
+/* Memory allocation functions — compile-time dispatched, no runtime branch. */
+void* uvrpc_alloc(size_t size) {
+    return allocator_alloc(size);
 }
 
 void* uvrpc_calloc(size_t count, size_t size) {
-    switch (g_allocator_type) {
-        case UVRPC_ALLOCATOR_SYSTEM:
-            return system_calloc(count, size);
-        case UVRPC_ALLOCATOR_MIMALLOC:
-#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
-            return mimalloc_calloc(count, size);
-#else
-            fprintf(stderr, "Error: Mimalloc not compiled in\n");
-            return system_calloc(count, size);
-#endif
-        case UVRPC_ALLOCATOR_CUSTOM:
-            return g_custom_allocator.calloc ? g_custom_allocator.calloc(count, size) : system_calloc(count, size);
-        default:
-            return system_calloc(count, size);
-    }
+    return allocator_calloc(count, size);
 }
 
 void* uvrpc_realloc(void* ptr, size_t size) {
-    switch (g_allocator_type) {
-        case UVRPC_ALLOCATOR_SYSTEM:
-            return system_realloc(ptr, size);
-        case UVRPC_ALLOCATOR_MIMALLOC:
-#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
-            return mimalloc_realloc(ptr, size);
-#else
-            fprintf(stderr, "Error: Mimalloc not compiled in\n");
-            return system_realloc(ptr, size);
-#endif
-        case UVRPC_ALLOCATOR_CUSTOM:
-            return g_custom_allocator.realloc ? g_custom_allocator.realloc(ptr, size) : system_realloc(ptr, size);
-        default:
-            return system_realloc(ptr, size);
-    }
+    return allocator_realloc(ptr, size);
 }
 
 void uvrpc_free(void* ptr) {
     if (!ptr) return;
-
-    switch (g_allocator_type) {
-        case UVRPC_ALLOCATOR_SYSTEM:
-            system_free(ptr);
-            break;
-        case UVRPC_ALLOCATOR_MIMALLOC:
-#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_MIMALLOC
-            mimalloc_free(ptr);
-#else
-            fprintf(stderr, "Error: Mimalloc not compiled in\n");
-            system_free(ptr);
-#endif
-            break;
-        case UVRPC_ALLOCATOR_CUSTOM:
-            if (g_custom_allocator.free) {
-                g_custom_allocator.free(ptr);
-            } else {
-                system_free(ptr);
-            }
-            break;
-        default:
-            system_free(ptr);
-            break;
-    }
+    allocator_free(ptr);
 }
 
 /* String duplication helper function */

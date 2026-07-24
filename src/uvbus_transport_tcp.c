@@ -10,15 +10,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-/* Debug logging macro - compiles out in release builds */
-#ifdef UVRPC_DEBUG
-#define UVRPC_LOG(fmt, ...) fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
-#else
-#define UVRPC_LOG(fmt, ...) ((void)0)
-#endif
-
-/* Error logging - always enabled */
-#define UVRPC_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+/* UVBUS_LOG / UVBUS_LOG_DEBUG / UVBUS_LOG_ERROR are provided by uvbus.h */
 
 typedef struct uvbus_tcp_client uvbus_tcp_client_t;
 typedef struct uvbus_tcp_server uvbus_tcp_server_t;
@@ -160,12 +152,12 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         
         /* Add data to client's read buffer with strict bounds checking */
         if (nread > 0 && client->read_pos < sizeof(client->read_buffer) &&
-            nread <= sizeof(client->read_buffer) - client->read_pos) {
+            (size_t)nread <= sizeof(client->read_buffer) - client->read_pos) {
             memcpy(client->read_buffer + client->read_pos, buf->base, nread);
             client->read_pos += nread;
         } else {
             /* Buffer overflow detected - close connection to prevent attacks */
-            UVRPC_ERROR("Buffer overflow detected: read_pos=%zu, nread=%zd, buffer_size=%zu",
+            UVBUS_LOG_ERROR("Buffer overflow detected: read_pos=%zu, nread=%zd, buffer_size=%zu",
                     client->read_pos, nread, sizeof(client->read_buffer));
             uvrpc_free(buf->base);
             /* Close the connection instead of just resetting */
@@ -186,7 +178,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
             /* Validate frame size - stricter limit for stability */
             if (frame_size == 0 || frame_size > UVBUS_DEFAULT_MAX_FRAME_SIZE) {
                 /* Invalid frame size, reset buffer */
-                UVRPC_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
+                UVBUS_LOG_ERROR("Invalid frame size (%u), resetting buffer", frame_size);
                 client->read_pos = 0;
                 break;
             }
@@ -202,7 +194,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
                 /* Copy frame data to heap so callback can safely access it */
                 uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
                 if (!frame_copy) {
-                    UVRPC_ERROR("Failed to allocate %u bytes for frame", frame_size);
+                    UVBUS_LOG_ERROR("Failed to allocate %u bytes for frame", frame_size);
                     if (transport->error_cb) {
                         transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
                     }
@@ -240,6 +232,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 
 /* Client alloc callback */
 static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+    (void)handle;  /* Buffer allocation is independent of the specific handle */
     /* Allocate buffer based on suggested size */
     size_t alloc_size = suggested_size;
     if (alloc_size < 65536) {
@@ -405,7 +398,7 @@ static void on_client_connect(uv_connect_t* req, int status) {
             transport->connect_cb(UVBUS_OK, transport->callback_ctx);
         }
     } else {
-        UVRPC_ERROR("Connection failed: %s", uv_strerror(status));
+        UVBUS_LOG_ERROR("Connection failed: %s", uv_strerror(status));
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }

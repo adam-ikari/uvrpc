@@ -12,13 +12,10 @@
 
 #include "../include/uv_transport.h"
 #include "../include/uvrpc_allocator.h"
-#include "../include/uv_transport.h"
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
 
-/* Error logging */
-#define UV_TRANSPORT_ERROR(fmt, ...) fprintf(stderr, "[TCP ERROR] " fmt "\n", ##__VA_ARGS__)
 
 /* Forward declarations */
 static int tcp_listen(uv_transport_t* transport);
