@@ -12,13 +12,21 @@ A minimalist, high-performance RPC framework built on libuv event loop and FlatB
 # Clone and build
 git clone https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
-cmake -S . -B build
-cmake --build build -j$(nproc)
+
+# Build vendored deps (libuv, flatcc, mimalloc, gtest) from submodules
+./scripts/setup_deps.sh
+
+# Configure + build (default: Release, mimalloc allocator)
+./build.sh
 
 # Run examples
 ./dist/bin/simple_server &
 ./dist/bin/simple_client
 ```
+
+`setup_deps.sh` clones and builds the submodules; `build.sh` runs `cmake -S . -B build`
+with the default allocator. For the system allocator instead of mimalloc, use
+`./build.sh release system`.
 
 ## 📚 Documentation
 

@@ -48,8 +48,8 @@ optimal for small payloads.
 ```bash
 git clone https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
-cmake -S . -B build
-cmake --build build -j$(nproc)
+./scripts/setup_deps.sh          # build vendored libuv/flatcc/mimalloc/gtest
+./build.sh                        # Release + mimalloc (default allocator)
 
 # Run a TCP echo round-trip
 ./dist/bin/simple_server &

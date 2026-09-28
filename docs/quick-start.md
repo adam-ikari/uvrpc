@@ -10,18 +10,23 @@ Get UVRPC built and run your first RPC in 5 minutes.
 
 ## Build
 
+The vendored submodules (libuv, flatcc, mimalloc, gtest) must be built before
+configure — `cmake` alone cannot find flatcc.
+
 ```bash
 git clone https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
-cmake -S . -B build
-cmake --build build -j$(nproc)
+./scripts/setup_deps.sh          # clone submodules, build libuv/flatcc/mimalloc/gtest
+./build.sh                        # cmake -S . -B build + build (Release, mimalloc)
 ```
 
 Binaries are output to `dist/bin/`.
 
 ::: tip Allocator
-The default build uses mimalloc. If the mimalloc submodule is unavailable, build
-with the system allocator: `cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system`.
+The default build uses mimalloc, which `setup_deps.sh` builds from the submodule.
+To use the system allocator instead: `cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system`
+(then build as usual). This only switches the allocator — flatcc still comes from
+`setup_deps.sh`.
 :::
 
 ## Run the example

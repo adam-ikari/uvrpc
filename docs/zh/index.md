@@ -44,8 +44,8 @@ UVRPC 是专注于**调用语义**的 RPC 框架——低延迟、小 payload、
 ```bash
 git clone https://github.com/adam-ikari/uvrpc.git
 cd uvrpc
-cmake -S . -B build
-cmake --build build -j$(nproc)
+./scripts/setup_deps.sh          # 构建内置 libuv/flatcc/mimalloc/gtest
+./build.sh                        # Release + mimalloc（默认分配器）
 
 # 运行 TCP echo 往返
 ./dist/bin/simple_server &
