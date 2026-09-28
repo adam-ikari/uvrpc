@@ -2,10 +2,11 @@
 name = "uvrpc"
 version = "0.1.0"
 description = "Ultra-Fast RPC Framework - Zero threads, Zero locks, Zero global variables"
-authors = ["Adam Ikari <adam@example.com>"]
+authors = [{ name = "Adam Ikari" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = ["jinja2>=3.1"]
 keywords = ["rpc", "async", "libuv", "flatbuffers", "performance"]
 
 [project.urls]
@@ -24,21 +25,18 @@ docs = [
 ]
 
 [project.scripts]
-uvrpc-gen = "tools.rpc_dsl_generator_with_flatcc:main"
+uvrpc-gen = "uvrpcc:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "."}
+package-dir = {"" = "tools"}
+py-modules = ["uvrpcc"]
 
-[tool.setuptools.packages.find]
-include = ["tools*"]
-exclude = ["tests*", "examples*", "benchmark*"]
-
-[tool.setuptools.package-data]
-"tools" = ["templates/*", "dist/*"]
+[tool.setuptools.data-files]
+"share/uvrpcc/templates" = ["tools/templates/*"]
 
 [tool.uv]
 dev-dependencies = [

@@ -25,7 +25,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libuv1-dev
+          sudo apt-get install -y cmake build-essential
+
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
 
       - name: Build (Release, logging OFF)
         run: |

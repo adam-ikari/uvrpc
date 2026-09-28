@@ -10,6 +10,10 @@ cmake_install.cmake
 Makefile
 *.cmake
 !CMakeLists.txt
+# Hand-written CMake modules must be tracked (the bare *.cmake rule above
+# silently excluded cmake/Dependencies.cmake, breaking fresh clones).
+!cmake/
+!cmake/*.cmake
 
 # Generated files
 examples/*_generated.h
@@ -38,14 +42,24 @@ libmsgpackc.a
 Thumbs.db
 
 # Dependency build directories (submodules)
-mimalloc/
+# (anchored to root: the unanchored form also matched deps/mimalloc and made
+# git refuse to track the submodule)
+/mimalloc/
 deps/*/build/
+deps/flatcc/bin/
+deps/flatcc/lib/
+deps/flatcc/include/
+deps/flatcc/share/
+
+# Stale example binaries accidentally committed at repo root
+/scenario_*
 
 # OMC plugin state
 .omc/
 
 # Python
 __pycache__/
+*.egg-info/
 *.pyc
 *.pyo
 

@@ -7,6 +7,7 @@ Generates RPC server stubs and client code from FlatBuffers RPC DSL
 import os
 import sys
 import re
+import shutil
 import argparse
 import subprocess
 from pathlib import Path
@@ -38,7 +39,16 @@ def find_bundled_flatcc():
                 if os.path.exists(flatcc_path) and os.access(flatcc_path, os.X_OK):
                     BUNDLED_FLATCC = flatcc_path
                     return flatcc_path
-    
+
+    # Vendored build from the source tree (scripts/setup_deps.sh installs to
+    # deps/flatcc/bin); resolves for both raw-script and editable installs.
+    here = os.path.dirname(os.path.abspath(__file__))
+    for flatcc_path in (os.path.join(here, '..', 'deps', 'flatcc', 'bin', 'flatcc'),
+                        os.path.join(here, 'deps', 'flatcc', 'bin', 'flatcc')):
+        if os.path.exists(flatcc_path) and os.access(flatcc_path, os.X_OK):
+            BUNDLED_FLATCC = os.path.abspath(flatcc_path)
+            return BUNDLED_FLATCC
+
     return None
 
 class RPCParser:
@@ -362,6 +372,17 @@ def main():
     parser.add_argument('schema', help='Schema file to process')
     
     args = parser.parse_args()
+
+    if args.templates == parser.get_default('templates'):
+        # Default is repo-layout relative; fall back to install locations so
+        # the console entry point (uvrpc-gen) works outside the source tree.
+        here = Path(__file__).resolve().parent
+        for cand in (here / 'templates',
+                     here / 'uvrpcc' / 'templates',
+                     here.parent.parent / 'share' / 'uvrpcc' / 'templates'):
+            if cand.is_dir():
+                args.templates = str(cand)
+                break
     
     # Create output directory
     output_dir = Path(args.output)

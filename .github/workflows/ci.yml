@@ -25,7 +25,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libuv1-dev
+          sudo apt-get install -y cmake build-essential
+
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
 
       - name: Configure
         run: |
@@ -66,7 +69,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libuv1-dev
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
       - name: Configure & build with debug logging
         run: |
           cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_ALLOCATOR_DEFAULT=system \
@@ -83,14 +88,16 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libuv1-dev
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
       - name: Build with AddressSanitizer
         run: |
           cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_ALLOCATOR_DEFAULT=system \
                 -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_C_FLAGS="-fsanitize=address -g" \
                 -DCMAKE_CXX_FLAGS="-fsanitize=address -g" \
-                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address -Wl,-rpath,$(pwd)/deps/gtest/build/lib"
           make -C build -j$(nproc)
       - name: Run transport lifetime test under ASan
         run: |
@@ -109,7 +116,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libuv1-dev
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
       - name: Build (Release, logging OFF)
         run: |
           cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system \
@@ -122,6 +131,31 @@ jobs:
             ./dist/bin/perf_benchmark 10000 "$t"
             echo "::endgroup::"
           done
+
+  default-allocator:
+    # Cover the default build configuration (UVRPC_ALLOCATOR_DEFAULT=mimalloc)
+    # so the vendored mimalloc path stays verified in CI.
+    name: Default allocator build (mimalloc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
+      - name: Configure & build (default flags)
+        run: |
+          cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_BUILD_EXAMPLES=ON \
+                -DCMAKE_BUILD_TYPE=Release
+          make -C build -j$(nproc)
+      - name: Run ctest
+        run: |
+          cd build
+          ctest --output-on-failure
 
   static-analysis:
     name: Static analysis (cppcheck)
