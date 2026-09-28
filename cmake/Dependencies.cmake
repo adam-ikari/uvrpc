@@ -87,17 +87,25 @@ find_library(FLATCC_SUPPORT_LIBRARY
           ${UVRPC_DEPS_ROOT}/flatcc/build
           /usr/lib /usr/local/lib)
 
+if(FLATCC_SUPPORT_LIBRARY)
+    # flatcc < 0.6 split the runtime into a second archive; uvrpc_merged can
+    # only fold a single archive, so prefer linking both via a search dir.
+    message(WARNING
+        "flatcc support library found (${FLATCC_SUPPORT_LIBRARY}) but is not "
+        "linked -- uvrpc_merged requires a single FLATCC_LIBRARIES archive.")
+endif()
+
 if(NOT FLATCC_INCLUDE_DIR OR NOT FLATCC_BASE_LIBRARY)
     message(FATAL_ERROR
         "flatcc not found (include dir: '${FLATCC_INCLUDE_DIR}', base lib: '${FLATCC_BASE_LIBRARY}'). "
         "Run ./scripts/setup_deps.sh to build and install it under deps/flatcc.")
 endif()
 
+# Single archive on purpose: the uvrpc_merged target folds ${FLATCC_LIBRARIES}
+# into libuvrpc_full.a, and flatcc >= 0.6 installs one libflatcc.a that already
+# contains builder + reader support. (libflatccrt.a is reflection support, which
+# uvrpc does not use.)
 set(FLATCC_LIBRARIES ${FLATCC_BASE_LIBRARY})
-if(FLATCC_SUPPORT_LIBRARY AND NOT FLATCC_SUPPORT_LIBRARY STREQUAL FLATCC_BASE_LIBRARY)
-    # link order: dependents first, base last
-    set(FLATCC_LIBRARIES ${FLATCC_SUPPORT_LIBRARY} ${FLATCC_BASE_LIBRARY})
-endif()
 message(STATUS "flatcc: ${FLATCC_LIBRARIES}")
 
 # ------------------------------------------------------------- mimalloc ------

@@ -43,12 +43,15 @@ jobs:
         run: make -C build -j$(nproc)
 
       # Warning gate: the library compiles warning-clean under -Wall -Wextra
-      # -Wpedantic. Treat warnings as errors so regressions fail CI. (Excludes
-      # the known glibc static-link NSS warnings from libuv's core.c.)
+      # -Wpedantic. Treat warnings as errors so regressions fail CI. Excluded:
+      # the known glibc static-link NSS warnings from libuv's core.c, and
+      # generated/ -- flatcc emits code with -Wmisleading-indentation that we
+      # do not own and cannot fix without a generator patch.
       - name: Check warnings (warning-clean build)
         run: |
           make -C build -j$(nproc) 2>&1 | tee build.log
-          if grep -iE "warning:|error:" build.log | grep -qvE "getpwuid_r|getgrgid_r|statically linked"; then
+          if grep -iE "warning:|error:" build.log \
+             | grep -qvE "getpwuid_r|getgrgid_r|statically linked|generated/"; then
             echo "::error::Build produced warnings/errors (see log above)"
             exit 1
           fi
@@ -152,6 +155,26 @@ jobs:
           cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_BUILD_EXAMPLES=ON \
                 -DCMAKE_BUILD_TYPE=Release
           make -C build -j$(nproc)
+      # The mimalloc path has its own gate: allocator wrappers are the only code
+      # that touches mi_* directly, so a -Wpedantic regression there is invisible
+      # to the system-allocator matrix above.
+      - name: Check warnings (mimalloc build)
+        run: |
+          make -C build -j$(nproc) 2>&1 | tee build.log
+          if grep -iE "warning:|error:" build.log \
+             | grep -qvE "getpwuid_r|getgrgid_r|statically linked|generated/"; then
+            echo "::error::Build produced warnings/errors (see log above)"
+            exit 1
+          fi
+      - name: Verify merged archive keeps every dependency object
+        run: |
+          # uvrpc_merged folds libuv + mimalloc, which both ship src/random.c.
+          # Historically the fold dropped one, leaving -l:libuvrpc_full.a with an
+          # undefined uv_random.
+          for sym in uv_random _mi_random_init; do
+            nm --defined-only dist/lib/libuvrpc_full.a | grep -qw "$sym" \
+              || { echo "::error::$sym missing from libuvrpc_full.a"; exit 1; }
+          done
       - name: Run ctest
         run: |
           cd build

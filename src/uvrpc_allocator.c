@@ -63,7 +63,7 @@ static void  allocator_free(void* p)        { free(p); }
 static void* allocator_alloc(size_t size)   { return mi_malloc(size); }
 static void* allocator_calloc(size_t n, size_t s) { return mi_calloc(n, s); }
 static void* allocator_realloc(void* p, size_t s) { return mi_realloc(p, s); }
-static void  allocator_free(void* p)        { return mi_free(p); }
+static void  allocator_free(void* p)        { mi_free(p); }
 
 #else /* UVRPC_ALLOCATOR_CUSTOM */
 

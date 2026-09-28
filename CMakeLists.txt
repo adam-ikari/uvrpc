@@ -224,19 +224,36 @@ add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERA
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
-# Create merged static library with all dependencies
+# Create merged static library with all dependencies.
+#
+# Built with an `ar` MRI script (CREATE/ADDLIB/SAVE) instead of extracting every
+# archive into one directory and repacking. The old `ar x` + `ar rcs *.o` flattening
+# keyed objects by basename, so libuv's src/random.c and mimalloc's src/random.c
+# collided and one was silently dropped -- users linking -l:libuvrpc_full.a got
+# "undefined reference to `uv_random'".
+# Snapshot the freshly linked archive before uvrpc_merged overwrites
+# dist/lib/libuvrpc.a with the merged result -- otherwise each rebuild would
+# ADDLIB the previous merged archive into itself and grow unboundedly.
+add_custom_command(TARGET uvrpc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:uvrpc> ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc_pristine.a
+    COMMENT "Snapshotting pristine libuvrpc archive"
+    VERBATIM
+)
+
+set(UVRPC_MERGE_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/uvrpc_merge.mri)
+file(WRITE ${UVRPC_MERGE_SCRIPT} "CREATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a\n")
+file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc_pristine.a\n")
+file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${LIBUV_LIBRARIES}\n")
+file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${FLATCC_LIBRARIES}\n")
+if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
+    file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${MIMALLOC_LIBRARIES}\n")
+endif()
+file(APPEND ${UVRPC_MERGE_SCRIPT} "SAVE\nEND\n")
+
 add_custom_target(uvrpc_merged ALL
-    DEPENDS uvrpc
-    COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/temp_extract
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/temp_extract
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/temp_extract bash -c "ar x ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc.a"
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/temp_extract bash -c "ar x ${LIBUV_LIBRARIES}"
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/temp_extract bash -c "ar x ${FLATCC_LIBRARIES}"
-    COMMAND bash -c "if [ -f '${MIMALLOC_LIBRARIES}' ]; then ${CMAKE_COMMAND} -E chdir ${CMAKE_CURRENT_BINARY_DIR}/temp_extract bash -c \"ar x ${MIMALLOC_LIBRARIES}\"; fi"
-    COMMAND bash -c "cd ${CMAKE_CURRENT_BINARY_DIR}/temp_extract && ${CMAKE_AR} rcs ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a *.o"
+    DEPENDS uvrpc ${UVRPC_MERGE_SCRIPT}
+    COMMAND bash -c "${CMAKE_AR} -M < ${UVRPC_MERGE_SCRIPT}"
     COMMAND ${CMAKE_RANLIB} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/temp_extract
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc.a
     COMMENT "Creating merged static library with all dependencies"
     VERBATIM
