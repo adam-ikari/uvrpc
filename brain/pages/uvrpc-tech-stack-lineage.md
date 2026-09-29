@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T05:32:19"
+updated: "2026-09-29T05:40:08"
 ---
 
 <!-- compiled_truth -->
@@ -69,4 +69,10 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: evidence
   summary: "仍坏（未修）：生成结果本身编译不过 —— 模板给结构体定义的类型名带 namespace 前缀（log_LogEntry_t），字段引用却不带（LogEntry_t*），位置 tools/templates/rpc_common.h.j2:40/59 vs :33/52；examples/log_service_demo.c 也落后于现 API（uvrpc_request_send_response 现返回 void，demo 仍按返回值用）"
   source: "实测 gcc 编译 /tmp/g_log_service 产物 (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T05:40:08
+  kind: evidence
+  summary: "已修一半：rpc_common.h.j2 声明结构体字段时按表类型加命名空间前缀（log_LogEntry_t），此前是裸 LogEntry_t —— 但 flatcc 0.6 连枚举也带前缀（log_LogLevel_enum_t），所以 log_service 仍编译不过"
+  source: "tools/templates/rpc_common.h.j2 + uvrpcc.py:281；其余 5 个 schema 产物逐字节不变 (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]
