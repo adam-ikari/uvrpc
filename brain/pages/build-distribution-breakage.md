@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-09-29T04:53:35"
+updated: "2026-09-29T08:21:11"
 ---
 
 <!-- compiled_truth -->
@@ -73,4 +73,10 @@ updated: "2026-09-29T04:53:35"
   kind: decision
   summary: Rewrote compiled_truth to the new best understanding
   source: "2026-09-29 决策落地：docs/node_modules 取消跟踪、docs/doxygen 删除"
+  affects: [build-distribution-breakage]
+
+- time: 2026-09-29T08:21:11
+  kind: evidence
+  summary: "CI 一直是红的：gh run list --workflow ci.yml 最近 20 次全部 failure，最早到 2026-02-19。今天定位两处真因：① DSL 生成目录指向源码树 generated/，产物在配置期尚不存在，add_executable 报 'Cannot find source file'，5 个 job 全挂；GENERATED 属性是目录作用域，须在使用它的子目录再设一次。② 示例目标强制 LINK_FLAGS=-static，与 -fsanitize=address 互斥（cc: cannot specify -static with -fsanitize=address），ASan/UBSan 构建无法产出；现按 CMAKE_C_FLAGS 含 -fsanitize 自动跳过静态链接"
+  source: "按 ci.yml 原命令本地复现与验证：ASan 配置/构建通过，test_transport_lifetime 与 uvrpc_tests(43) 全绿 (2026-09-29)"
   affects: [build-distribution-breakage]
