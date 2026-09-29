@@ -11,10 +11,19 @@
  * each other with ZERO file-scope mutable globals and NO locks (the loop runs
  * single-threaded by the framework's design contract).
  *
- * loop->data is a public libuv field; the framework, tests, and examples never
- * set it. A magic tag distinguishes our registry from a user-set pointer: if
- * loop->data is non-NULL and not our tag, the registry is unavailable for that
- * loop and the transport reports an error (it will not overwrite user data).
+ * loop->data is libuv's designated per-loop user field, and this is the only
+ * one the framework claims: it is not a free slot, and there is no alternative
+ * that keeps the zero-globals / zero-locks property -- a process map keyed by
+ * uv_loop_t* would be exactly the global this design removed, plus a lock to
+ * protect it. A magic tag tells our registry apart from a user-set pointer; on
+ * conflict the registry is unavailable for that loop and the transport reports
+ * an error rather than overwriting user data.
+ *
+ * Consequence for callers: declare the loop as `uv_loop_t loop = {0};`.
+ * libuv 1.47 preserves loop->data across uv_loop_init() by design, so the
+ * idiomatic `uv_loop_t loop; uv_loop_init(&loop);` leaves whatever the stack
+ * held there and gets rejected as if the user had set it. TCP/UDP/IPC never
+ * touch this field and are unaffected either way.
  *
  * Lifetime: retain() on listen/connect, release() on transport free. When the
  * refcount reaches zero the registry is freed and loop->data is cleared.
@@ -58,8 +67,17 @@ static inline uvbus_loop_registry_t* uvbus_loop_registry_retain(uv_loop_t* loop)
     uvbus_loop_registry_t* reg = (uvbus_loop_registry_t*)loop->data;
     if (reg) {
         if (reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) {
-            UVBUS_LOG_ERROR("loop->data is set to a non-uvrpc pointer; "
-                            "INPROC/SAMELOOP transports cannot use this loop");
+            /* Two causes reach here and neither is obvious from the symptom:
+             * the caller set loop->data themselves, or -- far more often -- the
+             * uv_loop_t was never zero-initialised. libuv 1.47 deliberately
+             * leaves loop->data alone across uv_loop_init() (it saves and
+             * restores it, deps/libuv/src/unix/loop.c:30-38), so
+             * `uv_loop_t loop; uv_loop_init(&loop);` carries whatever the
+             * stack held and lands here with the user having set nothing. */
+            UVBUS_LOG_ERROR("loop->data is not ours; INPROC/SAMELOOP cannot use "
+                            "this loop. Either your code already uses loop->data, "
+                            "or the uv_loop_t was not zero-initialised -- declare "
+                            "it as `uv_loop_t loop = {0};` before uv_loop_init()");
             return NULL;
         }
         reg->refcount++;

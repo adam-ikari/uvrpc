@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-29T05:23:32"
+updated: "2026-09-29T08:53:05"
 ---
 
 <!-- compiled_truth -->
@@ -101,4 +101,10 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: decision
   summary: "补上 uv_loop_init() 保留 loop->data 的陷阱：非零初始化的 loop 会让 INPROC/SAMELOOP 启动失败"
   source: "deps/libuv/src/unix/loop.c:30-38 实测 (2026-09-29)"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-29T08:53:05
+  kind: evidence
+  summary: "查清了一个此前被文档掩盖的硬限制：判断 loop->data 是不是我们的注册表，必须解引用它读 magic。而 libuv 1.47 的 uv_loop_init 保留该字段，所以未零初始化的 uv_loop_t 可能留下野值 —— 那次读取直接段错误，不是干净失败。文档原先写'干净地失败'是错的，已改为写明限制：框架保证'不覆盖用户数据'，不保证'数据不可读时给你一个错误'"
+  source: "tests/loop_data_contract_test.c 编写时实测：poison=0xDEADBEEF 与 memset 0xCD 的 loop 都在 uvbus_loop_registry.h:69 的 magic 读取处 SIGSEGV；有效但非本框架的指针则正常拒绝且不覆盖 (2026-09-29)"
   affects: [loop-data-registry-over-global-hash]

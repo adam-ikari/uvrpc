@@ -118,13 +118,29 @@ uv_run(&loop, UV_RUN_DEFAULT);
 
 框架不创建、不启动、不关闭 loop，但 **INPROC 与 SAMELOOP 会把端点注册表挂在
 `loop->data` 上**（`src/uvbus_loop_registry.h`）。这是"零可变全局 + 零锁"逼出来的
-选择：server 与 client 由两份独立 config 创建，唯一共享的就是那个 `uv_loop_t*`。
+选择：server 与 client 由两份独立 config 创建，唯一共享的就是那个 `uv_loop_t*`；
+换成进程内按 loop 指针建表，就等于把这个设计当初删掉的那个全局和锁又请回来。
 
-处置规则对用户友好：注册表首字段是 magic `0x55524300`（`'URC\0'`）。若
-`loop->data` 已被用户设成别的指针，`uvbus_loop_registry_retain()` 返回 NULL 并记日志，
-INPROC/SAMELOOP 在该 loop 上**干净地失败**，绝不覆盖用户数据（`:16-19`、`:56-66`）。
-所以：**如果你要自己用 `loop->data`，就不要在该 loop 上用 INPROC/SAMELOOP**；
-TCP/UDP/IPC 不碰这个字段。refcount 归零时框架会自己把 `loop->data` 清回 NULL。
+**所以 loop 必须零初始化：**
+
+```c
+uv_loop_t loop = {0};   /* 不是 uv_loop_t loop; */
+uv_loop_init(&loop);
+```
+
+libuv 1.47 的 `uv_loop_init()` 刻意**不碰** `data`（它把值存下再写回，
+`deps/libuv/src/unix/loop.c:30-38`）——那是用户的字段。而 `data` 恰好是 `uv_loop_t`
+的第 0 个成员，于是 `uv_loop_t loop; uv_loop_init(&loop);` 会把栈上的残留当成用户数据。
+这正是 libuv 官方文档示范的写法，所以踩中并不奇怪。框架不覆盖它：注册表首字段是 magic
+`0x55524300`（`'URC\0'`），不匹配就返回 NULL 并记日志。
+
+**已知限制**：判断"这个指针是不是我们的"必须**解引用**它。若 `data` 里是个野值
+（未零初始化的 loop 最容易产生），这次读取本身就会段错误，而不是返回错误。换句话说
+框架能保证"不覆盖你的数据"，但**不能**保证"在你的数据不可读时给你一个错误"。
+`tests/loop_data_contract_test.c` 锁住前者，并明确不声称后者。
+
+如果你要自己用 `loop->data`，就不要在该 loop 上用 INPROC/SAMELOOP；TCP/UDP/IPC
+不碰这个字段。refcount 归零时框架会自己把 `loop->data` 清回 NULL。
 
 ### 优势
 

@@ -173,6 +173,34 @@ add_test(NAME uvbus_unit_tests COMMAND uvbus_test)
 add_test(NAME uvbus_simple_test COMMAND uvbus_simple_test)
 set_tests_properties(uvbus_unit_tests uvbus_simple_test PROPERTIES TIMEOUT 60)
 
+# loop->data contract: INPROC/SAMELOOP attach their registry to libuv's
+# per-loop user field, so the rule that makes that acceptable -- refuse rather
+# than overwrite a caller's pointer -- needs to hold. It is an internal header,
+# so the test includes it directly.
+add_executable(loop_data_contract_test
+    loop_data_contract_test.c
+)
+
+target_link_libraries(loop_data_contract_test
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(loop_data_contract_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/uthash/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+)
+
+add_test(NAME loop_data_contract COMMAND loop_data_contract_test)
+set_tests_properties(loop_data_contract PROPERTIES TIMEOUT 60)
+
 # Allocator ownership test. Only meaningful in custom-allocator builds: with the
 # system or mimalloc allocator uvrpc_free() bottoms out in free(), so a flatcc
 # buffer released through it is indistinguishable from a legitimate one.
