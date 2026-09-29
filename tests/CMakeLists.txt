@@ -208,14 +208,13 @@ endif()
 # The generated sources come from the build-wide generate_dsl target, so this
 # test and the log_service demos exercise the same output.
 if(UVRPC_DSL_AVAILABLE)
-    set(_dsl_gen_ns log_logservice)
-
-
+    # The GENERATED property is directory-scoped, so it has to be set here too:
+    # add_executable resolves sources at generate time and these do not exist
+    # until generate_dsl runs.
+    set_source_files_properties(${UVRPC_DSL_SOURCES} PROPERTIES GENERATED TRUE)
     add_executable(dsl_codegen_test
         dsl_codegen_test.c
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_client.c
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_rpc_common.c
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_server_stub.c
+        ${UVRPC_DSL_SOURCES}
     )
 
     add_dependencies(dsl_codegen_test generate_dsl)

@@ -228,7 +228,9 @@ add_dependencies(uvrpc_shared generate_flatcc)
 # without it -- but the DSL test and the log_service demos do, so they are
 # wired to a shared generated directory here. When no interpreter can import
 # jinja2 the target is simply not created and the dependents are skipped.
-set(UVRPC_DSL_GEN_DIR ${GENERATED_DIR}/log_service)
+# The build tree, not ${GENERATED_DIR} (the source tree): these files are
+# build products and must not show up as untracked files in the checkout.
+set(UVRPC_DSL_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/log_service)
 set(UVRPC_DSL_AVAILABLE FALSE)
 find_package(Python3 COMPONENTS Interpreter QUIET)
 # find_package resolves to whatever Python3_EXECUTABLE finds first, which on a
@@ -271,6 +273,15 @@ if(UVRPC_DSL_AVAILABLE)
         COMMENT "Generating RPC DSL code from log_service.fbs"
         VERBATIM
     )
+    # add_executable resolves its sources at generate time, so sources that a
+    # custom command has not produced yet have to be declared GENERATED or
+    # configuration fails outright on a clean checkout.
+    set(UVRPC_DSL_SOURCES
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_client.c
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_rpc_common.c
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_server_stub.c
+    )
+    set_source_files_properties(${UVRPC_DSL_SOURCES} PROPERTIES GENERATED TRUE)
     add_custom_target(generate_dsl DEPENDS ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_api.h)
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
@@ -318,6 +329,16 @@ if(UVRPC_BUILD_EXAMPLES)
 # Build benchmark
 add_subdirectory(benchmark)
 
+    # -static and -fsanitize are mutually exclusive: the driver refuses the
+    # link ("cannot specify -static with -fsanitize=address"), so an ASan or
+    # UBSan build of the examples could never be produced. Detect the sanitizer
+    # and drop the static link rather than making whoever runs one remember to
+    # turn the examples off.
+    set(_uvrpc_sanitizing FALSE)
+    if(CMAKE_C_FLAGS MATCHES "-fsanitize" OR CMAKE_EXE_LINKER_FLAGS MATCHES "-fsanitize")
+        set(_uvrpc_sanitizing TRUE)
+    endif()
+
     function(create_example_target name)
         add_executable(${name} examples/${name}.c)
 
@@ -330,8 +351,9 @@ add_subdirectory(benchmark)
             dl
         )
 
-        # Add static linking flags
-        set_target_properties(${name} PROPERTIES LINK_FLAGS "-static -pthread")
+        if(NOT _uvrpc_sanitizing)
+            set_target_properties(${name} PROPERTIES LINK_FLAGS "-static -pthread")
+        endif()
 
         add_dependencies(${name} generate_flatcc)
     endfunction()
@@ -358,9 +380,7 @@ add_subdirectory(benchmark)
         foreach(_demo log_simple_demo log_service_demo)
             add_executable(${_demo}
                 examples/${_demo}.c
-                ${UVRPC_DSL_GEN_DIR}/log_logservice_client.c
-                ${UVRPC_DSL_GEN_DIR}/log_logservice_rpc_common.c
-                ${UVRPC_DSL_GEN_DIR}/log_logservice_server_stub.c
+                ${UVRPC_DSL_SOURCES}
             )
             target_link_libraries(${_demo} uvrpc Threads::Threads m rt dl)
             target_include_directories(${_demo}
