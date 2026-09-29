@@ -187,7 +187,7 @@ with `benchmark/perf_benchmark`.
 
 | Transport | Round-trip latency | Throughput (1/latency) |
 |-----------|-------------------|------------------------|
-| SAMELOOP / INPROC | ~4 µs  | ~245,000 req/s |
+| SAMELOOP / INPROC | ~4.9 µs | ~205,000 req/s |
 | IPC       | ~31 µs  | ~33,000 req/s |
 | UDP       | ~38 µs  | ~26,000 req/s |
 | TCP       | ~46 µs  | ~22,000 req/s |
@@ -202,5 +202,5 @@ request in flight), **not** pipelined throughput.
 - [Build & Install](/build-install) — full build options and dependencies.
 - [API Guide](/guide/api-guide) — complete API documentation.
 - [Benchmark](/guide/benchmark) — methodology and numbers.
-- [Design Philosophy](/guide/design-philosophy) — zero threads, zero locks, zero globals.
+- [Design Philosophy](/guide/design-philosophy) — zero threads, zero locks, zero mutable globals.
 - [Examples](https://github.com/adam-ikari/uvrpc/tree/main/examples) — runnable example programs.

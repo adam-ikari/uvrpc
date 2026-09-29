@@ -1,110 +1,203 @@
 # 快速开始
 
-本指南将帮助您在 5 分钟内开始使用 UVRPC。
+5 分钟完成构建并跑通第一个 RPC。
 
 ## 前置要求
 
-- C 编译器（gcc 或 clang）
-- CMake (>= 3.10)
-- Make
+- GCC ≥ 4.8（或 Clang）
+- CMake ≥ 3.15
+- make
 - Git
-
-## 克隆项目
-
-```bash
-git clone --recursive https://github.com/adam-ikari/uvrpc.git
-cd uvrpc
-```
 
 ## 构建
 
-### 使用构建脚本（推荐）
+vendored 子模块（libuv、flatcc、mimalloc、gtest）必须在 configure 之前构建好 ——
+`cmake` 自己找不到 flatcc。
 
 ```bash
-# 一键构建
-./build.sh
-
-# 或使用 Makefile
-make
+git clone https://github.com/adam-ikari/uvrpc.git
+cd uvrpc
+./scripts/setup_deps.sh   # 拉子模块，构建 libuv/flatcc/mimalloc/gtest
+./build.sh                # cmake -S . -B build + 构建（Release，mimalloc）
 ```
 
-### 使用 CMake
+产物输出到 `dist/bin/`。
 
-```bash
-# 配置构建
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-
-# 编译
-cmake --build build --config Release
-
-# 安装（可选）
-sudo cmake --install build
-```
+::: tip 分配器
+默认构建用 mimalloc，由 `setup_deps.sh` 从子模块构建。想改用系统分配器：
+`cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system`，然后照常构建。这只切换分配器，
+flatcc 仍然来自 `setup_deps.sh`。
+:::
 
 ## 运行示例
 
-### 1. 简单的服务器-客户端示例
-
-**启动服务器**（在一个终端）：
-
 ```bash
-./dist/bin/simple_server tcp://127.0.0.1:5555
+# 终端 1 —— 启动服务端
+./dist/bin/simple_server
+
+# 终端 2 —— 运行客户端
+./dist/bin/simple_client
 ```
 
-**运行客户端**（在另一个终端）：
+看到一次请求/响应往返，就说明 UVRPC 已经跑起来了。
 
-```bash
-./dist/bin/simple_client tcp://127.0.0.1:5555
+## 核心概念
+
+### 传输
+
+UVRPC 有五种传输，靠地址前缀选择，API 完全一致：
+
+| 传输     | 地址                 | 适用场景           |
+|----------|----------------------|--------------------|
+| TCP      | `tcp://host:port`    | 跨机器、可靠传输   |
+| UDP      | `udp://host:port`    | 高吞吐、可丢包     |
+| IPC      | `ipc:///path`        | 本机跨进程         |
+| INPROC   | `inproc://name`      | 进程内零拷贝       |
+| SAMELOOP | `sameloop://name`    | 同一 loop，最快    |
+
+### 配置
+
+```c
+uvrpc_config_t* config = uvrpc_config_new();
+uvrpc_config_set_loop(config, &loop);
+uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
+uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 ```
 
-### 2. 广播模式示例
+切换传输只改一行 —— 地址前缀和 `UVBUS_TRANSPORT_*` 常量而已。
 
-**启动发布者**（在一个终端）：
+## 完整 RPC
 
-```bash
-./dist/bin/broadcast_publisher udp://127.0.0.1:6000
+### 服务端
+
+```c
+#include "uvrpc.h"
+
+void add_handler(uvrpc_request_t* req, void* ctx) {
+    (void)ctx;
+    int32_t a = *(int32_t*)req->params;
+    int32_t b = *(int32_t*)(req->params + 4);
+    int32_t result = a + b;
+    uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)&result, sizeof(result));
+    uvrpc_request_free(req);
+}
+
+int main(void) {
+    uv_loop_t loop = {0};
+    uv_loop_init(&loop);
+
+    uvrpc_config_t* cfg = uvrpc_config_new();
+    uvrpc_config_set_loop(cfg, &loop);
+    uvrpc_config_set_address(cfg, "tcp://127.0.0.1:5555");
+    uvrpc_config_set_transport(cfg, UVBUS_TRANSPORT_TCP);
+
+    uvrpc_server_t* server = uvrpc_server_create(cfg);
+    uvrpc_server_register(server, "add", add_handler, NULL);
+    uvrpc_server_start(server);
+
+    uv_run(&loop, UV_RUN_DEFAULT);
+    uvrpc_server_free(server);
+    uvrpc_config_free(cfg);
+    uv_loop_close(&loop);
+    return 0;
+}
 ```
 
-**启动订阅者**（在另一个终端）：
+### 客户端
 
-```bash
-./dist/bin/broadcast_subscriber udp://127.0.0.1:6000
+```c
+#include "uvrpc.h"
+
+static void on_response(uvrpc_response_t* resp, void* ctx) {
+    (void)ctx;
+    int32_t result = *(int32_t*)resp->result;
+    printf("Result: %d\n", result);
+    uvrpc_response_free(resp);
+}
+
+int main(void) {
+    uv_loop_t loop = {0};
+    uv_loop_init(&loop);
+
+    uvrpc_config_t* cfg = uvrpc_config_new();
+    uvrpc_config_set_loop(cfg, &loop);
+    uvrpc_config_set_address(cfg, "tcp://127.0.0.1:5555");
+    uvrpc_config_set_transport(cfg, UVBUS_TRANSPORT_TCP);
+
+    uvrpc_client_t* client = uvrpc_client_create(cfg);
+    uvrpc_client_connect(client);
+
+    int32_t params[2] = {10, 20};
+    uvrpc_client_call(client, "add", (uint8_t*)params, sizeof(params),
+                      on_response, NULL);
+
+    uv_run(&loop, UV_RUN_DEFAULT);
+    uvrpc_client_free(client);
+    uvrpc_config_free(cfg);
+    uv_loop_close(&loop);
+    return 0;
+}
 ```
 
-### 3. 性能测试
+::: warning 连接是异步的
+`uvrpc_client_connect()` 立即返回，连接完成前 `uvrpc_client_call()` 会返回
+`UVRPC_ERROR_NOT_CONNECTED`。要么在连接回调里再发请求
+（`uvrpc_client_connect_with_callback`），要么让循环先跑起来。回调与参数的指针生命周期
+规则见 `include/uvrpc.h:258-272`。
+:::
 
-**启动测试服务器**（在一个终端）：
+## RPC 模式
 
-```bash
-./dist/bin/benchmark --server -a tcp://127.0.0.1:5555
+客户端有三种调用模式：
+
+```c
+/* 普通请求/响应 */
+uvrpc_client_call(client, "add", params, size, on_response, ctx);
+
+/* Oneway —— 发完即走，不等响应 */
+uvrpc_client_call_oneway(client, "log", params, size);
+
+/* 流式响应 —— 服务端发多个分块 */
+uvrpc_client_call(client, "stream", params, size, on_stream_response, ctx);
 ```
 
-**运行性能测试**（在另一个终端）：
+服务端中间分块用 `uvrpc_request_send_response_more`，最后一块用
+`uvrpc_request_send_response`。
+
+## 错误处理
+
+```c
+int ret = uvrpc_server_start(server);
+if (ret != UVRPC_OK) {
+    fprintf(stderr, "Failed to start server: %d\n", ret);
+    return 1;
+}
+```
+
+响应回调里检查 `resp->status`：
+
+```c
+static void on_response(uvrpc_response_t* resp, void* ctx) {
+    if (resp->status != UVRPC_OK) {
+        fprintf(stderr, "Request failed: %d\n", resp->status);
+    }
+    uvrpc_response_free(resp);
+}
+```
+
+## 性能自测
 
 ```bash
-# 基本测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555
-
-# 指定测试时长
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000
-
-# 多客户端测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -c 10
+./dist/bin/perf_benchmark 100000 inproc      # 顺序 ping-pong，[请求数] [传输]
+./dist/bin/direct_call_benchmark             # 函数调用下限
 ```
+
+没有标注主机与构建配置的吞吐数字不可信，方法与实测见
+[性能测试](/zh/guide/benchmark)。
 
 ## 下一步
 
-- [API 指南](/zh/guide/api-guide) - 深入了解 UVRPC API
-- [性能测试](/zh/guide/benchmark) - 学习如何进行性能测试
-- [设计哲学](/zh/guide/design-philosophy) - 了解 UVRPC 的设计原则
-- [单线程模型](/zh/guide/single-thread-model) - 理解单线程事件循环模型
-- [示例程序](https://github.com/adam-ikari/uvrpc/tree/main/examples) - 查看更多示例代码
-
-## 获取帮助
-
-如果遇到问题：
-
-1. 查看 [文档](/zh/)
-2. 检查 [示例程序](https://github.com/adam-ikari/uvrpc/tree/main/examples)
-3. 运行测试：`make test`
-4. 提交 Issue：[GitHub Issues](https://github.com/adam-ikari/uvrpc/issues)
+- [构建安装](/zh/build-install) — 完整构建选项与依赖。
+- [API 指南](/zh/guide/api-guide) — 完整 API。
+- [设计哲学](/zh/guide/design-philosophy) — 零线程、零锁、零可变全局。
+- [示例程序](https://github.com/adam-ikari/uvrpc/tree/main/examples) — 可运行的示例。

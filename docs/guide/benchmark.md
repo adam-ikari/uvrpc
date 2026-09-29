@@ -1,266 +1,163 @@
 # Performance Testing
 
-UVRPC provides a unified performance testing tool `benchmark` that supports various test scenarios and transport protocols.
+UVRPC ships two measurement programs. Both are single-threaded on purpose: the
+framework has no threads, so a benchmark that spawns them would be measuring
+something the library cannot do.
 
-## Benchmark Tool
+| Program | Source | Measures |
+|---|---|---|
+| `perf_benchmark` | [`benchmark/perf_benchmark.c`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/perf_benchmark.c) | per-transport request/response round-trip latency and throughput |
+| `direct_call_benchmark` | [`benchmark/direct_call_benchmark.c`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/direct_call_benchmark.c) | raw function-call overhead — the floor under SAMELOOP/INPROC |
 
-The `benchmark` program is a unified performance testing tool with the following features:
+There is **no** multi-thread, multi-process, publisher/subscriber, or percentile
+benchmark. Earlier documentation described a `benchmark` binary with `-t`,
+`--fork`, `--publisher`, `--latency` and a p50/p95/p99 report. That program no
+longer exists and its flags were never part of `perf_benchmark`.
 
-- **CS Mode (Client-Server)**: Test request-response mode performance
-- **Broadcast Mode (Publisher-Subscriber)**: Test publish-subscribe mode performance
-- **Multi-thread/Multi-process Testing**: Support concurrent testing
-- **Latency Testing**: Measure request-response latency
-- **Multiple Transport Protocols**: TCP, UDP, IPC, INPROC
-
-## Usage
-
-### Start Server (CS Mode)
-
-```bash
-# Basic usage
-./dist/bin/benchmark --server
-
-# Specify address
-./dist/bin/benchmark --server -a tcp://127.0.0.1:5555
-
-# Set auto-shutdown timeout (milliseconds)
-./dist/bin/benchmark --server --server-timeout 5000
-```
-
-### Run Client Test (CS Mode)
+## Building
 
 ```bash
-# Single client test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555
-
-# Specify test duration (milliseconds)
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000
-
-# Specify batch size
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -b 100
-
-# Multi-client test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -c 10
-
-# Multi-thread test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 5 -c 2
-
-# Low latency mode
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -l
-
-# Latency test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --latency
-
-# Multi-process test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --fork -t 3 -c 2
+git clone https://github.com/adam-ikari/uvrpc.git
+cd uvrpc
+./scripts/setup_deps.sh
+./build.sh release
 ```
 
-### Start Publisher (Broadcast Mode)
+Both binaries land in `dist/bin/`. `./build.sh` leaves `UVRPC_DEBUG_LOGGING` at
+its default (`OFF`), which is what you want — see the guard below.
+
+## perf_benchmark
+
+```
+./dist/bin/perf_benchmark [requests] [transport]
+```
+
+- `requests` — number of round-trips (default: `100000`)
+- `transport` — `sameloop` | `inproc` | `ipc` | `udp` | `tcp` (default: `inproc`)
+
+An unknown transport exits with status 2. Addresses are fixed per transport
+(`benchmark/perf_benchmark.c:101-120`): `tcp://127.0.0.1:16555`,
+`udp://127.0.0.1:16556`, `ipc:///tmp/uvrpc_perf.sock`, `inproc://uvrpc_perf`,
+`sameloop://uvrpc_perf`. So only one TCP/IPC run can occupy its socket at a time.
 
 ```bash
-# Basic usage
-./dist/bin/benchmark --publisher
-
-# Specify address
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000
-
-# Multi-publisher test
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -p 3
-
-# Multi-thread multi-publisher
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -t 3 -p 2
-
-# Specify batch size and duration
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -b 20 -d 5000
+./dist/bin/perf_benchmark                      # inproc, 100k
+./dist/bin/perf_benchmark 100000 tcp           # TCP, 100k
+./dist/bin/perf_benchmark 1000000 sameloop     # SAMELOOP stress run
 ```
 
-### Start Subscriber (Broadcast Mode)
+Output:
+
+```
+transport=inproc    requests=100000  received=100000  elapsed=246 ms  (sequential ping-pong)
+  round-trip latency: 2.46 us/req
+  throughput (= 1/latency, 1 in-flight): 406504 req/s
+```
+
+That is a real line from a Linux container on a 12-core Ryzen 7 5800H, quiet at
+the time of measurement. Run the same binary while something else is compiling
+and INPROC reads ~23 µs/req instead of ~2.5 µs — an order of magnitude from
+contention alone. Numbers also differ across hosts for reasons the design does
+not control. This is why the table below is labelled as one machine's figures
+rather than a specification, and why any single run must say what it ran on.
+
+## What the numbers mean — and what they do not
+
+**Throughput here is the reciprocal of sequential round-trip latency.** The
+measured loop sends one request, pumps the loop until its response arrives, and
+only then sends the next (`benchmark/perf_benchmark.c:190-213`). Exactly one
+request is in flight. This is *not* pipelined or concurrent throughput, and the
+program deliberately does not pretend otherwise: the output line says
+`sequential ping-pong` and the throughput line says `= 1/latency, 1 in-flight`.
+
+To measure async throughput you must pipeline calls yourself — issue N requests
+without waiting and let the callback drain them. The limits you will hit are the
+three lock-free rejections documented in
+[Single Thread Model](/guide/single-thread-model).
+
+### Methodology preconditions
+
+Four things make these numbers comparable, and each is enforced in code rather
+than left to the operator:
+
+1. **Pump with `UV_RUN_ONCE`, not busy-polling.** `pump_until()`
+   (`benchmark/perf_benchmark.c:59-79`) blocks the thread until an event is
+   ready. A predecessor that used `UV_RUN_DEFAULT` hung, because a live
+   connection never lets the loop exit.
+2. **Debug logging must be OFF.** `UVRPC_DEBUG` / `UVBUS_DEBUG` write to stderr
+   on every send and recv, which dwarfs the RPC cost. The binary refuses to
+   produce quiet numbers: it prints `WARNING: library built with debug logging
+   ON — timings are NOT valid` (`benchmark/perf_benchmark.c:89-92`). If you see
+   it, rebuild with `-DUVRPC_DEBUG_LOGGING=OFF`.
+3. **Warmup is excluded from timing.** `WARMUP_REQUESTS` (1000) requests run
+   first (`benchmark/perf_benchmark.c:164-178`); the clock starts after them.
+   Loop setup also gets explicit settle spins — 10 before the client connects,
+   50 after (`:141`, `:150`).
+4. **Deadlines come from the host, not from an assumed cost per request.** The
+   measured run gets `4 × observed_warmup_rate × requests + 10 s`
+   (`benchmark/perf_benchmark.c:184-188`), and it is only cut short early when
+   no response arrives for `stall_limit_ms` (5 s by default) — a wedged
+   transport, as opposed to a merely slow machine. The previous revision
+   hard-coded `requests/10 + 10000` ms, which silently assumed round-trip never
+   exceeds 0.1 ms/req; on a virtualized host TCP ran ~0.4 ms/req and a 50,000
+   request run died with `measure timeout` having printed nothing. Force a
+   budget with `UVRPC_BENCH_BUDGET_MS=<ms>` or change the stall window with
+   `UVRPC_BENCH_STALL_MS=<ms>` when the defaults do not fit your machine.
+
+Two more premises: server and client **share one `uv_loop_t`** — required by
+INPROC and SAMELOOP, and TCP/IPC run on the shared loop too
+(`benchmark/perf_benchmark.c:136-141`) — and the payload is **8 bytes**, so
+these figures describe RPC framing cost, not bulk-data transfer.
+
+## direct_call_benchmark
 
 ```bash
-# Basic usage
-./dist/bin/benchmark --subscriber
-
-# Specify address
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000
-
-# Multi-subscriber test
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -s 5
-
-# Multi-thread multi-subscriber
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -t 3 -s 2
+./dist/bin/direct_call_benchmark
 ```
 
-## Parameters
+Calls a function through a callback pointer with no transport, no
+serialization, no libuv. Use it as the subtractive baseline: if a direct call
+costs `X` and SAMELOOP costs `Y`, then `Y - X` is what the RPC framing and loop
+round-trip actually cost you. On the container above: direct 0.256 ns, function
+pointer 0.271 ns, indirect-with-checks 0.305 ns — dispatch overhead is two
+orders of magnitude below one round trip, so the cost of an in-process call is
+framing and queue turn, not the pointer hop.
 
-### Mode Parameters
+## Reference numbers
 
-- `--server`: Server mode (CS mode)
-- `--publisher`: Publisher mode (broadcast mode)
-- `--subscriber`: Subscriber mode (broadcast mode)
+Release build, `-O2`, system allocator, single thread, 8-byte payload, measured
+on the author's development machine:
 
-### Common Parameters
+| Transport | Round-trip latency | Throughput (1/latency) | Use case |
+|---|---|---|---|
+| SAMELOOP | ~4.9 µs | ~205,000 req/s | same-loop, vtable bypass (fastest) |
+| INPROC | ~4.9 µs | ~205,000 req/s | in-process zero-copy |
+| IPC | ~31 µs | ~33,000 req/s | local inter-process (Unix socket) |
+| UDP | ~38 µs | ~26,000 req/s | loss-tolerant |
+| TCP | ~46 µs | ~22,000 req/s | reliable network RPC |
 
-- `-a <address>`: Server/publisher address (default: tcp://127.0.0.1:5555)
-- `-t <threads>`: Number of threads/processes (default: 1)
-- `-b <concurrency>`: Batch size (default: 100)
-- `-d <duration>`: Test duration in milliseconds (default: 1000)
-- `-l`: Enable low latency mode (default: high throughput)
-- `--latency`: Run latency test (ignores -t and -c)
-- `--fork`: Use fork mode instead of threads (multi-process testing)
-- `-h`: Show help information
-
-### CS Mode Parameters
-
-- `-c <clients>`: Clients per thread/process (default: 1)
-
-### Broadcast Mode Parameters
-
-- `-p <publishers>`: Publishers per thread/process (broadcast mode, default: 1)
-- `-s <subscribers>`: Subscribers per thread/process (broadcast mode, default: 1)
-
-### Server Parameters
-
-- `--server-timeout <ms>`: Server auto-shutdown timeout (default: 0, no timeout)
-
-## Test Scenarios
-
-### 1. Basic Throughput Test
-
-```bash
-# Start server
-./dist/bin/benchmark --server -a tcp://127.0.0.1:5555
-
-# Run client in another terminal
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000 -b 100
-```
-
-### 2. Multi-client Concurrent Test
-
-```bash
-# 10 concurrent clients
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -c 10 -d 2000
-```
-
-### 3. Multi-thread Test
-
-```bash
-# 5 threads, 2 clients per thread
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 5 -c 2 -d 2000
-```
-
-### 4. Latency Test
-
-```bash
-# Test request-response latency
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --latency
-```
-
-### 5. Broadcast Mode Test
-
-```bash
-# Start publisher
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -p 3 -b 20 -d 5000
-
-# Start subscriber in another terminal
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -s 5 -d 5000
-```
-
-### 6. Multi-transport Test
-
-```bash
-# TCP test
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000
-
-# IPC test
-./dist/bin/benchmark -a ipc:///tmp/uvrpc_test.sock -d 2000
-
-# UDP test
-./dist/bin/benchmark -a udp://127.0.0.1:5556 -d 2000
-
-# INPROC test
-./dist/bin/benchmark -a inproc://test -d 2000
-```
-
-## Performance Metrics
-
-### Throughput Metrics
-
-- **Ops/s**: Operations per second (CS mode)
-- **Msgs/s**: Messages per second (broadcast mode)
-- **Bandwidth**: Data transfer rate (MB/s)
-
-### Latency Metrics
-
-- **Average Latency**: Average response time for all requests
-- **P50 Latency**: Median latency
-- **P95 Latency**: 95th percentile latency
-- **P99 Latency**: 99th percentile latency
-- **Max Latency**: Slowest request latency
-
-### Reliability Metrics
-
-- **Success Rate**: Percentage of successful responses
-- **Failures**: Number of failed requests
-
-## Performance Optimization Tips
-
-### 1. Choose the Right Transport Protocol
-
-- **INPROC**: In-process communication, best performance
-- **IPC**: Local inter-process communication, better than TCP
-- **UDP**: High throughput, tolerates packet loss
-- **TCP**: Reliable transmission
-
-### 2. Adjust Batch Size
-
-- **Small batch** (< 50): Low latency, low throughput
-- **Medium batch** (50-100): Balanced latency and throughput
-- **Large batch** (> 100): High throughput, high latency
-
-### 3. Enable Low Latency Mode
-
-```bash
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -l
-```
-
-### 4. Use Appropriate Concurrency Level
-
-- Single thread: Simple scenarios
-- Multi-thread: Higher throughput
-- Multi-process: Test isolation
-
-## Known Limitations
-
-1. **Thread limit**: Maximum 10 threads (MAX_THREADS)
-2. **Client limit**: Maximum 100 clients per thread (MAX_CLIENTS)
-3. **Process limit**: Maximum 32 processes (MAX_PROCESSES)
+For comparison, the same build on the container described above measured
+~2.4 µs (SAMELOOP), ~2.5 µs (INPROC), ~21 µs (IPC), ~25 µs (UDP), ~32 µs (TCP)
+— faster than the table on the in-process transports and on the socket ones.
+Absolute numbers are host-dependent; the *ratios* (in-process ≫ local socket ≫
+network) are what the design actually guarantees. Treat the table as a
+regression baseline recorded on one host, not a capacity promise. UDP in sequential
+ping-pong also carries real packet-loss risk; a lost response shows up as a
+timeout error, not as degraded throughput.
 
 ## Troubleshooting
 
-### Connection Failure
-
 ```bash
-# Check if port is in use
-lsof -i :5555
-
-# Check if server is running
-ps aux | grep benchmark
+lsof -i :16555                 # port already taken by another run
+rm -f /tmp/uvrpc_perf.sock     # stale IPC socket (the program unlinks it too)
+ps aux | grep perf_benchmark
 ```
 
-### Performance Issues
-
-```bash
-# Build in Release mode
-cmake -DCMAKE_BUILD_TYPE=Release -B build
-cmake --build build
-
-# Check system resources
-top
-vmstat
-```
+If `received < requests`, the run hit a deadline or a transport error and exited
+non-zero — the numbers were never printed. Do not compare partial runs.
 
 ## Related Documentation
 
 - [Design Philosophy](/guide/design-philosophy)
 - [Single Thread Model](/guide/single-thread-model)
-- [Benchmark tool source](https://github.com/adam-ikari/uvrpc/tree/main/benchmark)
+- [Architecture](/architecture/)

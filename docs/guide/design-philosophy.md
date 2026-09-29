@@ -84,7 +84,6 @@ uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
 
 // 2. 创建客户端（自动生成客户端代码）
 Calculator_client_t* client = Calculator_client_create(config);
@@ -103,7 +102,6 @@ uvrpc_config_t* config = uvrpc_config_new();
 uvrpc_config_set_loop(config, &loop);
 uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
 
 // 2. 创建客户端（通用 API，支持多服务复用 loop）
 uvrpc_client_t* client = uvrpc_client_create(config);
@@ -122,60 +120,82 @@ uv_run(&loop, UV_RUN_DEFAULT);
 - **自动生成处理器**：服务端处理器和客户端调用代码自动生成，无需手写
 - **类型安全**：生成的代码提供编译时类型检查，避免运行时错误
 
-### 2. 零线程，零锁，零全局变量
+### 2. 零线程，零锁，零可变全局
 
 UVRPC 基于 libuv 事件循环，所有 I/O 操作都在单线程中异步执行：
 
 - **零线程**：不创建额外线程，所有操作在事件循环中完成
 - **零锁**：单线程模型，无需锁机制
-- **零全局变量**：所有状态通过上下文传递，支持多实例
+- **零文件作用域可变全局**：所有状态通过上下文传递，支持多实例
 
-#### 全局变量策略
+#### 可变全局策略
 
-UVRPC 的"零全局变量"原则分为两个层次：
+准确的说法是"零**可变**全局"，不是"零全局"。区分点是：编译期常量、函数指针表、
+只读元数据可以存在；会被请求改写的文件作用域变量不行。
 
 **用户层面**：
-- **完全不占用**：UVRPC 不占用 `loop->data`，用户可以自由使用
 - **多实例支持**：同一进程可以创建多个独立的 UVRPC 实例
 - **灵活的事件循环**：多个实例可以在多个 loop 中独立运行，也可以共享同一个 loop
-- **线程安全**：每个实例在自己的事件循环中运行，无竞争
+- **单线程无竞争**：每个实例在自己的事件循环中运行；框架不创建线程，因此不共享可变状态
+- **一处例外需知晓**：INPROC/SAMELOOP 会把端点注册表挂在 `loop->data` 上（见下）。
+  如果你要自己用 `loop->data`，就不要在该 loop 上用这两个传输
 
 **实现层面**：
-- **INPROC 传输**：使用内部全局端点列表（仅在 INPROC 模式下）
-- **内存分配器**：使用全局分配器类型（可配置）
-- **设计原则**：仅在没有更好方案时使用全局变量，且不影响用户代码
+- **INPROC/SAMELOOP 传输**：端点表挂在 **per-loop 注册表**（`loop->data`），不是进程全局
+- **内存分配器**：只有自定义分配器模式下有一个全局函数指针表 `g_custom_allocator`，
+  且被编译门控（`UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM`）；
+  system/mimalloc 构建里**没有任何分配器状态**
+- **vtable 是常量**：5 个传输的 `static const uvbus_transport_vtable_t` 落在
+  `.data.rel.ro.local`，运行时只读
+- **设计原则**：优先"把状态挂到本来就该拥有它的对象上"（`loop`、`client`、`server`），
+  全局只在无处安放时才考虑
 
-**INPROC 传输的特殊设计**：
+**INPROC/SAMELOOP 的实际做法**：
 
-INPROC 是唯一使用全局变量的传输层，因为：
-- 进程内通信需要全局端点注册表
-- 使用链表而非 uthash，避免复杂依赖
-- 全局列表仅用于端点查找，不影响用户代码
+server 与 client 由两份独立 config 创建，它们唯一共享的值就是那个 `uv_loop_t*`。
+所以注册表挂在 loop 上，从而实现**零可变全局 + 零锁**（loop 按契约单线程）：
 
 ```c
-// INPROC 内部实现（用户不可见）
-static inproc_endpoint_t* g_endpoint_list = NULL;
+/* src/uvbus_loop_registry.h —— 真实实现 */
+#define UVBUS_LOOP_REGISTRY_MAGIC 0x55524300u   /* 'URC\0' */
 
-// 用户代码不受影响
-uv_loop_t loop1;
+typedef struct uvbus_loop_registry {
+    uint32_t magic;          /* 用来识别 loop->data 是不是我们的 */
+    int      refcount;       /* retain on listen/connect, release on free */
+    void*    inproc_endpoints;   /* 256 桶哈希表 */
+    void*    sameloop_servers;   /* 单链表 */
+} uvbus_loop_registry_t;
+```
+
+`loop->data` 是 libuv 的公开字段，任何人都可能已经用了它。框架的处置是**拒绝而非覆盖**：
+若 `loop->data` 非空且 magic 不匹配，`uvbus_loop_registry_retain()` 返回 NULL 并记日志，
+该传输干净地报错，绝不写用户的指针。refcount 归零时框架自己把 `loop->data` 清回 NULL。
+
+```c
+/* 多 loop 各自独立 —— 状态挂在 loop 上，所以天然按 loop 分区 */
+uv_loop_t loop1, loop2;
 uv_loop_init(&loop1);
+uv_loop_init(&loop2);
+
 uvrpc_config_t* config1 = uvrpc_config_new();
-uvrpc_config_set_loop(config1, &loop1);  // loop->data 完全由用户控制
+uvrpc_config_set_loop(config1, &loop1);   /* loop1 的注册表只在 loop1 上 */
 uvrpc_server_t* server1 = uvrpc_server_create(config1);
 
-uv_loop_t loop2;
-uv_loop_init(&loop2);
 uvrpc_config_t* config2 = uvrpc_config_new();
-uvrpc_config_set_loop(config2, &loop2);  // loop->data 完全由用户控制
+uvrpc_config_set_loop(config2, &loop2);   /* 与 loop1 上的同名端点互不可见 */
 uvrpc_server_t* server2 = uvrpc_server_create(config2);
 ```
 
+这也意味着一个语义后果：**`inproc://name` 的作用域是单个 loop，不是整个进程**。
+跨 loop 用同名端点是找不到的。
+
 ### 3. 性能驱动
 
-- **零拷贝**：FlatBuffers 序列化，数据直接访问
+- **零拷贝**：FlatBuffers 序列化，数据直接访问；INPROC/SAMELOOP 传指针
 - **高效分配**：默认使用 mimalloc 分配器
-- **批量处理**：支持批量消息发送
-- **事件驱动**：非阻塞 I/O，高并发处理
+- **批量提交**：`uvrpc_client_call_batch()` 一次调用发 N 帧（注意：自动攒批 +
+  定时 flush 的那条路径目前只是字段，见[单线程模型](/guide/single-thread-model)）
+- **事件驱动**：非阻塞 I/O，满则拒绝而非等待
 
 ### 4. 透明度优先
 
@@ -362,46 +382,65 @@ UVRPC 提供两种使用模式，满足不同场景需求：
 所有数据结构都只包含必要的字段：
 
 ```c
-// 配置结构体：仅 5 个字段
+// 配置结构体（include/uvrpc.h:215-223，真实字段）
 struct uvrpc_config {
     uv_loop_t* loop;
     char* address;
-    uvrpc_transport_type transport;
-    uvrpc_comm_type_t comm_type;
-    uvrpc_perf_mode_t performance_mode;  // 性能模式
+    uvbus_transport_type_t transport;   // 就是 UVBus 的枚举，没有第二层类型
+    int max_concurrent;
+    int max_pending_callbacks;
+    uint32_t msgid_offset;
+    int max_clients;
 };
 
-// 请求结构体：仅 6 个字段
+// 请求结构体（include/uvrpc.h:231-239，真实字段）
 struct uvrpc_request {
     uvrpc_server_t* server;
     uint32_t msgid;
-    char* method;
-    uint8_t* params;
+    char* method;             // 仅回调期间有效
+    uint8_t* params;          // 仅回调期间有效
     size_t params_size;
+    void* client_ctx;         // 回包时用：uvbus_send_to(..., client_ctx)
     void* user_data;
 };
 ```
 
+`transport` 字段直接用 `uvbus_transport_type_t` —— RPC 层与传输层**共用同一个枚举**，
+没有 `uvrpc_transport_type` / `uvrpc_comm_type_t` 这层中间类型，也没有映射函数。
+"是 server 还是 client"由创建哪个对象决定（`uvrpc_server_create` vs
+`uvrpc_client_create`），不占字段。
+
 ### 依赖最小化
 
-UVRPC 仅依赖 4 个核心库：
+UVRPC 的运行期依赖只有 3 个库：
 
 1. **libuv**：事件循环（必需）
-2. **FlatCC**：FlatBuffers 编译器（必需）
-3. **mimalloc**：高性能内存分配器（可选）
-4. **uthash**：哈希表（必需）
+2. **FlatCC**：FlatBuffers 编解码（必需，且需要源码构建 —— 发行版没有现成包）
+3. **mimalloc**：默认分配器（可切 `-DUVRPC_ALLOCATOR_DEFAULT=system|custom`）
+
+**uthash** 是编译期头文件依赖，用在两处：服务端 `method name → handler` 表
+（`src/uvrpc_server.c`）与网关 ID 映射（`src/uvrpc_idmap.c`）。它不是"项目回避哈希表"
+的反例 —— 客户端在途回调路由刻意改成了数组直接寻址，理由见
+[单线程模型](/guide/single-thread-model)。
+
+**GoogleTest** 只在 `-DUVRPC_BUILD_TESTS=ON` 时才需要，库使用者不需要。
 
 ### 编译最小化
 
 ```bash
-# 只需一行命令即可构建
-./build.sh
+# 依赖必须先构建（libuv/flatcc/mimalloc/uthash/gtest 走子模块）
+git clone https://github.com/adam-ikari/uvrpc.git && cd uvrpc
+./scripts/setup_deps.sh
+./build.sh release
 
-# 或使用 CMake
-mkdir build && cd build
-cmake ..
-make
+# 或直接用 CMake
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
+
+`./build.sh` 接受 `[clean|debug|release|system|mimalloc]`；产物固定落在
+`dist/lib/libuvrpc.a` 与 `dist/bin/`。跳过 `setup_deps.sh` 会在
+`cmake/Dependencies.cmake` 处直接失败并提示原因。
 
 ### 配置最小化
 
@@ -424,46 +463,49 @@ graph TB
         A2[客户端回调]
         A3[用户逻辑]
     end
-    
-    subgraph Layer2["Layer 2: RPC API 层"]
+
+    subgraph Layer2["Layer 2: RPC 层"]
         B1[uvrpc_server_t]
         B2[uvrpc_client_t]
         B3[uvrpc_context_t]
     end
-    
-    subgraph Layer1["Layer 1: 传输层（统一抽象）"]
-        C1[uvrpc_transport_t<br/>统一接口]
-        C2[TCP 实现<br/>uvrpc_transport_tcp_new]
-        C3[UDP 实现<br/>uvrpc_transport_udp_new]
-        C4[IPC 实现<br/>uvrpc_transport_ipc_new]
-        C5[INPROC 实现<br/>uvrpc_transport_inproc_new]
-        C6[相同的 vtable 接口]
+
+    subgraph Layer1["Layer 1: UVBus 传输层"]
+        C1[uvbus_t<br/>统一句柄]
+        C1v[uvbus_transport_vtable_t<br/>7 槽]
+        C2[uvbus_transport_tcp.c]
+        C3[uvbus_transport_udp.c]
+        C4[uvbus_transport_ipc.c]
+        C5[uvbus_transport_inproc.c]
+        C7[uvbus_transport_sameloop.c]
     end
-    
-    subgraph Layer0["Layer 0: 核心库层"]
+
+    subgraph Layer0["Layer 0: 依赖库"]
         D1[libuv]
-        D2[FlatBuffers]
+        D2[FlatCC]
         D3[mimalloc]
     end
-    
+
     A3 --> B1
     A3 --> B2
     B1 --> C1
     B2 --> C1
-    C1 --> C2
-    C1 --> C3
-    C1 --> C4
-    C1 --> C5
-    C1 --> C6
+    B1 --> D2
+    B2 --> D2
+    C1 --> C1v
+    C1v --> C2
+    C1v --> C3
+    C1v --> C4
+    C1v --> C5
+    C1v --> C7
     C2 --> D1
     C3 --> D1
     C4 --> D1
     C5 --> D1
-    C2 --> D2
-    C3 --> D2
-    C4 --> D2
-    C5 --> D2
-    
+    C7 --> D1
+    B1 --> D3
+    B2 --> D3
+
     style Layer3 fill:#e1f5ff
     style Layer2 fill:#fff4e6
     style Layer1 fill:#f0f0f0
@@ -472,30 +514,33 @@ graph TB
 
 ### 统一的传输抽象
 
-**传输接口 (uvrpc_transport_vtable_t)**：
+**传输接口（`include/uvbus.h:129-137`，真实定义）**：
+
 ```c
-struct uvrpc_transport_vtable {
-    /* Server operations */
-    int (*listen)(void* impl, const char* address,
-                  uvrpc_recv_callback_t recv_cb, void* ctx);
-    
-    /* Client operations */
-    int (*connect)(void* impl, const char* address,
-                   uvrpc_connect_callback_t connect_cb,
-                   uvrpc_recv_callback_t recv_cb, void* ctx);
+typedef struct uvbus_transport_vtable {
+    int  (*listen)(void* impl, const char* address);
+    int  (*connect)(void* impl, const char* address);
     void (*disconnect)(void* impl);
-    
-    /* Send operations */
-    void (*send)(void* impl, const uint8_t* data, size_t size);
-    void (*send_to)(void* impl, const uint8_t* data, size_t size, void* target);
-    
-    /* Cleanup */
+    int  (*send)(void* impl, const uint8_t* data, size_t size);
+    int  (*send_to)(void* impl, const uint8_t* data, size_t size, void* target);
+    int  (*broadcast)(void* impl, const uint8_t* data, size_t size);
     void (*free)(void* impl);
-    
-    /* Optional: transport-specific operations */
-    int (*set_timeout)(void* impl, uint64_t timeout_ms);
-};
+} uvbus_transport_vtable_t;
 ```
+
+三个要点：
+
+- **7 个槽，回调不在槽里**。回调挂在 `uvbus_config` 上，创建实例时一次性拷进传输对象；
+  vtable 只描述"对这个传输能做什么"，不描述"谁接收结果"。
+- **每个槽的第一个参数都是 `void* impl`**。传输专有状态（`uv_tcp_t` / `uv_pipe_t` /
+  socket / sameloop server 条目）藏在 impl 结构里，总线层只见指针。新增一个传输因此
+  不需要动总线、RPC 层或任何调用点。
+- **没有 `set_timeout` 这种可选槽**。传输层不需要超时能力位，总线配置里也没有超时
+  字段（曾经有 `timeout_ms` / `enable_timeout`，无人读取，已删除）。超时属于调用方
+  语义：`uvrpc_async_*` 用显式入参自己起 `uv_timer`。
+
+vtable 本身是 `static const`，实例创建时单次赋值 —— 实测落在 `.data.rel.ro.local`
+（PIE 下的只读数据），这属于"零可变全局"允许的范畴。
 
 **统一的使用方式**：
 ```c
@@ -564,200 +609,134 @@ uvrpc_config_set_address(config, "inproc://my_service");
   │                                   │
 ```
 
-### INPROC 传输架构
+### INPROC 与 SAMELOOP 传输架构
 
 #### 设计目标
 
-INPROC (In-Process) 传输为进程内通信提供最高性能：
+进程内通信有两个传输，差别在"要不要出栈"：
 
-- **零拷贝**：数据直接在内存中传递，无需序列化
-- **零网络开销**：无 TCP/IP 协议栈开销
-- **零延迟**：直接函数调用级别延迟
+- **INPROC**：同进程、同 loop 家族，按名字找端点，数据指针直接传递（零拷贝）。
+- **SAMELOOP**：要求 server 与 client 在**同一个 `uv_loop_t` 实例**上，走 `uv_async`
+  交接，延迟最低，且有 vtable 短路。
+
+两者都**不需要网络栈、不需要锁、不需要进程全局**。
 
 #### 架构实现
 
 ```mermaid
 graph TB
-    subgraph Server["Server Process"]
-        subgraph S1["uvrpc_server_t"]
-            S1a[transport: uvrpc_transport_t]
-            S1b[impl: uvrpc_inproc_transport_t]
-            S1c[endpoint: inproc_endpoint_t]
-            S1c1[name: "test_endpoint"]
-            S1c2[server_transport: ← 指向自己]
-            S1c3[clients: [client1, client2, ...]]
-            S1c4[client_count: 2]
-            
-            S1a --> S1b
-            S1b --> S1c
-            S1c --> S1c1
-            S1c --> S1c2
-            S1c --> S1c3
-            S1c --> S1c4
+    subgraph L["同一个 uv_loop_t"]
+        R[loop->data<br/>uvbus_loop_registry_t<br/>magic + refcount]
+        subgraph SV["uvrpc_server_t → uvbus_t"]
+            S1[uvbus_transport_inproc.c<br/>inproc_vtable: static const]
+            E[inproc_endpoint_t<br/>name / server_transport / clients[]]
         end
-        
-        subgraph S2["inproc_endpoint_t"]
-            S2a[全局端点注册表 g_endpoint_list]
-            S2b[链表结构，支持多个端点]
-            
-            S2a --> S2b
+        subgraph CL["uvrpc_client_t → uvbus_t"]
+            C1[client transport<br/>inproc_client_t]
         end
-        
-        subgraph S3["uvrpc_client_t"]
-            S3a[transport: uvrpc_transport_t]
-            S3b[impl: uvrpc_inproc_transport_t]
-            S3c[recv_cb: client_recv_callback]
-            S3d[endpoint: → 指向同一端点]
-            
-            S3a --> S3b
-            S3b --> S3c
-            S3b --> S3d
-        end
-        
-        S1 -->|直接调用| S2
-        S3 -->|直接调用| S2
+        R --> E
+        S1 --> E
+        C1 -->|按名字查找| E
     end
-    
-    style Server fill:#e1f5ff
+    style R fill:#fff4e6
+    style E fill:#e1f5ff
 ```
+
+**注册表不是全局的**，挂在 `loop->data` 上（`src/uvbus_loop_registry.h`）：
+magic `0x55524300`（`'URC\0'`）+ refcount + 两个容器头。因此
+`inproc://name` 的作用域是**单个 loop**，不是整个进程；两个 loop 上的同名端点互不可见。
 
 #### 端点管理
 
-**端点结构**：
+**端点结构**（`src/uvbus_transport_inproc.c:13-24`，真实字段）：
+
 ```c
-struct inproc_endpoint {
-    char* name;                        // 端点名称
-    void* server_transport;            // 服务器传输引用
-    void** clients;                    // 客户端列表
-    int client_count;                  // 客户端数量
-    int client_capacity;               // 客户端容量
-    struct inproc_endpoint* next;      // 链表指针
-};
+typedef struct inproc_endpoint {
+    char* name;
+    void* server_transport;
+    void** clients;
+    int client_count;
+    int client_capacity;
+    struct inproc_endpoint* next;      /* 同一桶内的链表 */
+    uvbus_recv_callback_t recv_cb;
+    uvbus_error_callback_t error_cb;
+    void* callback_ctx;
+} inproc_endpoint_t;
 ```
 
-**端点查找**：
-- 使用链表结构（而非 uthash）
-- 线性查找（端点数量少时性能可接受）
-- 支持多端点并发存在
+**端点查找**：per-loop 注册表里是一个 **256 桶哈希表**（`UVBUS_INPROC_HASH_SIZE =
+UVBUS_HASH_TABLE_SIZE = 256`，djb2 哈希），桶内单链表。所有操作都显式接收
+`uvbus_loop_registry_t*`：
 
-**全局端点列表**：
 ```c
-static inproc_endpoint_t* g_endpoint_list = NULL;
+static inproc_endpoint_t* inproc_find_endpoint(uvbus_loop_registry_t* reg, const char* name);
+static void                inproc_add_endpoint(uvbus_loop_registry_t* reg, inproc_endpoint_t* endpoint);
+static void                inproc_remove_endpoint(uvbus_loop_registry_t* reg, inproc_endpoint_t* endpoint);
 ```
 
-**为什么使用全局列表**：
-- 进程内通信需要全局注册表
-- 用户不可见，不影响 API 设计
-- 仅用于端点查找，不存储用户数据
+**没有 `g_endpoint_list`，也没有读写锁。** 早期文档里"INPROC 用全局链表 + 互斥锁保护"
+的描述对应的是 `4fe8b67` 之前的实现，现在既不成立也不是设计意图 —— 加锁会直接违反
+零锁，进程全局会直接违反零可变全局。SAMELOOP 侧则真的就是一条单链表
+（`reg->sameloop_servers`，O(服务数) 查找），因为它面向"同 loop 内少量服务"。
 
 #### 通信流程
 
-**服务器启动**：
+**服务器监听**（`src/uvbus_transport_inproc.c:173-230`）：
+
 ```c
-// 1. 创建传输
-uvrpc_transport_t* transport = uvrpc_transport_server_new(loop, UVBUS_TRANSPORT_INPROC);
-
-// 2. 监听端点
-uvrpc_transport_listen(transport, "inproc://test_endpoint", recv_cb, ctx);
-   ↓
-// 内部步骤：
-// a. 创建端点
-endpoint = uvrpc_inproc_create_endpoint("test_endpoint");
-
-// b. 设置服务器引用
-endpoint->server_transport = transport->impl;
-
-// c. 添加到全局列表
-inproc_add_endpoint(endpoint);
+inproc_listen(impl, "inproc://test_endpoint")
+  ├─ reg = uvbus_loop_registry_retain(transport->loop)   // 取/建 loop->data 上的注册表
+  │    └─ 若 loop->data 已被用户设为别的指针 → 返回 NULL → listen 失败（不覆盖用户数据）
+  ├─ inproc_buckets_ensure(reg)                          // 惰性分配 256 桶
+  ├─ name = address + strlen("inproc://")
+  ├─ inproc_find_endpoint(reg, name)  → 已存在则返回 UVBUS_ERROR_ALREADY_EXISTS
+  └─ inproc_add_endpoint(reg, endpoint)
 ```
 
-**客户端连接**：
+**客户端连接**（`:252+`）：`retain(loop)` → `inproc_find_endpoint(reg, name)` →
+`inproc_add_client(endpoint, client)`（客户端数组容量翻倍扩容）。找不到端点即失败，
+不隐式创建。
+
+**发送**（`:376-407`）是**同步直接调用**，没有拷贝也没有排队：
+
 ```c
-// 1. 创建传输
-uvrpc_transport_t* transport = uvrpc_transport_client_new(loop, UVBUS_TRANSPORT_INPROC);
-
-// 2. 连接端点
-uvrpc_transport_connect(transport, "inproc://test_endpoint", connect_cb, recv_cb, ctx);
-   ↓
-// 内部步骤：
-// a. 查找端点
-endpoint = inproc_find_endpoint("test_endpoint");
-
-// b. 添加客户端到端点
-inproc_add_client(endpoint, transport->impl);
-
-// c. 复制回调
-transport->impl->recv_cb = recv_cb;
-transport->impl->ctx = ctx;
+/* client → server */
+endpoint->recv_cb(data, size, client /* 即 client_ctx */, server_ctx);
+/* server → client：inproc_send_to_all() 遍历 endpoint->clients[] 逐个回调 */
 ```
 
-**发送请求**：
-```c
-// 客户端发送
-uvrpc_transport_send(client_transport, data, size);
-   ↓
-// 内部步骤：
-// a. 获取端点
-endpoint = client->impl->endpoint;
-
-// b. 查找服务器
-server = endpoint->server_transport;
-
-// c. 调用服务器接收回调
-server->recv_cb(data, size, server->ctx);
-```
-
-**发送响应**：
-```c
-// 服务器发送
-uvrpc_transport_send(server_transport, data, size);
-   ↓
-// 内部步骤：
-// a. 获取端点
-endpoint = server->impl->endpoint;
-
-// b. 遍历客户端列表
-for (int i = 0; i < endpoint->client_count; i++) {
-    uvrpc_inproc_transport_t* client = endpoint->clients[i];
-    
-    // c. 调用每个客户端的接收回调
-    client->recv_cb(data, size, client->ctx);
-}
-```
+三个含义：
+1. `data` 是**发送方的缓冲区**，回调返回后即可能失效 —— 这正是"回调期间有效"约束的根源。
+2. 调用栈是 `send() → 对端 recv_cb → 对端可能再 send()`。层数过深会加深栈，
+   SAMELOOP 用 `uv_async` 交接正是为了切断这种递归（`src/uvbus_transport_sameloop.c:8-9`）。
+3. `client_ctx` 就是 `inproc_client_t*`，服务端凭它区分是哪个连接 —— 与 TCP 侧
+   `uvbus_send_to(..., client_ctx)` 是同一个约定。
 
 #### 内存管理
 
 **端点生命周期**：
-- 服务器启动时创建
-- 服务器停止时释放
-- 客户端连接/断开不影响端点
+- `listen()` 时创建，加入所属 loop 的注册表
+- 服务端 `disconnect` / `free` 时摘除
+- refcount 归零时框架释放桶数组并把 `loop->data` 清回 NULL
 
-**客户端列表管理**：
-- 动态扩容（初始 4，翻倍增长）
-- 客户端断开时移除
-- 服务器停止时清理所有客户端
+**客户端列表**：初始容量小、断开时按 `inproc_remove_client` 摘除、翻倍扩容
+（`src/uvbus_transport_inproc.c:103-115`）。
 
-**回调复制**：
-- 连接时从传输层复制到 INPROC 实现
-- 避免传输层被释放后访问无效指针
-- 确保回调总是指向有效内存
+**回调复制**：连接时把回调从传输对象复制进 `inproc_client_t`，避免传输层释放后
+访问无效指针。
 
 #### 性能特性
 
-**零拷贝**：
-- 数据指针直接传递
-- 无序列化/反序列化开销
-- 直接函数调用
+**零拷贝**：数据指针直接传递；无序列化额外开销（RPC 帧在上一层已编好）。
 
-**零延迟**：
-- 无网络栈开销
-- 无系统调用（除必要的异步回调）
-- 无上下文切换
+**低延迟**：无网络栈、无系统调用、无上下文切换 —— 但要清楚它是**同步回调**，
+不是"异步得像网络"。需要异步交接用 SAMELOOP。
 
-**高吞吐**：
-- 批量发送支持
-- 环形缓冲区优化
-- 无锁设计
+**高吞吐的边界**：
+- 无锁、无拷贝，但服务端**不**做批量：一次 `send` 就是一次回调遍历。
+- `client_ctxs` 在 RPC 层是线性扫去重（`src/uvrpc_server.c:70-76`），大量短连接时
+  这笔 O(n) 会落在接收热路径上。
+- SAMELOOP 每 server 固定 `SAMELOOP_MAX_CLIENTS = 64`，不扩容。
 
 #### 使用示例
 
@@ -846,7 +825,7 @@ if (ret != UVRPC_OK) {
 
 - 单线程事件循环
 - 非阻塞 I/O
-- 批量处理消息
+- 批量提交靠显式的 `uvrpc_client_call_batch()`，没有自动攒批
 
 ### 内存分配优化
 
@@ -854,73 +833,54 @@ if (ret != UVRPC_OK) {
 - 减少内存碎片
 - 提高分配速度
 
-### 性能模式
+### 没有性能模式开关
 
-UVRPC 提供两种性能模式，可根据应用场景选择：
+这里曾有一个 `uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY |
+UVRPC_PERF_HIGH_THROUGHPUT)`。它的值一路被存进 config、复制进客户端、用来推出
+`batching_enabled`，然后**再没有任何代码读取** —— 自动攒批、批量 flush、定时冲刷全都
+没有接线，`pool_size` / `timeout_ms` / `pump_interval` 同属一类。2026-09-29 把这些
+只写字段连同它们的 setter 一起删除了（判据与历史见项目记忆
+`pending-buffer-as-concurrency-control`）。
 
-#### 低延迟模式 (UVRPC_PERF_LOW_LATENCY)
+现在客户端可调的就三件事：`max_concurrent`（在途请求配额，单次与批量调用都检查）、
+`max_pending_callbacks`（回调路由表容量，必须是 2 的幂）、`max_clients`（服务端连接
+配额）。想要"一次发 N 帧"请显式调用 `uvrpc_client_call_batch()` —— 它是真实的，
+但仍然逐帧登记回调槽位。
 
-```c
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_LOW_LATENCY);
-```
+**性能数字**：本节不给按模式区分的 ops/s。真实吞吐取决于传输、消息大小和主机，
+请用 `benchmark/perf_benchmark.c` 在自己的机器上测（见 [Benchmark](/guide/benchmark)）。
+没有标注主机与配置的吞吐数字不写进文档。
 
-**特点**：
-- 立即发送每个请求
-- 最小化响应时间
-- 适用于实时系统
+#### 回调路由数组
 
-**适用场景**：
-- 实时游戏
-- 高频交易
-- 在线服务
-- 交互式应用
+客户端响应路由使用定长指针数组，`idx = msgid & (max_pending_callbacks - 1)`
+（`src/uvrpc_client.c:146`）：
 
-**典型性能**：
-- 延迟：< 1ms
-- 吞吐量：~118k ops/s
+- **O(1) 查找**：位与代替取模，直接数组访问，无哈希计算
+- **可配置**：运行时 `uvrpc_config_set_max_pending_callbacks(config, n)`。`n` 必须是
+  2 的幂、且落在 `[64, UVRPC_MAX_PENDING_CALLBACKS]`（`1<<22`）内；不满足时**静默回落**
+  到 `UVRPC_DEFAULT_PENDING_CALLBACKS`（`1<<16`），不报错（`src/uvrpc_config.c:90-101`）
+- **内存开销**：数组本身每槽一个指针，默认 65,536 槽约 512 KB；每个在途请求另分配一个
+  `pending_callback_t`，本机实测 `sizeof` 为 24 字节（`msgid` + 回调 + ctx，
+  `src/uvrpc_client.c:29-34`）。条目里曾经带着一个 152 字节的 `uv_timer_t` 和
+  `generation` / `method` / `is_polling` 等从未读取的字段，2026-09-29 一并删除
 
-#### 高吞吐模式 (UVRPC_PERF_HIGH_THROUGHPUT)
-
-```c
-uvrpc_config_set_performance_mode(config, UVRPC_PERF_HIGH_THROUGHPUT);
-```
-
-**特点**：
-- 允许请求批处理
-- 最大化吞吐量
-- 适用于批处理场景
-
-**适用场景**：
-- 批量数据处理
-- 日志收集
-- 数据同步
-- 后台任务
-
-**典型性能**：
-- 延迟：略高
-- 吞吐量：~119k ops/s
-
-#### 环形缓冲区优化
-
-客户端回调路由使用环形缓冲区数组，性能优势：
-
-- **O(1) 查找**：直接数组访问，无哈希计算
-- **缓存友好**：顺序内存访问，无指针跳转
-- **内存高效**：83% 内存节省（24字节 vs 80字节/条目）
-- **可配置**：编译期配置 `UVRPC_MAX_PENDING_CALLBACKS`
+需要知道的代价：只要两个 msgid 低位相同就撞同一槽，槽被占用时新调用直接被拒
+（`UVRPC_ERROR_CALLBACK_LIMIT`）。所以这个数组"满"并不等于在途请求真的达到容量上限，
+撞槽即算满。完整分析见项目记忆 `ring-buffer-over-uthash` 页。
 
 ```c
-// 编译期配置
-#define UVRPC_MAX_PENDING_CALLBACKS 10000  // 默认
-#define UVRPC_MAX_PENDING_CALLBACKS 100000  // 高并发
+// 正确用法：必须是 2 的幂
+uvrpc_config_set_max_pending_callbacks(config, 1 << 16);  // 默认，65,536 槽
+uvrpc_config_set_max_pending_callbacks(config, 1 << 20);  // 高并发，上限 1 << 22
 ```
 
 ## 扩展性
 
 ### 自定义传输
 
-通过实现 `uvrpc_transport_t` 接口可以添加自定义传输协议。
-
+通过实现 `uvbus_transport_vtable_t`（7 个函数指针，`include/uvbus.h:129-137`）
+并把它挂到 `create_transport()` 的分支上（`src/uvbus.c:107-118`），可以添加自定义传输协议。
 ### 自定义序列化
 
 通过修改 `uvrpc_flatbuffers.c` 可以支持其他序列化格式。
@@ -967,7 +927,7 @@ UVRPC 的设计哲学强调：
 - **性能**：零拷贝、高效分配、事件驱动
 - **灵活性**：循环注入、多协议、自定义扩展
 - **可靠性**：错误处理、资源管理、异步保证
-- **零全局变量**：用户层面完全无全局变量，支持多实例
+- **零可变全局**：文件作用域没有会被请求改写的变量，支持多实例
 - **类型安全**：FlatBuffers DSL 生成类型安全的 API，自动生成处理器和调用代码
 - **统一抽象**：多协议使用统一接口，仅需修改 URL 即可切换传输
 - **灵活部署**：多实例可独立运行或共享事件循环
@@ -975,8 +935,9 @@ UVRPC 的设计哲学强调：
 
 这些原则使 UVRPC 成为一个高性能、易用、灵活的 RPC 框架，适合各种应用场景。
 
-INPROC 传输作为唯一使用内部全局变量的实现，通过精心设计确保：
+INPROC/SAMELOOP 是唯二需要跨连接共享状态的传输，通过精心设计确保：
 - 不影响用户代码
-- 不占用 `loop->data`
+- 不创建线程、不加锁、没有文件作用域可变全局
+- INPROC/SAMELOOP 的共享状态挂在 `loop->data`（带 magic 守卫，冲突时拒绝而非覆盖）
 - 支持多实例并发
 - 提供最优性能

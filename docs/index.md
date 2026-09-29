@@ -7,7 +7,7 @@ titleTemplate: false
 hero:
   name: UVRPC
   text: Ultra-Fast C99 RPC Framework
-  tagline: Zero threads. Zero locks. Zero globals. ~245,000 req/s in-process.
+  tagline: Zero threads. Zero locks. Zero mutable globals. ~205,000 req/s in-process.
   actions:
     - theme: brand
       text: Quick Start
@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 🚀 Ultra-Fast
-    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~245,000 req/s at ~4 µs round-trip latency.
+    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~205,000 req/s at ~4.9 µs round-trip latency.
     link: /guide/benchmark
   - title: 🎯 Minimal by Design
     details: Zero threads, zero locks, zero file-scope globals in library code. All I/O is driven by a single libuv event loop — lock-free by construction.
@@ -125,12 +125,14 @@ int main(void) {
 ## Performance
 
 Sequential ping-pong (one request in flight), 8-byte payload, Release build,
-single thread. Measured with [`perf_benchmark`](https://github.com/adam-ikari/uvrpc/tree/main/benchmark).
+single thread. Measured with [`perf_benchmark`](https://github.com/adam-ikari/uvrpc/tree/main/benchmark) on the
+author's machine — numbers vary widely by host, see [Benchmark](/guide/benchmark)
+for methodology and a second machine's figures.
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | ~4 µs   | ~245,000 req/s | Same-loop, vtable bypass (fastest) |
-| INPROC    | ~4 µs   | ~245,000 req/s | In-process zero-copy |
+| SAMELOOP  | ~4.9 µs | ~205,000 req/s | Same-loop, vtable bypass (fastest) |
+| INPROC    | ~4.9 µs | ~205,000 req/s | In-process zero-copy |
 | IPC       | ~31 µs  | ~33,000 req/s  | Local inter-process (Unix socket) |
 | UDP       | ~38 µs  | ~26,000 req/s  | Loss-tolerant, high-throughput |
 | TCP       | ~46 µs  | ~22,000 req/s  | Reliable network RPC |
@@ -145,7 +147,7 @@ request in flight), **not** pipelined throughput. Reproduce with
 
 - **Zero threads** — all I/O is managed by the libuv event loop. No thread pools, no background workers.
 - **Zero locks** — the single-threaded model makes mutexes, spinlocks, and atomics unnecessary.
-- **Zero globals** — library code has no file-scope mutable globals (system/mimalloc builds); all state lives in context objects.
+- **Zero mutable globals** — library code has no file-scope mutable globals (system/mimalloc builds); all state lives in context objects.
 
 [Read the full design philosophy →](/guide/design-philosophy)
 

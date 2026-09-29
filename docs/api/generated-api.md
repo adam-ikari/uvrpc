@@ -12,132 +12,166 @@
 
 ### 1. 定义服务（FlatBuffers DSL）
 
-```flatbuffers
-namespace Calculator;
+DSL 是普通 FlatBuffers schema 加一段 `rpc_service` 声明 —— 请求与响应必须先各自
+声明成 table，服务只写"方法 → (请求表): 响应表"。下面是仓库里真实可跑的
+`schema/rpc_api.fbs`（节选）：
 
-// RPC 服务定义
-rpc_service Calculator {
-    // 加法
-    Add(int32 a, int32 b): int32;
-    
-    // 减法
-    Subtract(int32 a, int32 b): int32;
-    
-    // 乘法
-    Multiply(int32 a, int32 b): int32;
-    
-    // 除法
-    Divide(int32 a, int32 b): int32;
+```flatbuffers
+namespace rpc;
+
+table MathAddRequest {
+    a: int32;
+    b: int32;
+}
+
+table MathAddResponse {
+    result: int32;
+}
+
+/* 服务声明：Method(RequestType):ResponseType; */
+rpc_service MathService {
+    Add(MathAddRequest):MathAddResponse;
+    Subtract(MathSubtractRequest):MathSubtractResponse;
+    Multiply(MathMultiplyRequest):MathMultiplyResponse;
+    Divide(MathDivideRequest):MathDivideResponse;
 }
 ```
+
+::: warning 不是 grpc 那种内联参数表
+`Add(int32 a, int32 b): int32` 这种写法**不支持**。方法签名只能引用已声明的 table，
+因为生成物靠 flatcc 读写这些表；没有对应 table 的标量参数会在解析阶段被拒。
+:::
 
 ### 2. 生成代码
 
 ```bash
-# 运行代码生成器
-python tools/rpc_dsl_generator.py schema/rpc_example.fbs
+# flatcc 由 setup_deps.sh 装到 deps/flatcc/bin
+python3 tools/uvrpcc.py schema/rpc_api.fbs -o generated/ \
+    --flatcc deps/flatcc/bin/flatcc
 ```
+
+一个 `rpc_service` 产出五个文件（以 `MathService` 为例）：
+
+| 文件 | 内容 |
+|---|---|
+| `rpc_mathservice_api.h` | 对外声明：server/client 生命周期 + 每个方法的 async 与 `_sync` 版本 |
+| `rpc_mathservice_server_stub.c` | 注册给 UVRPC 的分发回调，转调你实现的 `..._handle_request` |
+| `rpc_mathservice_client.c` | 每个方法的序列化 + 发送 |
+| `rpc_mathservice_rpc_common.{h,c}` | 方法的请求/响应 POJO，以及 `..._all` / `..._any` 组合调用 |
+
+外加 flatcc 自己生成的 `rpc_api_reader.h` / `rpc_api_builder.h` 与
+`flatbuffers_common_{reader,builder}.h`。
 
 ### 3. 服务器端使用生成的 API
 
+服务端只需要实现**一个函数**：`uvrpc_<service>_handle_request`。生成的 stub 已经
+把帧解出来、按 `method_name` 转交给你，响应也用 UVRPC 原生对象发回。
+
 ```c
-#include "generated/calculator_server.h"
+#include "generated/rpc_mathservice_api.h"
 
-// 1. 实现处理器（使用 uvrpc_前缀避免重名）
-void uvrpc_Calculator_Add(uint32_t msgid, 
-                          const int32_t* params, 
-                          size_t params_size,
-                          void* ctx) {
-    int32_t a = params[0];
-    int32_t b = params[1];
-    int32_t result = a + b;
-    
-    // 发送响应
-    uvrpc_Calculator_Add_send_response(msgid, &result, 1, ctx);
+/* 声明在生成头里，必须由你实现 */
+uvrpc_error_t uvrpc_mathservice_handle_request(const char* method_name,
+                                              const void* request,
+                                              uvrpc_request_t* req) {
+    if (strcmp(method_name, "Add") == 0) {
+        /* 必须用 _as_root 解引用 flatbuffer 根偏移，直接把指针当 table 用会读错位置 */
+        rpc_MathAddRequest_table_t r = rpc_MathAddRequest_as_root(request);
+        int32_t a = rpc_MathAddRequest_a(r);
+        int32_t b = rpc_MathAddRequest_b(r);
+
+        flatcc_builder_t builder;
+        flatcc_builder_init(&builder);
+        rpc_MathAddResponse_start_as_root(&builder);
+        rpc_MathAddResponse_result_add(&builder, a + b);
+        rpc_MathAddResponse_end_as_root(&builder);
+
+        size_t size;
+        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
+        uvrpc_request_send_response(req, UVRPC_OK, buf, size);
+        flatcc_builder_free(buf);
+        flatcc_builder_clear(&builder);
+        return UVRPC_OK;
+    }
+    return UVRPC_ERROR_NOT_FOUND;
 }
 
-void uvrpc_Calculator_Subtract(uint32_t msgid,
-                               const int32_t* params,
-                               size_t params_size,
-                               void* ctx) {
-    int32_t a = params[0];
-    int32_t b = params[1];
-    int32_t result = a - b;
-    
-    uvrpc_Calculator_Subtract_send_response(msgid, &result, 1, ctx);
-}
-
-// 2. 创建并启动服务器（生成的代码自动调用这些函数）
-int main() {
+int main(void) {
     uv_loop_t loop;
     uv_loop_init(&loop);
-    
-    // 创建服务器（生成的代码内部会自动调用 uvrpc_Calculator_Add、uvrpc_Calculator_Subtract）
-    uvrpc_Calculator_server_t* server = uvrpc_Calculator_server_create(&loop, 
-                                                                       "tcp://127.0.0.1:5555");
-    
-    // 启动服务器
-    uvrpc_Calculator_server_start(server);
-    
-    // 运行事件循环
+
+    uvrpc_server_t* server = uvrpc_mathservice_create_server(&loop, "tcp://127.0.0.1:5555");
+    if (!server) return 1;
+    if (uvrpc_mathservice_start_server(server) != UVRPC_OK) return 1;
+
     uv_run(&loop, UV_RUN_DEFAULT);
-    
-    // 清理
-    uvrpc_Calculator_server_free(server);
+
+    uvrpc_mathservice_free_server(server);
     uv_loop_close(&loop);
-    
     return 0;
 }
 ```
 
 ### 4. 客户端使用生成的 API
 
+每个方法给两条路：`uvrpc_<service>_<Method>`（回调式）与
+`uvrpc_<service>_<Method>_sync`（内部走 `uvrpc_async`，可带超时）。
+
 ```c
-#include "generated/calculator_client.h"
+#include "generated/rpc_mathservice_api.h"
 
-// 响应回调
-void on_Calculator_Add_response(uvrpc_Calculator_Add_response_t* response, void* ctx) {
-    if (response->error == 0) {
-        printf("Add result: %d\n", response->result);
+/* 回调里既要发请求又要收尾，所以把 client 与 loop 一起带过去 */
+typedef struct { uvrpc_client_t* client; uv_loop_t* loop; } session_t;
+
+static void on_add(uvrpc_response_t* resp, void* ctx) {
+    session_t* s = (session_t*)ctx;
+
+    if (resp->status != UVRPC_OK) {
+        printf("Add failed: %d\n", resp->status);
     } else {
-        printf("Add error: %d\n", response->error);
+        rpc_MathAddResponse_table_t r = rpc_MathAddResponse_as_root(resp->result);
+        printf("Add result: %d\n", rpc_MathAddResponse_result(r));
     }
+    uv_stop(s->loop);          /* 否则 UV_RUN_DEFAULT 不会返回：连接句柄仍活跃 */
 }
 
-void on_Calculator_Subtract_response(uvrpc_Calculator_Subtract_response_t* response, void* ctx) {
-    if (response->error == 0) {
-        printf("Subtract result: %d\n", response->result);
-    } else {
-        printf("Subtract error: %d\n", response->error);
+static void on_connect(int status, void* ctx) {
+    session_t* s = (session_t*)ctx;
+    if (status != 0) {
+        fprintf(stderr, "connect failed: %d\n", status);
+        uv_stop(s->loop);
+        return;
     }
+    rpc_MathAddRequest_t req = { .a = 10, .b = 20 };
+    uvrpc_mathservice_Add(s->client, on_add, s, &req);
 }
 
-// 1. 创建客户端
-int main() {
+int main(void) {
     uv_loop_t loop;
     uv_loop_init(&loop);
-    
-    // 创建客户端（生成的 API）
-    uvrpc_Calculator_client_t* client = uvrpc_Calculator_client_create(&loop,
-                                                                       "tcp://127.0.0.1:5555");
-    
-    // 连接（生成的 API）
-    uvrpc_Calculator_client_connect(client);
-    
-    // 调用 RPC（生成的 API）
-    int32_t a = 10, b = 20;
-    uvrpc_Calculator_client_Add(client, a, b, on_Calculator_Add_response, NULL);
-    uvrpc_Calculator_client_Subtract(client, a, b, on_Calculator_Subtract_response, NULL);
-    
-    // 运行事件循环
+
+    session_t s = { .loop = &loop };
+    s.client = uvrpc_mathservice_create_client(&loop, "tcp://127.0.0.1:5555",
+                                               on_connect, &s);
+    if (!s.client) return 1;
+
+    /* create_client 内部已发起连接；请求在 on_connect 里发出。
+     * 连接是异步的，绝不要在这里抢先调用 RPC。 */
     uv_run(&loop, UV_RUN_DEFAULT);
-    
-    // 清理
-    uvrpc_Calculator_client_free(client);
+
+    uvrpc_mathservice_free_client(s.client);
     uv_loop_close(&loop);
-    
     return 0;
 }
+```
+
+同步写法（`_sync` 内部用 `uvrpc_async` 驱动所属 loop，直到响应到达或 `timeout_ms` 到期）：
+
+```c
+rpc_MathAddRequest_t req = { .a = 10, .b = 20 };
+rpc_MathAddResponse_t resp;
+uvrpc_error_t err = uvrpc_mathservice_Add_sync(client, &resp, &req, 5000 /* ms */);
+if (err == UVRPC_OK) printf("result = %d\n", resp.result);
 ```
 
 ## 生成的 API 结构
@@ -145,144 +179,74 @@ int main() {
 ### 服务器端 API
 
 ```c
-/* 生成的服务器类型 */
-typedef struct uvrpc_Calculator_server uvrpc_Calculator_server_t;
+/* 由你实现：所有方法共用这一个入口，按 method_name 分派 */
+uvrpc_error_t uvrpc_mathservice_handle_request(const char* method_name,
+                                              const void* request,
+                                              uvrpc_request_t* req);
 
-/* 用户实现的处理器（uvrpc_前缀避免重名） */
-void uvrpc_Calculator_Add(uint32_t msgid, const int32_t* params, size_t params_size, void* ctx);
-void uvrpc_Calculator_Subtract(uint32_t msgid, const int32_t* params, size_t params_size, void* ctx);
-
-/* 创建服务器（内部自动调用用户实现的函数） */
-uvrpc_Calculator_server_t* uvrpc_Calculator_server_create(uv_loop_t* loop,
-                                                              const char* address);
-
-/* 发送响应 */
-void uvrpc_Calculator_Add_send_response(uint32_t msgid,
-                                        const int32_t* result,
-                                        size_t result_size,
-                                        void* ctx);
-
-void uvrpc_Calculator_Subtract_send_response(uint32_t msgid,
-                                             const int32_t* result,
-                                             size_t result_size,
-                                             void* ctx);
-
-/* 启动/停止 */
-void uvrpc_Calculator_server_start(uvrpc_Calculator_server_t* server);
-void uvrpc_Calculator_server_stop(uvrpc_Calculator_server_t* server);
-
-/* 释放 */
-void uvrpc_Calculator_server_free(uvrpc_Calculator_server_t* server);
+/* 生命周期。句柄类型就是通用的 uvrpc_server_t，没有 per-service 类型 */
+uvrpc_server_t* uvrpc_mathservice_create_server(uv_loop_t* loop, const char* address);
+uvrpc_error_t   uvrpc_mathservice_start_server(uvrpc_server_t* server);
+void            uvrpc_mathservice_stop_server(uvrpc_server_t* server);
+void            uvrpc_mathservice_free_server(uvrpc_server_t* server);
 ```
 
 ### 客户端 API
 
 ```c
-/* 生成的客户端类型 */
-typedef struct uvrpc_Calculator_client uvrpc_Calculator_client_t;
+/* 句柄类型是通用的 uvrpc_client_t；callback/ctx 透传给
+ * uvrpc_client_connect_with_callback()，可为 NULL */
+uvrpc_client_t* uvrpc_mathservice_create_client(uv_loop_t* loop,
+                                                const char* address,
+                                                uvrpc_connect_callback_t callback,
+                                                void* ctx);
+void uvrpc_mathservice_free_client(uvrpc_client_t* client);
 
-/* 创建客户端 */
-uvrpc_Calculator_client_t* uvrpc_Calculator_client_create(uv_loop_t* loop,
-                                                              const char* address);
+/* 请求/响应是普通结构体（在 rpc_common.h 里），不是生成的句柄类型 */
+typedef struct { int32_t a; int32_t b; } rpc_MathAddRequest_t;
+typedef struct { int32_t result; }       rpc_MathAddResponse_t;
 
-/* 连接/断开 */
-void uvrpc_Calculator_client_connect(uvrpc_Calculator_client_t* client);
-void uvrpc_Calculator_client_disconnect(uvrpc_Calculator_client_t* client);
+/* 回调式：callback 是标准的 uvrpc_callback_t，收到的是 flatcc 缓冲区 */
+uvrpc_error_t uvrpc_mathservice_Add(uvrpc_client_t* client,
+                                    uvrpc_callback_t callback, void* ctx,
+                                    const rpc_MathAddRequest_t* request);
 
-/* 响应类型 */
-typedef struct {
-    uvrpc_error_t error;
-    int32_t result;
-} uvrpc_Calculator_Add_response_t;
-
-typedef struct {
-    uvrpc_error_t error;
-    int32_t result;
-} uvrpc_Calculator_Subtract_response_t;
-
-/* 响应回调类型 */
-typedef void (*uvrpc_Calculator_Add_callback_t)(uvrpc_Calculator_Add_response_t* response,
-                                               void* ctx);
-
-typedef void (*uvrpc_Calculator_Subtract_callback_t)(uvrpc_Calculator_Subtract_response_t* response,
-                                                    void* ctx);
-
-/* RPC 调用 */
-void uvrpc_Calculator_client_Add(uvrpc_Calculator_client_t* client,
-                                   int32_t a,
-                                   int32_t b,
-                                   uvrpc_Calculator_Add_callback_t callback,
-                                   void* ctx);
-
-void uvrpc_Calculator_client_Subtract(uvrpc_Calculator_client_t* client,
-                                        int32_t a,
-                                        int32_t b,
-                                        uvrpc_Calculator_Subtract_callback_t callback,
-                                        void* ctx);
-
-/* 释放 */
-void uvrpc_Calculator_client_free(uvrpc_Calculator_client_t* client);
+/* 同步式：timeout_ms 在这里，不在任何 config 上 */
+uvrpc_error_t uvrpc_mathservice_Add_sync(uvrpc_client_t* client,
+                                         rpc_MathAddResponse_t* response,
+                                         const rpc_MathAddRequest_t* request,
+                                         uint64_t timeout_ms);
 ```
+
+`rpc_common` 里另有组合调用：`uvrpc_mathservice_add_all(...)` 并发发出同一方法的多组
+请求并等齐，`..._any(...)` 取最先完成者，两者也都接受 `timeout_ms`。
 
 ## 命名约定
 
 ### 前缀规则
 
-所有生成的代码都使用 `uvrpc_` 前缀，避免与用户代码重名和污染命名空间：
+生成符号统一带前缀，避免污染用户命名空间：
 
-**类型定义**：
-```c
-typedef struct uvrpc_{Service}_server uvrpc_{Service}_server_t;
-typedef struct uvrpc_{Service}_client uvrpc_{Service}_client_t;
-```
+| 来源 | 生成名 | 例 |
+|---|---|---|
+| 服务名 | `uvrpc_<service_lower>_<verb>` | `uvrpc_mathservice_create_server` |
+| 方法（异步） | `uvrpc_<service_lower>_<Method>` | `uvrpc_mathservice_Add` |
+| 方法（同步） | 上一项加 `_sync` | `uvrpc_mathservice_Add_sync` |
+| 请求/响应结构 | `rpc_<Table>Request_t` / `rpc_<Table>Response_t` | `rpc_MathAddRequest_t` |
+| 平表读写 | flatcc 的 `rpc_<Table>_as_root` / `_a` 等 | `rpc_MathAddResponse_result(r)` |
+| 文件名 | `rpc_<schema>_<service>_{api.h,client.c,server_stub.c,rpc_common.{h,c}}` | `rpc_mathservice_api.h` |
 
-**函数名**：
-```c
-// 处理器
-void uvrpc_{Service}_{Method}(uint32_t msgid, const {Params}*, size_t params_size, void* ctx);
-
-// 服务器 API
-uvrpc_{Service}_server_t* uvrpc_{Service}_server_create(uv_loop_t* loop, const char* address);
-void uvrpc_{Service}_server_start(uvrpc_{Service}_server_t* server);
-void uvrpc_{Service}_server_free(uvrpc_{Service}_server_t* server);
-
-// 客户端 API
-uvrpc_{Service}_client_t* uvrpc_{Service}_client_create(uv_loop_t* loop, const char* address);
-void uvrpc_{Service}_client_connect(uvrpc_{Service}_client_t* client);
-void uvrpc_{Service}_client_free(uvrpc_{Service}_client_t* client);
-
-// RPC 调用
-void uvrpc_{Service}_client_{Method}(uvrpc_{Service}_client_t* client, ...);
-
-// 响应类型
-typedef struct uvrpc_{Service}_{Method}_response uvrpc_{Service}_{Method}_response_t;
-
-// 响应发送
-void uvrpc_{Service}_{Method}_send_response(uint32_t msgid, ...);
-```
+`service_lower` 是服务名整体小写（`MathService` → `mathservice`）；表名前缀取自
+schema 的 `namespace`。
 
 ### 优势
 
-1. **避免重名**：所有生成的符号都有统一前缀
+1. **避免重名**：所有生成符号都有统一前缀
 2. **命名空间隔离**：用户代码不会与生成代码冲突
-3. **清晰归属**：一眼就能看出是生成的代码
-4. **IDE 友好**：自动补全更容易找到生成的函数
-
-### 示例
-
-```c
-// 用户代码
-void Add(int a, int b) {  // 用户自己的函数
-    return a + b;
-}
-
-// 生成的代码
-void uvrpc_Calculator_Add(uint32_t msgid, const int32_t* params, size_t params_size, void* ctx) {
-    // RPC 处理器
-}
-
-// 不会冲突！
-```
+3. **清晰归属**：一眼看出是生成的代码
+4. **IDE 友好**：自动补全更容易找到生成函数
+5. **不藏 UVRPC**：句柄仍是 `uvrpc_server_t` / `uvrpc_client_t`，需要时可以直接用通用
+   API（例如自己调 `uvrpc_client_call_batch()`），生成层不做不透明的包装
 
 ## 代码生成器实现
 
@@ -529,35 +493,36 @@ void {Service}_client_free({Service}_client_t* client) {{
 
 ### 异步回调
 
-```c
-// 支持异步处理器
-void Calculator_Add_async_handler(uint32_t msgid,
-                                  const int32_t* params,
-                                  size_t params_size,
-                                  void* ctx) {
-    // 异步处理
-    async_compute(params, [](int32_t result) {
-        // 异步发送响应
-        Calculator_Add_send_response(msgid, &result, 1, ctx);
-    });
-}
-```
+回调类型是通用的 `uvrpc_callback_t`，参数是 `uvrpc_response_t*`：`resp->result`
+指向 flatcc 缓冲区，用 `rpc_<Table>..._as_root()` 读取，指针只在回调期间有效。
 
 ### 超时控制
 
-```c
-// 支持超时
-Calculator_client_t* client = Calculator_client_create(&loop, "tcp://127.0.0.1:5555");
-Calculator_client_set_timeout(client, 5000);  // 5 秒超时
-```
+超时**只存在于 `_sync` 与 `_all` / `_any` 这些等待型包装上**，作为显式的
+`timeout_ms` 入参（`0` 表示不超时）。异步回调式没有超时：RPC 层不掌握你的等待意图，
+需要就自己起 `uv_timer`。`uvrpc_config_t` 上曾有 `timeout_ms` 字段，因无人读取已删除
+—— 把它加回来之前请先确认你真的需要它生效。
 
 ### 重试机制
 
-```c
-// 支持重试
-Calculator_client_t* client = Calculator_client_create(&loop, "tcp://127.0.0.1:5555");
-Calculator_client_set_retry(client, 3);  // 重试 3 次
-```
+生成代码不含重试逻辑；它直接调用 `uvrpc_client_call()`，而后者只在
+`uvrpc_client_set_max_retries()` 设置过值时做同步重投（同一进程内立即重试，不泵循环）。
+需要带退避的重试用 `uvrpc_async_retry_with_backoff()`。
+
+### 缓冲区归属
+
+生成的 client.c 与仓库里的例子都用 `free()` 释放 `flatcc_builder_finalize_buffer()`
+得到的缓冲区 —— 这是对的：flatcc 用的是自己的分配器（默认即 malloc），不是
+`uvrpc_alloc`。因此**不要**把 flatcc 缓冲区交给 `uvrpc_free()`，在 mimalloc 或自定义
+分配器构建下那是跨堆释放。
+
+::: warning 库里有一处不一致（已知缺陷，尚未修）
+`uvrpc_encode_request()` 等编解码函数返回的正是 flatcc 分配的缓冲区，而
+`src/uvrpc_client.c` 用 `uvrpc_free(req_data)` 释放它们。system 分配器构建下两者同源、
+看不出问题；mimalloc 构建下属于跨堆释放。服务端侧（`src/uvrpc_server.c:117`）用的是
+`free()`，是对的。修它需要先定契约：要么让 codec 走 `uvrpc_alloc`（用
+`flatcc_builder_set_alloc`），要么把客户端侧的释放统一改成 `free()`。
+:::
 
 ## 总结
 

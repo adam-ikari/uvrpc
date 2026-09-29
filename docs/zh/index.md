@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "UVRPC"
   text: "超快速 C99 RPC 框架"
-  tagline: "零线程，零锁，零全局变量。进程内约 245,000 req/s。"
+  tagline: "零线程，零锁，零可变全局。进程内约 205,000 req/s。"
   actions:
     - theme: brand
       text: 快速开始
@@ -15,10 +15,10 @@ hero:
 
 features:
   - title: 🚀 超快速
-    details: "基于 libuv 事件循环和 FlatBuffers 序列化，SAMELOOP/INPROC 传输约 245,000 req/s（~4 µs 往返延迟）。"
+    details: "基于 libuv 事件循环和 FlatBuffers 序列化，SAMELOOP/INPROC 传输约 205,000 req/s（~4.9 µs 往返延迟）。"
     link: /zh/guide/benchmark
   - title: 🎯 极简设计
-    details: "零线程、零锁、零全局变量。所有 I/O 由 libuv 事件循环管理，库代码无文件级可变全局变量。"
+    details: "零线程、零锁、零可变全局。所有 I/O 由 libuv 事件循环管理，库代码无文件级可变全局变量。"
     link: /zh/guide/design-philosophy
   - title: 🔌 五种传输，统一 API
     details: "支持 TCP、UDP、IPC、INPROC、SAMELOOP 传输，仅改地址前缀即可切换，服务端/客户端 API 完全一致。"
@@ -58,8 +58,8 @@ cd uvrpc
 
 | 传输层 | 往返延迟 | 吞吐量 (1/延迟) | 适用场景 |
 |--------|----------|-----------------|----------|
-| SAMELOOP | ~4 µs   | ~245,000 req/s | 同循环，vtable 旁路（最快）|
-| INPROC   | ~4 µs   | ~245,000 req/s | 进程内零拷贝 |
+| SAMELOOP | ~4.9 µs | ~205,000 req/s | 同循环，vtable 旁路（最快）|
+| INPROC   | ~4.9 µs | ~205,000 req/s | 进程内零拷贝 |
 | IPC      | ~31 µs  | ~33,000 req/s  | 本地进程间（Unix 套接字）|
 | UDP      | ~38 µs  | ~26,000 req/s  | 高吞吐、可丢包 |
 | TCP      | ~46 µs  | ~22,000 req/s  | 可靠网络 RPC |
@@ -73,7 +73,7 @@ cd uvrpc
 
 - **零线程**——所有 I/O 由 libuv 事件循环管理，无线程池、无后台 worker。
 - **零锁**——单线程模型使互斥锁、自旋锁、原子操作都不必要。
-- **零全局变量**——库代码无文件级可变全局变量（system/mimalloc 构建），所有状态在 context 对象中。
+- **零可变全局**——库代码无文件级可变全局变量（system/mimalloc 构建），所有状态在 context 对象中。
 
 [阅读完整设计哲学 →](/zh/guide/design-philosophy)
 

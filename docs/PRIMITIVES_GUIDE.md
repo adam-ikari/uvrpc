@@ -416,7 +416,11 @@ uvrpc_promise_then(&combined, on_complete, data);
 
 ### 5. Thread Safety
 
-Primitives use atomic operations and are thread-safe for multi-threaded event loops. However, ensure consistent event loop usage:
+Primitives are **not** thread-safe and use no atomics — that is the point of the
+single-threaded model. A primitive belongs to exactly one `uv_loop_t` and must only
+be driven from the thread that owns that loop. "Consistent event loop usage" is not
+a style preference here: sharing one primitive across loops is a data race on plain
+pointers. If you need parallelism, run one loop per thread with its own primitives:
 
 ```c
 // Each thread should have its own loop and primitives

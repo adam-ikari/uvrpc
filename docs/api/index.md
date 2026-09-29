@@ -62,28 +62,35 @@ Transport types (`include/uvbus.h`):
 | `UVBUS_TRANSPORT_INPROC` | 3 | In-process (same process) |
 | `UVBUS_TRANSPORT_SAMELOOP` | 4 | Same-loop, vtable bypass |
 
-#### `uvrpc_config_set_performance_mode()`
-
-```c
-uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode);
-```
-
-- `UVRPC_PERF_LOW_LATENCY` (0) — process immediately, minimal batching.
-- `UVRPC_PERF_HIGH_THROUGHPUT` (1) — batch processing for bulk operations.
-
 #### Tuning setters
 
 All return the config pointer for chaining.
 
 ```c
-uvrpc_config_t* uvrpc_config_set_pool_size(uvrpc_config_t* config, int pool_size);
 uvrpc_config_t* uvrpc_config_set_max_clients(uvrpc_config_t* config, int max_clients);
 uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_concurrent);
 uvrpc_config_t* uvrpc_config_set_max_pending_callbacks(uvrpc_config_t* config, int max_pending);
-uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, uint64_t timeout_ms);
-uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval_ms);
 uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t offset);
 ```
+
+- `max_concurrent` — quota on requests awaiting their final response, checked on
+  both `uvrpc_client_call()` and `uvrpc_client_call_batch()`; exceeding it returns
+  `UVRPC_ERROR_RATE_LIMITED`. Oneway sends are not counted (they take no slot).
+  Default `UVRPC_MAX_CONCURRENT_REQUESTS` (100).
+- `max_pending_callbacks` — size of the callback routing table. Must be a power of
+  two in `[64, UVRPC_MAX_PENDING_CALLBACKS]`; anything else silently falls back to
+  `UVRPC_DEFAULT_PENDING_CALLBACKS` (`1 << 16`).
+- `max_clients` — server-side connection quota. `0` or less selects the 1024
+  default; there is no unlimited mode.
+
+::: warning Removed knobs
+`uvrpc_config_set_performance_mode`, `uvrpc_config_set_pool_size`,
+`uvrpc_config_set_timeout` and `uvrpc_config_set_pump_interval` were deleted: they
+were stored and never read. There is no batching mode, no connection pool, and no
+per-request timeout in the RPC path (`uvrpc_async_*` helpers take an explicit
+timeout argument, which is enforced). Ask for a real timeout on the issue tracker
+rather than passing a value that does nothing.
+:::
 
 ## Server
 
@@ -245,7 +252,7 @@ int uvrpc_client_call_batch(uvrpc_client_t* client, const char* method,
 #### Tuning & introspection
 
 ```c
-void uvrpc_client_set_max_concurrent(uvrpc_client_t* client, int max);
+int  uvrpc_client_set_max_concurrent(uvrpc_client_t* client, int max);  /* UVRPC_OK / UVRPC_ERROR_INVALID_PARAM */
 void uvrpc_client_set_max_retries(uvrpc_client_t* client, int max_retries);
 int  uvrpc_client_get_max_retries(uvrpc_client_t* client);
 int  uvrpc_client_get_pending_count(uvrpc_client_t* client);

@@ -224,12 +224,16 @@ for (int i = 0; i < 50; i++) {
     uv_run(&loop, UV_RUN_ONCE);
 }
 
-// 批量发送请求
+/* 批量发送：方法与参数都是数组，还要给每个请求各自的回调与 ctx。
+ * count 会一次性占用 N 个在途名额，超过 max_concurrent 直接返回
+ * UVRPC_ERROR_RATE_LIMITED（整批不发出）。 */
 const char* methods[] = {"method1", "method2", "method3"};
 const uint8_t* params[] = {data1, data2, data3};
 size_t sizes[] = {size1, size2, size3};
+uvrpc_callback_t cbs[] = {cb1, cb2, cb3};
+void* ctxs[] = {ctx1, ctx2, ctx3};
 
-uvrpc_client_call_batch(client, methods, params, sizes, 3);
+int ret = uvrpc_client_call_batch(client, methods, params, sizes, cbs, ctxs, 3);
 
 // 等待所有响应
 for (int i = 0; i < 100; i++) {

@@ -44,7 +44,7 @@ with the default allocator. For the system allocator instead of mimalloc, use
 
 ## ✨ Features
 
-- **Zero Threads, Zero Locks, Zero Global Variables** - All I/O managed by libuv event loop; the library has zero file-scope mutable globals (system/mimalloc builds)
+- **Zero Threads, Zero Locks, Zero Mutable Globals** - All I/O managed by libuv event loop; no file-scope mutable globals in system/mimalloc builds (custom allocator builds have exactly one, and INPROC/SAMELOOP keep their endpoint registry on `loop->data`)
 - **High Performance** - ~205,000 req/s sequential round-trip on SAMELOOP/INPROC (~4.9 µs latency)
 - **Multi-Transport Support** - TCP, UDP, IPC, INPROC, SAMELOOP
 - **Multiple RPC Modes** - Normal (request-response), Oneway (fire-and-forget), Stream (multiple responses)
@@ -103,7 +103,7 @@ See [examples/](examples/) for complete examples.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CODING_STANDARDS.md](docs/en/CODING_STANDARDS.md).
+Contributions are welcome! Please read [coding standards](docs/development/coding-standards.md).
 
 ## 📄 License
 

@@ -3,14 +3,14 @@
 ## 系统要求
 
 ### 操作系统
-- Linux (推荐)
+- Linux（推荐，CI 全量覆盖）
 - macOS
-- Windows (通过 WSL)
+- Windows：只支持 WSL。源码里没有任何 `#ifdef _WIN32` 分支，CMake 用的是 GCC 风格的
+  `-static -pthread` 链接标志，也没有 MSVC 的 CI job，别按原生 Windows 构建规划。
 
 ### 编译器
 - GCC >= 4.9
 - Clang >= 3.5
-- MSVC >= 2015 (Windows)
 
 ### 构建工具
 - CMake >= 3.15
@@ -66,39 +66,49 @@ cd uvrpc
 
 ### 从源码编译依赖
 
-如果预编译依赖不可用，可以从源码编译：
+`scripts/setup_deps.sh` 就是官方路径，它按 `cmake/Dependencies.cmake` 期望的目录布局
+构建每个依赖：libuv / gtest / mimalloc 只 build 不 install（产物留在 `deps/<x>/build/`），
+flatcc 额外 `--prefix deps/flatcc` 安装（要提供 `bin/flatcc`）。手工执行等价步骤时
+必须保持同样的落盘位置，否则 configure 找不到：
 
 ```bash
-# libuv
-cd deps/libuv
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-make install
-cd ../..
+git submodule update --init --recursive --force
 
-# mimalloc
-cd deps/mimalloc
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-make install
-cd ../..
+cmake -S deps/libuv -B deps/libuv/build \
+    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+cmake --build deps/libuv/build -j
 
-# FlatCC
-cd deps/flatcc
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-make install
-cd ../..
+cmake -S deps/flatcc -B deps/flatcc/build \
+    -DCMAKE_BUILD_TYPE=Release -DBUILD_FLATCC_TESTS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+cmake --build deps/flatcc/build -j
+cmake --install deps/flatcc/build --prefix deps/flatcc
+
+cmake -S deps/mimalloc -B deps/mimalloc/build \
+    -DCMAKE_BUILD_TYPE=Release -DMI_BUILD_SHARED=OFF -DMI_BUILD_STATIC=ON \
+    -DMI_BUILD_TESTS=OFF -DMI_BUILD_OBJECT=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+cmake --build deps/mimalloc/build -j
+
+cmake -S deps/gtest -B deps/gtest/build \
+    -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=OFF -DINSTALL_GTEST=OFF
+cmake --build deps/gtest/build -j
 ```
+
+`-DCMAKE_POSITION_INDEPENDENT_CODE=ON` 不是可省的：`uvrpc_shared` 要把这些目标文件
+链进共享库。
+
+覆盖查找位置用这些缓存变量：`LIBUV_INSTALL_DIR`、`FLATCC_INSTALL_DIR`、
+`MIMALLOC_INSTALL_DIR`。
 
 ## 构建选项
 
 ### 使用构建脚本（推荐）
 
+依赖必须先构建：`cmake` 找不到系统 flatcc，所以第一步固定是 `setup_deps.sh`。
+
 ```bash
+./scripts/setup_deps.sh           # 拉子模块并构建 libuv/flatcc/mimalloc/gtest
+
 # 默认构建（Release 模式，mimalloc）
 ./build.sh
 
@@ -115,6 +125,8 @@ cd ../..
 ### 使用 CMake
 
 ```bash
+./scripts/setup_deps.sh    # 先构建依赖，否则 configure 在 flatcc 处失败
+
 # 创建构建目录
 mkdir build && cd build
 
@@ -133,8 +145,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
 # 编译
 make -j$(nproc)
 
-# 运行测试
-make test
+# 运行测试（测试默认不构建，需要 -DUVRPC_BUILD_TESTS=ON）
+ctest --output-on-failure
 
 # 安装
 sudo make install
@@ -159,7 +171,7 @@ sudo make install
 ### 可执行文件
 - `dist/bin/simple_server` - 简单服务端示例
 - `dist/bin/simple_client` - 简单客户端示例
-- `dist/bin/uvrpc_tests` - 单元测试
+- `dist/bin/uvrpc_tests` - 单元测试（需 `-DUVRPC_BUILD_TESTS=ON` 才会构建）
 - `dist/bin/test_tcp` - TCP 集成测试
 - `dist/bin/perf_benchmark` - 性能基准测试
 
@@ -175,11 +187,14 @@ sudo make install
 # 运行所有单元测试
 ./dist/bin/uvrpc_tests
 
-# 运行特定测试
+# 按用例名过滤
 ./dist/bin/uvrpc_tests --gtest_filter=AllocatorTest.*
 
-# 输出详细日志
-./dist/bin/uvrpc_tests --gtest_verbose
+# 列出全部用例名（gtest 没有 --gtest_verbose）
+./dist/bin/uvrpc_tests --gtest_list_tests
+
+# UVRPC 自身的调试日志由构建选项决定，不是运行时开关
+# cmake -DUVRPC_DEBUG_LOGGING=ON ..
 ```
 
 ### 集成测试
@@ -218,7 +233,7 @@ cmake --build build --target perf_benchmark
 
 | 传输层 | 往返延迟 | 顺序吞吐量 (1/延迟) | 适用场景 |
 |--------|----------|---------------------|----------|
-| SAMELOOP / INPROC | ~4 µs | ~245,000 req/s | 进程内零拷贝（最快）|
+| SAMELOOP / INPROC | ~4.9 µs | ~205,000 req/s | 进程内零拷贝（最快）|
 | IPC | ~31 µs | ~33,000 req/s | 本地进程间（Unix 套接字）|
 | UDP | ~38 µs | ~26,000 req/s | 高吞吐、可丢包 |
 | TCP | ~46 µs | ~22,000 req/s | 可靠网络 RPC |
@@ -340,14 +355,14 @@ cmake .. && make
 
 **解决**：
 ```bash
-cmake -DLIBUV_ROOT=/path/to/libuv ..
+cmake -DLIBUV_INSTALL_DIR=/path/to/libuv/build ..
 ```
 
 **问题**：找不到 mimalloc 库
 
 **解决**：
 ```bash
-cmake -DMIMALLOC_ROOT=/path/to/mimalloc ..
+cmake -DMIMALLOC_INSTALL_DIR=/path/to/mimalloc ..
 ```
 
 ### 运行时错误
@@ -400,18 +415,25 @@ cmake -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON ..
 make -j$(nproc)
 ```
 
-### 使用 PGO (Profile Guided Optimization)
+### 关于 PGO
+
+项目**没有** `UVRPC_ENABLE_PGO` 这个选项，CMake 里也不存在 profile 生成/复用的分支。
+PGO 只能靠 GCC/Clang 自己的标志手工做两遍，例如：
 
 ```bash
-# 生成配置文件
-cmake -DCMAKE_BUILD_TYPE=Release -DUVRPC_ENABLE_PGO=GENERATE ..
+# 第一遍：插桩生成 profile
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS='-fprofile-instr-generate' ..
 make -j$(nproc)
-./dist/bin/perf_benchmark 100000 inproc
+LLVM_PROFILE_FILE=uvrpc.profraw ./dist/bin/perf_benchmark 100000 inproc
 
-# 使用配置文件优化
-cmake -DCMAKE_BUILD_TYPE=Release -DUVRPC_ENABLE_PGO=USE ..
+# 第二遍：用 profile 优化重建
+llvm-profdata merge -sparse uvrpc.profraw -o uvrpc.profdata
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS='-fprofile-use=uvrpc.profdata' ..
 make -j$(nproc)
 ```
+
+GCC 用 `-fprofile-generate` / `-fprofile-use` 对应。这条路径没有被 CI 覆盖，属于自行
+承担风险的优化手段，别把它当官方构建配置写进脚本。
 
 ## CI/CD 集成
 

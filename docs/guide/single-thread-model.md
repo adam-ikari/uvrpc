@@ -6,7 +6,7 @@ UVRPC严格遵循以下设计原则：
 
 1. **单线程模型**: 所有操作在单个libuv事件循环中执行
 2. **零锁设计**: 不使用任何锁、互斥量或原子操作
-3. **零全局变量**: 不使用全局变量（只读配置除外）
+3. **零可变全局**: 没有会被请求改写的文件作用域变量（`static const` 表除外）
 4. **Loop注入模式**: 通过配置注入用户的事件循环
 
 ## Loop注入模式
@@ -81,24 +81,31 @@ uv_run(&loop, UV_RUN_ONCE);  // 处理响应
 
 ### 无全局状态
 
-- ✅ 无全局loop变量
-- ✅ 无全局服务器实例
-- ✅ 无全局客户端实例
-- ✅ 无共享数据结构
+- ✅ 无全局 loop 变量
+- ✅ 无全局服务器/客户端实例
+- ⚠️ 有 **per-loop** 共享状态：INPROC/SAMELOOP 的端点注册表挂在 `loop->data` 上，
+  带 magic 守卫，冲突时拒绝而非覆盖。这不是进程全局，但确实占用 loop 的一个字段，
+  详见 [架构文档](/architecture/) 的 `loop->data` 一节
 
-### 允许的全局变量
+### 唯一的全局变量
 
-只读配置变量（初始化后不修改）：
+全项目只有一处文件作用域可变全局，且只在 custom 分配器构建里存在：
 
 ```c
-static uvrpc_allocator_type_t g_allocator_type = UVRPC_DEFAULT_ALLOCATOR;
+/* src/uvrpc_allocator.c:48-50，被 #if UVRPC_DEFAULT_ALLOCATOR == CUSTOM 包住 */
 static uvrpc_custom_allocator_t g_custom_allocator = {0};
 ```
 
-这些变量在单线程模型下是安全的，因为：
-1. 只在初始化时设置
-2. 运行时只读
-3. 无并发访问
+它并非只读配置：`uvrpc_allocator_init()` 在运行时写入它（`:107`），传入 NULL 时
+`memset` 清零（`:111`、`:123`）。安全前提是"注册分配器属于初始化动作"，运行中不切换；
+框架自身不在请求路径上改写它。
+
+默认分配器没有对应的运行时类型变量 —— 类型由编译期的 `UVRPC_DEFAULT_ALLOCATOR`
+决定，`uvrpc_alloc/free` 通过预处理分支选择实现（`:10-15`）。system/mimalloc 构建
+里分配器全局数量为 0。
+
+其余文件作用域状态都是只读的：各传输的 `static const` vtable 落在
+`.data.rel.ro.local`，重定位完成后不再改写。
 
 ## 并发模型
 
@@ -128,6 +135,21 @@ libuv保证：
 - 同一时间只有一个回调执行
 - 无并发访问共享数据
 - 无需锁保护
+
+## 资源满了怎么办：三层无锁拒绝
+
+零线程零锁意味着"满了就挂起等待"在这个模型里无处安放 —— 一阻塞就卡死整个 loop。
+所以三处上限统一是 **fail fast，把决定权交回调用者**，全都是同步返回值：
+
+| 触发 | 返回码 | 判据 |
+|---|---|---|
+| 在途请求超配额 | `UVRPC_ERROR_RATE_LIMITED` | `max_concurrent > 0 && current_concurrent + 1 > max_concurrent`；单次调用与批量调用都检查 |
+| 路由槽位被占 | `UVRPC_ERROR_CALLBACK_LIMIT` | `pending_callbacks[msgid & (N-1)]` 已被活跃条目占用（低位撞槽即算满，不等于真的到了 N） |
+| 传输写队列满 | `UVRPC_ERROR_TRANSPORT_BUSY` | `uvbus_send()` 返回 `UVBUS_ERROR_BUFFER_FULL` |
+
+两点要记住：`current_concurrent` 计的是**已登记回调、正等最终响应**的请求，oneway 不占名额；
+`uvrpc_client_call_batch()` 是整批判定，超过配额时一帧都不发出。服务端另有一条同构拒绝：
+连接数达 `max_clients` 时直接回错误响应帧。
 
 ## 多实例支持
 
@@ -180,10 +202,10 @@ int rpc_handle_request(const char* method_name, const void* request, uvrpc_reque
 
 ### 检查清单
 
-- [x] 所有结构都有loop字段
-- [x] 无全局loop变量
-- [x] 无pthread调用
-- [x] 无mutex调用
+- [x] 所有结构都有 loop 字段
+- [x] 无全局 loop 变量
+- [x] 无 pthread / mutex / atomic 调用（全量 grep 只命中 `uvbus_transport_udp.c:350` 的一条注释）
+- [x] 无 mutex 调用
 - [x] 无原子操作
 - [x] 所有I/O使用libuv回调
 - [x] 生成代码遵循相同模式
@@ -201,8 +223,8 @@ int rpc_handle_request(const char* method_name, const void* request, uvrpc_reque
 
 UVRPC完全遵循单线程模型和loop注入模式：
 
-✅ 单线程，零锁，零全局变量  
+✅ 单线程，零锁，零可变全局  
 ✅ Loop注入，用户控制事件循环  
 ✅ 异步I/O，非阻塞操作  
-✅ 多实例支持，无共享状态  
+✅ 多实例支持，实例间无进程级共享状态  
 ✅ 高性能，可预测，易测试

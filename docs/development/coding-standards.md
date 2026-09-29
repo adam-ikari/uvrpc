@@ -104,7 +104,7 @@ Document all public structures:
  * 
  * The server maintains:
  * - A hash table of registered handlers (method name -> handler function)
- * - A ring buffer for pending requests
+ * - A flat array of connected client contexts
  * - Statistics for monitoring
  * - User-defined context
  */
@@ -115,12 +115,12 @@ typedef struct uvrpc_server {
     handler_entry_t* handlers;          /**< @brief Registered handlers hash table */
     int is_running;                     /**< @brief Server running flag */
     
+    int current_clients;                /**< @brief Currently connected clients */
+    int max_clients;                    /**< @brief Connection quota (0 clamps to 1024) */
+    void** client_ctxs;                 /**< @brief Client contexts, scanned linearly */
+
     uvrpc_context_t* ctx;               /**< @brief User-defined context */
-    
-    pending_request_t** pending_requests;  /**< @brief Ring buffer for pending requests */
-    int max_pending_requests;           /**< @brief Maximum pending requests */
-    uint32_t generation;                /**< @brief Generation counter */
-    
+
     uint64_t total_requests;            /**< @brief Total requests received */
     uint64_t total_responses;           /**< @brief Total responses sent */
 } uvrpc_server_t;
@@ -148,7 +148,7 @@ typedef enum {
     UVRPC_ERROR_CALLBACK_LIMIT = -7,     /**< @brief Callback limit exceeded */
     UVRPC_ERROR_CANCELLED = -8,          /**< @brief Operation was cancelled */
     UVRPC_ERROR_POOL_EXHAUSTED = -9,     /**< @brief Connection pool exhausted */
-    UVRPC_ERROR_RATE_LIMITED = -10,      /**< @brief Rate limit exceeded */
+    UVRPC_ERROR_RATE_LIMITED = -11,      /**< @brief Rate limit exceeded */
     UVRPC_ERROR_NOT_FOUND = -11,         /**< @brief Resource not found */
     UVRPC_ERROR_ALREADY_EXISTS = -12,     /**< @brief Resource already exists */
     UVRPC_ERROR_INVALID_STATE = -13,     /**< @brief Invalid state for operation */
@@ -207,13 +207,16 @@ typedef struct uvrpc_client {
 Use inline comments sparingly, only for complex logic:
 
 ```c
-/* Calculate ring buffer index using bitwise AND for power-of-2 sizes */
-int idx = (req->msgid & (server->max_pending_requests - 1));
+/* Slot lookup is a bitmask, not a modulo: the configured size is validated to
+ * be a power of two, so (size - 1) is a mask */
+uint32_t idx = msgid & (client->max_pending_callbacks - 1);
 
-/* Check if generation matches to avoid stale requests */
-if (server->pending_requests[idx]->generation != req->generation) {
-    /* Request is stale, skip it */
-    continue;
+/* Only the final frame releases the slot. ResponseMore keeps the callback
+ * registered so one stream can send several chunks under a single msgid. */
+if (frame_type == 1) {
+    client->pending_callbacks[idx] = NULL;
+    cleanup_pending_callback(pending);
+    client->current_concurrent--;
 }
 ```
 
@@ -422,14 +425,15 @@ void uvrpc_server_free(uvrpc_server_t* server);
  * UVRPC (Ultra-Fast RPC) is a high-performance RPC framework
  * designed with the following principles:
  * - Zero threads: All I/O managed by libuv event loop
- * - Zero locks: No global variables or shared state
- * - Zero global variables: Complete isolation
- * 
+ * - Zero locks: Single-threaded model, no mutexes or atomics
+ * - Zero mutable globals: State lives in context objects
+ *
  * @section features Features
- * - High throughput: 100,000+ ops/s for INPROC
- * - Low latency: 0.03ms average for INPROC
- * - Multiple transports: TCP, UDP, IPC, INPROC
- * - Two modes: Client-Server and Broadcast
+ * - Five transports: TCP, UDP, IPC, INPROC, SAMELOOP
+ * - Request/response, oneway, and streaming modes
+ * - Numbers belong in docs/guide/benchmark.md, with host and build
+ *   configuration stated; do not put unattributed throughput claims in
+ *   doc comments.
  * 
  * @section getting_started Getting Started
  * See @ref quick_start for a 5-minute tutorial.

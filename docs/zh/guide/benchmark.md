@@ -1,266 +1,142 @@
 # 性能测试
 
-UVRPC 提供统一的性能测试工具 `benchmark`，支持多种测试场景和传输协议。
+UVRPC 提供两个测量程序。两者都是单线程的，这是刻意为之：框架本身不起线程，
+一个去开线程的 benchmark 测量的就是库根本做不到的事。
 
-## Benchmark 工具
+| 程序 | 源码 | 测量内容 |
+|---|---|---|
+| `perf_benchmark` | [`benchmark/perf_benchmark.c`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/perf_benchmark.c) | 各传输的 request/response 往返延迟与吞吐 |
+| `direct_call_benchmark` | [`benchmark/direct_call_benchmark.c`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/direct_call_benchmark.c) | 裸函数调用开销 —— SAMELOOP/INPROC 的下界 |
 
-`benchmark` 程序是一个统一的性能测试工具，支持以下功能：
+**不存在**多线程、多进程、发布/订阅、或百分位（percentile）benchmark。早期文档
+描述过一个带 `-t`、`--fork`、`--publisher`、`--latency` 参数并输出 p50/p95/p99
+的 `benchmark` 程序。该程序已不存在，那些参数也从来不属于 `perf_benchmark`。
 
-- **CS 模式（客户端-服务器）**：测试请求-响应模式的性能
-- **广播模式（发布-订阅）**：测试发布-订阅模式的性能
-- **多线程/多进程测试**：支持并发测试
-- **延迟测试**：测量请求-响应延迟
-- **多种传输协议**：TCP、UDP、IPC、INPROC
-
-## 使用方法
-
-### 启动服务器（CS 模式）
+## 构建
 
 ```bash
-# 基本用法
-./dist/bin/benchmark --server
-
-# 指定地址
-./dist/bin/benchmark --server -a tcp://127.0.0.1:5555
-
-# 设置自动关闭超时（毫秒）
-./dist/bin/benchmark --server --server-timeout 5000
+git clone https://github.com/adam-ikari/uvrpc.git
+cd uvrpc
+./scripts/setup_deps.sh
+./build.sh release
 ```
 
-### 运行客户端测试（CS 模式）
+两个可执行文件都落在 `dist/bin/`。`./build.sh` 不会打开 `UVRPC_DEBUG_LOGGING`
+（默认 `OFF`），这正是测量需要的状态，原因见下方的守护逻辑。
+
+## perf_benchmark
+
+```
+./dist/bin/perf_benchmark [requests] [transport]
+```
+
+- `requests` —— 往返次数（默认 `100000`）
+- `transport` —— `sameloop` | `inproc` | `ipc` | `udp` | `tcp`（默认 `inproc`）
+
+未知传输名以状态码 2 退出。每种传输的地址是写死的
+（`benchmark/perf_benchmark.c:101-120`）：`tcp://127.0.0.1:16555`、
+`udp://127.0.0.1:16556`、`ipc:///tmp/uvrpc_perf.sock`、`inproc://uvrpc_perf`、
+`sameloop://uvrpc_perf`。因此同一时刻只能有一个 TCP/IPC 测试占用对应端口或 socket。
 
 ```bash
-# 单客户端测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555
-
-# 指定测试时长（毫秒）
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000
-
-# 指定批处理大小
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -b 100
-
-# 多客户端测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -c 10
-
-# 多线程测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 5 -c 2
-
-# 低延迟模式
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -l
-
-# 延迟测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --latency
-
-# 多进程测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --fork -t 3 -c 2
+./dist/bin/perf_benchmark                      # inproc，10 万
+./dist/bin/perf_benchmark 100000 tcp           # TCP，10 万
+./dist/bin/perf_benchmark 1000000 sameloop     # SAMELOOP 压测
 ```
 
-### 启动发布者（广播模式）
+输出：
+
+```
+transport=inproc    requests=100000  received=100000  elapsed=246 ms  (sequential ping-pong)
+  round-trip latency: 2.46 us/req
+  throughput (= 1/latency, 1 in-flight): 406504 req/s
+```
+
+这是在一台 12 核 Ryzen 7 5800H 的 Linux 容器里真实跑出的一行，测的时候机器是空的。
+同一个二进制在后台还在编译时读到 ~23 µs/req —— 光是争抢就差一个数量级。跨机器的绝对值
+也会因框架管不着的原因不同。这正是下文那张表被标注成"一台机器的数字"而不是"规格"的原因，
+也是每一次测量都该写清跑在什么上的原因。
+
+## 这些数字意味着什么 —— 以及不意味着什么
+
+**这里的吞吐是顺序往返延迟的倒数。** 测量循环发一个请求，泵事件循环直到它的响应
+到达，才发下一个（`benchmark/perf_benchmark.c:190-213`）——在途请求恒为 1。这
+**不是**流水线化的并发吞吐，程序也没有假装它是：输出行里写着 `sequential
+ping-pong`，吞吐行写着 `= 1/latency, 1 in-flight`。
+
+要测异步吞吐，必须自己构造流水线：连续发出 N 个请求不等响应，由回调把它们消化完。
+你会撞上的上限就是[单线程模型](/zh/guide/single-thread-model)里那三层无锁拒绝。
+
+### 测量前提
+
+有四件事让这组数字可比，且每一件都由代码保证，而不是靠操作者自觉：
+
+1. **用 `UV_RUN_ONCE` 泵循环，而不是空转轮询。** `pump_until()`
+   （`benchmark/perf_benchmark.c:59-79`）让线程阻塞到有事件就绪。此前一个用
+   `UV_RUN_DEFAULT` 的版本会挂死，因为存活的连接永远不会让循环退出。
+2. **必须关掉调试日志。** `UVRPC_DEBUG` / `UVBUS_DEBUG` 在每次 send/recv 都往
+   stderr 写东西，其开销远超 RPC 本身。这个可执行文件拒绝在日志开着时安静地给出数字：
+   它会打印 `WARNING: library built with debug logging ON — timings are NOT valid`
+   （`benchmark/perf_benchmark.c:89-92`）。看到它就重建成 `-DUVRPC_DEBUG_LOGGING=OFF`。
+3. **预热不计入计时。** 先跑 `WARMUP_REQUESTS`（1000）个请求
+   （`benchmark/perf_benchmark.c:164-178`），计时从其后开始。循环建立也有明确的
+   settle 自旋 —— 连接前 10 次、连接后 50 次（`:141`、`:150`）。
+4. **时限由主机自己给出，不再假设每请求成本。** 测量阶段的预算是
+   `4 × 预热实测速率 × 请求数 + 10 秒`（`benchmark/perf_benchmark.c:184-188`），
+   并且只有连续 `stall_limit_ms`（默认 5 秒）收不到任何响应才提前中止 —— 那是真的
+   卡死，而不是机器慢。此前的写法把预算硬编码成 `requests/10 + 10000` ms，隐含
+   "顺序往返不超过 0.1 ms/req"；在虚拟化主机上 TCP 约 0.4 ms/req，50,000 请求那次
+   就以 `measure timeout` 中止且什么都没打印。默认值不合适时用
+   `UVRPC_BENCH_BUDGET_MS=<ms>` 指定预算、`UVRPC_BENCH_STALL_MS=<ms>` 改卡死窗口。
+   中止时会报 `received N/M` 并非零退出，绝不会悄悄给出一个偏低的数字。
+
+另外两个前提：server 与 client **共用一个 `uv_loop_t`** —— INPROC/SAMELOOP 必须如此，
+TCP/IPC 在这个程序里也是共用同一循环（`benchmark/perf_benchmark.c:136-141`）；
+payload 是 **8 字节**，所以这些数字描述的是 RPC 帧与循环往返的成本，不是大块数据传输。
+
+## direct_call_benchmark
 
 ```bash
-# 基本用法
-./dist/bin/benchmark --publisher
-
-# 指定地址
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000
-
-# 多发布者测试
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -p 3
-
-# 多线程多发布者
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -t 3 -p 2
-
-# 指定批处理大小和时长
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -b 20 -d 5000
+./dist/bin/direct_call_benchmark
 ```
 
-### 启动订阅者（广播模式）
+只通过函数指针调用一个函数，没有传输、没有序列化、没有 libuv。把它当作可相减的基线：
+若裸调用成本为 `X`、SAMELOOP 为 `Y`，那么 `Y - X` 才是 RPC 帧与循环往返真正向你收取的费用。
+上面那台容器的实测：直接调用 0.256 ns、函数指针 0.271 ns、带检查的间接调用 0.305 ns ——
+分发开销比一次往返低两个数量级，所以进程内调用的成本在帧编解码与循环换手，不在那一次跳指针。
 
-```bash
-# 基本用法
-./dist/bin/benchmark --subscriber
+## 参考数字
 
-# 指定地址
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000
+Release 构建、`-O2`、system 分配器、单线程、8 字节 payload：
 
-# 多订阅者测试
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -s 5
+| 传输 | 往返延迟 | 吞吐（1/延迟） | 适用场景 |
+|---|---|---|---|
+| SAMELOOP | ~4.9 µs | ~205,000 req/s | 同 loop 内调用，vtable 短路（最快） |
+| INPROC | ~4.9 µs | ~205,000 req/s | 进程内零拷贝 |
+| IPC | ~31 µs | ~33,000 req/s | 本机跨进程（Unix socket） |
+| UDP | ~38 µs | ~26,000 req/s | 可容忍丢包 |
+| TCP | ~46 µs | ~22,000 req/s | 可靠网络 RPC |
 
-# 多线程多订阅者
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -t 3 -s 2
-```
-
-## 参数说明
-
-### 模式参数
-
-- `--server`：服务器模式（CS 模式）
-- `--publisher`：发布者模式（广播模式）
-- `--subscriber`：订阅者模式（广播模式）
-
-### 通用参数
-
-- `-a <address>`：服务器/发布者地址（默认：tcp://127.0.0.1:5555）
-- `-t <threads>`：线程/进程数（默认：1）
-- `-b <concurrency>`：批处理大小（默认：100）
-- `-d <duration>`：测试时长（毫秒，默认：1000）
-- `-l`：启用低延迟模式（默认：高吞吐）
-- `--latency`：运行延迟测试（忽略 -t 和 -c）
-- `--fork`：使用 fork 模式代替线程（多进程测试）
-- `-h`：显示帮助信息
-
-### CS 模式参数
-
-- `-c <clients>`：每个线程/进程的客户端数（默认：1）
-
-### 广播模式参数
-
-- `-p <publishers>`：每个线程/进程的发布者数（广播模式，默认：1）
-- `-s <subscribers>`：每个线程/进程的订阅者数（广播模式，默认：1）
-
-### 服务器参数
-
-- `--server-timeout <ms>`：服务器自动关闭超时（默认：0，不超时）
-
-## 测试场景示例
-
-### 1. 基本吞吐量测试
-
-```bash
-# 启动服务器
-./dist/bin/benchmark --server -a tcp://127.0.0.1:5555
-
-# 在另一个终端运行客户端
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000 -b 100
-```
-
-### 2. 多客户端并发测试
-
-```bash
-# 10 个客户端并发测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -c 10 -d 2000
-```
-
-### 3. 多线程测试
-
-```bash
-# 5 个线程，每个线程 2 个客户端
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -t 5 -c 2 -d 2000
-```
-
-### 4. 延迟测试
-
-```bash
-# 测试请求-响应延迟
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 --latency
-```
-
-### 5. 广播模式测试
-
-```bash
-# 启动发布者
-./dist/bin/benchmark --publisher -a udp://127.0.0.1:6000 -p 3 -b 20 -d 5000
-
-# 在另一个终端启动订阅者
-./dist/bin/benchmark --subscriber -a udp://127.0.0.1:6000 -s 5 -d 5000
-```
-
-### 6. 多传输协议测试
-
-```bash
-# TCP 测试
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -d 2000
-
-# IPC 测试
-./dist/bin/benchmark -a ipc:///tmp/uvrpc_test.sock -d 2000
-
-# UDP 测试
-./dist/bin/benchmark -a udp://127.0.0.1:5556 -d 2000
-
-# INPROC 测试
-./dist/bin/benchmark -a inproc://test -d 2000
-```
-
-## 性能指标
-
-### 吞吐量指标
-
-- **Ops/s**：每秒操作数（CS 模式）
-- **Msgs/s**：每秒消息数（广播模式）
-- **带宽**：数据传输速率（MB/s）
-
-### 延迟指标
-
-- **平均延迟**：所有请求的平均响应时间
-- **P50 延迟**：中位数延迟
-- **P95 延迟**：95% 的请求延迟
-- **P99 延迟**：99% 的请求延迟
-- **最大延迟**：最慢的请求延迟
-
-### 可靠性指标
-
-- **成功率**：成功响应的百分比
-- **失败数**：失败的请求数
-
-## 性能优化建议
-
-### 1. 选择合适的传输协议
-
-- **INPROC**：进程内通信，性能最优
-- **IPC**：本地进程间通信，性能优于 TCP
-- **UDP**：高吞吐、可容忍丢包的场景
-- **TCP**：需要可靠传输的场景
-
-### 2. 调整批处理大小
-
-- **小批处理**（< 50）：低延迟，低吞吐
-- **中等批处理**（50-100）：平衡延迟和吞吐
-- **大批处理**（> 100）：高吞吐，高延迟
-
-### 3. 启用低延迟模式
-
-```bash
-./dist/bin/benchmark -a tcp://127.0.0.1:5555 -l
-```
-
-### 4. 使用适当的并发级别
-
-- 单线程：简单场景
-- 多线程：提高吞吐量
-- 多进程：测试隔离性
-
-## 已知限制
-
-1. **线程数限制**：最多支持 10 个线程（MAX_THREADS）
-2. **客户端数限制**：每个线程最多 100 个客户端（MAX_CLIENTS）
-3. **进程数限制**：最多支持 32 个进程（MAX_PROCESSES）
+同一构建在那台容器上实测 ~2.4 µs（SAMELOOP）、~2.5 µs（INPROC）、~21 µs（IPC）、
+~25 µs（UDP）、~32 µs（TCP）—— 进程内与 socket 两端都比本表快。绝对值随主机而变，
+框架真正保证的是**比值**（进程内 ≫ 本机 socket ≫ 网络）。
+本表记录的是**一台机器**的数字，留下来是为了让回归可见。要用于容量评估请先在目标硬件上
+自测。顺序 ping-pong 下的 UDP 还承担真实丢包风险：丢失的响应表现为超时错误，
+而不是吞吐下降。
 
 ## 故障排查
 
-### 连接失败
-
 ```bash
-# 检查端口是否被占用
-lsof -i :5555
-
-# 检查服务器是否运行
-ps aux | grep benchmark
+lsof -i :16555                 # 端口被另一次运行占用
+rm -f /tmp/uvrpc_perf.sock     # 残留 IPC socket（程序自己也会 unlink）
+ps aux | grep perf_benchmark
 ```
 
-### 性能异常
+如果 `received < requests`，说明这次运行撞到时限或传输错误并非零退出，数字根本没被
+打印。不要拿残缺的运行结果做对比。
 
-```bash
-# 使用 Release 模式编译
-cmake -DCMAKE_BUILD_TYPE=Release -B build
-cmake --build build
-
-# 检查系统资源
-top
-vmstat
-```
-
-## 参考文档
+## 相关文档
 
 - [设计哲学](/zh/guide/design-philosophy)
 - [单线程模型](/zh/guide/single-thread-model)
-- [Benchmark 工具源码](https://github.com/adam-ikari/uvrpc/tree/main/benchmark)
+- [Architecture](/architecture/)（仅英文）
