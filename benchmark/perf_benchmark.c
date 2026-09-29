@@ -96,6 +96,19 @@ int main(int argc, char** argv) {
     if (argc >= 2) num_requests = strtoull(argv[1], NULL, 10);
     if (argc >= 3) transport = argv[2];
 
+    /* UDP is connectionless and nothing here retransmits. A dropped datagram
+     * does not lower the measured throughput -- the response never arrives,
+     * the stall detector fires, and the run aborts. Say so up front, because
+     * "the run failed" and "the network was slow" are different conclusions
+     * and the numbers alone do not distinguish them. */
+    if (strcmp(transport, "udp") == 0) {
+        fprintf(stderr, "note: udp has no retransmission here; a dropped "
+                        "datagram aborts the run with 'measure stalled' rather "
+                        "than showing up as a lower number. Treat the result as "
+                        "loopback-only.\n");
+    }
+
+
     uvbus_transport_type_t ttype;
     char address[128];
     if (strcmp(transport, "tcp") == 0) {

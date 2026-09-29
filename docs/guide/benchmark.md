@@ -134,15 +134,22 @@ Actions `ubuntu-latest` runner (run `36527761470`, commit `9c9aa24`):
 | SAMELOOP | 1.00 µs | ~1,000,000 req/s | same-loop, vtable bypass (fastest) |
 | INPROC | 1.02 µs | ~980,000 req/s | in-process zero-copy |
 | IPC | 10.76 µs | ~93,000 req/s | local inter-process (Unix socket) |
-| UDP | 20.10 µs | ~50,000 req/s | loss-tolerant |
+| UDP | 20.10 µs | ~50,000 req/s | loss-tolerant; loopback only, see below |
 | TCP | 20.08 µs | ~50,000 req/s | reliable network RPC |
 
 Re-run the workflow to reproduce. Absolute numbers are host-dependent; the
 *ratios* (in-process ≫ local socket ≫ network) are what the design actually
 guarantees. Treat the table as a regression baseline recorded on one runner
-class, not a capacity promise. UDP in sequential ping-pong also carries real
-packet-loss risk: a lost response shows up as a timeout error, not as
-degraded throughput.
+class, not a capacity promise.
+
+**The UDP row is a loopback figure and nothing more.** The benchmark is
+sequential ping-pong with exactly one request in flight, and the library does
+not retransmit: a dropped datagram means the response never arrives, the stall
+detector fires, and the run aborts with `measure stalled`. It cannot show up as
+a lower number, so a completed UDP run tells you the link dropped nothing --
+it says nothing about a real network, where loss and latency both apply. The
+program now prints that caveat to stderr before the UDP numbers, and the
+figure is not comparable with the TCP row on anything but loopback.
 
 ## Troubleshooting
 

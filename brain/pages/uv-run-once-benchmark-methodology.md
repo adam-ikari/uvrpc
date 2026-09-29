@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-29T06:38:08"
+updated: "2026-09-29T08:24:02"
 ---
 
 <!-- compiled_truth -->
@@ -105,4 +105,10 @@ CI 的 `Benchmark` 工作流就是这串命令，每种传输跑一次并把结�
   kind: reversal
   summary: "反转：性能基线不再是'作者开发机的 ~4.9 µs / ~205,000 req/s'，改用 Benchmark 工作流在 CI runner 上的实测值（run 36527761470）。同时发现 compiled_truth 第 4 条还写着旧的固定 deadline 公式，而代码自 b7f9961 起已改为按预热速率推算 —— 结论与代码不符，本次一并改正"
   source: "gh run 36527761470；benchmark/perf_benchmark.c:182-188 复核 (2026-09-29)"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-09-29T08:24:02
+  kind: decision
+  summary: "UDP 语义定了：不加重传机制（那会污染被测的往返延迟），改为如实标注。perf_benchmark 在跑 udp 前往 stderr 打印一段说明——丢包表现为运行中止（measure stalled）而非吞吐下降，所以跑完的 UDP 运行只说明链路没丢包；参考表 7 处的 UDP 行统一标注仅本机"
+  source: "实测：stderr 提示出现、CI 的 grep 解析不受影响 (2026-09-29)"
   affects: [uv-run-once-benchmark-methodology]

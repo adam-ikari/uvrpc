@@ -134,7 +134,7 @@ on a GitHub Actions runner. Absolute numbers vary widely by host — see
 | SAMELOOP  | 1.00 µs | ~1,000,000 req/s | Same-loop, vtable bypass (fastest) |
 | INPROC    | 1.02 µs | ~980,000 req/s | In-process zero-copy |
 | IPC       | 10.76 µs | ~93,000 req/s | Local inter-process (Unix socket) |
-| UDP       | 20.10 µs | ~50,000 req/s | Loss-tolerant, high-throughput |
+| UDP       | 20.10 µs | ~50,000 req/s | Loss-tolerant; loopback-only figure |
 | TCP       | 20.08 µs | ~50,000 req/s | Reliable network RPC |
 
 ::: warning Throughput definition

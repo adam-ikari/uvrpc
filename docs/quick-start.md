@@ -190,7 +190,7 @@ host-dependent — see [Benchmark](/guide/benchmark) for the full table.
 |-----------|-------------------|------------------------|
 | SAMELOOP / INPROC | ~1.0 µs | ~1,000,000 req/s |
 | IPC       | ~10.8 µs | ~93,000 req/s |
-| UDP       | ~20.1 µs | ~50,000 req/s |
+| UDP       | ~20.1 µs | ~50,000 req/s (loopback only) |
 | TCP       | ~20.1 µs | ~50,000 req/s |
 
 ::: warning

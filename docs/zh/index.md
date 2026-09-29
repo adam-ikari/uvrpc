@@ -61,7 +61,7 @@ cd uvrpc
 | SAMELOOP | 1.00 µs | ~1,000,000 req/s | 同循环，vtable 旁路（最快）|
 | INPROC   | 1.02 µs | ~980,000 req/s | 进程内零拷贝 |
 | IPC      | 10.76 µs | ~93,000 req/s | 本地进程间（Unix 套接字）|
-| UDP      | 20.10 µs | ~50,000 req/s | 高吞吐、可丢包 |
+| UDP      | 20.10 µs | ~50,000 req/s | 可丢包；仅本机 loopback |
 | TCP      | 20.08 µs | ~50,000 req/s | 可靠网络 RPC |
 
 ::: warning 关于"吞吐量"
