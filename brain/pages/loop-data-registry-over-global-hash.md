@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-29T00:32:44"
+updated: "2026-09-29T05:23:32"
 ---
 
 <!-- compiled_truth -->
@@ -26,11 +26,25 @@ typedef struct uvbus_loop_registry {   /* :42-49 */
     uint32_t magic;
     int      refcount;
     void*    inproc_endpoints;    /* inproc_endpoint_t** 桶数组 */
-    void*    sameloop_servers;    /* sameloop_server_t*  单链表 */
+    void*    sameloop_servers;    /* inproc/sameloop 传输共用的 server 链表头 */
 } uvbus_loop_registry_t;
 ```
 
-`loop->data` 是 libuv 的**公开字段**，任何人都可能已经用了它。框架的处置是**拒绝而非覆盖**（`:16-19`）：`uvbus_loop_registry_retain()`（`:56-82`）读 `loop->data`，NULL 就建 registry；非 NULL 且 magic 不符就 **返回 NULL 并记日志**，transport 随即报错退出。宁可让 inproc/sameloop 在别人的 loop 上不可用，也不破坏用户状态。测试与示例从不设 `loop->data`（`:15-16`），所以正常路径碰不到这个分支 —— 它是给库使用者准备的。
+`loop->data` 是 libuv 的**公开字段**，任何人都可能已经用了它。框架的处置是**拒绝而非覆盖**（`:16-19`）：`uvbus_loop_registry_retain()`（`:56-82`）读 `loop->data`，NULL 就建 registry；非 NULL 且 magic 不符就 **返回 NULL 并记日志**，transport 随即报错退出。宁可让 inproc/sameloop 在别人的 loop 上不可用，也不破坏用户状态。
+
+## 陷阱：loop 必须零初始化（2026-09-29 实测）
+
+`uv_loop_t loop; uv_loop_init(&loop);` —— libuv 官方文档的标准写法 —— **在 INPROC/SAMELOOP 上必然失败**。原因在 vendored 的 libuv 1.47 `deps/libuv/src/unix/loop.c:30-38`：
+
+```c
+int uv_loop_init(uv_loop_t* loop) {
+  void* saved_data;
+  saved_data = loop->data;      /* 保留：data 是用户的字段，libuv 不碰 */
+  memset(loop, 0, sizeof(*loop));
+  loop->data = saved_data;      /* 原样写回，未初始化时就是栈上的垃圾 */
+```
+
+`data` 是 `uv_loop_t` 的**第 0 个字段**（偏移 0），libuv 从不初始化它。于是未零初始化的 loop 会把栈垃圾当作用户 `loop->data`，magic 守卫判为"别人的指针"→ `uvrpc_server_start()` 返回 `UVRPC_ERROR`（-2），日志是 `loop->data is set to a non-uvrpc pointer`。**结论：使用 INPROC/SAMELOOP 前必须 `uv_loop_t loop = {0};`**，这也是仓库里能跑通的示例（`examples/sameloop_rpc_demo.c`）都这么写、而 `examples/scenario_1*.c`（用 TCP，不走 registry）随手写也不炸的原因。这个坑静默地绑死在 libuv 版本上：若 libuv 哪天改成初始化 `data`，行为会反过来。
 
 ## 生命周期：retain / release
 
@@ -75,4 +89,16 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: decision
   summary: "补齐 compiled_truth：loop->data 挂载契约与 magic 守卫、retain/release 生命周期、inproc 256 桶 vs sameloop 单链表"
   source: brain update-truth
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-29T05:23:20
+  kind: evidence
+  summary: "坑：libuv 1.47 的 uv_loop_init() 故意保留 loop->data（saved_data 存回），所以未零初始化的 uv_loop_t 会让 INPROC/SAMELOOP 直接启动失败"
+  source: "deps/libuv/src/unix/loop.c:30-38（实测 0xabab…abab 保留）；tests/allocator_ownership_test.c 首次运行踩到 (2026-09-29)"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-29T05:23:32
+  kind: decision
+  summary: "补上 uv_loop_init() 保留 loop->data 的陷阱：非零初始化的 loop 会让 INPROC/SAMELOOP 启动失败"
+  source: "deps/libuv/src/unix/loop.c:30-38 实测 (2026-09-29)"
   affects: [loop-data-registry-over-global-hash]

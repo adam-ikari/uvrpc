@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T00:26:59"
+updated: "2026-09-29T05:27:32"
 ---
 
 <!-- compiled_truth -->
@@ -51,4 +51,10 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: decision
   summary: Rewrote compiled_truth to the new best understanding
   source: "git log 逐条核对（83f3b31 / 9060a2f / 58d313c / 242e856 / c207fe2 / 84a62c0）"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T05:27:32
+  kind: evidence
+  summary: "缺陷：tools/uvrpcc.py 处理 schema/log_service.fbs 时崩溃（jinja UndefinedError: 'rpc_data'，tools/templates/rpc_common.c.j2:61），生成器吐到一半就死；文档里的手动编译命令还把 rpc_common 写成 .c（实际是 .h）"
+  source: "实测：python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc schema/log_service.fbs -o /tmp/genlog (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]
