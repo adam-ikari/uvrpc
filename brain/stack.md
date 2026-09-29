@@ -2,6 +2,24 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-09-29T06:42:00"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
+updated: "2026-09-29T06:41:51"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-09-29T04:55:16"
 ---
 
@@ -71,7 +89,11 @@ graph LR
 4. ~~CI 与默认构建配置不一致~~ —— **已修**：CI 全 job 先跑 setup_deps.sh，并新增 default-allocator(mimalloc) 构建 job。`cmake/Dependencies.cmake` 此前从未入库（.gitignore 裸 `*.cmake` 规则），已补例外并提交。
 5. **无 git tag**（未处理，属发布工程切片）—— README 标注 `v1.0.0a`，但仓库 `git tag` 仍为空。
 6. ~~根目录残留 5 个已提交二进制~~ —— **已删**（`scenario_1..5_*`，并加 gitignore 规则）。
-7. ~~**文档与代码在 `loop->data` 上互相矛盾**~~ —— **已修（2026-09-29 切片 2）**：设计哲学、架构、单线程模型、构建安装、快速开始、生成式 API 六组页面按 [[loop-data-registry-over-global-hash]] 的现状改写；性能数字统一为 README 的 ~4.9 µs / ~205,000 req/s。
-8. **codec 缓冲区与分配器不一致**（未处理）—— `uvrpc_encode_*()` 给的是 flatcc 分配的缓冲区，`src/uvrpc_client.c` 却用 `uvrpc_free()` 释放；mimalloc/自定义分配器构建下跨堆释放。服务端用 `free()` 是对的。先定契约：flatcc 是否纳入 `uvrpc_alloc` 抽象。
+7. ~~**文档与代码在 `loop->data` 上互相矛盾**~~ —— **已修（2026-09-29 切片 2）**：设计哲学、架构、单线程模型、构建安装、快速开始、生成式 API 六组页面按 [[loop-data-registry-over-global-hash]] 的现状改写。
+8. ~~codec 缓冲区与分配器不一致~~ —— **已修（2026-09-29）**：契约定为"flatcc 拥有 `uvrpc_encode_*()` 的输出，只能 `free()` 释放"，新增 `uvrpc_free_encoded()` 统一 17 处释放点；`tests/allocator_ownership_test.c` + CI `custom-allocator` job 守住这条边界。理由见 [[minimal-rpcframe-schema]]。
 9. ~~**文档站点无法从干净克隆构建**~~ —— **已修（2026-09-29）**：`docs/node_modules` 从版本控制移除（其 `dist/` 载荷从未被提交），`.gitignore` 既有规则随之生效；`docs/doxygen/`（579 个陈旧 HTML）一并删除并 ignore，`docs/Doxyfile` 保留供按需生成。
-10. **examples/README.md 索引不存在的示例**（未处理，小）—— `complete_example.c`、`broadcast_publisher/subscriber.c`、`broadcast_service_demo.c` 等 9 处引用无对应文件，是广播功能被砍后的残留。
+10. ~~examples/README.md 索引不存在的示例~~ —— **已修（2026-09-29）**：按真实构建产物重写为分类清单，22 个无构建目标的源文件单列并注明原因。
+11. ~~**性能基线取自开发机而非 CI**~~ —— **已修（2026-09-29）**： 旧表记的 ~4.9 µs / ~205,000 req/s 比同一构建的真实值差约一倍，且扩散到 9 个文件。现全部改用 `Benchmark` 工作流在 CI runner 上的实测值，测量前提见 [[uv-run-once-benchmark-methodology]]。
+12. **benchmark 的 UDP 语义**（未处理，小）—— 顺序 ping-pong 下丢包表现为超时而非吞吐下降，程序不区分"丢了"和"慢了"。要么给 UDP 报重传/丢失计数，要么在文档里标注"仅本机 loopback 有效"。
+13. **`tools/uvrpcc.py` 的生成产物**（部分修复，2026-09-29）—— 生成器不再崩、类型名按 flatcc 0.6 的命名空间规则正确生成，`log_service.fbs` 三个源文件编译 0 error；但 `examples/log_service_demo.c` 自身落后于库 API（`uvrpc_request_send_response` 现返回 void），该示例仍编译不过。
+14. **`loop->data` 作为注册表挂载点**（未处理，需讨论）—— 实现就是占用 libuv 的公开用户字段，用 magic 守卫拒绝冲突；这与"UVRPC 不占用 `loop->data`"的说法矛盾，且要求调用方零初始化 loop。是否换挂载点待议。

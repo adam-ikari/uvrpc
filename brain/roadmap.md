@@ -2,6 +2,15 @@
 slug: roadmap
 title: Roadmap
 role: milestones
+updated: "2026-09-29T06:42:26"
+---
+
+# Roadmap
+
+---
+slug: roadmap
+title: Roadmap
+role: milestones
 updated: "2026-09-29T04:54:45"
 ---
 
@@ -52,7 +61,7 @@ gantt
 按"当前最挡路 → 最不挡路"排序，来源是 root page `stack` 的 Open items 与代码/文档矛盾。**1–3 与 6–7 已完成，4 半完成，5 待讨论，8–10 是本轮评审新查出的候选**。
 
 1. ~~**修复构建/分发断点**~~ **✅ 完成并端到端验证（2026-09-28/29）**：范围比原估计更大 —— 另发现 `cmake/Dependencies.cmake` 从未入库、libuv/flatcc gitlink 指向幽灵提交两个隐藏断点。真·新克隆（干净 clone + setup_deps.sh + build.sh）在默认(mimalloc)与 system 两条路径都能构建通过。评审又翻出并修了三处：切片1自报的"零警告"被陈旧 generated/ 掩盖、README/docs 的构建链漏 `setup_deps.sh`、`uvrpc_merged` 的 `ar x` 按 basename 压平丢了 `uv_random`。随后的设计哲学评审删除了一整层 pre-uvbus 死代码（`uv_transport*.c` / `uv_frame.c` / `uvrpc_khash.h`）。记录于 [[build-distribution-breakage]]。
-2. ~~**文档与代码对齐**~~ **✅ 完成（2026-09-29）**：`docs/guide/design-philosophy.md`、`docs/architecture/{index,integration}.md`、`docs/guide/benchmark.md`（整页重写）、`docs/guide/single-thread-model.md`、`docs/build-install.md`、`docs/development/{coding-standards,doxygen-examples}.md`、`docs/api/{index,generated-api}.md`、`docs/quick-start.md` 与 `docs/zh/guide/quick-start.md` 全部按代码现状改写；README 与站点/SEO 元数据的性能数字统一为 ~4.9 µs / ~205,000 req/s。`docs/api/generated-api.md` 的两段示例经**真实编译并跑通**（`Add result: 30`），顺带纠正了"把 flatcc 根指针直接当 table 用"这个会读错字段的示例错误。**结构性事实**：`docs/zh/guide/{design-philosophy,api-guide,single-thread-model}.md`、`docs/zh/build-install.md`、`docs/zh/development/{coding-standards,doxygen-examples}.md` 是指向根目录同名文件的符号链接，所以"英文"页面正文本就是中文；要真正分语言，得先把符号链接换成独立文件。
+2. ~~**文档与代码对齐**~~ **✅ 完成（2026-09-29）**：`docs/guide/design-philosophy.md`、`docs/architecture/{index,integration}.md`、`docs/guide/benchmark.md`（整页重写）、`docs/guide/single-thread-model.md`、`docs/build-install.md`、`docs/development/{coding-standards,doxygen-examples}.md`、`docs/api/{index,generated-api}.md`、`docs/quick-start.md` 与 `docs/zh/guide/quick-start.md` 全部按代码现状改写；README 与站点/SEO 元数据的性能数字当时统一为 ~4.9 µs / ~205,000 req/s（该基线已在第 11 项被 CI 实测值取代）。`docs/api/generated-api.md` 的两段示例经**真实编译并跑通**（`Add result: 30`），顺带纠正了"把 flatcc 根指针直接当 table 用"这个会读错字段的示例错误。**结构性事实**：`docs/zh/guide/{design-philosophy,api-guide,single-thread-model}.md`、`docs/zh/build-install.md`、`docs/zh/development/{coding-standards,doxygen-examples}.md` 是指向根目录同名文件的符号链接，所以"英文"页面正文本就是中文；要真正分语言，得先把符号链接换成独立文件。
 3. ~~**补齐 mimalloc 构建的 CI 覆盖**~~ **✅ 完成（2026-09-28）**：随切片 1 解决 —— CI 新增 `default-allocator` job，所有 job 先跑 `setup_deps.sh`。
 4. **发布工程**（剩余部分）：`LICENSE` 已补、`libuvrpc_full.a` 丢符号缺陷已修；`Version` 徽章指向的 `v1.0.0a` release 仍不存在 —— 需打 tag 并在 GitHub 建 release，徽章才名副其实。
 5. **未决的架构问题**（需讨论，工期不定）：`loop->data` 占用是"框架抢用户字段"的妥协方案，是否有更干净的挂载点（per-loop hash key，或显式 `uvrpc_registry_t*` 由用户传入）值得重新评估 —— 当前唯一"框架悄悄动了用户可见字段"的地方，见 [[loop-data-registry-over-global-hash]]。

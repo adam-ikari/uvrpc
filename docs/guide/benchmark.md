@@ -49,17 +49,17 @@ An unknown transport exits with status 2. Addresses are fixed per transport
 Output:
 
 ```
-transport=inproc    requests=100000  received=100000  elapsed=246 ms  (sequential ping-pong)
-  round-trip latency: 2.46 us/req
-  throughput (= 1/latency, 1 in-flight): 406504 req/s
+transport=sameloop  requests=1000000  received=1000000  elapsed=974 ms  (sequential ping-pong)
+  round-trip latency: 0.97 us/req
+  throughput (= 1/latency, 1 in-flight): 1033058 req/s
 ```
 
-That is a real line from a Linux container on a 12-core Ryzen 7 5800H, quiet at
-the time of measurement. Run the same binary while something else is compiling
-and INPROC reads ~23 µs/req instead of ~2.5 µs — an order of magnitude from
-contention alone. Numbers also differ across hosts for reasons the design does
-not control. This is why the table below is labelled as one machine's figures
-rather than a specification, and why any single run must say what it ran on.
+That is a real run from the `Benchmark` workflow (run `36527761470`). Run the
+same binary while something else is compiling and INPROC reads an order of
+magnitude slower — contention alone does that. Numbers also differ across
+hosts for reasons the design does not control. This is why the table below is
+labelled as one runner's figures rather than a specification, and why any
+single run must say what it ran on.
 
 ## What the numbers mean — and what they do not
 
@@ -118,10 +118,10 @@ these figures describe RPC framing cost, not bulk-data transfer.
 Calls a function through a callback pointer with no transport, no
 serialization, no libuv. Use it as the subtractive baseline: if a direct call
 costs `X` and SAMELOOP costs `Y`, then `Y - X` is what the RPC framing and loop
-round-trip actually cost you. On the container above: direct 0.256 ns, function
-pointer 0.271 ns, indirect-with-checks 0.305 ns — dispatch overhead is two
-orders of magnitude below one round trip, so the cost of an in-process call is
-framing and queue turn, not the pointer hop.
+round-trip actually cost you. Measured alongside the table below: direct
+0.339 ns, function pointer 0.335 ns, indirect-with-checks 0.362 ns — dispatch
+overhead is three orders of magnitude below one round trip, so the cost of an
+in-process call is framing and queue turn, not the pointer hop.
 
 ## Reference numbers
 
@@ -137,16 +137,10 @@ Actions `ubuntu-latest` runner (run `36527761470`, commit `9c9aa24`):
 | UDP | 20.10 µs | ~50,000 req/s | loss-tolerant |
 | TCP | 20.08 µs | ~50,000 req/s | reliable network RPC |
 
-The 1,000,000-request stress run in the same job measured 0.97 µs/req
-(1,033,058 req/s) on SAMELOOP. Re-run the workflow to reproduce; the table
-above is a regression baseline for *that runner class*, not a capacity
-promise.
-
-The same build on an AMD Ryzen 7 5800H laptop measured ~2.5–3.2 µs
-(SAMELOOP/INPROC), ~22 µs (IPC), ~26 µs (UDP), ~32 µs (TCP) — slower across
-the board, as a shared desktop under load should be. Absolute numbers are
-host-dependent; the *ratios* (in-process ≫ local socket ≫ network) are what
-the design actually guarantees. UDP in sequential ping-pong also carries real
+Re-run the workflow to reproduce. Absolute numbers are host-dependent; the
+*ratios* (in-process ≫ local socket ≫ network) are what the design actually
+guarantees. Treat the table as a regression baseline recorded on one runner
+class, not a capacity promise. UDP in sequential ping-pong also carries real
 packet-loss risk: a lost response shows up as a timeout error, not as
 degraded throughput.
 
