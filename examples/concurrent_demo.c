@@ -41,15 +41,20 @@ void batch_callback(uvrpc_response_t* resp, void* ctx) {
     }
 }
 
-/* Simple callback for individual requests */
+/* Simple callback for individual requests. Silent on success: the summary lines
+ * report totals, and 1000 responses would otherwise drown the demo. */
 void simple_callback(uvrpc_response_t* resp, void* ctx) {
     const char* label = (const char*)ctx;
 
-    if (resp->status == UVRPC_OK) {
-        printf("[%s] Success! Result size: %zu\n", label, resp->result_size);
-    } else {
+    if (resp->status != UVRPC_OK) {
         printf("[%s] Failed! Error code: %d\n", label, resp->error_code);
     }
+}
+
+/* Connect callback: TCP connect is asynchronous, so the demo must drive the
+ * loop until this fires before sending anything. */
+void on_connect(int status, void* ctx) {
+    *(int*)ctx = (status == 0) ? 1 : -1;
 }
 
 int main(int argc, char* argv[]) {
@@ -64,7 +69,6 @@ int main(int argc, char* argv[]) {
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
     uvrpc_config_set_address(client_config, SERVER_ADDRESS);
-    uvrpc_config_set_performance_mode(client_config, UVRPC_PERF_HIGH_THROUGHPUT);
     uvrpc_config_set_max_concurrent(client_config, 20);  /* Limit concurrent requests */
 
     printf("=== UVRPC Concurrent and Async Demo ===\n\n");
@@ -95,8 +99,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (uvrpc_client_connect(client) != UVRPC_OK) {
+    int connected = 0;
+    if (uvrpc_client_connect_with_callback(client, on_connect, &connected) != UVRPC_OK) {
         fprintf(stderr, "Failed to connect client\n");
+        return 1;
+    }
+    for (int pump = 0; pump < 200 && connected == 0; pump++) {
+        uv_run(&loop, UV_RUN_ONCE);
+    }
+    if (connected != 1) {
+        fprintf(stderr, "[Client] Connect did not complete\n");
         return 1;
     }
 
@@ -108,24 +120,43 @@ int main(int argc, char* argv[]) {
 
     const char* test_data = "Hello from UVRPC!";
 
-    for (int i = 0; i < NUM_CONCURRENT_REQUESTS; i++) {
-        uvrpc_client_call(client, "echo",
-                          (const uint8_t*)test_data, strlen(test_data),
-                          simple_callback, (void*)"Individual");
+    /* max_concurrent is 20 and TCP round trips are asynchronous, so a tight
+     * send loop does hit the quota. Backpressure here is a return value, not a
+     * queue: pump the loop so responses release their slots, then retry. */
+    int sent = 0;
+    int throttled = 0;
+    for (int i = 0; i < NUM_CONCURRENT_REQUESTS; ) {
+        int ret = uvrpc_client_call(client, "echo",
+                                    (const uint8_t*)test_data, strlen(test_data),
+                                    simple_callback, (void*)"Individual");
+        if (ret == UVRPC_OK) {
+            sent++;
+            i++;
+        } else if (ret == UVRPC_ERROR_RATE_LIMITED ||
+                   ret == UVRPC_ERROR_CALLBACK_LIMIT ||
+                   ret == UVRPC_ERROR_TRANSPORT_BUSY) {
+            throttled++;
+            uv_run(&loop, UV_RUN_NOWAIT);
+        } else {
+            fprintf(stderr, "[Client] call failed: %d (i=%d sent=%d pending=%d)\n",
+                    ret, i, sent);
+            break;
+        }
     }
+    printf("Sent %d requests (%d needed a retry after backpressure)\n", sent, throttled);
 
     /* Wait for all requests to complete */
     int pending = uvrpc_client_get_pending_count(client);
     int iterations = 0;
-    while (pending > 0 && iterations < 100) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        uv_stop(&loop);
+    while (pending > 0 && iterations < 500) {
+        uv_run(&loop, UV_RUN_ONCE);   /* DEFAULT would never return: the server
+                                       * listener handle keeps the loop alive */
         pending = uvrpc_client_get_pending_count(client);
         iterations++;
-        usleep(10000);  /* 10ms */
+        usleep(2000);  /* 2ms */
     }
 
-    printf("Completed %d individual requests\n\n", NUM_CONCURRENT_REQUESTS - pending);
+    printf("Completed %d individual requests\n\n", sent - pending);
 
     /* === Demo 2: Batch requests === */
     printf("=== Demo 2: Batch Requests ===\n");
@@ -168,12 +199,11 @@ int main(int argc, char* argv[]) {
     /* Wait for batch to complete */
     pending = uvrpc_client_get_pending_count(client);
     iterations = 0;
-    while (pending > 0 && iterations < 100) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        uv_stop(&loop);
+    while (pending > 0 && iterations < 500) {
+        uv_run(&loop, UV_RUN_ONCE);
         pending = uvrpc_client_get_pending_count(client);
         iterations++;
-        usleep(10000);
+        usleep(2000);
     }
 
     printf("Batch completed\n\n");

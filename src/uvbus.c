@@ -34,8 +34,6 @@ uvbus_config_t* uvbus_config_new(void) {
     }
     
     memset(config, 0, sizeof(uvbus_config_t));
-    config->timeout_ms = 30000;  /* Default 30 seconds */
-    config->enable_timeout = 0;
     
     return config;
 }
@@ -89,18 +87,6 @@ void uvbus_config_set_error_callback(uvbus_config_t* config, uvbus_error_callbac
     if (config) {
         config->error_cb = error_cb;
         config->callback_ctx = ctx;
-    }
-}
-
-void uvbus_config_set_timeout(uvbus_config_t* config, uint64_t timeout_ms) {
-    if (config) {
-        config->timeout_ms = timeout_ms;
-    }
-}
-
-void uvbus_config_set_timeout_enabled(uvbus_config_t* config, int enabled) {
-    if (config) {
-        config->enable_timeout = enabled;
     }
 }
 

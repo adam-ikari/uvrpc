@@ -23,11 +23,8 @@ uvrpc_config_t* uvrpc_config_new(void) {
     config->loop = NULL;
     config->address = NULL;
     config->transport = UVBUS_TRANSPORT_TCP;  /* Default to TCP */
-    config->performance_mode = UVRPC_PERF_LOW_LATENCY;  /* Default to low latency */
-    config->pool_size = UVRPC_DEFAULT_POOL_SIZE;
     config->max_concurrent = UVRPC_MAX_CONCURRENT_REQUESTS;
     config->max_pending_callbacks = UVRPC_DEFAULT_PENDING_CALLBACKS;  /* Use default instead of compile-time constant */
-    config->timeout_ms = 0;
     config->msgid_offset = 0;  /* Default: 0 = auto-assign */
 
     return config;
@@ -84,18 +81,6 @@ uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transpo
     return config;
 }
 
-uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode) {
-    if (!config) return NULL;
-    config->performance_mode = mode;
-    return config;
-}
-
-uvrpc_config_t* uvrpc_config_set_pool_size(uvrpc_config_t* config, int pool_size) {
-    if (!config) return NULL;
-    config->pool_size = (pool_size > 0) ? pool_size : UVRPC_DEFAULT_POOL_SIZE;
-    return config;
-}
-
 uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_concurrent) {
     if (!config) return NULL;
     config->max_concurrent = (max_concurrent > 0) ? max_concurrent : UVRPC_MAX_CONCURRENT_REQUESTS;
@@ -116,21 +101,9 @@ uvrpc_config_t* uvrpc_config_set_max_pending_callbacks(uvrpc_config_t* config, i
     return config;
 }
 
-uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, uint64_t timeout_ms) {
-    if (!config) return NULL;
-    config->timeout_ms = timeout_ms;
-    return config;
-}
-
 uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t msgid_offset) {
     if (!config) return NULL;
     config->msgid_offset = msgid_offset;
-    return config;
-}
-
-uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval) {
-    if (!config) return NULL;
-    config->pump_interval = pump_interval;
     return config;
 }
 

@@ -74,7 +74,7 @@ typedef enum {
     UVBUS_TRANSPORT_TCP = 0,         /**< @brief TCP transport */
     UVBUS_TRANSPORT_UDP = 1,         /**< @brief UDP transport */
     UVBUS_TRANSPORT_IPC = 2,         /**< @brief Unix domain socket (IPC) */
-    UVBUS_TRANSPORT_INPROC = 3,      /**< @brief In-process transport (thread-safe) */
+    UVBUS_TRANSPORT_INPROC = 3,      /**< @brief In-process transport (endpoints live in a per-loop registry on loop->data; not thread-safe, not cross-loop) */
     UVBUS_TRANSPORT_SAMELOOP = 4   /**< @brief Same-loop transport (zero-lock, zero-copy, requires same uv_loop_t instance) */
 } uvbus_transport_type_t;
 
@@ -149,10 +149,6 @@ struct uvbus_config {
     uvbus_error_callback_t error_cb;
     void* recv_ctx;       /**< Context for recv_cb */
     void* callback_ctx;   /**< Context for connect_cb, close_cb, error_cb */
-
-    /* Options */
-    uint64_t timeout_ms;
-    int enable_timeout;
 };
 
 /* Transport implementation base structure */
@@ -254,16 +250,6 @@ void uvbus_config_set_close_callback(uvbus_config_t* config, uvbus_close_callbac
  * Set error callback
  */
 void uvbus_config_set_error_callback(uvbus_config_t* config, uvbus_error_callback_t error_cb, void* ctx);
-
-/**
- * Set timeout
- */
-void uvbus_config_set_timeout(uvbus_config_t* config, uint64_t timeout_ms);
-
-/**
- * Enable/disable timeout
- */
-void uvbus_config_set_timeout_enabled(uvbus_config_t* config, int enabled);
 
 /**
  * @brief Set send buffer threshold for async triggering

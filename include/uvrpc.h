@@ -97,24 +97,9 @@ typedef enum {
 #define UVRPC_MAX_PENDING_CALLBACKS (1 << 22)  /* 4,194,304 - maximum allowed */
 #endif
 
-#ifndef UVRPC_DEFAULT_POOL_SIZE
-#define UVRPC_DEFAULT_POOL_SIZE 10  /* Default connection pool size */
-#endif
-
 #ifndef UVRPC_MAX_CONCURRENT_REQUESTS
 #define UVRPC_MAX_CONCURRENT_REQUESTS 100  /* Max concurrent requests per client */
 #endif
-
-/**
- * @brief Performance modes for UVRPC operations
- *
- * Controls how requests are processed to optimize for either
- * low latency or high throughput.
- */
-typedef enum {
-    UVRPC_PERF_LOW_LATENCY = 0,  /**< @brief Low latency mode: process immediately with minimal batching */
-    UVRPC_PERF_HIGH_THROUGHPUT = 1 /**< @brief High throughput mode: batch processing for bulk operations */
-} uvrpc_perf_mode_t;
 
 /**
  * @brief Cleanup callback for context data
@@ -231,14 +216,10 @@ struct uvrpc_config {
     uv_loop_t* loop;                     /**< @brief libuv event loop (required) */
     char* address;                       /**< @brief Server or client address (required) */
     uvbus_transport_type_t transport;    /**< @brief Transport type (TCP/UDP/IPC/INPROC/SAMELOOP) */
-    uvrpc_perf_mode_t performance_mode;  /**< @brief Performance mode (LOW_LATENCY or HIGH_THROUGHPUT) */
-    int pool_size;                       /**< @brief Connection pool size (default: UVRPC_DEFAULT_POOL_SIZE) */
     int max_concurrent;                  /**< @brief Max concurrent requests (default: UVRPC_MAX_CONCURRENT_REQUESTS) */
-    int max_pending_callbacks;           /**< @brief Max pending callbacks in ring buffer (default: UVRPC_MAX_PENDING_CALLBACKS) */
-    uint64_t timeout_ms;                 /**< @brief Default timeout in milliseconds (default: 0 = no timeout) */
+    int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
-    int pump_interval;                   /**< @brief Pump interval in ms for auto-flush (0 = immediate, default: 0) */
-    int max_clients;                     /**< @brief Maximum server clients (default: 1024, 0 = unlimited) */
+    int max_clients;                     /**< @brief Maximum server clients (0 or less falls back to 1024; it does not mean unlimited) */
 };
 
 /**
@@ -340,26 +321,11 @@ uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* add
 uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transport_type_t transport);
 
 /**
- * @brief Set the performance mode
- * 
- * @param config Configuration structure
- * @param mode Performance mode (LOW_LATENCY or HIGH_THROUGHPUT)
- * @return Configuration structure for chaining
- */
-uvrpc_config_t* uvrpc_config_set_performance_mode(uvrpc_config_t* config, uvrpc_perf_mode_t mode);
-
-/**
- * @brief Set the connection pool size
- * 
- * @param config Configuration structure
- * @param pool_size Number of connections in pool
- * @return Configuration structure for chaining
- */
-uvrpc_config_t* uvrpc_config_set_pool_size(uvrpc_config_t* config, int pool_size);
-
-/**
  * @brief Set the maximum concurrent requests
- * 
+ *
+ * Only the batch entry point checks this (uvrpc_client.c:714-718); single
+ * uvrpc_client_call() requests are not gated.
+ *
  * @param config Configuration structure
  * @param max_concurrent Maximum concurrent requests
  * @return Configuration structure for chaining
@@ -370,19 +336,12 @@ uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_
  * @brief Set the maximum pending callbacks
  * 
  * @param config Configuration structure
- * @param max_pending Maximum pending callbacks (must be power of 2)
+ * @param max_pending Maximum pending callbacks (must be a power of 2 in
+ *                    [64, UVRPC_MAX_PENDING_CALLBACKS]); anything else is
+ *                    silently replaced by UVRPC_DEFAULT_PENDING_CALLBACKS
  * @return Configuration structure for chaining
  */
 uvrpc_config_t* uvrpc_config_set_max_pending_callbacks(uvrpc_config_t* config, int max_pending);
-
-/**
- * @brief Set the default timeout
- * 
- * @param config Configuration structure
- * @param timeout_ms Timeout in milliseconds (0 for no timeout)
- * @return Configuration structure for chaining
- */
-uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, uint64_t timeout_ms);
 
 /**
  * @brief Set the message ID offset
@@ -394,18 +353,11 @@ uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, uint64_t timeou
 uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t msgid_offset);
 
 /**
- * @brief Set pump interval for auto-flush
- * @param config Configuration object
- * @param pump_interval Pump interval in milliseconds (0 = immediate flush, default: 0)
- * @return Configuration object for chaining
- */
-uvrpc_config_t* uvrpc_config_set_pump_interval(uvrpc_config_t* config, int pump_interval);
-
-/**
  * @brief Set maximum server clients
  * 
  * @param config Configuration object
- * @param max_clients Maximum clients (default: 1024, 0 = unlimited)
+ * @param max_clients Maximum clients; 0 or less selects the 1024 default and
+ *                    does not mean unlimited
  * @return Configuration object for chaining
  * @note Only applicable to server configuration
  */

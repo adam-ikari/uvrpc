@@ -55,11 +55,8 @@ TEST_F(UVRPCClientTest, CreateAndDestroyConfig) {
     
     /* Verify default values */
     EXPECT_EQ(test_config->transport, UVBUS_TRANSPORT_TCP);
-    EXPECT_EQ(test_config->performance_mode, UVRPC_PERF_LOW_LATENCY);
-    EXPECT_EQ(test_config->pool_size, UVRPC_DEFAULT_POOL_SIZE);
     EXPECT_EQ(test_config->max_concurrent, UVRPC_MAX_CONCURRENT_REQUESTS);
     EXPECT_EQ(test_config->max_pending_callbacks, UVRPC_DEFAULT_PENDING_CALLBACKS);
-    EXPECT_EQ(test_config->timeout_ms, 0);
     EXPECT_EQ(test_config->msgid_offset, 0);
     
     uvrpc_config_free(test_config);
@@ -74,11 +71,8 @@ TEST_F(UVRPCClientTest, ConfigSetters) {
     EXPECT_EQ(uvrpc_config_set_loop(test_config, nullptr), test_config);
     EXPECT_EQ(uvrpc_config_set_address(test_config, "tcp://127.0.0.1:5555"), test_config);
     EXPECT_EQ(uvrpc_config_set_transport(test_config, UVBUS_TRANSPORT_TCP), test_config);
-    EXPECT_EQ(uvrpc_config_set_performance_mode(test_config, UVRPC_PERF_HIGH_THROUGHPUT), test_config);
-    EXPECT_EQ(uvrpc_config_set_pool_size(test_config, 10), test_config);
     EXPECT_EQ(uvrpc_config_set_max_concurrent(test_config, 100), test_config);
     EXPECT_EQ(uvrpc_config_set_max_pending_callbacks(test_config, 65536), test_config);
-    EXPECT_EQ(uvrpc_config_set_timeout(test_config, 5000), test_config);
     EXPECT_EQ(uvrpc_config_set_msgid_offset(test_config, 1000), test_config);
     
     uvrpc_config_free(test_config);

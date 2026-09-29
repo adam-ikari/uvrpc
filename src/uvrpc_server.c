@@ -41,7 +41,7 @@ struct uvrpc_server {
     handler_entry_t* handlers;
     int is_running;
     int current_clients;  /* Current connected clients */
-    int max_clients;      /* Maximum clients (0 = unlimited) */
+    int max_clients;      /* Maximum clients; uvrpc_server_create clamps 0 to 1024 */
     
     /* Client tracking */
     void** client_ctxs;   /* Array of client contexts for tracking */

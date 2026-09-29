@@ -17,38 +17,19 @@
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 /* UVRPC_LOG_DEBUG / UVRPC_LOG_ERROR / UVRPC_LOG are provided by uvrpc.h */
 
-/* Stream timeout default: 60 seconds */
-#define STREAM_TIMEOUT_MS 60000
-
-/* Get current timestamp in milliseconds */
-static uint64_t get_timestamp_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
-
 /* Forward declarations */
-static void pump_timer_callback(uv_timer_t* handle);
-static void start_pump_timer(uvrpc_client_t* client);
 static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const char* method,
                                                 const uint8_t* params, size_t params_size,
                                                 uvrpc_callback_t callback, void* ctx);
 
-/* Pending callback - using direct indexing ring buffer */
+/* Pending callback - one slot per request awaiting its final response */
 typedef struct pending_callback {
     uint32_t msgid;          /* Message ID for validation */
-    uint32_t generation;     /* Generation counter to detect stale entries */
     uvrpc_callback_t callback;
     void* ctx;
-    uint64_t last_activity;  /* Last activity timestamp (for timeout) */
-    char* method;            /* Method name (for polling) */
-    uv_timer_t poll_timer;   /* Timer for polling (if degraded to polling) */
-    int is_polling;          /* Whether this connection is in polling mode */
-    uvrpc_client_t* client;  /* Client pointer (for polling) */
 } pending_callback_t;
 
 /* Client structure */
@@ -58,8 +39,6 @@ struct uvrpc_client {
     uvbus_t* uvbus;
     int is_connected;
     uvrpc_msgid_ctx_t* msgid_ctx;  /* Message ID generator */
-    uvrpc_perf_mode_t performance_mode;  /* Performance mode: low latency vs high throughput */
-    int in_callback;  /* Flag to prevent re-entry into callbacks */
 
     /* User-defined context */
     uvrpc_context_t* ctx;
@@ -71,53 +50,21 @@ struct uvrpc_client {
     /* Pending callbacks ring buffer (dynamically allocated based on config) */
     pending_callback_t** pending_callbacks;
     int max_pending_callbacks;  /* Size of ring buffer (must be power of 2) */
-    uint32_t generation;  /* Generation counter to detect stale entries */
 
-    /* Concurrency control */
+    /* Concurrency control. current_concurrent counts registered pending
+     * callbacks - requests awaiting their final response. Oneway sends are not
+     * counted because they never take a slot. */
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
-    uint64_t timeout_ms;        /* Default timeout */
-
-    /* Batch processing */
-    int batching_enabled;       /* Enable request batching */
-    int batch_size;             /* Current batch size */
-    int max_batch_size;         /* Max batch size before flush */
 
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
     uvasync_scheduler_t* scheduler;  /* Async scheduler for request concurrency control */
-
-    /* Pump timer for auto-flush */
-    int pump_interval;          /* Pump interval in milliseconds (0 = disabled) */
-    uv_timer_t pump_timer;      /* Pump timer handle */
-
-    /* Send state */
-    int send_pending;           /* Flag indicating send is pending */
 };
-
-/* Start pump timer if configured */
-static void start_pump_timer(uvrpc_client_t* client) {
-    if (client->pump_interval > 0) {
-        uv_timer_start(&client->pump_timer, pump_timer_callback, client->pump_interval, 0);
-    }
-}
 
 /* Cleanup pending callback */
 static void cleanup_pending_callback(pending_callback_t* pending) {
     if (!pending) return;
-    
-    /* Free method name if allocated */
-    if (pending->method) {
-        uvrpc_free(pending->method);
-    }
-    
-    /* Stop and close poll timer if active */
-    if (pending->is_polling && uv_is_active((uv_handle_t*)&pending->poll_timer)) {
-        uv_timer_stop(&pending->poll_timer);
-        uv_close((uv_handle_t*)&pending->poll_timer, NULL);
-    }
-    
-    /* Free pending callback structure */
     uvrpc_free(pending);
 }
 
@@ -201,8 +148,8 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
 
     UVRPC_LOG("Received response: msgid=%u, idx=%u, pending=%p", msgid, idx, (void*)pending);
 
-    /* Check if callback exists and matches msgid and generation */
-    if (pending && pending->msgid == msgid && pending->generation == client->generation) {
+    /* Check if callback exists and matches msgid */
+    if (pending && pending->msgid == msgid) {
         UVRPC_LOG("Found pending callback for msgid=%u (idx=%u)", msgid, idx);
         
         /* Create response structure */
@@ -224,9 +171,6 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         }
         resp.result = result_copy;
         resp.result_size = result_size;
-
-        /* Update activity timestamp */
-        pending->last_activity = get_timestamp_ms();
 
         /* Call callback */
         if (pending->callback) {
@@ -272,18 +216,15 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
         return NULL;
     }
     client->is_connected = 0;
-    client->performance_mode = config->performance_mode;
     client->user_connect_callback = NULL;
     client->user_connect_ctx = NULL;
 
     /* Initialize concurrency control */
     client->max_concurrent = config->max_concurrent;
     client->current_concurrent = 0;
-    client->timeout_ms = config->timeout_ms;
 
     /* Initialize ring buffer with runtime size */
     client->max_pending_callbacks = config->max_pending_callbacks;
-    client->generation = 0;
     
     /* Allocate ring buffer array */
     client->pending_callbacks = (pending_callback_t**)uvrpc_calloc(
@@ -293,11 +234,6 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
         uvrpc_free(client);
         return NULL;
     }
-
-    /* Initialize batch processing */
-    client->batching_enabled = (config->performance_mode == UVRPC_PERF_HIGH_THROUGHPUT);
-    client->batch_size = 0;
-    client->max_batch_size = 100;  /* Default batch size */
 
     /* Initialize retry configuration */
     client->max_retries = 0;  /* Default: no retry */
@@ -523,7 +459,17 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
     UVRPC_LOG("Encoded request: %zu bytes", req_size);
     
     /* Register callback using direct indexing */
+    uint32_t idx = 0;
+    int slot_taken = 0;
     if (callback) {
+        /* One in-flight request == one registered pending callback, so the
+         * concurrency quota is checked wherever a slot is taken. */
+        if (client->max_concurrent > 0 &&
+            client->current_concurrent + 1 > client->max_concurrent) {
+            uvrpc_free(req_data);
+            return UVRPC_ERROR_RATE_LIMITED;
+        }
+
         pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
         if (!pending) {
             uvrpc_free(req_data);
@@ -531,31 +477,21 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         }
 
         pending->msgid = msgid;
-        pending->generation = client->generation;
         pending->callback = callback;
         pending->ctx = ctx;
-        pending->last_activity = get_timestamp_ms();
-        pending->client = client;
-        pending->is_polling = 0;
 
         /* Direct indexing with bitmask - O(1) */
-        uint32_t idx = msgid & (client->max_pending_callbacks - 1);
-        pending_callback_t* existing = client->pending_callbacks[idx];
-
-        if (existing == NULL) {
-            /* Slot is empty - insert directly */
-            client->pending_callbacks[idx] = pending;
-        } else if (existing->generation != client->generation) {
-            /* Stale entry from previous generation - replace it */
-            uvrpc_free(existing);
-            client->pending_callbacks[idx] = pending;
-        } else {
-            /* Slot is occupied by a valid entry - ring buffer is effectively full */
-            /* Do NOT block the event loop - return error and let caller handle it */
-            cleanup_pending_callback(pending);
+        idx = msgid & (client->max_pending_callbacks - 1);
+        if (client->pending_callbacks[idx] != NULL) {
+            /* Slot is occupied by a live entry - the ring buffer is effectively
+             * full. Do NOT block the event loop; let the caller back off. */
+            uvrpc_free(pending);
             uvrpc_free(req_data);
             return UVRPC_ERROR_CALLBACK_LIMIT;
         }
+        client->pending_callbacks[idx] = pending;
+        client->current_concurrent++;
+        slot_taken = 1;
     }
 
     /* Send request (must be after callback registration to avoid race conditions) */
@@ -567,19 +503,18 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         UVRPC_LOG("uvbus_send returned: %d", send_err);
         
         if (send_err != UVBUS_OK) {
-            /* Send failed - remove callback from ringbuffer */
-            if (callback) {
-                uint32_t idx = msgid & (client->max_pending_callbacks - 1);
-                if (client->pending_callbacks[idx] &&
-                    client->pending_callbacks[idx]->msgid == msgid) {
-                    uvrpc_free(client->pending_callbacks[idx]);
-                    client->pending_callbacks[idx] = NULL;
-                }
+            /* Send failed - roll back the slot we took. The ownership check also
+             * covers a transport that completed the round trip synchronously and
+             * already released the slot. */
+            if (slot_taken && client->pending_callbacks[idx] &&
+                client->pending_callbacks[idx]->msgid == msgid) {
+                cleanup_pending_callback(client->pending_callbacks[idx]);
+                client->pending_callbacks[idx] = NULL;
+                client->current_concurrent--;
             }
             uvrpc_free(req_data);
 
             if (send_err == UVBUS_ERROR_BUFFER_FULL) {
-                client->send_pending = 1;  /* Mark send as pending for retry */
                 return UVRPC_ERROR_TRANSPORT_BUSY;
             }
             return UVRPC_ERROR_TRANSPORT;
@@ -657,7 +592,6 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
         if (send_err != UVBUS_OK) {
             uvrpc_free(req_data);
             if (send_err == UVBUS_ERROR_BUFFER_FULL) {
-                client->send_pending = 1;  /* Mark send as pending */
                 return UVRPC_ERROR_TRANSPORT_BUSY;
             }
             return UVRPC_ERROR_TRANSPORT;
@@ -665,9 +599,6 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
     }
     
     uvrpc_free(req_data);
-    
-    /* Start pump timer if configured */
-    start_pump_timer(client);
     
     return UVRPC_OK;
 }
@@ -743,9 +674,9 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
                 return UVRPC_ERROR_NO_MEMORY;
             }
 
-            uint32_t idx = (uint32_t)msgid % client->max_pending_callbacks;
+            uint32_t idx = msgid & (client->max_pending_callbacks - 1);
             if (client->pending_callbacks[idx] != NULL) {
-                cleanup_pending_callback(pending);
+                uvrpc_free(pending);
                 uvrpc_free(req_data);
                 return UVRPC_ERROR_CALLBACK_LIMIT;
             }
@@ -754,14 +685,26 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
             pending->callback = callbacks[i];
             pending->ctx = contexts[i];
             client->pending_callbacks[idx] = pending;
-
-            /* Increase concurrent count */
             client->current_concurrent++;
         }
 
-        /* Send request (no flush for batch except last) */
+        /* Send request */
         if (client->uvbus) {
-            uvbus_send(client->uvbus, req_data, req_size);
+            uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
+            if (send_err != UVBUS_OK) {
+                /* Roll back this entry's slot so a dropped send does not leak a
+                 * pending callback that no response will ever release. */
+                uint32_t idx = msgid & (client->max_pending_callbacks - 1);
+                if (callbacks[i] && client->pending_callbacks[idx] &&
+                    client->pending_callbacks[idx]->msgid == msgid) {
+                    cleanup_pending_callback(client->pending_callbacks[idx]);
+                    client->pending_callbacks[idx] = NULL;
+                    client->current_concurrent--;
+                }
+                uvrpc_free(req_data);
+                return (send_err == UVBUS_ERROR_BUFFER_FULL) ? UVRPC_ERROR_TRANSPORT_BUSY
+                                                             : UVRPC_ERROR_TRANSPORT;
+            }
         }
 
         uvrpc_free(req_data);
@@ -770,17 +713,3 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
     return UVRPC_OK;
 }
 
-/* Pump timer callback for auto-flush */
-static void pump_timer_callback(uv_timer_t* handle) {
-    uvrpc_client_t* client = (uvrpc_client_t*)handle->data;
-
-    if (!client || !client->uvbus) {
-        return;
-    }
-
-    /* Clear send pending flag */
-    client->send_pending = 0;
-
-    /* The pump timer is designed to trigger periodic flushes for batched sends.
-     * This is particularly useful for Oneway RPC and high-throughput scenarios. */
-}

@@ -189,11 +189,8 @@ void test_config_set_get(void) {
     uvbus_config_set_loop(config, &loop);
     uvbus_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     uvbus_config_set_address(config, TEST_TCP_ADDRESS);
-    uvbus_config_set_timeout(config, 10000);
-    
     ASSERT_EQ(config->transport, UVBUS_TRANSPORT_TCP, "Transport type mismatch");
     ASSERT_STR_EQ(config->address, TEST_TCP_ADDRESS, "Address mismatch");
-    ASSERT_EQ(config->timeout_ms, 10000, "Timeout mismatch");
     
     uvbus_config_free(config);
     uv_loop_close(&loop);
@@ -441,33 +438,6 @@ void test_memory_leak(void) {
 }
 
 /**
- * Test 13: Config timeout settings
- */
-void test_config_timeout(void) {
-    TEST_START("Config timeout settings");
-    
-    uvbus_config_t* config = uvbus_config_new();
-    ASSERT_NOT_NULL(config, "Failed to create config");
-    
-    /* Test default timeout */
-    ASSERT_EQ(config->timeout_ms, 30000, "Default timeout mismatch");
-    
-    /* Test custom timeout */
-    uvbus_config_set_timeout(config, 5000);
-    ASSERT_EQ(config->timeout_ms, 5000, "Custom timeout mismatch");
-    
-    /* Test enable/disable */
-    uvbus_config_set_timeout_enabled(config, 1);
-    ASSERT_EQ(config->enable_timeout, 1, "Timeout not enabled");
-    
-    uvbus_config_set_timeout_enabled(config, 0);
-    ASSERT_EQ(config->enable_timeout, 0, "Timeout not disabled");
-    
-    uvbus_config_free(config);
-    TEST_PASS();
-}
-
-/**
  * Test 14: Get transport type
  */
 void test_get_transport_type(void) {
@@ -644,7 +614,6 @@ int main(int argc, char* argv[]) {
     test_client_send_unconnected();
     test_server_send_inactive();
     test_memory_leak();
-    test_config_timeout();
     test_get_transport_type();
     test_callback_mechanism();
     test_empty_address();
