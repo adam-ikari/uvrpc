@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T07:07:34"
+updated: "2026-09-29T08:02:22"
 ---
 
 <!-- compiled_truth -->
@@ -81,4 +81,10 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: evidence
   summary: "结构体数组路径的运行时缺陷（此前因生成器崩溃而从未被执行过）：① 向游离向量再 add 偏移，编译通过但解码长度恒为 0（flatcc 0.6 要求在字段作用域内 <Table>_<field>_start/push_create/_end）；② 元素里的字符串字段直接把 const char* 传给 _create 的 string_ref_t 形参，读取时解引用垃圾崩溃。两处都在 client.c.j2 / rpc_common.c.j2。修好后 log_service_demo 端到端跑通：批量 3 条、10 条高频 quick log 全部送达"
   source: "纯 flatcc 往返复现 + examples/log_service_demo.c 端到端实测 (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T08:02:22
+  kind: evidence
+  summary: "生成器修正收尾：① 批量/Promise 路径（rpc_common.c.j2）缺字符串分支，const char* 直接传给 string_ref_t 形参 —— rpc_api.fbs 一直带这个 bug；② 响应解码用 &fb_response 传指针给按值接收的访问器；③ 标量数组解码用 builder 的 flatbuffers_uint8_vec_start 读已完成的向量，flatcc 0.6 里向量指针本身即数据首地址；④ finalize_buffer 的缓冲区用 flatcc_builder_aligned_free 释放而非 free()。6 个 schema 生成代码现已全部零错误零警告"
+  source: "实测：逐 schema gcc -fsyntax-only 统计 (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]

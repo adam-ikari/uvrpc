@@ -122,8 +122,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builder,
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? request->{{ field.name }}[i].{{ struct_field['name'] }} : "",
                     request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -171,8 +174,9 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Send request using core API (stream mode - callback called multiple times) */
     uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size, callback, ctx);
 
-    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
-    free(buf);
+    /* finalize_buffer returns memory from flatcc's own builder allocator,
+     * possibly over-allocated; release it the way flatcc documents. */
+    flatcc_builder_aligned_free(buf);
     flatcc_builder_clear(&builder);
     return ret;
 }
@@ -217,8 +221,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builder,
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? request->{{ field.name }}[i].{{ struct_field['name'] }} : "",
                     request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -266,8 +273,9 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Send oneway request - no response callback needed */
     uvrpc_error_t ret = uvrpc_client_call_oneway(client, "{{ method.name }}", buf, size);
 
-    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
-    free(buf);
+    /* finalize_buffer returns memory from flatcc's own builder allocator,
+     * possibly over-allocated; release it the way flatcc documents. */
+    flatcc_builder_aligned_free(buf);
     flatcc_builder_clear(&builder);
     return ret;
 }
@@ -312,8 +320,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builder,
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? request->{{ field.name }}[i].{{ struct_field['name'] }} : "",
                     request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -362,8 +373,9 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Send request using core API (retry logic is in uvrpc_client_call) */
     uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size, callback, ctx);
 
-    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
-    free(buf);
+    /* finalize_buffer returns memory from flatcc's own builder allocator,
+     * possibly over-allocated; release it the way flatcc documents. */
+    flatcc_builder_aligned_free(buf);
     flatcc_builder_clear(&builder);
     return ret;
 }
@@ -456,7 +468,7 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
                     sync_ctx->response.{{ field.name }}_size = {{ field.name }}_len;
 
-                    const {{ field.type }}* arr = flatbuffers_uint8_vec_start({{ field.name }}_vec);
+                    const {{ field.type }}* arr = {{ field.name }}_vec;
 
                     memcpy(sync_ctx->response.{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
 
@@ -554,8 +566,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builder,
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? request->{{ field.name }}[i].{{ struct_field['name'] }} : "",
                     request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -605,8 +620,9 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     uvrpc_error_t ret = uvrpc_client_call(client, "{{ method.name }}", buf, size,
                                  sync_{{ service_name_lower }}_{{ method.name }}_callback, &sync_ctx);
 
-    /* Free the buffer allocated by flatcc_builder_finalize_buffer */
-    free(buf);
+    /* finalize_buffer returns memory from flatcc's own builder allocator,
+     * possibly over-allocated; release it the way flatcc documents. */
+    flatcc_builder_aligned_free(buf);
     flatcc_builder_clear(&builder);
 
     if (ret != UVRPC_OK) {

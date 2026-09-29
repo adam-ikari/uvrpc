@@ -66,8 +66,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t j_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builders[i], requests[i].{{ field.name }}[j].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builders[i],
+                    requests[i].{{ field.name }}[j].{{ struct_field['name'] }} ? requests[i].{{ field.name }}[j].{{ struct_field['name'] }} : "",
                     requests[i].{{ field.name }}[j].{{ struct_field['name'] }} ? strlen(requests[i].{{ field.name }}[j].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -86,7 +89,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
         }
 {% endif -%}
 {% else -%}
+{% if field.type == "const char*" -%}
+        /* String field: {{ field.name }} -- a table's _add() takes a
+         * string_ref_t, never the pointer itself. */
+        if (requests[i].{{ field.name }}) {
+            flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builders[i], requests[i].{{ field.name }}, strlen(requests[i].{{ field.name }}));
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
+        }
+{% else -%}
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], requests[i].{{ field.name }});
+{% endif -%}
 {% endif -%}
 {% endfor -%}
         {{ namespace }}_{{ method.request }}_end_as_root(&builders[i]);
@@ -141,15 +153,15 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
 {% for field in method.response_fields -%}
 {% if field.is_array -%}
 {% if field.is_struct_array -%}
-                if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(&fb_response)) {
-                    flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+                if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+                    flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
                     if ({{ field.name }}_len > 0) {
                         results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                         if (results_array[i].{{ field.name }}) {
                             results_array[i].{{ field.name }}_size = {{ field.name }}_len;
                             for (size_t j = 0; j < {{ field.name }}_len; j++) {
-                                {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
+                                {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, j);
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
                                 results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 {%- endfor -%}
@@ -158,21 +170,21 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                     }
                 }
 {% else -%}
-                if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(&fb_response)) {
-                    flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+                if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+                    flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
                     if ({{ field.name }}_len > 0) {
                         results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                         if (results_array[i].{{ field.name }}) {
                             results_array[i].{{ field.name }}_size = {{ field.name }}_len;
-                            const {{ field.type }}* arr = flatbuffers_uint8_vec_start({{ field.name }}_vec);
+                            const {{ field.type }}* arr = {{ field.name }}_vec;
                             memcpy(results_array[i].{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
                         }
                     }
                 }
 {% endif -%}
 {% else -%}
-                results_array[i].{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+                results_array[i].{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
 {% endif -%}
 {% endfor -%}
             }
@@ -184,7 +196,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
     /* Cleanup */
     for (int i = 0; i < count; i++) {
         if (params_array[i]) {
-            free((void*)params_array[i]);
+            /* flatcc's allocator, not malloc: release it the way flatcc does. */
+            flatcc_builder_aligned_free((void*)params_array[i]);
         }
         flatcc_builder_clear(&builders[i]);
         if (async_results && async_results[i]) {
@@ -255,8 +268,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
              * into the buffer first and the refs passed. */
             {%- for struct_field in rpc_data['tables'][field.schema_type] %}
             {%- if struct_field['type'] == "const char*" %}
+            /* A table's _create() cannot omit a field: passing a null ref
+             * makes it fail, so a NULL string encodes as an empty one. */
             flatbuffers_string_ref_t j_{{ struct_field['name'] }}_ref =
-                flatbuffers_string_create(&builders[i], requests[i].{{ field.name }}[j].{{ struct_field['name'] }},
+                flatbuffers_string_create(&builders[i],
+                    requests[i].{{ field.name }}[j].{{ struct_field['name'] }} ? requests[i].{{ field.name }}[j].{{ struct_field['name'] }} : "",
                     requests[i].{{ field.name }}[j].{{ struct_field['name'] }} ? strlen(requests[i].{{ field.name }}[j].{{ struct_field['name'] }}) : 0);
             {%- endif %}
             {%- endfor %}
@@ -275,7 +291,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
         }
 {% endif -%}
 {% else -%}
+{% if field.type == "const char*" -%}
+        /* String field: {{ field.name }} -- a table's _add() takes a
+         * string_ref_t, never the pointer itself. */
+        if (requests[i].{{ field.name }}) {
+            flatbuffers_string_ref_t {{ field.name }}_ref = flatbuffers_string_create(&builders[i], requests[i].{{ field.name }}, strlen(requests[i].{{ field.name }}));
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
+        }
+{% else -%}
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], requests[i].{{ field.name }});
+{% endif -%}
 {% endif -%}
 {% endfor -%}
         {{ namespace }}_{{ method.request }}_end_as_root(&builders[i]);
@@ -307,15 +332,15 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
 {% for field in method.response_fields -%}
 {% if field.is_array -%}
 {% if field.is_struct_array -%}
-        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(&fb_response)) {
-            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
             if ({{ field.name }}_len > 0) {
                 result->{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                 if (result->{{ field.name }}) {
                     result->{{ field.name }}_size = {{ field.name }}_len;
                     for (size_t j = 0; j < {{ field.name }}_len; j++) {
-                        {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
+                        {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, j);
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
                         result->{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 {%- endfor -%}
@@ -324,21 +349,21 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
             }
         }
 {% else -%}
-        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(&fb_response)) {
-            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
             if ({{ field.name }}_len > 0) {
                 result->{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                 if (result->{{ field.name }}) {
                     result->{{ field.name }}_size = {{ field.name }}_len;
-                    const {{ field.type }}* arr = flatbuffers_uint8_vec_start({{ field.name }}_vec);
+                    const {{ field.type }}* arr = {{ field.name }}_vec;
                     memcpy(result->{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
                 }
             }
         }
 {% endif -%}
 {% else -%}
-        result->{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
+        result->{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
 {% endif -%}
 {% endfor -%}
     }
@@ -346,7 +371,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
     /* Cleanup */
     for (int i = 0; i < count; i++) {
         if (params_array[i]) {
-            free((void*)params_array[i]);
+            /* flatcc's allocator, not malloc: release it the way flatcc does. */
+            flatcc_builder_aligned_free((void*)params_array[i]);
         }
         flatcc_builder_clear(&builders[i]);
     }
