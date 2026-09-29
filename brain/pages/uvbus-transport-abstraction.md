@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-29T09:49:58"
+updated: "2026-09-29T10:13:21"
 ---
 
 <!-- compiled_truth -->
@@ -85,4 +85,10 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: evidence
   summary: "顺带发现既有缺陷（与本次 API 改动无关，已在基线 5c11cf3 上复现）：examples/test_sameloop 与 test_sameloop_multiclient 客户端收到 0 条消息——服务端收到了请求，响应没回到客户端。同 loop 上 sameloop_rpc_demo 与 test_sameloop_recursion 正常。这两个示例不在 ctest 里，所以一直没被发现"
   source: "git stash 到基线后重新构建并运行，同样失败 (2026-09-29)"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-29T10:13:21
+  kind: evidence
+  summary: "SAMELOOP 响应丢失的根因不是注册表，是两个内存传输对 uvbus_send() 的语义不一致：INPROC 的 send 处理两个方向（服务端即发给所有客户端），SAMELOOP 只实现客户端→服务端，服务端调用时 impl.sameloop_client 为 NULL 直接段错误。两个示例又各自叠加了自己的 bug（从注册为 NULL 的 ctx 里取 bus 句柄；消息格式与 data[0] 解析对不上）。已让 sameloop_send 对服务端走与 broadcast 相同的路径，并把两个公共实现合并成一个函数"
+  source: "tests/inproc_send_direction_test.c 在两种传输上覆盖双向；移除修复后该测试失败、恢复后通过 (2026-09-29)"
   affects: [uvbus-transport-abstraction]

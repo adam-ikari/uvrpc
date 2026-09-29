@@ -11,15 +11,20 @@
 static int server_received = 0;
 static int client_received = 0;
 
+/* Set once the bus exists, read when a message arrives. */
+static uvbus_t* g_server;
+
 void server_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     printf("[SERVER] Received %zu bytes: %.*s\n", size, (int)size, (char*)data);
     server_received++;
 
-    /* Echo back to all clients */
-    uvbus_t* server = (uvbus_t*)server_ctx;
-    if (server) {
+    /* Echo back to all clients. The handle cannot come from server_ctx: that is
+     * whatever the config registered, and the config is built before the bus
+     * exists -- this example registered NULL, so the echo never ran. */
+    (void)server_ctx;
+    if (g_server) {
         printf("[SERVER] Echoing back to clients...\n");
-        uvbus_send(server, data, size);
+        uvbus_send(g_server, data, size);
         printf("[SERVER] Echo sent\n");
     }
 }
@@ -56,6 +61,7 @@ int main() {
     uvbus_config_set_recv_callback(server_config, server_recv, NULL);
 
     server = uvbus_server_new(server_config);
+    g_server = server;   /* the recv callback needs it, and the config predates the bus */
     uvbus_config_free(server_config);
 
     if (!server) {

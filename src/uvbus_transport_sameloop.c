@@ -270,23 +270,52 @@ static void sameloop_disconnect(void* impl_ptr) {
     transport->is_connected = 0;
 }
 
-/* Send - from client to server (inline dispatch for performance) */
+/* Send to all connected clients of a server, or client->server for a client.
+ * Shared by send() and broadcast(), which are the same operation. */
+static int sameloop_send_to_all_clients(uvbus_transport_t* transport, const uint8_t* data, size_t size) {
+    if (!transport->is_server || !transport->impl.sameloop_server) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
+    for (int i = 0; i < server->client_count; i++) {
+        sameloop_client_t* client = (sameloop_client_t*)server->clients[i];
+        if (client && client->recv_cb) {
+            client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
+        }
+    }
+    return UVBUS_OK;
+}
+
+/* Send - client to server (inline dispatch for performance)
+ *
+ * A server sending means "to every one of its clients", which is what
+ * broadcast() does and what the INPROC transport already does for send(). Only
+ * the client direction is inlined hot: a server bus has no sameloop_client, so
+ * taking the fast path unconditionally dereferenced NULL -- the two in-process
+ * transports disagreed about the same call, and the disagreement was a
+ * segfault. */
 __attribute__((hot, always_inline)) static inline int sameloop_send_inline(void* impl_ptr, const uint8_t* data, size_t size) {
     uvbus_transport_t* transport = (uvbus_transport_t*)impl_ptr;
-    
-    /* Fast path - assume client send (most common case) */
+
+    if (__builtin_expect(!!transport->is_server, 0)) {
+        return sameloop_send_to_all_clients(transport, data, size);
+    }
+
+    /* Fast path - client send (most common case) */
     if (__builtin_expect(!!transport->is_connected, 1)) {
         /* Prefetch client data to reduce cache miss */
         sameloop_client_t* client = (sameloop_client_t*)transport->impl.sameloop_client;
-        __builtin_prefetch(client);
-        __builtin_prefetch(&client->server_recv_cb);
-        
-        /* Direct callback - minimize indirection */
-        client->server_recv_cb(data, size, client, client->server_callback_ctx);
+        if (__builtin_expect(!!client, 0)) {
+            __builtin_prefetch(client);
+            __builtin_prefetch(&client->server_recv_cb);
 
-        return UVBUS_OK;
+            /* Direct callback - minimize indirection */
+            client->server_recv_cb(data, size, client, client->server_callback_ctx);
+
+            return UVBUS_OK;
+        }
     }
-    
+
     return UVBUS_ERROR_NOT_CONNECTED;
 }
 
@@ -321,22 +350,7 @@ __attribute__((hot)) static int sameloop_broadcast(void* impl_ptr, const uint8_t
     if (!transport || !data || size == 0) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
-
-    if (!transport->is_server || !transport->impl.sameloop_server) {
-        return UVBUS_ERROR_INVALID_PARAM;
-    }
-
-    sameloop_server_t* server = (sameloop_server_t*)(void*)transport->impl.sameloop_server;
-
-    /* Direct callback to each connected client - no serialization, no frame prefix */
-    for (int i = 0; i < server->client_count; i++) {
-        sameloop_client_t* client = (sameloop_client_t*)server->clients[i];
-        if (client && client->recv_cb) {
-            client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
-        }
-    }
-
-    return UVBUS_OK;
+    return sameloop_send_to_all_clients(transport, data, size);
 }
 
 /* Free implementation */

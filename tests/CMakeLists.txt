@@ -173,6 +173,30 @@ add_test(NAME uvbus_unit_tests COMMAND uvbus_test)
 add_test(NAME uvbus_simple_test COMMAND uvbus_simple_test)
 set_tests_properties(uvbus_unit_tests uvbus_simple_test PROPERTIES TIMEOUT 60)
 
+# The two in-process transports must agree on what uvbus_send() means from a
+# server. SAMELOOP implemented only the client direction and dereferenced NULL
+# when a server used it; nothing caught that because the examples covering it
+# were not in the suite.
+add_executable(inproc_send_direction_test
+    inproc_send_direction_test.c
+)
+
+target_link_libraries(inproc_send_direction_test
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(inproc_send_direction_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME inproc_send_direction COMMAND inproc_send_direction_test)
+set_tests_properties(inproc_send_direction PROPERTIES TIMEOUT 60)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

@@ -7,50 +7,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #define NUM_CLIENTS 5
 #define MESSAGES_PER_CLIENT 10
-
 static int server_messages[NUM_CLIENTS] = {0};
 static int client_messages[NUM_CLIENTS] = {0};
 
+/* The recv callback's context is whatever the config registered, and the config
+ * is built before the bus exists -- so it cannot be the bus handle. This example
+ * used to read the handle back out of a context it had passed as NULL, which
+ * silently disabled the server's echo and every client's counting, and the
+ * example reported zero messages received while exiting 0-worthy "OK" lines.
+ *
+ * The server keeps its handle in a file-scope pointer (assigned once the bus
+ * exists, read when a message arrives); each client registers its own index as
+ * its context, which is exactly what the field is for. */
+static uvbus_t* g_server;
+
 void server_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
+    (void)client_ctx; (void)server_ctx;
+
     /* Parse client ID from message */
     int client_id = -1;
     if (size >= 4) {
         client_id = data[0] - '0';
     }
-    
+
     if (client_id >= 0 && client_id < NUM_CLIENTS) {
         server_messages[client_id]++;
-        printf("[SERVER] Received from client %d: %.*s (count: %d)\n", 
+        printf("[SERVER] Received from client %d: %.*s (count: %d)\n",
                client_id, (int)size, (char*)data, server_messages[client_id]);
     }
-    
+
     /* Echo back to all clients */
-    uvbus_t* server = (uvbus_t*)server_ctx;
-    if (server) {
+    if (g_server) {
         const char* response = "Server broadcast";
-        uvbus_send(server, (const uint8_t*)response, strlen(response));
+        uvbus_send(g_server, (const uint8_t*)response, strlen(response));
     }
 }
 
 void client_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
-    /* Count messages received by this client */
-    uvbus_t* client = (uvbus_t*)client_ctx;
-    
-    /* Find which client this is */
-    int client_id = -1;
-    for (int i = 0; i < NUM_CLIENTS; i++) {
-        if (client_ctx == client) {
-            client_id = i;
-            break;
-        }
-    }
-    
-    if (client_id >= 0) {
+    (void)server_ctx;
+    /* Each client registered its own index as the recv context. */
+    int client_id = (int)(intptr_t)client_ctx;
+    if (client_id >= 0 && client_id < NUM_CLIENTS) {
         client_messages[client_id]++;
-        printf("[CLIENT-%d] Received: %.*s (count: %d)\n", 
+        printf("[CLIENT-%d] Received: %.*s (count: %d)\n",
                client_id, (int)size, (char*)data, client_messages[client_id]);
     }
 }
@@ -79,6 +82,7 @@ int main() {
     uvbus_config_set_recv_callback(server_config, server_recv, NULL);
 
     uvbus_t* server = uvbus_server_new(server_config);
+    g_server = server;   /* the recv callback needs it, and the config predates the bus */
     uvbus_config_free(server_config);
 
     if (!server) {
@@ -114,7 +118,7 @@ int main() {
         uvbus_config_set_loop_registry(client_config, registry);
         uvbus_config_set_address(client_config, address);
         uvbus_config_set_transport(client_config, UVBUS_TRANSPORT_SAMELOOP);
-        uvbus_config_set_recv_callback(client_config, client_recv, NULL);
+        uvbus_config_set_recv_callback(client_config, client_recv, (void*)(intptr_t)i);
 
         clients[i] = uvbus_client_new(client_config);
         uvbus_config_free(client_config);
@@ -149,7 +153,9 @@ int main() {
     for (int i = 0; i < NUM_CLIENTS; i++) {
         char message[128];
         for (int j = 0; j < MESSAGES_PER_CLIENT; j++) {
-            snprintf(message, sizeof(message), "Client %d message %d", i, j);
+            /* The server reads the client id from the first byte, so it has to
+             * lead the payload. */
+            snprintf(message, sizeof(message), "%d: message %d", i, j);
             uvbus_send(clients[i], (const uint8_t*)message, strlen(message));
         }
     }
