@@ -64,6 +64,12 @@ __pycache__/
 *.pyo
 
 # Documentation site build artifacts (installed/built locally, not committed)
+# Committed by mistake: metadata only, every package's dist/ was stripped by the
+# bare 'dist/' rule above, so the site cannot be built from this tree. Install with
+# npm ci instead.
 docs/node_modules/
+
+# Doxygen HTML is regenerated on demand (docs/Doxyfile), not committed.
+docs/doxygen/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
