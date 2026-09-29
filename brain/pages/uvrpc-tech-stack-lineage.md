@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T08:02:22"
+updated: "2026-09-29T08:10:47"
 ---
 
 <!-- compiled_truth -->
@@ -87,4 +87,10 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: evidence
   summary: "生成器修正收尾：① 批量/Promise 路径（rpc_common.c.j2）缺字符串分支，const char* 直接传给 string_ref_t 形参 —— rpc_api.fbs 一直带这个 bug；② 响应解码用 &fb_response 传指针给按值接收的访问器；③ 标量数组解码用 builder 的 flatbuffers_uint8_vec_start 读已完成的向量，flatcc 0.6 里向量指针本身即数据首地址；④ finalize_buffer 的缓冲区用 flatcc_builder_aligned_free 释放而非 free()。6 个 schema 生成代码现已全部零错误零警告"
   source: "实测：逐 schema gcc -fsyntax-only 统计 (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T08:10:47
+  kind: evidence
+  summary: "log_service 两个示例正式纳入构建：DSL 生成上移到根 CMake 的 generate_dsl 目标（产出 generated/log_service），dsl_codegen 测试与两个示例共用同一份产物。log_simple_demo 存在与 log_service_demo 完全相同的三处腐化（flatcc 根指针当结构体、oneway 多余空响应、连接回调旧签名）。顺带修 concurrent_demo 的格式串（4 个参数对 5 个转换符，CI 警告门禁下次会拦）"
+  source: "干净 configure 后两个示例均构建并 exit 0；全量 106/106；generated/ 与 glibc 之外零警告 (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]
