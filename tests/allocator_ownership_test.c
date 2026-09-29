@@ -127,8 +127,14 @@ int main(void) {
     uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
+    /* SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    CHECK(registry != NULL, "registry creation returned NULL");
+    if (!registry) return 1;
+
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
+    uvrpc_config_set_loop_registry(server_config, registry);
     uvrpc_config_set_address(server_config, "sameloop://allocator_ownership");
     uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_SAMELOOP);
 
@@ -140,6 +146,7 @@ int main(void) {
 
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_loop_registry(client_config, registry);
     uvrpc_config_set_address(client_config, "sameloop://allocator_ownership");
     uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_SAMELOOP);
 
@@ -181,6 +188,7 @@ int main(void) {
     uvrpc_server_free(server);
     uvrpc_config_free(client_config);
     uvrpc_config_free(server_config);
+    uvbus_loop_registry_free(registry);
     uv_run(&loop, UV_RUN_NOWAIT);
     uv_loop_close(&loop);
 
