@@ -97,12 +97,12 @@ export default defineConfig({
       label: '简体中文',
       lang: 'zh-CN',
       link: '/zh/',
-      description: '超快速 C99 RPC 框架，基于 libuv + FlatBuffers。零线程、零锁、零可变全局。进程内约 205,000 req/s。',
+      description: '超快速 C99 RPC 框架，基于 libuv + FlatBuffers。零线程、零锁、零可变全局。进程内约 1,000,000 req/s。',
       head: [
         ['meta', { property: 'og:title', content: 'UVRPC — 超快速 C99 RPC 框架' }],
-        ['meta', { property: 'og:description', content: '零线程、零锁、零可变全局。进程内约 205,000 req/s。TCP/UDP/IPC/INPROC/SAMELOOP。' }],
+        ['meta', { property: 'og:description', content: '零线程、零锁、零可变全局。进程内约 1,000,000 req/s。TCP/UDP/IPC/INPROC/SAMELOOP。' }],
         ['meta', { name: 'twitter:title', content: 'UVRPC — 超快速 C99 RPC 框架' }],
-        ['meta', { name: 'twitter:description', content: '零线程、零锁、零可变全局。进程内约 205,000 req/s。基于 libuv + FlatBuffers。' }]
+        ['meta', { name: 'twitter:description', content: '零线程、零锁、零可变全局。进程内约 1,000,000 req/s。基于 libuv + FlatBuffers。' }]
       ],
       themeConfig: {
         nav: [

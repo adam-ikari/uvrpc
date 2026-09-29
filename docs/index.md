@@ -7,7 +7,7 @@ titleTemplate: false
 hero:
   name: UVRPC
   text: Ultra-Fast C99 RPC Framework
-  tagline: Zero threads. Zero locks. Zero mutable globals. ~205,000 req/s in-process.
+  tagline: Zero threads. Zero locks. Zero mutable globals. ~1,000,000 req/s in-process.
   actions:
     - theme: brand
       text: Quick Start
@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 🚀 Ultra-Fast
-    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~205,000 req/s at ~4.9 µs round-trip latency.
+    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~1,000,000 req/s at ~1.0 µs round-trip latency on a CI runner.
     link: /guide/benchmark
   - title: 🎯 Minimal by Design
     details: Zero threads, zero locks, zero file-scope globals in library code. All I/O is driven by a single libuv event loop — lock-free by construction.
@@ -125,17 +125,17 @@ int main(void) {
 ## Performance
 
 Sequential ping-pong (one request in flight), 8-byte payload, Release build,
-single thread. Measured with [`perf_benchmark`](https://github.com/adam-ikari/uvrpc/tree/main/benchmark) on the
-author's machine — numbers vary widely by host, see [Benchmark](/guide/benchmark)
-for methodology and a second machine's figures.
+single thread, measured by the [`Benchmark` workflow](https://github.com/adam-ikari/uvrpc/actions/workflows/benchmark.yml)
+on a GitHub Actions runner. Absolute numbers vary widely by host — see
+[Benchmark](/guide/benchmark) for methodology.
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | ~4.9 µs | ~205,000 req/s | Same-loop, vtable bypass (fastest) |
-| INPROC    | ~4.9 µs | ~205,000 req/s | In-process zero-copy |
-| IPC       | ~31 µs  | ~33,000 req/s  | Local inter-process (Unix socket) |
-| UDP       | ~38 µs  | ~26,000 req/s  | Loss-tolerant, high-throughput |
-| TCP       | ~46 µs  | ~22,000 req/s  | Reliable network RPC |
+| SAMELOOP  | 1.00 µs | ~1,000,000 req/s | Same-loop, vtable bypass (fastest) |
+| INPROC    | 1.02 µs | ~980,000 req/s | In-process zero-copy |
+| IPC       | 10.76 µs | ~93,000 req/s | Local inter-process (Unix socket) |
+| UDP       | 20.10 µs | ~50,000 req/s | Loss-tolerant, high-throughput |
+| TCP       | 20.08 µs | ~50,000 req/s | Reliable network RPC |
 
 ::: warning Throughput definition
 "Throughput" above is the reciprocal of sequential round-trip latency (one

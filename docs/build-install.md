@@ -229,14 +229,15 @@ cmake --build build --target perf_benchmark
 
 ### 性能参考
 
-顺序 ping-pong，8 字节负载，Release 构建，单线程：
+顺序 ping-pong，8 字节负载，Release 构建，单线程，由 `Benchmark` 工作流在 GitHub
+Actions runner 上实测（绝对值随主机而变，完整表见 [Benchmark 指南](/guide/benchmark)）：
 
 | 传输层 | 往返延迟 | 顺序吞吐量 (1/延迟) | 适用场景 |
 |--------|----------|---------------------|----------|
-| SAMELOOP / INPROC | ~4.9 µs | ~205,000 req/s | 进程内零拷贝（最快）|
-| IPC | ~31 µs | ~33,000 req/s | 本地进程间（Unix 套接字）|
-| UDP | ~38 µs | ~26,000 req/s | 高吞吐、可丢包 |
-| TCP | ~46 µs | ~22,000 req/s | 可靠网络 RPC |
+| SAMELOOP / INPROC | ~1.0 µs | ~1,000,000 req/s | 进程内零拷贝（最快）|
+| IPC | ~10.8 µs | ~93,000 req/s | 本地进程间（Unix 套接字）|
+| UDP | ~20.1 µs | ~50,000 req/s | 高吞吐、可丢包 |
+| TCP | ~20.1 µs | ~50,000 req/s | 可靠网络 RPC |
 
 > "吞吐量"为顺序往返延迟的倒数（单请求在途），非流水线吞吐。实际性能取决于硬件。
 

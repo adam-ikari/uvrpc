@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-29T03:57:31"
+updated: "2026-09-29T05:50:17"
 ---
 
 <!-- compiled_truth -->
@@ -64,4 +64,10 @@ README 表里的 "throughput" 是**顺序 ping-pong（单请求在途）往返�
   kind: decision
   summary: "测量预算不再假设每请求成本：由预热 1000 请求的实测速率推（4x + 10s 余量），并加 stall_limit_ms（默认 5s 无进展判为卡死，报 'measure stalled'）。UVRPC_BENCH_BUDGET_MS / UVRPC_BENCH_STALL_MS 可覆盖。旧写法 requests/10+10000 隐含 ≤0.1ms/req，在虚拟化主机上 TCP ~0.4ms/req 会误判超时"
   source: "2026-09-29 实施 + 实测：perf_benchmark 50000 tcp 与 100000 inproc 均正常收尾"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-09-29T05:50:17
+  kind: evidence
+  summary: "性能表改用 CI 数据（GitHub Actions ubuntu-latest runner，run 36527761470 / commit 9c9aa24）：SAMELOOP 1.00 µs、INPROC 1.02 µs、IPC 10.76 µs、UDP 20.10 µs、TCP 20.08 µs，1M 压测 SAMELOOP 0.97 µs。旧的 ~4.9 µs/~205,000 req/s（作者 5800H 笔记本）在同一构建上实测只有 ~2.5–3.2 µs，即旧表把数字记小了约一倍"
+  source: "gh run 36527761470；本机复测 12 核 5800H（load 2.58）(2026-09-29)"
   affects: [uv-run-once-benchmark-methodology]

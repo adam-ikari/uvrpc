@@ -45,7 +45,7 @@ with the default allocator. For the system allocator instead of mimalloc, use
 ## ✨ Features
 
 - **Zero Threads, Zero Locks, Zero Mutable Globals** - All I/O managed by libuv event loop; no file-scope mutable globals in system/mimalloc builds (custom allocator builds have exactly one, and INPROC/SAMELOOP keep their endpoint registry on `loop->data`)
-- **High Performance** - ~205,000 req/s sequential round-trip on SAMELOOP/INPROC (~4.9 µs latency)
+- **High Performance** - ~1,000,000 req/s sequential round-trip on SAMELOOP/INPROC (~1.0 µs latency, measured on a CI runner)
 - **Multi-Transport Support** - TCP, UDP, IPC, INPROC, SAMELOOP
 - **Multiple RPC Modes** - Normal (request-response), Oneway (fire-and-forget), Stream (multiple responses)
 - **Zero-Copy** - FlatBuffers binary serialization; pointer-passing for in-process transports
@@ -56,15 +56,15 @@ with the default allocator. For the system allocator instead of mimalloc, use
 
 ## 📊 Performance
 
-Sequential ping-pong (one request in flight), 8-byte payload, Release build, single thread. Measured with `benchmark/perf_benchmark`.
+Sequential ping-pong (one request in flight), 8-byte payload, Release build, single thread, measured by the `Benchmark` workflow on a GitHub Actions runner. Absolute numbers vary widely by host.
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use Case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | ~4.9 µs | ~205,000 req/s | Same-loop, vtable bypass (fastest) |
-| INPROC    | ~4.9 µs | ~205,000 req/s | In-process zero-copy |
-| IPC       | ~31 µs  | ~33,000 req/s  | Local inter-process (Unix socket) |
-| UDP       | ~38 µs  | ~26,000 req/s  | Loss-tolerant, high-throughput |
-| TCP       | ~46 µs  | ~22,000 req/s  | Reliable network RPC |
+| SAMELOOP  | 1.00 µs | ~1,000,000 req/s | Same-loop, vtable bypass (fastest) |
+| INPROC    | 1.02 µs | ~980,000 req/s | In-process zero-copy |
+| IPC       | 10.76 µs | ~93,000 req/s | Local inter-process (Unix socket) |
+| UDP       | 20.10 µs | ~50,000 req/s | Loss-tolerant, high-throughput |
+| TCP       | 20.08 µs | ~50,000 req/s | Reliable network RPC |
 
 > Note: "throughput" above is the reciprocal of sequential round-trip latency (one request in flight), not pipelined throughput. Run `./dist/bin/perf_benchmark [requests] [transport]` to reproduce.
 

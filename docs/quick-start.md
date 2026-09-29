@@ -182,15 +182,16 @@ static void on_response(uvrpc_response_t* resp, void* ctx) {
 
 ## Performance
 
-Sequential ping-pong, 8-byte payload, Release build, single thread. Measured
-with `benchmark/perf_benchmark`.
+Sequential ping-pong, 8-byte payload, Release build, single thread, measured
+by the `Benchmark` workflow on a GitHub Actions runner. Absolute numbers are
+host-dependent — see [Benchmark](/guide/benchmark) for the full table.
 
 | Transport | Round-trip latency | Throughput (1/latency) |
 |-----------|-------------------|------------------------|
-| SAMELOOP / INPROC | ~4.9 µs | ~205,000 req/s |
-| IPC       | ~31 µs  | ~33,000 req/s |
-| UDP       | ~38 µs  | ~26,000 req/s |
-| TCP       | ~46 µs  | ~22,000 req/s |
+| SAMELOOP / INPROC | ~1.0 µs | ~1,000,000 req/s |
+| IPC       | ~10.8 µs | ~93,000 req/s |
+| UDP       | ~20.1 µs | ~50,000 req/s |
+| TCP       | ~20.1 µs | ~50,000 req/s |
 
 ::: warning
 "Throughput" above is the reciprocal of sequential round-trip latency (one

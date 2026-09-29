@@ -125,25 +125,30 @@ framing and queue turn, not the pointer hop.
 
 ## Reference numbers
 
-Release build, `-O2`, system allocator, single thread, 8-byte payload, measured
-on the author's development machine:
+Release build, `-O2`, system allocator, single thread, 8-byte payload, 50,000
+round trips per transport, measured by the `Benchmark` workflow on a GitHub
+Actions `ubuntu-latest` runner (run `36527761470`, commit `9c9aa24`):
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |---|---|---|---|
-| SAMELOOP | ~4.9 µs | ~205,000 req/s | same-loop, vtable bypass (fastest) |
-| INPROC | ~4.9 µs | ~205,000 req/s | in-process zero-copy |
-| IPC | ~31 µs | ~33,000 req/s | local inter-process (Unix socket) |
-| UDP | ~38 µs | ~26,000 req/s | loss-tolerant |
-| TCP | ~46 µs | ~22,000 req/s | reliable network RPC |
+| SAMELOOP | 1.00 µs | ~1,000,000 req/s | same-loop, vtable bypass (fastest) |
+| INPROC | 1.02 µs | ~980,000 req/s | in-process zero-copy |
+| IPC | 10.76 µs | ~93,000 req/s | local inter-process (Unix socket) |
+| UDP | 20.10 µs | ~50,000 req/s | loss-tolerant |
+| TCP | 20.08 µs | ~50,000 req/s | reliable network RPC |
 
-For comparison, the same build on the container described above measured
-~2.4 µs (SAMELOOP), ~2.5 µs (INPROC), ~21 µs (IPC), ~25 µs (UDP), ~32 µs (TCP)
-— faster than the table on the in-process transports and on the socket ones.
-Absolute numbers are host-dependent; the *ratios* (in-process ≫ local socket ≫
-network) are what the design actually guarantees. Treat the table as a
-regression baseline recorded on one host, not a capacity promise. UDP in sequential
-ping-pong also carries real packet-loss risk; a lost response shows up as a
-timeout error, not as degraded throughput.
+The 1,000,000-request stress run in the same job measured 0.97 µs/req
+(1,033,058 req/s) on SAMELOOP. Re-run the workflow to reproduce; the table
+above is a regression baseline for *that runner class*, not a capacity
+promise.
+
+The same build on an AMD Ryzen 7 5800H laptop measured ~2.5–3.2 µs
+(SAMELOOP/INPROC), ~22 µs (IPC), ~26 µs (UDP), ~32 µs (TCP) — slower across
+the board, as a shared desktop under load should be. Absolute numbers are
+host-dependent; the *ratios* (in-process ≫ local socket ≫ network) are what
+the design actually guarantees. UDP in sequential ping-pong also carries real
+packet-loss risk: a lost response shows up as a timeout error, not as
+degraded throughput.
 
 ## Troubleshooting
 
