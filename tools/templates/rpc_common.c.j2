@@ -55,14 +55,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
 {% if field.is_struct_array -%}
         /* Struct array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
-            {{ field.type }}_vec_start(&builders[i]);
+            {{ field.flatcc_type }}_vec_start(&builders[i]);
             for (size_t j = 0; j < requests[i].{{ field.name }}_size; j++) {
-                {{ field.type }}_create(&builders[i]
-                    {%- for struct_field in rpc_data['tables'][field.type] -%}
+                {{ field.flatcc_type }}_create(&builders[i]
+                    {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , requests[i].{{ field.name }}[j].{{ struct_field['name'] }}
                     {%- endfor -%});
             }
-            flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builders[i]);
+            flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builders[i]);
             {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
         }
 {% else -%}
@@ -132,13 +132,13 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                     flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
                     if ({{ field.name }}_len > 0) {
-                        results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}_t));
+                        results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                         if (results_array[i].{{ field.name }}) {
                             results_array[i].{{ field.name }}_size = {{ field.name }}_len;
                             for (size_t j = 0; j < {{ field.name }}_len; j++) {
-                                {{ field.type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
-{%- for struct_field in rpc_data['tables'][field.type] -%}
-                                results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.type }}_{{ struct_field['name'] }}(&item);
+                                {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
+{%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+                                results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 {%- endfor -%}
                             }
                         }
@@ -231,14 +231,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
 {% if field.is_struct_array -%}
         /* Struct array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
-            {{ field.type }}_vec_start(&builders[i]);
+            {{ field.flatcc_type }}_vec_start(&builders[i]);
             for (size_t j = 0; j < requests[i].{{ field.name }}_size; j++) {
-                {{ field.type }}_create(&builders[i]
-                    {%- for struct_field in rpc_data['tables'][field.type] -%}
+                {{ field.flatcc_type }}_create(&builders[i]
+                    {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , requests[i].{{ field.name }}[j].{{ struct_field['name'] }}
                     {%- endfor -%});
             }
-            flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builders[i]);
+            flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builders[i]);
             {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
         }
 {% else -%}
@@ -285,13 +285,13 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
             flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(&fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
             if ({{ field.name }}_len > 0) {
-                result->{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}_t));
+                result->{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                 if (result->{{ field.name }}) {
                     result->{{ field.name }}_size = {{ field.name }}_len;
                     for (size_t j = 0; j < {{ field.name }}_len; j++) {
-                        {{ field.type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
-{%- for struct_field in rpc_data['tables'][field.type] -%}
-                        result->{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.type }}_{{ struct_field['name'] }}(&item);
+                        {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(&fb_response, j);
+{%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+                        result->{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 {%- endfor -%}
                     }
                 }

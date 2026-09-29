@@ -25,21 +25,11 @@ extern "C" {
 {%- set _ = all_types.append(method.request) -%}
 typedef struct {
 {%- for field in method.request_fields -%}
-{#- A field whose schema type is a table of this file is a member of the
-    user-facing struct, so it needs the namespace prefix and the _t suffix
-    that the typedefs below carry. Primitives and enums already have their
-    final C type (int32_t, LogLevel, const char*) -- flatcc names must not
-    leak in here. -#}
-{%- if field.is_struct_array or field.original_type in rpc_data['tables'] -%}
-{%- set ctype = namespace ~ '_' ~ field.type ~ '_t' -%}
-{%- else -%}
-{%- set ctype = field.type -%}
-{%- endif -%}
 {%- if field.is_array -%}
-    {{ ctype }}* {{ field.name }};
+    {{ field.type }}* {{ field.name }};
     size_t {{ field.name }}_size;
 {%- else -%}
-    {{ ctype }} {{ field.name }};
+    {{ field.type }} {{ field.name }};
 {%- endif -%}
 {%- endfor -%}
 } {{ namespace }}_{{ method.request }}_t;
@@ -49,16 +39,11 @@ typedef struct {
 {%- set _ = all_types.append(method.response) -%}
 typedef struct {
 {%- for field in method.response_fields -%}
-{%- if field.is_struct_array or field.original_type in rpc_data['tables'] -%}
-{%- set ctype = namespace ~ '_' ~ field.type ~ '_t' -%}
-{%- else -%}
-{%- set ctype = field.type -%}
-{%- endif -%}
 {%- if field.is_array -%}
-    {{ ctype }}* {{ field.name }};
+    {{ field.type }}* {{ field.name }};
     size_t {{ field.name }}_size;
 {%- else -%}
-    {{ ctype }} {{ field.name }};
+    {{ field.type }} {{ field.name }};
 {%- endif -%}
 {%- endfor -%}
 } {{ namespace }}_{{ method.response }}_t;

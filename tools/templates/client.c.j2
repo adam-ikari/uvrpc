@@ -112,14 +112,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
         /* Create vector for struct array */
-        {{ field.type }}_vec_start(&builder);
+        {{ field.flatcc_type }}_vec_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.type] -%}
+            {{ field.flatcc_type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , request->{{ field.name }}[i].{{ struct_field['name'] }}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
     }
 {% else -%}
@@ -195,14 +195,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
         /* Create vector for struct array */
-        {{ field.type }}_vec_start(&builder);
+        {{ field.flatcc_type }}_vec_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.type] -%}
+            {{ field.flatcc_type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , request->{{ field.name }}[i].{{ struct_field['name'] }}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
     }
 {% else -%}
@@ -278,14 +278,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
         /* Create vector for struct array */
-        {{ field.type }}_vec_start(&builder);
+        {{ field.flatcc_type }}_vec_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.type] -%}
+            {{ field.flatcc_type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , request->{{ field.name }}[i].{{ struct_field['name'] }}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
     }
 {% else -%}
@@ -379,7 +379,7 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
             if ({{ field.name }}_len > 0) {
 
-                sync_ctx->response.{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}_t));
+                sync_ctx->response.{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
 
                 if (sync_ctx->response.{{ field.name }}) {
 
@@ -387,11 +387,11 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
                     for (size_t i = 0; i < {{ field.name }}_len; i++) {
 
-                        {{ field.type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, i);
+                        {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, i);
 
-{%- for struct_field in rpc_data['tables'][field.type] -%}
+{%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 
-                        sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.type }}_{{ struct_field['name'] }}(&item);
+                        sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 
 {%- endfor -%}
 
@@ -508,14 +508,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
         /* Create vector for struct array */
-        {{ field.type }}_vec_start(&builder);
+        {{ field.flatcc_type }}_vec_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.type] -%}
+            {{ field.flatcc_type }}_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 , request->{{ field.name }}[i].{{ struct_field['name'] }}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.type }}_vec_end(&builder);
+        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
         {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
     }
 {% else -%}

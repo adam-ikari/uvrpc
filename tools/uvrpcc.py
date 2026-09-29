@@ -59,6 +59,11 @@ class RPCParser:
         self.namespace = ""
         self.services = []
         self.tables = {}
+        # Names are collected before any field is parsed: a table may
+        # reference a table or enum declared after it, and the type resolver
+        # needs the full set to tell a schema name from a primitive.
+        self.table_names = set()
+        self.enum_names = set()
         # Extract schema filename without extension
         self.schema_basename = Path(schema_file).stem
         
@@ -71,6 +76,9 @@ class RPCParser:
         ns_match = re.search(r'namespace\s+(\w+);', content)
         if ns_match:
             self.namespace = ns_match.group(1)
+
+        self.table_names = set(re.findall(r'table\s+(\w+)\s*\{', content))
+        self.enum_names = set(re.findall(r'enum\s+(\w+)\s*:', content))
         
         # Extract tables
         table_pattern = r'table\s+(\w+)\s*\{([^}]+)\}'
@@ -133,22 +141,37 @@ class RPCParser:
                 # Handle array types like [ubyte] or [LogEntry]
                 is_array = False
                 is_struct_array = False
-                c_type = field_type
+                base = field_type
                 if field_type.startswith('[') and field_type.endswith(']'):
                     is_array = True
-                    base_type = field_type[1:-1]
-                    # Check if base type is a table name (struct array)
-                    if base_type in self.tables:
-                        is_struct_array = True
-                        c_type = base_type  # Use table name for struct arrays
-                    else:
-                        c_type = type_mapping.get(base_type, base_type)
+                    base = field_type[1:-1]
+                    is_struct_array = base in self.table_names
+
+                # Resolve the schema name to the C spellings flatcc 0.6 emits.
+                # Every name declared in the schema carries the namespace, and
+                # the suffix tells the constructs apart: a table is {ns}_{T}
+                # in builder calls and {ns}_{T}_t as a uvrpc struct member; an
+                # enum is {ns}_{E}_enum_t everywhere. Primitives map straight
+                # to their C type and have no schema name at all.
+                ns = self.namespace
+                if base in self.table_names:
+                    struct_type = '{}_{}_t'.format(ns, base)
+                    flatcc_type = '{}_{}'.format(ns, base)
+                elif base in self.enum_names:
+                    struct_type = '{}_{}_enum_t'.format(ns, base)
+                    flatcc_type = struct_type
                 else:
-                    c_type = type_mapping.get(field_type, field_type)
+                    struct_type = type_mapping.get(base, base)
+                    flatcc_type = struct_type
 
                 fields.append({
                     'name': field_name,
-                    'type': c_type,
+                    # C type as it appears in the user-facing struct.
+                    'type': struct_type,
+                    # Name the .c templates pass to flatcc ({ns}_{T}_create).
+                    'flatcc_type': flatcc_type,
+                    # Bare schema name, for looking a table's fields up.
+                    'schema_type': base,
                     'original_type': field_type,
                     'is_array': is_array,
                     'is_struct_array': is_struct_array
