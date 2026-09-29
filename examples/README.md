@@ -129,15 +129,6 @@ FlatBuffers 深度集成示例，展示完整的 FlatBuffers DSL 使用流程。
 ./dist/bin/generated_client_example
 ```
 
-### 性能模式示例
-
-#### 14. perf_mode_demo.c
-性能模式示例，展示如何在高吞吐和低延迟模式之间切换。
-
-```bash
-./dist/bin/perf_mode_demo
-```
-
 ### 消息 ID 示例
 
 #### 15. msgid_demo.c
@@ -719,7 +710,6 @@ make
 2. **async_await_demo.c** - 学习异步处理
 3. **loop_injection_example.c** - 学习循环注入
 4. **broadcast_service_demo.c** - 学习完整的 DSL 广播服务
-5. **perf_mode_demo.c** - 学习性能优化
 
 ### 高级用户
 
@@ -731,10 +721,12 @@ make
 
 ### 性能调优
 
-1. **perf_mode_demo.c** - 性能模式
-2. **allocator_demo.c** - 内存分配器
-3. **multi_service_loop_reuse.c** - 循环复用
-4. **uvasync_demo.c** - 异步编程原语
+1. **allocator_demo.c** - 内存分配器
+2. **multi_service_loop_reuse.c** - 循环复用
+3. **uvasync_demo.c** - 异步编程原语
+
+（曾有一个 `perf_mode_demo.c` 演示性能模式开关；那个开关只是被存下来从未生效，已连同 API 一起删除。要做吞吐调优请看 [Benchmark](/guide/benchmark) 与
+`uvrpc_client_call_batch()`。）
 
 ## 常见问题
 
@@ -745,7 +737,7 @@ make
 - 需要 RPC：查看 complete_example.c
 - 需要广播：查看 broadcast_publisher/subscriber.c（DSL 驱动）
 - 需要 DSL：查看 broadcast_service_demo.c、rpc_dsl_demo.c
-- 需要高性能：查看 perf_mode_demo.c
+- 需要高性能：查看 benchmark/ 与 sameloop_rpc_demo.c
 - 需要集成到现有应用：查看 loop_injection_example.c
 
 ### Q: 什么是 DSL 驱动的 API？
