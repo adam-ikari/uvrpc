@@ -70,27 +70,31 @@ Note: No `*_sync()` variants are generated for oneway methods.
 
 ## Building
 
-1. Generate code:
+The build system does this for you. `generate_dsl` runs `tools/uvrpcc.py` over
+`schema/log_service.fbs` and the two demos are ordinary CMake targets:
+
+```bash
+./scripts/setup_deps.sh
+cmake -S . -B build -DUVRPC_BUILD_EXAMPLES=ON
+cmake --build build -j$(nproc) --target log_simple_demo log_service_demo
+./dist/bin/log_simple_demo
+```
+
+Both require a python3 that can `import jinja2`; without one the targets are
+skipped and the library still builds.
+
+To drive the generator by hand, write the code to whatever directory you then
+pass with `-I`:
+
 ```bash
 python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc \
-    schema/log_service.fbs -o generated/log_service
+    schema/log_service.fbs -o /tmp/genlog
 ```
 
-2. Compile:
-```bash
-gcc -I. -Igenerated -Iinclude -Ideps/libuv/include \
-    -Ideps/mimalloc/include -Lbuild -Ldeps/mimalloc/out/release \
-    examples/log_service_demo.c \
-    generated/log_service/log_logservice_client.c \
-    generated/log_service/log_logservice_server_stub.c \
-    generated/log_service/log_logservice_rpc_common.c \
-    -o log_service_demo -luvrpc -luv -lmimalloc -lpthread
-```
-
-3. Run:
-```bash
-./log_service_demo
-```
+It emits `log_logservice_{api.h,client.c,rpc_common.h,rpc_common.c,server_stub.c}`
+plus the flatcc reader/builder headers. Compile all three `.c` files together
+with the demo, and release buffers from `flatcc_builder_finalize_buffer()` with
+`flatcc_builder_aligned_free()`.
 
 ## Examples
 

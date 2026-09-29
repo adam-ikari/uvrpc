@@ -224,6 +224,59 @@ add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERA
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
+# RPC DSL codegen (Python + Jinja2). Not part of the library -- uvrpc builds
+# without it -- but the DSL test and the log_service demos do, so they are
+# wired to a shared generated directory here. When no interpreter can import
+# jinja2 the target is simply not created and the dependents are skipped.
+set(UVRPC_DSL_GEN_DIR ${GENERATED_DIR}/log_service)
+set(UVRPC_DSL_AVAILABLE FALSE)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+# find_package resolves to whatever Python3_EXECUTABLE finds first, which on a
+# developer machine is often a user-local interpreter without jinja2 while the
+# system one has it. Probe the candidates and take the first that can import it.
+set(_dsl_candidates ${Python3_EXECUTABLE} /usr/bin/python3 python3)
+foreach(_candidate IN LISTS _dsl_candidates)
+    if(_candidate AND NOT UVRPC_DSL_AVAILABLE)
+        execute_process(
+            COMMAND ${_candidate} -c "import jinja2"
+            RESULT_VARIABLE _dsl_rc
+            OUTPUT_QUIET ERROR_QUIET
+        )
+        if(_dsl_rc EQUAL 0)
+            set(UVRPC_DSL_AVAILABLE TRUE)
+            set(UVRPC_DSL_PYTHON ${_candidate})
+        endif()
+    endif()
+endforeach()
+
+if(UVRPC_DSL_AVAILABLE)
+    set(_dsl_ns log_logservice)
+    file(GLOB _dsl_templates ${CMAKE_CURRENT_SOURCE_DIR}/tools/templates/*.j2)
+    add_custom_command(
+        OUTPUT ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_client.c
+               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_rpc_common.c
+               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_server_stub.c
+               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_api.h
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${UVRPC_DSL_GEN_DIR}
+        COMMAND ${UVRPC_DSL_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
+                --flatcc ${FLATCC_COMPILER}
+                ${CMAKE_CURRENT_SOURCE_DIR}/schema/log_service.fbs
+                -o ${UVRPC_DSL_GEN_DIR}
+        # The templates decide what the generated code does, so editing one
+        # must rerun the generator rather than leave dependents on stale output.
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/schema/log_service.fbs
+                ${_dsl_templates}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating RPC DSL code from log_service.fbs"
+        VERBATIM
+    )
+    add_custom_target(generate_dsl DEPENDS ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_api.h)
+    message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
+else()
+    message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")
+endif()
+
 # Create merged static library with all dependencies.
 #
 # Built with an `ar` MRI script (CREATE/ADDLIB/SAVE) instead of extracting every
@@ -294,7 +347,34 @@ add_subdirectory(benchmark)
     
     # Oneway RPC examples
     create_example_target(test_oneway)
-    # Note: log_simple_demo and log_service_demo require schema generation, skipped for now
+
+    # The log_service demos are generated from the DSL rather than hand-written,
+    # so they need the generated sources. They were skipped for years because
+    # nothing produced them; generate_dsl now does, and building them here is
+    # what keeps the generator and the library from drifting apart -- these two
+    # files were the only real users of the generated API, and both had rotted
+    # against it unnoticed.
+    if(UVRPC_DSL_AVAILABLE)
+        foreach(_demo log_simple_demo log_service_demo)
+            add_executable(${_demo}
+                examples/${_demo}.c
+                ${UVRPC_DSL_GEN_DIR}/log_logservice_client.c
+                ${UVRPC_DSL_GEN_DIR}/log_logservice_rpc_common.c
+                ${UVRPC_DSL_GEN_DIR}/log_logservice_server_stub.c
+            )
+            target_link_libraries(${_demo} uvrpc Threads::Threads m rt dl)
+            target_include_directories(${_demo}
+                PRIVATE
+                ${UVRPC_DSL_GEN_DIR}
+                ${CMAKE_CURRENT_SOURCE_DIR}/generated
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+            )
+            add_dependencies(${_demo} generate_dsl)
+        endforeach()
+    else()
+        message(STATUS "Skipping log_service demos: RPC DSL codegen unavailable")
+    endif()
     
     # Streaming RPC examples
     create_example_target(streaming_demo)

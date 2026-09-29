@@ -138,8 +138,10 @@ int main(int argc, char* argv[]) {
             throttled++;
             uv_run(&loop, UV_RUN_NOWAIT);
         } else {
-            fprintf(stderr, "[Client] call failed: %d (i=%d sent=%d pending=%d)\n",
-                    ret, i, sent);
+            /* i and sent always move together, and there is no "pending"
+             * counter here -- report the two the loop actually keeps. */
+            fprintf(stderr, "[Client] call failed: %d (sent=%d throttled=%d)\n",
+                    ret, sent, throttled);
             break;
         }
     }

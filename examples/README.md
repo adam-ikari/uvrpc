@@ -109,20 +109,23 @@ RPC 层没有"发布-订阅"这种 API，广播是传输层能力：`uvbus_broad
 ## 仓库里有源码但当前没有构建目标的示例
 
 这些文件存在于 `examples/`，但 CMake 没有为它们创建 target，所以 `dist/bin/` 里没有对应
-二进制。`CMakeLists.txt:297,330-332` 记了原因：需要额外的 schema 生成（`tools/uvrpcc.py`
-调用），历史上被跳过。
+二进制。多数是历史上需要额外 schema 生成而被跳过的（`CMakeLists.txt` 里仍有注释记录）。
 
 `scenario_1_simple_request_response.c`、`scenario_2_streaming_data_transfer.c`、
 `scenario_3_oneway_logging.c`、`scenario_4_broadcast_mode.c`、
-`scenario_5_mixed_mode_api.c`、`multi_service_loop_reuse.c`、`log_service_demo.c`、
-`log_simple_demo.c`、`flatbuffers_demo.c`、`generated_client_example.c`、
-`rpc_dsl_usage_example.c`、`rpc_user_impl.c`、`stream_dsl_demo.c`、
-`stream_api_demo.c`、`simple_stream_dsl.c`、`test_10_requests.c`、
+`scenario_5_mixed_mode_api.c`、`multi_service_loop_reuse.c`、`flatbuffers_demo.c`、
+`generated_client_example.c`、`rpc_dsl_usage_example.c`、`rpc_user_impl.c`、
+`stream_dsl_demo.c`、`stream_api_demo.c`、`simple_stream_dsl.c`、`test_10_requests.c`、
 `test_multi_services.c`、`test_retry.c`、`test_semaphore.c`、`test_semaphore2.c`、
 `test_simple_server.c`、`uvbus_minimal_test.c`、`uvbus_standalone_test.c`、
 `uvbus_working_example.c`
 
 要用它们：手动编译，或给 `CMakeLists.txt` 补一个 `create_example_target(...)`。
+
+`log_service_demo.c` 与 `log_simple_demo.c` **不在此列** —— 它们是 RPC DSL 生成的
+（`schema/log_service.fbs`），现在由构建系统的 `generate_dsl` 目标产出代码并纳入
+`dist/bin/`。前提是构建机上有一个能 `import jinja2` 的 python3；没有的话这两个示例与
+`dsl_codegen` 测试会被跳过，库本身照常构建。
 
 ## 配套文档
 

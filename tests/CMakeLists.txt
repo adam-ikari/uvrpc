@@ -202,67 +202,23 @@ if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "custom")
     set_tests_properties(allocator_ownership PROPERTIES TIMEOUT 60)
 endif()
 
-# DSL generator round trip. The generator is a Python tool and is not part of
-# the library build, so this test only exists where it can run: with python3 and
-# jinja2 present it drives uvrpcc.py over schema/log_service.fbs and checks that
-# the code it emits encodes and decodes a struct array. Without them the test is
-# skipped rather than failing, so a plain C build still works.
-find_package(Python3 COMPONENTS Interpreter QUIET)
-set(_dsl_python "")
-# find_package picks whatever Python3_EXECUTABLE resolves to, which on a
-# developer machine is often a user-local interpreter without jinja2 while the
-# system one has it. Probe the candidates and take the first that can import
-# the dependency, so the test runs wherever the generator can actually run.
-set(_dsl_candidates ${Python3_EXECUTABLE} /usr/bin/python3 python3)
-foreach(_candidate IN LISTS _dsl_candidates)
-    if(_candidate AND NOT _dsl_python)
-        execute_process(
-            COMMAND ${_candidate} -c "import jinja2"
-            RESULT_VARIABLE _dsl_rc
-            OUTPUT_QUIET ERROR_QUIET
-        )
-        if(_dsl_rc EQUAL 0)
-            set(_dsl_python ${_candidate})
-        endif()
-    endif()
-endforeach()
-if(_dsl_python)
-    set(_dsl_codegen_ok TRUE)
-    message(STATUS "DSL codegen test: using ${_dsl_python}")
-endif()
-
-if(_dsl_codegen_ok)
-    set(_dsl_gen_dir ${CMAKE_CURRENT_BINARY_DIR}/dsl_gen)
+# DSL generator round trip. Drives the generated client function over a live
+# connection and asserts on what the server decoded -- a test that re-implemented
+# the encoder in C would pass against a generator that emits broken code.
+# The generated sources come from the build-wide generate_dsl target, so this
+# test and the log_service demos exercise the same output.
+if(UVRPC_DSL_AVAILABLE)
     set(_dsl_gen_ns log_logservice)
-    file(GLOB _dsl_templates ${CMAKE_CURRENT_SOURCE_DIR}/../tools/templates/*.j2)
 
-    add_custom_command(
-        OUTPUT ${_dsl_gen_dir}/${_dsl_gen_ns}_client.c
-               ${_dsl_gen_dir}/${_dsl_gen_ns}_rpc_common.c
-               ${_dsl_gen_dir}/${_dsl_gen_ns}_server_stub.c
-               ${_dsl_gen_dir}/${_dsl_gen_ns}_api.h
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${_dsl_gen_dir}
-        COMMAND ${_dsl_python} ${CMAKE_CURRENT_SOURCE_DIR}/../tools/uvrpcc.py
-                --flatcc ${FLATCC_COMPILER}
-                ${CMAKE_CURRENT_SOURCE_DIR}/../schema/log_service.fbs
-                -o ${_dsl_gen_dir}
-        # The templates decide what the generated code does, so an edit to one
-        # of them must rerun the generator -- otherwise the test would keep
-        # asserting against stale output.
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../tools/uvrpcc.py
-                ${CMAKE_CURRENT_SOURCE_DIR}/../schema/log_service.fbs
-                ${_dsl_templates}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
-        COMMENT "Generating RPC DSL code from log_service.fbs"
-        VERBATIM
-    )
 
     add_executable(dsl_codegen_test
         dsl_codegen_test.c
-        ${_dsl_gen_dir}/${_dsl_gen_ns}_client.c
-        ${_dsl_gen_dir}/${_dsl_gen_ns}_rpc_common.c
-        ${_dsl_gen_dir}/${_dsl_gen_ns}_server_stub.c
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_client.c
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_rpc_common.c
+        ${UVRPC_DSL_GEN_DIR}/${_dsl_gen_ns}_server_stub.c
     )
+
+    add_dependencies(dsl_codegen_test generate_dsl)
 
     target_link_libraries(dsl_codegen_test
         uvrpc
@@ -273,7 +229,7 @@ if(_dsl_codegen_ok)
 
     target_include_directories(dsl_codegen_test
         PRIVATE
-        ${_dsl_gen_dir}
+        ${UVRPC_DSL_GEN_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../generated
         ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include

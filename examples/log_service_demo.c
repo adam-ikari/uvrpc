@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include "log_logservice_api.h"
 #include "log_service_reader.h"
-#include "include/uvrpc.h"
+#include <uvrpc.h>
 
 /* The client sends a serialized FlatBuffers root, so the handler reads it
  * through the generated reader accessors -- not by casting the payload to
