@@ -50,16 +50,36 @@ static void on_response(uvrpc_response_t* resp, void* ctx) {
     uvrpc_response_free(resp);
 }
 
-/* Pump the loop until `st->received >= st->target` or deadline. Uses
- * UV_RUN_ONCE so the thread blocks until an event is ready (the realistic
- * libuv pattern) rather than busy-polling; this still terminates because each
- * response fires the recv callback which returns uv_run. */
-static int pump_until(uv_loop_t* loop, bench_state_t* st, uint64_t deadline_ms) {
+#define WARMUP_REQUESTS 1000
+
+/* Pump the loop until `st->received >= st->target`. Returns 0 on success,
+ * -1 when the overall deadline passes, -2 when no response arrived for
+ * stall_limit_ms (a wedged transport, as opposed to a merely slow host).
+ * UV_RUN_ONCE blocks until an event is ready instead of busy-polling. */
+static int pump_until(uv_loop_t* loop, bench_state_t* st, uint64_t deadline_ms,
+                      uint64_t stall_limit_ms) {
+    uint64_t last = st->received;
+    uint64_t progressed_at = now_ms();
     while (st->received < st->target) {
-        if (now_ms() > deadline_ms) return -1;  /* timeout */
+        uint64_t now = now_ms();
+        if (now > deadline_ms) return -1;
+        if (st->received != last) {
+            last = st->received;
+            progressed_at = now;
+        } else if (now - progressed_at > stall_limit_ms) {
+            return -2;
+        }
         uv_run(loop, UV_RUN_ONCE);
     }
     return 0;
+}
+
+/* Budget override for CI on hosts that are unusually slow; ms, 0 = derive. */
+static uint64_t env_ms(const char* name) {
+    const char* v = getenv(name);
+    if (!v) return 0;
+    unsigned long long n = strtoull(v, NULL, 10);
+    return (uint64_t)n;
 }
 
 int main(int argc, char** argv) {
@@ -132,13 +152,18 @@ int main(int argc, char** argv) {
     bench_state_t st = {0, 0};
     uint8_t payload[8] = {0,0,0,0,0,0,0,0};
 
-    /* Deadlines scale with request count. Worst-case sequential round-trip is
-     * ~TCP 50us/req, so budget ~0.1ms/req + 5s slack to absorb jitter. */
-    uint64_t warmup_deadline = now_ms() + 10000;
-    uint64_t measure_budget_ms = (num_requests / 10) + 10000;  /* 0.1ms/req + slack */
+    /* Deadlines are derived from what this host actually delivers, not from an
+     * assumed per-request cost: the same code runs 5-10x slower on virtualised
+     * or noisy machines, and a budget that is merely tight aborts a valid run
+     * with "measure timeout". Warmup measures the rate; the measured run gets
+     * 4x that budget plus slack. */
+    uint64_t stall_limit_ms = env_ms("UVRPC_BENCH_STALL_MS");
+    if (stall_limit_ms == 0) stall_limit_ms = 5000;
+    uint64_t warmup_deadline = now_ms() + 30000;
 
-    /* Warmup: 1000 requests (excluded from timing). */
-    st.target = 1000;
+    /* Warmup: WARMUP_REQUESTS requests (excluded from timing). */
+    st.target = WARMUP_REQUESTS;
+    uint64_t warmup_start = now_ms();
     for (uint64_t i = 0; i < st.target; i++) {
         if (uvrpc_client_call(client, "echo", payload, sizeof(payload), on_response, &st) != 0) {
             fprintf(stderr, "warmup call failed at %llu\n", (unsigned long long)i);
@@ -146,10 +171,20 @@ int main(int argc, char** argv) {
         }
         uv_run(&loop, UV_RUN_NOWAIT);
     }
-    if (pump_until(&loop, &st, warmup_deadline) != 0) {
-        fprintf(stderr, "warmup timeout (received %llu/%llu)\n",
+    int wr = pump_until(&loop, &st, warmup_deadline, stall_limit_ms);
+    if (wr != 0) {
+        fprintf(stderr, "warmup %s (received %llu/%llu)\n",
+                wr == -2 ? "stalled" : "timeout",
                 (unsigned long long)st.received, (unsigned long long)st.target);
         return 1;
+    }
+
+    uint64_t warmup_ms = now_ms() - warmup_start;
+    if (warmup_ms == 0) warmup_ms = 1;
+    uint64_t warmup_us_per_req = warmup_ms * 1000 / WARMUP_REQUESTS + 1;
+    uint64_t measure_budget_ms = env_ms("UVRPC_BENCH_BUDGET_MS");
+    if (measure_budget_ms == 0) {
+        measure_budget_ms = num_requests * warmup_us_per_req * 4 / 1000 + 10000;
     }
 
     /* Measured run: strict sequential ping-pong — wait for each response
@@ -166,9 +201,12 @@ int main(int argc, char** argv) {
             fprintf(stderr, "call failed at %llu\n", (unsigned long long)i);
             return 1;
         }
-        if (pump_until(&loop, &st, per_call_deadline) != 0) {
-            fprintf(stderr, "measure timeout (received %llu/%llu)\n",
-                    (unsigned long long)st.received, (unsigned long long)num_requests);
+        int mr = pump_until(&loop, &st, per_call_deadline, stall_limit_ms);
+        if (mr != 0) {
+            fprintf(stderr, "measure %s (received %llu/%llu, budget %llu ms)\n",
+                    mr == -2 ? "stalled" : "timeout",
+                    (unsigned long long)st.received, (unsigned long long)num_requests,
+                    (unsigned long long)measure_budget_ms);
             return 1;
         }
     }
