@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-09-29T08:21:11"
+updated: "2026-09-29T08:33:16"
 ---
 
 <!-- compiled_truth -->
@@ -79,4 +79,10 @@ updated: "2026-09-29T08:21:11"
   kind: evidence
   summary: "CI 一直是红的：gh run list --workflow ci.yml 最近 20 次全部 failure，最早到 2026-02-19。今天定位两处真因：① DSL 生成目录指向源码树 generated/，产物在配置期尚不存在，add_executable 报 'Cannot find source file'，5 个 job 全挂；GENERATED 属性是目录作用域，须在使用它的子目录再设一次。② 示例目标强制 LINK_FLAGS=-static，与 -fsanitize=address 互斥（cc: cannot specify -static with -fsanitize=address），ASan/UBSan 构建无法产出；现按 CMAKE_C_FLAGS 含 -fsanitize 自动跳过静态链接"
   source: "按 ci.yml 原命令本地复现与验证：ASan 配置/构建通过，test_transport_lifetime 与 uvrpc_tests(43) 全绿 (2026-09-29)"
+  affects: [build-distribution-breakage]
+
+- time: 2026-09-29T08:33:16
+  kind: evidence
+  summary: "CI 修复后 8 个 job 绿了 7 个，最后一个 cppcheck 报 5 条：2 条是真的（uvrpc_server.c 把可能为 NULL 的 method 传给 HASH_FIND_STR 的键 —— 解码器允许无方法名，代码自己也写了 method ? method : \"(null)\"；以及 %s 直接传 NULL），3 条是误报（nread 声明为 ssize_t，cppcheck 建模成 intptr_t，LP64 下同型），加内联抑制注明理由。cppcheck 的抑制注释必须落在它归因的那一行（格式串所在行），放在参数行无效"
+  source: "本地用 ci.yml 的 cppcheck 命令复现并清零 (2026-09-29)"
   affects: [build-distribution-breakage]

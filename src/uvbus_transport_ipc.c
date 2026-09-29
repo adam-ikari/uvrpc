@@ -132,7 +132,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
             client->read_pos += nread;
         } else {
             /* Buffer overflow - reset and log error */
-            UVBUS_LOG_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",
+            UVBUS_LOG_ERROR("Buffer overflow: read_pos=%zu, nread=%zd, buffer_size=%zu",  /* cppcheck-suppress invalidPrintfArgType_sint */
                     client->read_pos, nread, sizeof(client->read_buffer));
             client->read_pos = 0;
             uvrpc_free(buf->base);

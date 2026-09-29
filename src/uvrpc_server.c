@@ -165,9 +165,16 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         }
     }
     
-    /* Find handler using lowercase method name */
+    /* Find handler using lowercase method name.
+     * A frame that decodes without a method name cannot be dispatched, and
+     * HASH_FIND_STR would run strcmp() on the NULL key -- so leave entry NULL
+     * and let the "not found" path below answer it. */
     handler_entry_t* entry = NULL;
-    HASH_FIND_STR(server->handlers, method_lower, entry);
+    if (method_lower) {
+        HASH_FIND_STR(server->handlers, method_lower, entry);
+    } else {
+        UVRPC_LOG_ERROR("Request carries no method name");
+    }
     
     /* Free the lowercase copy */
     if (method_lower) {
@@ -197,7 +204,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         if (method) uvrpc_free(method);
     } else {
         /* Handler not found, send error response */
-        UVRPC_LOG_ERROR("Handler not found: '%s'", method);
+        UVRPC_LOG_ERROR("Handler not found: '%s'", method ? method : "(no method name)");
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
 
