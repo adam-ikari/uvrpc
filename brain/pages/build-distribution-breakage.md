@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-09-29T08:33:16"
+updated: "2026-09-29T08:40:55"
 ---
 
 <!-- compiled_truth -->
@@ -85,4 +85,10 @@ updated: "2026-09-29T08:33:16"
   kind: evidence
   summary: "CI 修复后 8 个 job 绿了 7 个，最后一个 cppcheck 报 5 条：2 条是真的（uvrpc_server.c 把可能为 NULL 的 method 传给 HASH_FIND_STR 的键 —— 解码器允许无方法名，代码自己也写了 method ? method : \"(null)\"；以及 %s 直接传 NULL），3 条是误报（nread 声明为 ssize_t，cppcheck 建模成 intptr_t，LP64 下同型），加内联抑制注明理由。cppcheck 的抑制注释必须落在它归因的那一行（格式串所在行），放在参数行无效"
   source: "本地用 ci.yml 的 cppcheck 命令复现并清零 (2026-09-29)"
+  affects: [build-distribution-breakage]
+
+- time: 2026-09-29T08:40:55
+  kind: reversal
+  summary: "反转：CI 首次全绿。修完 DSL 生成目录/cppcheck 后，run 36543459605 的 8 个 job 与 CI、Benchmark、文档部署三条流水线全部 success —— 而此前可查的每一次运行（最近 20 次，最早 2026-02-19）都是 failure。构建/分发这条线从今天起由流水线本身守护"
+  source: "gh run view 36543459605：非 success 的 job 数为 0 (2026-09-29)"
   affects: [build-distribution-breakage]

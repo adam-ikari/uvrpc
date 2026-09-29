@@ -2,6 +2,15 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-09-29T08:41:20"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-09-29T06:42:00"
 ---
 
@@ -94,6 +103,6 @@ graph LR
 9. ~~**文档站点无法从干净克隆构建**~~ —— **已修（2026-09-29）**：`docs/node_modules` 从版本控制移除（其 `dist/` 载荷从未被提交），`.gitignore` 既有规则随之生效；`docs/doxygen/`（579 个陈旧 HTML）一并删除并 ignore，`docs/Doxyfile` 保留供按需生成。
 10. ~~examples/README.md 索引不存在的示例~~ —— **已修（2026-09-29）**：按真实构建产物重写为分类清单，22 个无构建目标的源文件单列并注明原因。
 11. ~~**性能基线取自开发机而非 CI**~~ —— **已修（2026-09-29）**： 旧表记的 ~4.9 µs / ~205,000 req/s 比同一构建的真实值差约一倍，且扩散到 9 个文件。现全部改用 `Benchmark` 工作流在 CI runner 上的实测值，测量前提见 [[uv-run-once-benchmark-methodology]]。
-12. **benchmark 的 UDP 语义**（未处理，小）—— 顺序 ping-pong 下丢包表现为超时而非吞吐下降，程序不区分"丢了"和"慢了"。要么给 UDP 报重传/丢失计数，要么在文档里标注"仅本机 loopback 有效"。
+12. ~~benchmark 的 UDP 语义~~ —— **已修（2026-09-29）**：不加重传，改为如实标注：跑 udp 时往 stderr 打印丢包会中止运行而非降低吞吐，参考表 7 处 UDP 行标注"仅本机 loopback"。
 13. **`tools/uvrpcc.py` 的生成产物**（部分修复，2026-09-29）—— 生成器不再崩、类型名按 flatcc 0.6 的命名空间规则正确生成，`log_service.fbs` 三个源文件编译 0 error；但 `examples/log_service_demo.c` 自身落后于库 API（`uvrpc_request_send_response` 现返回 void），该示例仍编译不过。
 14. **`loop->data` 作为注册表挂载点**（未处理，需讨论）—— 实现就是占用 libuv 的公开用户字段，用 magic 守卫拒绝冲突；这与"UVRPC 不占用 `loop->data`"的说法矛盾，且要求调用方零初始化 loop。是否换挂载点待议。
