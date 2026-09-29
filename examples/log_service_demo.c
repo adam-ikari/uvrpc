@@ -6,126 +6,75 @@
 #include <time.h>
 #include <pthread.h>
 #include "log_logservice_api.h"
+#include "log_service_reader.h"
 #include "include/uvrpc.h"
 
-/* User-implemented handler for all log requests */
-uvrpc_error_t uvrpc_logservice_handle_request(const char* method_name,
-                                                const void* request,
-                                                uvrpc_request_t* req) {
-    if (strcmp(method_name, "Log") == 0) {
-        /* Handle single log entry */
-        log_LogEntry_t* entry = log_LogEntry_as_root(request);
+/* The client sends a serialized FlatBuffers root, so the handler reads it
+ * through the generated reader accessors -- not by casting the payload to
+ * log_LogEntry_t and touching fields. That struct is the *client-side* view
+ * the serializer consumes; on the wire the buffer is a log_LogEntry_table_t. */
+static const char* level_name(log_LogLevel_enum_t level) {
+    switch (level) {
+        case log_LogLevel_DEBUG:   return "DEBUG";
+        case log_LogLevel_INFO:    return "INFO";
+        case log_LogLevel_WARNING: return "WARNING";
+        case log_LogLevel_ERROR:   return "ERROR";
+        case log_LogLevel_FATAL:   return "FATAL";
+    }
+    return "UNKNOWN";
+}
 
-        const char* level_str = "UNKNOWN";
-        switch (entry->level) {
-            case 0: level_str = "DEBUG"; break;
-            case 1: level_str = "INFO"; break;
-            case 2: level_str = "WARNING"; break;
-            case 3: level_str = "ERROR"; break;
-            case 4: level_str = "FATAL"; break;
-        }
-
-        time_t ts = entry->timestamp;
-        struct tm* tm_info = localtime(&ts);
-        char time_str[64];
+static void print_entry(log_LogEntry_table_t entry) {
+    time_t ts = (time_t)log_LogEntry_timestamp(entry);
+    struct tm* tm_info = localtime(&ts);
+    char time_str[64] = "?";
+    if (tm_info) {
         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+    }
 
-        printf("[%s] [%s] [%s] [Thread:%lu] %s: %s\n",
-               time_str,
-               level_str,
-               entry->source ? entry->source : "unknown",
-               (unsigned long)entry->thread_id,
-               entry->component ? entry->component : "app",
-               entry->message ? entry->message : "");
+    const char* source = log_LogEntry_source(entry);
+    const char* component = log_LogEntry_component(entry);
+    const char* message = log_LogEntry_message(entry);
+    printf("[%s] [%s] [%s] [Thread:%lu] %s: %s\n",
+           time_str,
+           level_name(log_LogEntry_level(entry)),
+           source ? source : "unknown",
+           (unsigned long)log_LogEntry_thread_id(entry),
+           component ? component : "app",
+           message ? message : "");
+}
 
-        /* Send empty response (oneway) */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        log_EmptyResponse_start_as_root(&builder);
-        log_EmptyResponse_end_as_root(&builder);
+/* User-implemented handler for all log requests. */
+uvrpc_error_t uvrpc_logservice_handle_request(const char* method_name,
+                                       const void* request,
+                                       uvrpc_request_t* req) {
+    (void)req;
 
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-        uvrpc_error_t ret = uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-
-        free(buf);
-        flatcc_builder_clear(&builder);
-
-        return ret;
+    /* All three methods are oneway: the generated stub sends nothing when this
+     * returns UVRPC_OK, and a reply to a oneway is dropped client-side for
+     * lack of a callback slot. So there is nothing to send here. */
+    if (strcmp(method_name, "Log") == 0) {
+        print_entry(log_LogEntry_as_root(request));
+        return UVRPC_OK;
 
     } else if (strcmp(method_name, "LogBatch") == 0) {
-        /* Handle batch log entries */
-        log_LogBatchRequest_t* batch = log_LogBatchRequest_as_root(request);
-        flatbuffers_log_entry_vec_t entries = log_LogBatchRequest_entries(batch);
-
-        size_t count = flatbuffers_log_entry_vec_len(entries);
+        log_LogEntry_vec_t entries = log_LogBatchRequest_entries(
+            log_LogBatchRequest_as_root(request));
+        size_t count = log_LogEntry_vec_len(entries);
         printf("=== Batch Log: %zu entries ===\n", count);
 
         for (size_t i = 0; i < count; i++) {
-            log_LogEntry_t* entry = log_LogEntry_vec_at(entries, i);
-
-            const char* level_str = "UNKNOWN";
-            switch (entry->level) {
-                case 0: level_str = "DEBUG"; break;
-                case 1: level_str = "INFO"; break;
-                case 2: level_str = "WARNING"; break;
-                case 3: level_str = "ERROR"; break;
-                case 4: level_str = "FATAL"; break;
-            }
-
-            printf("  [%s] [%s] %s\n",
-                   level_str,
-                   entry->source ? entry->source : "unknown",
-                   entry->message ? entry->message : "");
+            print_entry(log_LogEntry_vec_at(entries, i));
         }
-
-        /* Send empty response (oneway) */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        log_EmptyResponse_start_as_root(&builder);
-        log_EmptyResponse_end_as_root(&builder);
-
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-        uvrpc_error_t ret = uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-
-        free(buf);
-        flatcc_builder_clear(&builder);
-
-        return ret;
+        return UVRPC_OK;
 
     } else if (strcmp(method_name, "QuickLog") == 0) {
-        /* Handle quick log */
-        log_QuickLogRequest_t* quick = log_QuickLogRequest_as_root(request);
-
-        const char* level_str = "UNKNOWN";
-        switch (quick->level) {
-            case 0: level_str = "DEBUG"; break;
-            case 1: level_str = "INFO"; break;
-            case 2: level_str = "WARNING"; break;
-            case 3: level_str = "ERROR"; break;
-            case 4: level_str = "FATAL"; break;
-        }
-
-        printf("[QUICK] [%s] %s\n", level_str, quick->message ? quick->message : "");
-
-        /* Send empty response (oneway) */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        log_EmptyResponse_start_as_root(&builder);
-        log_EmptyResponse_end_as_root(&builder);
-
-        size_t size;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-
-        uvrpc_error_t ret = uvrpc_request_send_response(req, UVRPC_OK, buf, size);
-
-        free(buf);
-        flatcc_builder_clear(&builder);
-
-        return ret;
+        log_QuickLogRequest_table_t quick = log_QuickLogRequest_as_root(request);
+        const char* message = log_QuickLogRequest_message(quick);
+        printf("[QUICK] [%s] %s\n",
+               level_name(log_QuickLogRequest_level(quick)),
+               message ? message : "");
+        return UVRPC_OK;
     }
 
     return UVRPC_ERROR_NOT_FOUND;
@@ -256,16 +205,32 @@ void send_log_messages(uvrpc_client_t* client) {
     printf("Sent 10 oneway log messages (fire-and-forget)\n");
 }
 
-/* Client connection callback */
-void on_client_connect(uvrpc_client_t* client, uvrpc_error_t status, void* ctx) {
+/* The connect callback receives only a status and the ctx it was registered
+ * with -- no client handle. This demo runs one client, so it keeps the handle
+ * in a file-scope pointer; the callback fires during uv_run, long after main
+ * has assigned it. */
+static uvrpc_client_t* g_client;
+static uv_timer_t g_stop_timer;
+
+static void stop_later(uv_timer_t* timer) {
+    uv_timer_stop(timer);
+    uv_stop(uvrpc_client_get_loop(g_client));
+}
+void on_client_connect(int status, void* ctx) {
+    (void)ctx;
     if (status == UVRPC_OK) {
         printf("Client connected to Log Service successfully\n");
-        send_log_messages(client);
-        uv_stop(uvrpc_client_get_loop(client));
+        send_log_messages(g_client);
     } else {
-        printf("Client connection failed: %d\n", status);
-        uv_stop(uvrpc_client_get_loop(client));
+        fprintf(stderr, "Client connection failed: %d\n", status);
     }
+    /* Oneway means fire-and-forget: nothing tracks these on the client, so the
+     * sends return as soon as the frames are queued. Stopping the loop right
+     * here would discard them before the server ever reads them -- the demo
+     * exits cleanly and prints nothing. Give the loop a moment to deliver,
+     * then stop from a timer. */
+    uv_timer_init(uvrpc_client_get_loop(g_client), &g_stop_timer);
+    uv_timer_start(&g_stop_timer, stop_later, 200, 0);
 }
 
 int main() {
@@ -298,8 +263,12 @@ int main() {
 
     if (!client) {
         fprintf(stderr, "Failed to create client\n");
+        uvrpc_logservice_stop_server(server);
+        uvrpc_logservice_free_server(server);
+        uv_loop_close(&loop);
         return 1;
     }
+    g_client = client;
 
     /* Run event loop */
     printf("\n=== Running Event Loop ===\n");
