@@ -52,9 +52,12 @@ jobs:
               out=$(./dist/bin/perf_benchmark 50000 "$t" 2>/dev/null)
               lat=$(echo "$out" | grep -oE '[0-9.]+ us/req' | head -1)
               thr=$(echo "$out" | grep -oE '[0-9,]+ req/s' | head -1)
+              # Written to the step summary and to the job log, so the numbers
+              # can be read back with `gh run view --log` instead of only being
+              # visible on the run page.
               echo "| $t | $lat | $thr |"
             done
-          } >> "$GITHUB_STEP_SUMMARY"
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Stress run (1M requests, same-loop)
         run: |
