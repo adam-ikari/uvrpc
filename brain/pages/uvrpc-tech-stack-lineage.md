@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T05:40:08"
+updated: "2026-09-29T07:07:34"
 ---
 
 <!-- compiled_truth -->
@@ -75,4 +75,10 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: evidence
   summary: "已修一半：rpc_common.h.j2 声明结构体字段时按表类型加命名空间前缀（log_LogEntry_t），此前是裸 LogEntry_t —— 但 flatcc 0.6 连枚举也带前缀（log_LogLevel_enum_t），所以 log_service 仍编译不过"
   source: "tools/templates/rpc_common.h.j2 + uvrpcc.py:281；其余 5 个 schema 产物逐字节不变 (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T07:07:34
+  kind: evidence
+  summary: "结构体数组路径的运行时缺陷（此前因生成器崩溃而从未被执行过）：① 向游离向量再 add 偏移，编译通过但解码长度恒为 0（flatcc 0.6 要求在字段作用域内 <Table>_<field>_start/push_create/_end）；② 元素里的字符串字段直接把 const char* 传给 _create 的 string_ref_t 形参，读取时解引用垃圾崩溃。两处都在 client.c.j2 / rpc_common.c.j2。修好后 log_service_demo 端到端跑通：批量 3 条、10 条高频 quick log 全部送达"
+  source: "纯 flatcc 往返复现 + examples/log_service_demo.c 端到端实测 (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]
