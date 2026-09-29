@@ -300,9 +300,11 @@ int main(void) {
   后失效；callback 里的 `resp->result` 由框架在回调结束后释放（`include/uvrpc.h:258-272`
   的 IMPORTANT 块）。要跨回调保留必须自己拷贝。
 - **flatcc 缓冲区由 flatcc 自己的分配器产生**：`uvrpc_encode_*()` 返回的字节来自
-  `flatcc_builder_finalize_buffer()`，而 flatcc 没有接入 uvrpc 的分配器钩子。释放这类
-  缓冲区时要留意 `uvrpc_free()` 与 `free()` 的归属一致性 —— 尤其自定义分配器
-  （`UVRPC_ALLOCATOR_DEFAULT=custom`）下，`uvrpc_free` 可能是一个不认识 malloc 指针的池。
+  `flatcc_builder_finalize_buffer()`，而 flatcc 没有接入 uvrpc 的分配器钩子。这类缓冲区
+  只能用 `free()` 释放 —— 自定义分配器（`UVRPC_ALLOCATOR_DEFAULT=custom`）下
+  `uvrpc_free()` 是一个不认识 malloc 指针的池。库内部用
+  `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`）表达这条规则；调用
+  `uvrpc_encode_*()` 的用户代码直接 `free()` 即可。
 - **`max_clients` 传 0 不是"无限"**：`src/uvrpc_server.c:259` 把 0 变成默认 1024，
   不存在 unlimited 模式（头文件注释此前写作 "0 = unlimited"，2026-09-29 已改正）。
 - **INPROC 的连接判定是 O(已见连接数)**：`client_ctxs` 靠线性扫去重

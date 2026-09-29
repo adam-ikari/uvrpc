@@ -466,13 +466,13 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
          * concurrency quota is checked wherever a slot is taken. */
         if (client->max_concurrent > 0 &&
             client->current_concurrent + 1 > client->max_concurrent) {
-            uvrpc_free(req_data);
+            uvrpc_free_encoded(req_data);
             return UVRPC_ERROR_RATE_LIMITED;
         }
 
         pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
         if (!pending) {
-            uvrpc_free(req_data);
+            uvrpc_free_encoded(req_data);
             return UVRPC_ERROR_NO_MEMORY;
         }
 
@@ -486,7 +486,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
             /* Slot is occupied by a live entry - the ring buffer is effectively
              * full. Do NOT block the event loop; let the caller back off. */
             uvrpc_free(pending);
-            uvrpc_free(req_data);
+            uvrpc_free_encoded(req_data);
             return UVRPC_ERROR_CALLBACK_LIMIT;
         }
         client->pending_callbacks[idx] = pending;
@@ -512,7 +512,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
                 client->pending_callbacks[idx] = NULL;
                 client->current_concurrent--;
             }
-            uvrpc_free(req_data);
+            uvrpc_free_encoded(req_data);
 
             if (send_err == UVBUS_ERROR_BUFFER_FULL) {
                 return UVRPC_ERROR_TRANSPORT_BUSY;
@@ -523,7 +523,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         UVRPC_LOG("Send successful");
     }
 
-    uvrpc_free(req_data);
+    uvrpc_free_encoded(req_data);
     
     return UVRPC_OK;
 }
@@ -590,7 +590,7 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
     if (client->uvbus) {
         uvbus_error_t send_err = uvbus_send(client->uvbus, req_data, req_size);
         if (send_err != UVBUS_OK) {
-            uvrpc_free(req_data);
+            uvrpc_free_encoded(req_data);
             if (send_err == UVBUS_ERROR_BUFFER_FULL) {
                 return UVRPC_ERROR_TRANSPORT_BUSY;
             }
@@ -598,7 +598,7 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
         }
     }
     
-    uvrpc_free(req_data);
+    uvrpc_free_encoded(req_data);
     
     return UVRPC_OK;
 }
@@ -670,14 +670,14 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
         if (callbacks[i]) {
             pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
             if (!pending) {
-                uvrpc_free(req_data);
+                uvrpc_free_encoded(req_data);
                 return UVRPC_ERROR_NO_MEMORY;
             }
 
             uint32_t idx = msgid & (client->max_pending_callbacks - 1);
             if (client->pending_callbacks[idx] != NULL) {
                 uvrpc_free(pending);
-                uvrpc_free(req_data);
+                uvrpc_free_encoded(req_data);
                 return UVRPC_ERROR_CALLBACK_LIMIT;
             }
 
@@ -701,13 +701,13 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
                     client->pending_callbacks[idx] = NULL;
                     client->current_concurrent--;
                 }
-                uvrpc_free(req_data);
+                uvrpc_free_encoded(req_data);
                 return (send_err == UVBUS_ERROR_BUFFER_FULL) ? UVRPC_ERROR_TRANSPORT_BUSY
                                                              : UVRPC_ERROR_TRANSPORT;
             }
         }
 
-        uvrpc_free(req_data);
+        uvrpc_free_encoded(req_data);
     }
 
     return UVRPC_OK;

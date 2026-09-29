@@ -180,6 +180,33 @@ jobs:
           cd build
           ctest --output-on-failure
 
+  custom-allocator:
+    # The custom allocator is the only build where uvrpc_free() is a pool that
+    # cannot release memory it did not hand out. That makes it the only build
+    # able to catch a cross-heap free, e.g. releasing a flatcc-owned encode
+    # buffer through uvrpc_free().
+    name: Custom allocator build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
+      - name: Configure & build (custom allocator)
+        run: |
+          cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_BUILD_EXAMPLES=ON \
+                -DUVRPC_ALLOCATOR_DEFAULT=custom -DCMAKE_BUILD_TYPE=Release
+          make -C build -j$(nproc)
+      - name: Run ctest
+        run: |
+          cd build
+          ctest --output-on-failure
+
   static-analysis:
     name: Static analysis (cppcheck)
     runs-on: ubuntu-latest

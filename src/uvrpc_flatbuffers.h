@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +38,16 @@ int uvrpc_get_frame_type(const uint8_t* data, size_t size);
 
 /* Free decoded data */
 void uvrpc_free_decoded(char* method);
+
+/* Release a buffer returned by uvrpc_encode_*(). Those buffers come from
+ * flatcc's own builder allocator (flatcc_builder_finalize_buffer), not from
+ * uvrpc_alloc() -- handing one to uvrpc_free() is a cross-heap free under the
+ * mimalloc and custom allocators. */
+static inline void uvrpc_free_encoded(uint8_t* data) {
+    if (data) {
+        free(data);
+    }
+}
 
 #ifdef __cplusplus
 }

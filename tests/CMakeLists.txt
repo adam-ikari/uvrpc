@@ -173,5 +173,34 @@ add_test(NAME uvbus_unit_tests COMMAND uvbus_test)
 add_test(NAME uvbus_simple_test COMMAND uvbus_simple_test)
 set_tests_properties(uvbus_unit_tests uvbus_simple_test PROPERTIES TIMEOUT 60)
 
+# Allocator ownership test. Only meaningful in custom-allocator builds: with the
+# system or mimalloc allocator uvrpc_free() bottoms out in free(), so a flatcc
+# buffer released through it is indistinguishable from a legitimate one.
+if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "custom")
+    add_executable(allocator_ownership_test
+        allocator_ownership_test.c
+    )
+
+    target_link_libraries(allocator_ownership_test
+        uvrpc
+        pthread
+        m
+        rt
+    )
+
+    target_include_directories(allocator_ownership_test
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/uthash/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+    )
+
+    add_test(NAME allocator_ownership COMMAND allocator_ownership_test)
+    set_tests_properties(allocator_ownership PROPERTIES TIMEOUT 60)
+endif()
+
 # Integration tests
 add_subdirectory(integration)

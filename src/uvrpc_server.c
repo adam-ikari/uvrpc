@@ -114,7 +114,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         void* resp_buf = flatcc_builder_finalize_buffer(&builder, &resp_size);
         if (resp_buf) {
             uvbus_send_to(server->uvbus, resp_buf, resp_size, client_ctx);
-            free(resp_buf);
+            uvrpc_free_encoded((uint8_t*)resp_buf);
         }
         flatcc_builder_clear(&builder);
         return;
@@ -220,7 +220,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
             if (uvbus) {
                 uvbus_send_to(uvbus, resp_data, resp_size, client_ctx);
             }
-            uvrpc_free(resp_data);
+            uvrpc_free_encoded(resp_data);
         }
 
         /* Note: client_ctx is managed by the transport layer, not freed here */
@@ -446,7 +446,7 @@ void uvrpc_request_send_response(uvrpc_request_t* req, int status,
         } else {
             UVRPC_LOG_ERROR("Failed to send response: %d (client_ctx=%p)", err, req->client_ctx);
         }
-        uvrpc_free(resp_data);
+        uvrpc_free_encoded(resp_data);
     }
     
     /* Note: client_ctx is managed by the transport layer, not freed here
@@ -481,7 +481,7 @@ void uvrpc_request_send_response_more(uvrpc_request_t* req, const uint8_t* resul
         } else {
             UVRPC_LOG_ERROR("Failed to send response_more: %d (client_ctx=%p)", err, req->client_ctx);
         }
-        uvrpc_free(resp_data);
+        uvrpc_free_encoded(resp_data);
     }
 }
 
@@ -511,7 +511,7 @@ int uvrpc_response_send(uvrpc_request_t* req, const uint8_t* result, size_t resu
     uvbus_error_t err = uvbus_send_to(uvbus, response_data,
                                        response_size, req->client_ctx);
 
-    uvrpc_free(response_data);
+    uvrpc_free_encoded(response_data);
 
     if (err != UVBUS_OK) {
         return UVRPC_ERROR_TRANSPORT;
@@ -560,7 +560,7 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
     uvbus_error_t err = uvbus_send_to(uvbus, response_data,
                                        response_size, req->client_ctx);
 
-    uvrpc_free(response_data);
+    uvrpc_free_encoded(response_data);
 
     if (err != UVBUS_OK) {
         return UVRPC_ERROR_TRANSPORT;
