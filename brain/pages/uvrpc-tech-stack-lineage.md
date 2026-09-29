@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [serialization, event-loop, lineage]
 created: "2026-09-28T17:08:01"
-updated: "2026-09-29T05:27:32"
+updated: "2026-09-29T05:32:19"
 ---
 
 <!-- compiled_truth -->
@@ -57,4 +57,16 @@ nanomsg ──► uvzmq / ZeroMQ + msgpack ──► NNG + libuv 混合 ──�
   kind: evidence
   summary: "缺陷：tools/uvrpcc.py 处理 schema/log_service.fbs 时崩溃（jinja UndefinedError: 'rpc_data'，tools/templates/rpc_common.c.j2:61），生成器吐到一半就死；文档里的手动编译命令还把 rpc_common 写成 .c（实际是 .h）"
   source: "实测：python3 tools/uvrpcc.py --flatcc deps/flatcc/bin/flatcc schema/log_service.fbs -o /tmp/genlog (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T05:32:19
+  kind: evidence
+  summary: "已修：generate_common_code() 漏传 rpc_data（client.c 有、它没有），模板里 struct-array 分支引用 rpc_data['tables'] 直接抛 UndefinedError。6 个 schema 现在全部生成成功，且对原本能生成的 schema 输出逐字节一致"
+  source: "tools/uvrpcc.py:300；实测 schema/*.fbs 全量生成 + /tmp/before vs /tmp/after diff (2026-09-29)"
+  affects: [uvrpc-tech-stack-lineage]
+
+- time: 2026-09-29T05:32:19
+  kind: evidence
+  summary: "仍坏（未修）：生成结果本身编译不过 —— 模板给结构体定义的类型名带 namespace 前缀（log_LogEntry_t），字段引用却不带（LogEntry_t*），位置 tools/templates/rpc_common.h.j2:40/59 vs :33/52；examples/log_service_demo.c 也落后于现 API（uvrpc_request_send_response 现返回 void，demo 仍按返回值用）"
+  source: "实测 gcc 编译 /tmp/g_log_service 产物 (2026-09-29)"
   affects: [uvrpc-tech-stack-lineage]

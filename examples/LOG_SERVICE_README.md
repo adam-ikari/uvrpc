@@ -83,7 +83,7 @@ gcc -I. -Igenerated -Iinclude -Ideps/libuv/include \
     examples/log_service_demo.c \
     generated/log_service/log_logservice_client.c \
     generated/log_service/log_logservice_server_stub.c \
-    generated/log_service/log_logservice_rpc_common.h \
+    generated/log_service/log_logservice_rpc_common.c \
     -o log_service_demo -luvrpc -luv -lmimalloc -lpthread
 ```
 
