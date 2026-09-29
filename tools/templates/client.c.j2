@@ -111,16 +111,28 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% if field.is_struct_array -%}
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        /* Create vector for struct array */
-        {{ field.flatcc_type }}_vec_start(&builder);
+        /* flatcc 0.6 attaches an offset vector to a table field only when the
+         * field scope is open: <Table>_<field>_start, push the elements, then
+         * <Table>_<field>_end. Building a detached vector and adding its ref
+         * compiles but decodes to length 0. */
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.flatcc_type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
-, request->{{ field.name }}[i].{{ struct_field['name'] }}
+            /* A table's _create() takes a string_ref_t per string field,
+             * not a const char*, so each element's strings are written
+             * into the buffer first and the refs passed. */
+            {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+            {%- if struct_field['type'] == "const char*" %}
+            flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
+                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
+            {%- endif %}
+            {%- endfor %}
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+{% if struct_field['type'] == "const char*" %}, i_{{ struct_field['name'] }}_ref{% else %}, request->{{ field.name }}[i].{{ struct_field['name'] }}{% endif %}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
@@ -194,16 +206,28 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% if field.is_struct_array -%}
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        /* Create vector for struct array */
-        {{ field.flatcc_type }}_vec_start(&builder);
+        /* flatcc 0.6 attaches an offset vector to a table field only
+         * when the field scope is open: <Table>_<field>_start, push
+         * the elements, then <Table>_<field>_end. A detached vector
+         * added by ref compiles but decodes to length 0. */
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.flatcc_type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
-, request->{{ field.name }}[i].{{ struct_field['name'] }}
+            /* A table's _create() takes a string_ref_t per string field,
+             * not a const char*, so each element's strings are written
+             * into the buffer first and the refs passed. */
+            {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+            {%- if struct_field['type'] == "const char*" %}
+            flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
+                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
+            {%- endif %}
+            {%- endfor %}
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+{% if struct_field['type'] == "const char*" %}, i_{{ struct_field['name'] }}_ref{% else %}, request->{{ field.name }}[i].{{ struct_field['name'] }}{% endif %}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
@@ -277,16 +301,28 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% if field.is_struct_array -%}
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        /* Create vector for struct array */
-        {{ field.flatcc_type }}_vec_start(&builder);
+        /* flatcc 0.6 attaches an offset vector to a table field only
+         * when the field scope is open: <Table>_<field>_start, push
+         * the elements, then <Table>_<field>_end. A detached vector
+         * added by ref compiles but decodes to length 0. */
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.flatcc_type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
-, request->{{ field.name }}[i].{{ struct_field['name'] }}
+            /* A table's _create() takes a string_ref_t per string field,
+             * not a const char*, so each element's strings are written
+             * into the buffer first and the refs passed. */
+            {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+            {%- if struct_field['type'] == "const char*" %}
+            flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
+                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
+            {%- endif %}
+            {%- endfor %}
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+{% if struct_field['type'] == "const char*" %}, i_{{ struct_field['name'] }}_ref{% else %}, request->{{ field.name }}[i].{{ struct_field['name'] }}{% endif %}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
@@ -507,16 +543,28 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
 {% if field.is_struct_array -%}
     /* Struct array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        /* Create vector for struct array */
-        {{ field.flatcc_type }}_vec_start(&builder);
+        /* flatcc 0.6 attaches an offset vector to a table field only
+         * when the field scope is open: <Table>_<field>_start, push
+         * the elements, then <Table>_<field>_end. A detached vector
+         * added by ref compiles but decodes to length 0. */
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
         for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
-            {{ field.flatcc_type }}_create(&builder
-                {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
-, request->{{ field.name }}[i].{{ struct_field['name'] }}
+            /* A table's _create() takes a string_ref_t per string field,
+             * not a const char*, so each element's strings are written
+             * into the buffer first and the refs passed. */
+            {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+            {%- if struct_field['type'] == "const char*" %}
+            flatbuffers_string_ref_t i_{{ struct_field['name'] }}_ref =
+                flatbuffers_string_create(&builder, request->{{ field.name }}[i].{{ struct_field['name'] }},
+                    request->{{ field.name }}[i].{{ struct_field['name'] }} ? strlen(request->{{ field.name }}[i].{{ struct_field['name'] }}) : 0);
+            {%- endif %}
+            {%- endfor %}
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder
+                {%- for struct_field in rpc_data['tables'][field.schema_type] %}
+{% if struct_field['type'] == "const char*" %}, i_{{ struct_field['name'] }}_ref{% else %}, request->{{ field.name }}[i].{{ struct_field['name'] }}{% endif %}
                 {%- endfor -%});
         }
-        flatbuffers_vec_ref_t {{ field.name }}_ref = {{ field.flatcc_type }}_vec_end(&builder);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
