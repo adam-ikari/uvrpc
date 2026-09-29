@@ -278,6 +278,7 @@ class RPCGenerator:
                 'service': service,
                 'service_name_lower': service['name'].lower(),
                 'service_name_upper': service['name'].upper(),
+                'rpc_data': rpc_data,  # Table list, so the template can tell table types from flatcc types
             }
             
             template = self.env.get_template('rpc_common.h.j2')
