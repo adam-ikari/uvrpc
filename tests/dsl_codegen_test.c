@@ -170,8 +170,16 @@ int main(void) {
     uv_loop_init(&loop);
     g_loop = &loop;
 
+    /* SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    if (!registry) {
+        printf("FAIL: could not create registry\n");
+        return 1;
+    }
+
     uvrpc_server_t* server = uvrpc_logservice_create_server(&loop,
-                                                            "sameloop://dsl_codegen");
+                                                            "sameloop://dsl_codegen",
+                                                            registry);
     if (!server) {
         printf("FAIL: could not create server\n");
         return 1;
@@ -182,7 +190,7 @@ int main(void) {
     }
 
     g_client = uvrpc_logservice_create_client(&loop, "sameloop://dsl_codegen",
-                                              on_connect, NULL);
+                                              registry, on_connect, NULL);
     if (!g_client) {
         printf("FAIL: could not create client\n");
         return 1;
@@ -203,6 +211,7 @@ int main(void) {
     uvrpc_logservice_free_client(g_client);
     uvrpc_logservice_stop_server(server);
     uvrpc_logservice_free_server(server);
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
 
     if (failures == 0) {

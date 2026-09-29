@@ -288,7 +288,8 @@ int main(void) {
 2. **加传输不动 RPC 层**：5 个驱动实现同一份 7 槽 vtable（`include/uvbus.h:129-137`），
    RPC 层只调 `uvbus_send*()`。
 3. **线程/锁由分层共同保证**：RPC 层与传输层都没有锁与线程；INPROC/SAMELOOP 的共享状态
-   挂在 `loop->data` 上（`src/uvbus_loop_registry.h`），不是进程全局。
+   在调用方创建并传入的注册表里（`src/uvbus_loop_registry.h`），既不是进程全局，
+   也不占用 loop 的字段。
 4. **向后兼容**：RPC 层 API 稳定，UVBus 内部优化对用户透明。
 5. **分层可测**：UVBus 有独立的传输层测试（`tests/uvbus_test.c`、
    `tests/uvbus_simple_test.c`、`tests/unit/test_uvbus.cpp`），RPC 测试则跑在**真实**

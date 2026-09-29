@@ -1,115 +1,83 @@
 /**
  * @file uvbus_loop_registry.h
- * @brief Per-loop registry for INPROC and SAMELOOP transports.
+ * @brief Registry for the INPROC and SAMELOOP transports (internal).
+ *
+ * The public entry points live in <uvbus.h>: create a registry, put it on the
+ * configs that need to see each other, free it when they are done. This header
+ * exposes the layout and the reference counting that the two transports use.
  *
  * Replaces the previous process-global endpoint/server hash tables (and the
- * INPROC rwlock) with per-uv_loop_t state attached to loop->data.
- *
- * Rationale: server and client transports for INPROC/SAMELOOP are created from
- * independent configs that share exactly one value — the uv_loop_t*. Hanging a
- * per-loop name->endpoint registry off loop->data lets server and client find
- * each other with ZERO file-scope mutable globals and NO locks (the loop runs
+ * INPROC rwlock) with a single object the caller owns and shares. Server and
+ * client transports are built from independent configs and meet through this
+ * registry, so no transport needs a place to keep per-loop state of its own --
+ * which keeps ZERO file-scope mutable globals and NO locks (the loop runs
  * single-threaded by the framework's design contract).
  *
- * loop->data is libuv's designated per-loop user field, and this is the only
- * one the framework claims: it is not a free slot, and there is no alternative
- * that keeps the zero-globals / zero-locks property -- a process map keyed by
- * uv_loop_t* would be exactly the global this design removed, plus a lock to
- * protect it. A magic tag tells our registry apart from a user-set pointer; on
- * conflict the registry is unavailable for that loop and the transport reports
- * an error rather than overwriting user data.
+ * An earlier version hung this off uv_loop_t::data. That was the only per-loop
+ * slot libuv offers, and it cost more than it looked like: telling our
+ * registry apart from a caller's pointer meant reading through that pointer,
+ * and libuv 1.47 preserves loop->data across uv_loop_init() (it saves and
+ * restores it, deps/libuv/src/unix/loop.c:30-38). A loop declared the way
+ * libuv's own documentation shows -- `uv_loop_t loop; uv_loop_init(&loop);` --
+ * therefore left the stack's leftovers there, and about one run in five
+ * faulted on the magic read instead of reporting an error. Handing the registry
+ * in removes that whole class of problem: nothing the caller does to their loop
+ * can reach it now.
  *
- * Consequence for callers: declare the loop as `uv_loop_t loop = {0};`.
- * libuv 1.47 preserves loop->data across uv_loop_init() by design, so the
- * idiomatic `uv_loop_t loop; uv_loop_init(&loop);` leaves whatever the stack
- * held there and gets rejected as if the user had set it. TCP/UDP/IPC never
- * touch this field and are unaffected either way.
- *
- * Lifetime: retain() on listen/connect, release() on transport free. When the
- * refcount reaches zero the registry is freed and loop->data is cleared.
- *
- * Internal header (not part of the public API).
+ * Lifetime: transports retain the registry in listen()/connect() and release it
+ * in free(), so the object outlives them. The caller frees its own reference
+ * with uvbus_loop_registry_free() once the transports are gone.
  */
 
 #ifndef UVBUS_LOOP_REGISTRY_H
 #define UVBUS_LOOP_REGISTRY_H
 
 #include <uv.h>
+#include <stdint.h>
 #include "../include/uvrpc_allocator.h"
-#include "../include/uvbus.h"  /* for UVBUS_LOG_ERROR */
+#include "../include/uvbus.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Magic tag stored in the first field so we can recognize our registry among
- * arbitrary user-set loop->data pointers. */
+/* Tag stored in the first field, so a pointer that is not ours can be rejected
+ * without dereferencing anything the caller does not own. */
 #define UVBUS_LOOP_REGISTRY_MAGIC 0x55524300u  /* 'URC\0' */
 
-/* Opaque registry type. The two transport .c files carry their own endpoint/
- * server structs with a `next` pointer; this registry only stores the list
- * heads and a refcount. */
-typedef struct uvbus_loop_registry {
+/* The two transport .c files carry their own endpoint/server structs with a
+ * `next` pointer; this registry only stores the list heads and a refcount. */
+struct uvbus_loop_registry {
     uint32_t magic;
     int refcount;
     /* INPROC endpoint list head (inproc_endpoint_t*) */
     void* inproc_endpoints;
     /* SAMELOOP server list head (sameloop_server_t*) */
     void* sameloop_servers;
-} uvbus_loop_registry_t;
+};
 
-/* Obtain the per-loop registry, creating it if loop->data is NULL.
- * Returns NULL (and logs) if loop->data is set to something that is not our
- * registry — in that case the caller must fail cleanly rather than overwrite
- * user state. Also increments the refcount. */
-static inline uvbus_loop_registry_t* uvbus_loop_registry_retain(uv_loop_t* loop) {
-    if (!loop) return NULL;
-    uvbus_loop_registry_t* reg = (uvbus_loop_registry_t*)loop->data;
-    if (reg) {
-        if (reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) {
-            /* Two causes reach here and neither is obvious from the symptom:
-             * the caller set loop->data themselves, or -- far more often -- the
-             * uv_loop_t was never zero-initialised. libuv 1.47 deliberately
-             * leaves loop->data alone across uv_loop_init() (it saves and
-             * restores it, deps/libuv/src/unix/loop.c:30-38), so
-             * `uv_loop_t loop; uv_loop_init(&loop);` carries whatever the
-             * stack held and lands here with the user having set nothing. */
-            UVBUS_LOG_ERROR("loop->data is not ours; INPROC/SAMELOOP cannot use "
-                            "this loop. Either your code already uses loop->data, "
-                            "or the uv_loop_t was not zero-initialised -- declare "
-                            "it as `uv_loop_t loop = {0};` before uv_loop_init()");
-            return NULL;
-        }
-        reg->refcount++;
-        return reg;
-    }
-    reg = (uvbus_loop_registry_t*)uvrpc_alloc(sizeof(uvbus_loop_registry_t));
-    if (!reg) {
-        UVBUS_LOG_ERROR("failed to allocate loop registry");
-        return NULL;
-    }
-    reg->magic = UVBUS_LOOP_REGISTRY_MAGIC;
-    reg->refcount = 1;
-    reg->inproc_endpoints = NULL;
-    reg->sameloop_servers = NULL;
-    loop->data = reg;
+/* True if the pointer is a registry this library created. Only called on
+ * pointers the caller already owns, so unlike the old magic-on-loop->data check
+ * this cannot fault on a wild address. */
+static inline int uvbus_loop_registry_is_valid(const uvbus_loop_registry_t* reg) {
+    return reg != NULL && reg->magic == UVBUS_LOOP_REGISTRY_MAGIC;
+}
+
+/* Take a reference. Transports call this in listen()/connect(). */
+static inline uvbus_loop_registry_t* uvbus_loop_registry_retain(uvbus_loop_registry_t* reg) {
+    if (!uvbus_loop_registry_is_valid(reg)) return NULL;
+    reg->refcount++;
     return reg;
 }
 
-/* Decrement the refcount; when it reaches zero, free the registry and clear
- * loop->data. Safe to call with NULL (e.g. if retain failed). */
-static inline void uvbus_loop_registry_release(uv_loop_t* loop) {
-    if (!loop) return;
-    uvbus_loop_registry_t* reg = (uvbus_loop_registry_t*)loop->data;
-    if (!reg || reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) return;
+/* Drop a reference. Transports call this in free(). */
+static inline void uvbus_loop_registry_release(uvbus_loop_registry_t* reg) {
+    if (!uvbus_loop_registry_is_valid(reg)) return;
     if (--reg->refcount > 0) return;
-    /* All transports on this loop are gone; free the bucket arrays (the
-     * endpoint/server lists themselves are already empty — each transport
-     * removes its entries on disconnect/free) and clear the slot. */
     uvrpc_free(reg->inproc_endpoints);
-    /* sameloop_servers is a plain linked list (no bucket array); nothing to
-     * free here beyond the registry itself. */
-    loop->data = NULL;
+    /* sameloop_servers is a plain linked list; the transports unlink their own
+     * entries, so nothing is left to free here. */
+    reg->magic = 0;
     uvrpc_free(reg);
 }
 

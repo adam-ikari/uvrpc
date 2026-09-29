@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-29T03:57:31"
+updated: "2026-09-29T09:49:58"
 ---
 
 <!-- compiled_truth -->
@@ -79,4 +79,10 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: note
   summary: "uvbus_config 的 timeout_ms / enable_timeout 与 uvbus_config_set_timeout() / _set_timeout_enabled() 已删除：五个传输没有一个读它们，vtable 里也从来没有超时槽。配置面收敛为 loop / transport / address + 四个回调 + 两个 ctx。tests/uvbus_test.c 的 Test 13（专测这两个 setter）一并移除"
   source: "2026-09-29 全量 grep src+include+tests 后删除"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-29T09:49:58
+  kind: evidence
+  summary: "顺带发现既有缺陷（与本次 API 改动无关，已在基线 5c11cf3 上复现）：examples/test_sameloop 与 test_sameloop_multiclient 客户端收到 0 条消息——服务端收到了请求，响应没回到客户端。同 loop 上 sameloop_rpc_demo 与 test_sameloop_recursion 正常。这两个示例不在 ctest 里，所以一直没被发现"
+  source: "git stash 到基线后重新构建并运行，同样失败 (2026-09-29)"
   affects: [uvbus-transport-abstraction]

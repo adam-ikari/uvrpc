@@ -43,6 +43,10 @@ int main() {
     printf("\nStep 2: Creating config...\n");
     uvrpc_config_t* config = uvrpc_config_new();
     uvrpc_config_set_loop(config, &loop);
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
+    uvrpc_config_set_loop_registry(config, registry);
     uvrpc_config_set_address(config, "inproc://debug_test");
     printf("  Config created\n");
     
@@ -72,6 +76,7 @@ int main() {
     printf("\nStep 7: Creating client...\n");
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_loop_registry(client_config, registry);
     uvrpc_config_set_address(client_config, "inproc://debug_test");
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     printf("  Client created: %p\n", (void*)client);
@@ -120,6 +125,7 @@ int main() {
     uvrpc_server_stop(server);
     uvrpc_server_free(server);
     uvrpc_config_free(config);
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
     
     printf("\n=== Test Complete ===\n");

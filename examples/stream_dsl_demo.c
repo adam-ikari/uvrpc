@@ -116,6 +116,10 @@ int main(int argc, char** argv) {
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
+    uvrpc_config_set_loop_registry(server_config, registry);
     uvrpc_config_set_address(server_config, address);
 
     uvrpc_server_t* server = uvrpc_server_create(server_config);
@@ -138,6 +142,7 @@ int main(int argc, char** argv) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_loop_registry(client_config, registry);
     uvrpc_config_set_address(client_config, address);
 
     uvrpc_client_t* client = uvrpc_client_create(client_config);
@@ -185,6 +190,7 @@ int main(int argc, char** argv) {
     uvrpc_server_free(server);
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
 
     printf("=== Demo Complete ===\n");

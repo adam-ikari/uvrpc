@@ -239,7 +239,7 @@ int main() {
 
     /* Create log service server */
     printf("=== Starting Log Service Server ===\n");
-    uvrpc_server_t* server = uvrpc_logservice_create_server(&loop, "tcp://127.0.0.1:6666");
+    uvrpc_server_t* server = uvrpc_logservice_create_server(&loop, "tcp://127.0.0.1:6666", NULL);
     if (!server) {
         fprintf(stderr, "Failed to create server\n");
         return 1;
@@ -257,6 +257,7 @@ int main() {
     uvrpc_client_t* client = uvrpc_logservice_create_client(
         &loop,
         "tcp://127.0.0.1:6666",
+        NULL,  /* registry: only INPROC/SAMELOOP need one, TCP does not */
         on_client_connect,
         NULL
     );

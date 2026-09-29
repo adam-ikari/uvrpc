@@ -88,7 +88,12 @@ int main(int argc, char** argv) {
     printf("=== UVRPC INPROC End-to-End Test ===\n");
 
     /* --- Server (shares the same loop as the client) --- */
-    uvrpc_config_t* server_config = uvrpc_config_new();
+        /* INPROC peers find each other through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    assert(registry != NULL);
+
+uvrpc_config_t* server_config = uvrpc_config_set_loop_registry(
+        uvrpc_config_new(), registry);
     server_config = uvrpc_config_set_loop(server_config, &loop);
     server_config = uvrpc_config_set_address(server_config, TEST_INPROC_ADDR);
     server_config = uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_INPROC);
@@ -110,7 +115,8 @@ int main(int argc, char** argv) {
     }
 
     /* --- Client (same loop) --- */
-    uvrpc_config_t* client_config = uvrpc_config_new();
+    uvrpc_config_t* client_config = uvrpc_config_set_loop_registry(
+        uvrpc_config_new(), registry);
     client_config = uvrpc_config_set_loop(client_config, &loop);
     client_config = uvrpc_config_set_address(client_config, TEST_INPROC_ADDR);
     client_config = uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_INPROC);
@@ -175,6 +181,7 @@ int main(int argc, char** argv) {
         uv_run(&loop, UV_RUN_NOWAIT);
     }
 
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
 
     if (server_received == 1 && client_received == 1) {

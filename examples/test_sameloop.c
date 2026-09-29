@@ -47,6 +47,10 @@ int main() {
     printf("[MAIN] Creating server...\n");
     uvbus_config_t* server_config = uvbus_config_new();
     uvbus_config_set_loop(server_config, &loop);
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
+    uvbus_config_set_loop_registry(server_config, registry);
     uvbus_config_set_address(server_config, address);
     uvbus_config_set_transport(server_config, UVBUS_TRANSPORT_SAMELOOP);
     uvbus_config_set_recv_callback(server_config, server_recv, NULL);
@@ -56,6 +60,7 @@ int main() {
 
     if (!server) {
         printf("[MAIN] Failed to create server\n");
+        uvbus_loop_registry_free(registry);
         uv_loop_close(&loop);
         return 1;
     }
@@ -79,6 +84,7 @@ int main() {
     printf("\n[MAIN] Creating client...\n");
     uvbus_config_t* client_config = uvbus_config_new();
     uvbus_config_set_loop(client_config, &loop);
+    uvbus_config_set_loop_registry(client_config, registry);
     uvbus_config_set_address(client_config, address);
     uvbus_config_set_transport(client_config, UVBUS_TRANSPORT_SAMELOOP);
     uvbus_config_set_recv_callback(client_config, client_recv, NULL);

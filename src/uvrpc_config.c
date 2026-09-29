@@ -46,6 +46,12 @@ uvrpc_config_t* uvrpc_config_set_loop(uvrpc_config_t* config, uv_loop_t* loop) {
     return config;
 }
 
+uvrpc_config_t* uvrpc_config_set_loop_registry(uvrpc_config_t* config, uvbus_loop_registry_t* registry) {
+    if (!config) return NULL;
+    config->registry = registry;
+    return config;
+}
+
 uvrpc_config_t* uvrpc_config_set_address(uvrpc_config_t* config, const char* address) {
     if (!config || !address) return NULL;
 

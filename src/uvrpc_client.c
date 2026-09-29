@@ -256,6 +256,7 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     }
     
     uvbus_config_set_loop(bus_config, config->loop);
+    uvbus_config_set_loop_registry(bus_config, config->registry);
     
     /* Transport type is now uvbus_transport_type_t, no mapping needed */
     uvbus_config_set_transport(bus_config, config->transport);

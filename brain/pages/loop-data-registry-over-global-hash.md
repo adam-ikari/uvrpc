@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-29T08:53:05"
+updated: "2026-09-29T09:49:58"
 ---
 
 <!-- compiled_truth -->
@@ -107,4 +107,10 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: evidence
   summary: "查清了一个此前被文档掩盖的硬限制：判断 loop->data 是不是我们的注册表，必须解引用它读 magic。而 libuv 1.47 的 uv_loop_init 保留该字段，所以未零初始化的 uv_loop_t 可能留下野值 —— 那次读取直接段错误，不是干净失败。文档原先写'干净地失败'是错的，已改为写明限制：框架保证'不覆盖用户数据'，不保证'数据不可读时给你一个错误'"
   source: "tests/loop_data_contract_test.c 编写时实测：poison=0xDEADBEEF 与 memset 0xCD 的 loop 都在 uvbus_loop_registry.h:69 的 magic 读取处 SIGSEGV；有效但非本框架的指针则正常拒绝且不覆盖 (2026-09-29)"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-29T09:49:58
+  kind: reversal
+  summary: "反转：注册表不再挂 loop->data，改由调用方创建并显式传入。API：uvbus_loop_registry_new() / uvbus_config_set_loop_registry() / uvrpc_config_set_loop_registry() / uvbus_loop_registry_free()；两个 transport 改用 transport->registry；未传注册表时 listen 直接报错并指名创建方法。理由：magic 守卫必须解引用用户指针，未零初始化的 uv_loop_t 实测约 20% 会在读取时段错误。代价：调用方多两行并自管生命周期。全部 14 个示例、benchmark 与 5 个测试已迁移"
+  source: "tests/loop_registry_test.c 替换 loop_data_contract_test.c；107/107 通过 (2026-09-29)"
   affects: [loop-data-registry-over-global-hash]

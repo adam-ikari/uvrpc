@@ -70,10 +70,11 @@ Promise 组合子另有独立测试目标：`test_promise_basic`、`test_promise
 | `test_sameloop_multiclient.c` | 同一 loop 上多个客户端 |
 | `test_sameloop_recursion.c` / `test_sameloop_stress.c` | 递归调用与压力场景 |
 
-> **用 INPROC / SAMELOOP 前必须零初始化 loop**：`uv_loop_t loop = {0};`。
-> libuv 1.47 的 `uv_loop_init()` 会原样保留 `loop->data`（那是用户的字段），而
-> INPROC/SAMELOOP 的端点注册表就挂在 `loop->data` 上；未零初始化的 loop 会让
-> `uvrpc_server_start()` 直接失败。
+> **用 INPROC / SAMELOOP 需要创建注册表**：`uvbus_loop_registry_new()` 得到一个
+> `uvbus_loop_registry_t*`，用 `uvrpc_config_set_loop_registry()` 传给**每一个需要互相
+> 通信的 config**，用完 `uvbus_loop_registry_free()` 释放。框架不在 loop 上留任何状态，
+> 所以 `uv_loop_t loop = {0};` 与否都不再影响这两个传输。详见
+> [Architecture](/architecture/)。
 
 ## FlatBuffers / RPC DSL
 

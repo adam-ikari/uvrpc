@@ -107,6 +107,7 @@ set(UVRPC_SOURCES
     src/uvbus_transport_ipc.c
     src/uvbus_transport_inproc.c
     src/uvbus_transport_sameloop.c
+    src/uvbus_loop_registry.c
 )
 
 # Headers

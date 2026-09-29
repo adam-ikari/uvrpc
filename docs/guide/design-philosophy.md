@@ -137,11 +137,12 @@ UVRPC 基于 libuv 事件循环，所有 I/O 操作都在单线程中异步执�
 - **多实例支持**：同一进程可以创建多个独立的 UVRPC 实例
 - **灵活的事件循环**：多个实例可以在多个 loop 中独立运行，也可以共享同一个 loop
 - **单线程无竞争**：每个实例在自己的事件循环中运行；框架不创建线程，因此不共享可变状态
-- **一处例外需知晓**：INPROC/SAMELOOP 会把端点注册表挂在 `loop->data` 上（见下）。
-  如果你要自己用 `loop->data`，就不要在该 loop 上用这两个传输
+- **一处需要你动手**：INPROC/SAMELOOP 需要你创建一个端点注册表并传给要互相通信的
+  每个 config（见下）。TCP/UDP/IPC 不需要
 
 **实现层面**：
-- **INPROC/SAMELOOP 传输**：端点表挂在 **per-loop 注册表**（`loop->data`），不是进程全局
+- **INPROC/SAMELOOP 传输**：端点表放在**调用方创建并传入的注册表**里，既不是进程全局，
+  也不占用 loop 的字段
 - **内存分配器**：只有自定义分配器模式下有一个全局函数指针表 `g_custom_allocator`，
   且被编译门控（`UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM`）；
   system/mimalloc 构建里**没有任何分配器状态**
@@ -152,38 +153,39 @@ UVRPC 基于 libuv 事件循环，所有 I/O 操作都在单线程中异步执�
 
 **INPROC/SAMELOOP 的实际做法**：
 
-server 与 client 由两份独立 config 创建，它们唯一共享的值就是那个 `uv_loop_t*`。
-所以注册表挂在 loop 上，从而实现**零可变全局 + 零锁**（loop 按契约单线程）：
+server 与 client 由两份独立 config 创建，它们需要共享的只有端点表。于是由**调用方**创建
+这张表，并把它传给需要互相看得见的每一个 config——从而实现**零可变全局 + 零锁**，
+同时框架不在用户的 loop 上留任何东西：
 
 ```c
 /* src/uvbus_loop_registry.h —— 真实实现 */
-#define UVBUS_LOOP_REGISTRY_MAGIC 0x55524300u   /* 'URC\0' */
-
 typedef struct uvbus_loop_registry {
-    uint32_t magic;          /* 用来识别 loop->data 是不是我们的 */
+    uint32_t magic;          /* 用来识别这个指针是不是我们的 */
     int      refcount;       /* retain on listen/connect, release on free */
     void*    inproc_endpoints;   /* 256 桶哈希表 */
     void*    sameloop_servers;   /* 单链表 */
 } uvbus_loop_registry_t;
+
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+uvrpc_config_set_loop_registry(server_config, reg);
+uvrpc_config_set_loop_registry(client_config, reg);
 ```
 
-`loop->data` 是 libuv 的公开字段，任何人都可能已经用了它。框架的处置是**拒绝而非覆盖**：
-若 `loop->data` 非空且 magic 不匹配，`uvbus_loop_registry_retain()` 返回 NULL 并记日志，
-该传输干净地报错，绝不写用户的指针。refcount 归零时框架自己把 `loop->data` 清回 NULL。
+**为什么是这个 API**：曾经把注册表挂在 `loop->data` 上——libuv 唯一的 per-loop 用户字段。
+但判断"这个指针是不是我们的"必须**解引用**它，而 libuv 1.47 的 `uv_loop_init()` 刻意保留
+该字段，于是 `uv_loop_t loop; uv_loop_init(&loop);`（libuv 官方文档的写法）会把栈上残留
+留在那里，实测约五次里崩一次。改由调用方传入之后，调用方对自己的 loop 做什么都碰不到它。
+详见 [架构文档](/architecture/)。
+
+两个注册表互不可见——这正是原来"按 loop 分区"的语义，现在由调用方显式表达：
 
 ```c
-/* 多 loop 各自独立 —— 状态挂在 loop 上，所以天然按 loop 分区 */
-uv_loop_t loop1, loop2;
-uv_loop_init(&loop1);
-uv_loop_init(&loop2);
+/* 两组互不相关的端点：各用各的注册表 */
+uvbus_loop_registry_t* reg_a = uvbus_loop_registry_new();
+uvbus_loop_registry_t* reg_b = uvbus_loop_registry_new();
 
-uvrpc_config_t* config1 = uvrpc_config_new();
-uvrpc_config_set_loop(config1, &loop1);   /* loop1 的注册表只在 loop1 上 */
-uvrpc_server_t* server1 = uvrpc_server_create(config1);
-
-uvrpc_config_t* config2 = uvrpc_config_new();
-uvrpc_config_set_loop(config2, &loop2);   /* 与 loop1 上的同名端点互不可见 */
-uvrpc_server_t* server2 = uvrpc_server_create(config2);
+uvrpc_config_set_loop_registry(config_a, reg_a);
+uvrpc_config_set_loop_registry(config_b, reg_b);
 ```
 
 这也意味着一个语义后果：**`inproc://name` 的作用域是单个 loop，不是整个进程**。
@@ -626,7 +628,7 @@ uvrpc_config_set_address(config, "inproc://my_service");
 ```mermaid
 graph TB
     subgraph L["同一个 uv_loop_t"]
-        R[loop->data<br/>uvbus_loop_registry_t<br/>magic + refcount]
+        R[调用方创建的<br/>uvbus_loop_registry_t<br/>magic + refcount]
         subgraph SV["uvrpc_server_t → uvbus_t"]
             S1[uvbus_transport_inproc.c<br/>inproc_vtable: static const]
             E[inproc_endpoint_t<br/>name / server_transport / clients[]]
@@ -642,9 +644,9 @@ graph TB
     style E fill:#e1f5ff
 ```
 
-**注册表不是全局的**，挂在 `loop->data` 上（`src/uvbus_loop_registry.h`）：
+**注册表不是全局的**，由调用方创建并传给 config（`src/uvbus_loop_registry.h`）：
 magic `0x55524300`（`'URC\0'`）+ refcount + 两个容器头。因此
-`inproc://name` 的作用域是**单个 loop**，不是整个进程；两个 loop 上的同名端点互不可见。
+`inproc://name` 的作用域是**单个注册表**，不是整个进程；两个注册表上的同名端点互不可见。
 
 #### 端点管理
 
@@ -685,8 +687,8 @@ static void                inproc_remove_endpoint(uvbus_loop_registry_t* reg, in
 
 ```c
 inproc_listen(impl, "inproc://test_endpoint")
-  ├─ reg = uvbus_loop_registry_retain(transport->loop)   // 取/建 loop->data 上的注册表
-  │    └─ 若 loop->data 已被用户设为别的指针 → 返回 NULL → listen 失败（不覆盖用户数据）
+  ├─ reg = uvbus_loop_registry_retain(transport->registry)  // config 传入的注册表
+  │    └─ 若未传入注册表 → 返回 NULL → listen 失败（错误信息指名创建方法）
   ├─ inproc_buckets_ensure(reg)                          // 惰性分配 256 桶
   ├─ name = address + strlen("inproc://")
   ├─ inproc_find_endpoint(reg, name)  → 已存在则返回 UVBUS_ERROR_ALREADY_EXISTS
@@ -717,7 +719,7 @@ endpoint->recv_cb(data, size, client /* 即 client_ctx */, server_ctx);
 **端点生命周期**：
 - `listen()` 时创建，加入所属 loop 的注册表
 - 服务端 `disconnect` / `free` 时摘除
-- refcount 归零时框架释放桶数组并把 `loop->data` 清回 NULL
+- refcount 归零时释放桶数组；调用方用 `uvbus_loop_registry_free()` 释放自己那份
 
 **客户端列表**：初始容量小、断开时按 `inproc_remove_client` 摘除、翻倍扩容
 （`src/uvbus_transport_inproc.c:103-115`）。
@@ -938,6 +940,6 @@ UVRPC 的设计哲学强调：
 INPROC/SAMELOOP 是唯二需要跨连接共享状态的传输，通过精心设计确保：
 - 不影响用户代码
 - 不创建线程、不加锁、没有文件作用域可变全局
-- INPROC/SAMELOOP 的共享状态挂在 `loop->data`（带 magic 守卫，冲突时拒绝而非覆盖）
+- INPROC/SAMELOOP 的共享状态在调用方创建并传入的注册表里（框架不碰用户的 loop）
 - 支持多实例并发
 - 提供最优性能

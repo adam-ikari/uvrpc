@@ -34,9 +34,14 @@ See `examples/simple_inproc.c` for a complete example:
 uv_loop_t loop;
 uv_loop_init(&loop);
 
+// The registry is how INPROC peers find each other. Create one and hand it to
+// every config that has to see the others.
+uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
 // Create server
 uvrpc_config_t* server_config = uvrpc_config_new();
 uvrpc_config_set_loop(server_config, &loop);
+uvrpc_config_set_loop_registry(server_config, registry);
 uvrpc_config_set_address(server_config, "inproc://my_service");
 uvrpc_config_set_transport(server_config, UVRPC_TRANSPORT_INPROC);
 
@@ -47,6 +52,7 @@ uvrpc_server_start(server);
 // Create client (in the same process)
 uvrpc_config_t* client_config = uvrpc_config_new();
 uvrpc_config_set_loop(client_config, &loop);
+uvrpc_config_set_loop_registry(client_config, registry);   // the same one
 uvrpc_config_set_address(client_config, "inproc://my_service");
 uvrpc_config_set_transport(client_config, UVRPC_TRANSPORT_INPROC);
 

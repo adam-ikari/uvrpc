@@ -216,6 +216,7 @@ struct uvrpc_config {
     uv_loop_t* loop;                     /**< @brief libuv event loop (required) */
     char* address;                       /**< @brief Server or client address (required) */
     uvbus_transport_type_t transport;    /**< @brief Transport type (TCP/UDP/IPC/INPROC/SAMELOOP) */
+    uvbus_loop_registry_t* registry;     /**< @brief Registry shared by INPROC/SAMELOOP peers (required for those two; see uvrpc_config_set_loop_registry) */
     int max_concurrent;                  /**< @brief Max concurrent requests (default: UVRPC_MAX_CONCURRENT_REQUESTS) */
     int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
@@ -301,6 +302,32 @@ void uvrpc_config_free(uvrpc_config_t* config);
  * @return Configuration structure for chaining
  */
 uvrpc_config_t* uvrpc_config_set_loop(uvrpc_config_t* config, uv_loop_t* loop);
+
+/**
+ * @brief Set the registry the INPROC or SAMELOOP transport belongs to
+ *
+ * Those two transports have no shared state of their own: a server and a
+ * client are built from independent configurations and meet through this
+ * registry. Create one with uvbus_loop_registry_new(), pass the same pointer
+ * to every configuration that has to see the others, and free it with
+ * uvbus_loop_registry_free() once the servers and clients are gone.
+ *
+ * @code
+ * uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+ * uvrpc_config_set_loop_registry(scfg, reg);
+ * uvrpc_config_set_loop_registry(ccfg, reg);
+ * @endcode
+ *
+ * TCP, UDP and IPC ignore this. Leaving it unset for INPROC or SAMELOOP is an
+ * error, reported when the transport is created -- the framework keeps no
+ * hidden per-loop or process-wide state to fall back on, so two unrelated
+ * endpoints cannot collide by accident.
+ *
+ * @param config Configuration structure
+ * @param registry Registry, or NULL to clear it
+ * @return Configuration structure for chaining
+ */
+uvrpc_config_t* uvrpc_config_set_loop_registry(uvrpc_config_t* config, uvbus_loop_registry_t* registry);
 
 /**
  * @brief Set the address

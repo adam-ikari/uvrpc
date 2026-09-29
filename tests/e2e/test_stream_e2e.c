@@ -178,7 +178,15 @@ int main(void) {
     uv_loop_t* loop = uv_default_loop();
 
     /* Create server */
-    uvrpc_config_t* server_config = uvrpc_config_new();
+        /* INPROC peers find each other through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    if (!registry) {
+        fprintf(stderr, "failed to create the INPROC registry\n");
+        return 1;
+    }
+
+uvrpc_config_t* server_config = uvrpc_config_set_loop_registry(
+        uvrpc_config_new(), registry);
     uvrpc_config_set_loop(server_config, loop);
     uvrpc_config_set_address(server_config, "inproc://test_e2e");
     
@@ -194,7 +202,8 @@ int main(void) {
     printf("[SETUP] Server started\n");
     
     /* Create client */
-    uvrpc_config_t* client_config = uvrpc_config_new();
+    uvrpc_config_t* client_config = uvrpc_config_set_loop_registry(
+        uvrpc_config_new(), registry);
     uvrpc_config_set_loop(client_config, loop);
     uvrpc_config_set_address(client_config, "inproc://test_e2e");
     
@@ -220,6 +229,7 @@ int main(void) {
     uvrpc_server_free(server);
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
+    uvbus_loop_registry_free(registry);
     /* uv_default_loop() is cleaned up by libuv at exit; do not close it here. */
 
     printf("\n========================================\n");

@@ -141,7 +141,9 @@ struct uvbus_config {
     uv_loop_t* loop;
     uvbus_transport_type_t transport;
     const char* address;
-
+    /* Registry the INPROC and SAMELOOP transports meet through. NULL for the
+     * socket transports, which ignore it. See uvbus_config_set_loop_registry. */
+    struct uvbus_loop_registry* registry;
     /* Callbacks */
     uvbus_recv_callback_t recv_cb;
     uvbus_connect_callback_t connect_cb;
@@ -155,6 +157,9 @@ struct uvbus_config {
 struct uvbus_transport {
     uvbus_transport_type_t type;
     uv_loop_t* loop;
+    /* Registry retained by INPROC/SAMELOOP for as long as this transport
+     * exists; released in the transport's free. */
+    struct uvbus_loop_registry* registry;
     char* address;
 
     /* Parent bus reference */
@@ -220,6 +225,56 @@ void uvbus_config_free(uvbus_config_t* config);
  * Set event loop
  */
 void uvbus_config_set_loop(uvbus_config_t* config, uv_loop_t* loop);
+
+/* Registry for the INPROC and SAMELOOP transports.
+ *
+ * Those two transports meet through a registry rather than through the event
+ * loop: a server and a client are built from independent configs, and the
+ * registry is what lets them find each other. Create one, hand the same
+ * pointer to every config that has to see the others, and free it once the
+ * transports are done:
+ *
+ * @code
+ * uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+ * uvbus_config_set_loop_registry(scfg, reg);
+ * uvbus_config_set_loop_registry(ccfg, reg);
+ * ...
+ * uvbus_free(server);
+ * uvbus_free(client);
+ * uvbus_loop_registry_free(reg);
+ * @endcode
+ *
+ * TCP, UDP and IPC need none of this. Passing a registry to them is harmless
+ * but ignored. Omitting it for INPROC or SAMELOOP is an error, reported when
+ * the transport is created -- the framework does not fall back to any hidden
+ * per-loop or process-wide state, so there is no way for two unrelated
+ * endpoints to collide by accident. */
+typedef struct uvbus_loop_registry uvbus_loop_registry_t;
+
+/**
+ * @brief Create a registry for the INPROC and SAMELOOP transports
+ * @return New registry, or NULL on allocation failure
+ */
+uvbus_loop_registry_t* uvbus_loop_registry_new(void);
+
+/**
+ * @brief Release a registry
+ *
+ * Transports hold their own references and keep the object alive, so this
+ * only drops the caller's. Call it after the transports have been freed; the
+ * bucket array goes with it, and a transport still holding a reference would
+ * be reading freed memory.
+ */
+void uvbus_loop_registry_free(uvbus_loop_registry_t* registry);
+
+/**
+ * @brief Set the registry an INPROC or SAMELOOP transport belongs to
+ *
+ * @param config Configuration to update
+ * @param registry Registry created with uvbus_loop_registry_new(), or NULL to
+                 clear it
+ */
+void uvbus_config_set_loop_registry(uvbus_config_t* config, uvbus_loop_registry_t* registry);
 
 /**
  * Set transport type

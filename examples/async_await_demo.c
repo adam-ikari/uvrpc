@@ -31,6 +31,10 @@ int main(void) {
     printf("1. Creating server...\n");
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
+    uvrpc_config_set_loop_registry(server_config, registry);
     uvrpc_config_set_address(server_config, "inproc://async_test");
     uvrpc_config_set_transport(server_config, UVBUS_TRANSPORT_INPROC);
     
@@ -42,6 +46,7 @@ int main(void) {
     printf("2. Creating client...\n");
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
+    uvrpc_config_set_loop_registry(client_config, registry);
     uvrpc_config_set_address(client_config, "inproc://async_test");
     uvrpc_config_set_transport(client_config, UVBUS_TRANSPORT_INPROC);
     
@@ -94,6 +99,7 @@ async_cleanup:
     uvrpc_config_free(client_config);
     uvrpc_config_free(server_config);
     uvrpc_async_ctx_free(async_ctx);
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
     
     printf("\n=== Demo Complete ===\n");

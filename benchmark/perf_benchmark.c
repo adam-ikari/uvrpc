@@ -140,6 +140,10 @@ int main(int argc, char** argv) {
     uvrpc_server_t* server = NULL;
     uvrpc_config_t* sconfig = uvrpc_config_new();
     sconfig = uvrpc_config_set_loop(sconfig, &loop);
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+
+    sconfig = uvrpc_config_set_loop_registry(sconfig, registry);
     sconfig = uvrpc_config_set_address(sconfig, address);
     sconfig = uvrpc_config_set_transport(sconfig, ttype);
     server = uvrpc_server_create(sconfig);
@@ -155,6 +159,7 @@ int main(int argc, char** argv) {
 
     uvrpc_config_t* cconfig = uvrpc_config_new();
     cconfig = uvrpc_config_set_loop(cconfig, &loop);
+    cconfig = uvrpc_config_set_loop_registry(cconfig, registry);
     cconfig = uvrpc_config_set_address(cconfig, address);
     cconfig = uvrpc_config_set_transport(cconfig, ttype);
     uvrpc_client_t* client = uvrpc_client_create(cconfig);
@@ -242,6 +247,7 @@ int main(int argc, char** argv) {
     uvrpc_server_free(server);
     uvrpc_config_free(sconfig);
     uvrpc_config_free(cconfig);
+    uvbus_loop_registry_free(registry);
     /* Drain async close callbacks (transports schedule uv_close on listen /
      * client handles). UV_RUN_DEFAULT blocks until all handles close, then
      * returns — safe here because no references remain. */

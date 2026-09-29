@@ -114,33 +114,39 @@ uvbus_connect(client);
 uv_run(&loop, UV_RUN_DEFAULT);
 ```
 
-### 一个必须知道的例外：`loop->data`
+### INPROC/SAMELOOP：注册表由调用方创建
 
-框架不创建、不启动、不关闭 loop，但 **INPROC 与 SAMELOOP 会把端点注册表挂在
-`loop->data` 上**（`src/uvbus_loop_registry.h`）。这是"零可变全局 + 零锁"逼出来的
-选择：server 与 client 由两份独立 config 创建，唯一共享的就是那个 `uv_loop_t*`；
-换成进程内按 loop 指针建表，就等于把这个设计当初删掉的那个全局和锁又请回来。
-
-**所以 loop 必须零初始化：**
+INPROC 与 SAMELOOP 不在 loop 上保存任何状态。server 与 client 由两份独立 config 创建，
+它们通过一个**由调用方创建**的注册表互相找到：
 
 ```c
-uv_loop_t loop = {0};   /* 不是 uv_loop_t loop; */
-uv_loop_init(&loop);
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+
+uvrpc_config_set_loop_registry(server_config, reg);
+uvrpc_config_set_loop_registry(client_config, reg);
+
+...                                   /* 建 server / client，跑 loop */
+
+uvrpc_client_free(client);
+uvrpc_server_free(server);
+uvbus_loop_registry_free(reg);
 ```
 
-libuv 1.47 的 `uv_loop_init()` 刻意**不碰** `data`（它把值存下再写回，
-`deps/libuv/src/unix/loop.c:30-38`）——那是用户的字段。而 `data` 恰好是 `uv_loop_t`
-的第 0 个成员，于是 `uv_loop_t loop; uv_loop_init(&loop);` 会把栈上的残留当成用户数据。
-这正是 libuv 官方文档示范的写法，所以踩中并不奇怪。框架不覆盖它：注册表首字段是 magic
-`0x55524300`（`'URC\0'`），不匹配就返回 NULL 并记日志。
+需要传给**每一个必须互相看得见的 config**，否则它们属于不同的注册表，也就互相看不见。
 
-**已知限制**：判断"这个指针是不是我们的"必须**解引用**它。若 `data` 里是个野值
-（未零初始化的 loop 最容易产生），这次读取本身就会段错误，而不是返回错误。换句话说
-框架能保证"不覆盖你的数据"，但**不能**保证"在你的数据不可读时给你一个错误"。
-`tests/loop_data_contract_test.c` 锁住前者，并明确不声称后者。
+TCP/UDP/IPC 不需要注册表，传了会被忽略。INPROC/SAMELOOP 缺少注册表时，transport 创建阶段
+直接报错——框架没有任何隐藏的 per-loop 或进程级状态可以退回，所以两个无关的端点不可能"碰巧"
+连到一起。
 
-如果你要自己用 `loop->data`，就不要在该 loop 上用 INPROC/SAMELOOP；TCP/UDP/IPC
-不碰这个字段。refcount 归零时框架会自己把 `loop->data` 清回 NULL。
+**为什么不用 `loop->data`**：那是 libuv 唯一的 per-loop 用户字段，框架曾经占用它。代价是判断
+"这个指针是不是我们的"必须**解引用**它；而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段
+（存下再写回，`deps/libuv/src/unix/loop.c:30-38`），于是 `uv_loop_t loop; uv_loop_init(&loop);`
+——libuv 官方文档示范的写法——会把栈上的残留留在那里。实测约**五次里有一次**在读 magic 时段错误，
+而不是返回错误。改由调用方传入之后，调用方对自己的 loop 做什么都碰不到它，这一类问题整个消失。
+
+代价是调用方多两行，且要自己管生命周期：注册表被 transport 各自 retain，所以提前释放不会
+立刻 use-after-free，但它的桶数组会一起释放——仍应在 transport 释放之后再释放自己的那份。
+`tests/loop_registry_test.c` 锁住这些行为。
 
 ### 优势
 
@@ -362,8 +368,8 @@ int uvrpc_decode_response(const uint8_t* data, size_t size, ...);     /* :31 —
 1. 五种传输（TCP/UDP/IPC/INPROC/SAMELOOP）各一个 `.c`，实现同一份 7 槽 vtable
    （`include/uvbus.h:129-137`）
 2. 统一的接口和回调机制：server 与 client 共用 `uvbus_t` 类型
-3. **零文件作用域可变全局、零锁**：INPROC/SAMELOOP 的端点注册表挂在 `loop->data`
-   上并按 magic 守卫（见上文"一个必须知道的例外"），不使用互斥锁
+3. **零文件作用域可变全局、零锁**：INPROC/SAMELOOP 的端点注册表由调用方创建并传入
+   （见上文"INPROC/SAMELOOP：注册表由调用方创建"），不使用互斥锁
 4. 内存管理清晰，无泄漏
 
 ### UVRPC 实现

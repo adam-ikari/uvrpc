@@ -119,11 +119,17 @@ static void run_multi_client_broadcast_test(const char* test_name,
     uv_loop_t loop = {0};
     uv_loop_init(&loop);
 
+    /* INPROC and SAMELOOP peers meet through a registry the caller owns; the
+     * socket transports ignore it. */
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    ASSERT_NOT_NULL(registry, "Failed to create registry");
+
     /* Create server config and server */
     uvbus_config_t* server_config = uvbus_config_new();
     ASSERT_NOT_NULL(server_config, "Failed to create server config");
 
     uvbus_config_set_loop(server_config, &loop);
+    uvbus_config_set_loop_registry(server_config, registry);
     uvbus_config_set_transport(server_config, transport);
     uvbus_config_set_address(server_config, address);
     uvbus_config_set_recv_callback(server_config, server_recv, NULL);
@@ -146,6 +152,7 @@ static void run_multi_client_broadcast_test(const char* test_name,
         ASSERT_NOT_NULL(client_configs[i], "Failed to create client config");
 
         uvbus_config_set_loop(client_configs[i], &loop);
+        uvbus_config_set_loop_registry(client_configs[i], registry);
         uvbus_config_set_transport(client_configs[i], transport);
         uvbus_config_set_address(client_configs[i], address);
         uvbus_config_set_recv_callback(client_configs[i], client_recv, &recv_ctxs[i]);
@@ -219,6 +226,7 @@ cleanup:
     }
     uvbus_free(server);
     uvbus_config_free(server_config);
+    uvbus_loop_registry_free(registry);
     uv_loop_close(&loop);
 }
 

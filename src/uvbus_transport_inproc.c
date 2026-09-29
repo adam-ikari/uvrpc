@@ -180,13 +180,22 @@ static int inproc_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
-    /* Obtain (or create) the per-loop registry. */
-    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    /* The registry is supplied by the caller; there is no hidden per-loop or
+     * process-wide state to fall back to, so a missing one is a usage error
+     * worth naming. */
+    if (!transport->registry) {
+        UVBUS_LOG_ERROR("inproc needs a registry: create one with "
+                        "uvbus_loop_registry_new() and pass it to every config "
+                        "that should see each other via "
+                        "uvbus_config_set_loop_registry()");
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->registry);
     if (!reg) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
     if (!inproc_buckets_ensure(reg)) {
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
         return UVBUS_ERROR_NO_MEMORY;
     }
 
@@ -199,14 +208,14 @@ static int inproc_listen(void* impl_ptr, const char* address) {
     /* Check if endpoint already exists */
     inproc_endpoint_t* endpoint = inproc_find_endpoint(reg, name);
     if (endpoint) {
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
         return UVBUS_ERROR_ALREADY_EXISTS;
     }
 
     /* Create endpoint */
     endpoint = (inproc_endpoint_t*)uvrpc_alloc(sizeof(inproc_endpoint_t));
     if (!endpoint) {
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
         return UVBUS_ERROR_NO_MEMORY;
     }
 
@@ -249,7 +258,7 @@ static int inproc_connect(void* impl_ptr, const char* address) {
 
     /* Obtain the per-loop registry (retained so it stays alive for this
      * client's lifetime; released in inproc_free). */
-    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->loop);
+    uvbus_loop_registry_t* reg = uvbus_loop_registry_retain(transport->registry);
     if (!reg) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
@@ -269,7 +278,7 @@ static int inproc_connect(void* impl_ptr, const char* address) {
         UVBUS_LOG_ERROR("Endpoint '%s' not found. INPROC transport is for "
                         "in-process communication only; the server must run in "
                         "the same process (and same loop) as the client.", name);
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
         return UVBUS_ERROR_NOT_FOUND;
     }
 
@@ -277,7 +286,7 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     /* Create client */
     inproc_client_t* client = (inproc_client_t*)uvrpc_alloc(sizeof(inproc_client_t));
     if (!client) {
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
         return UVBUS_ERROR_NO_MEMORY;
     }
 
@@ -316,11 +325,7 @@ static void inproc_disconnect(void* impl_ptr) {
         return;
     }
 
-    uvbus_loop_registry_t* reg = transport->loop
-        ? (uvbus_loop_registry_t*)transport->loop->data : NULL;
-    if (reg && reg->magic != UVBUS_LOOP_REGISTRY_MAGIC) {
-        reg = NULL;  /* not ours; don't touch */
-    }
+    uvbus_loop_registry_t* reg = transport->registry;
 
     if (transport->is_server && transport->impl.inproc_server) {
         inproc_endpoint_t* endpoint = (inproc_endpoint_t*)transport->impl.inproc_server;
@@ -350,7 +355,7 @@ static void inproc_disconnect(void* impl_ptr) {
         transport->impl.inproc_server = NULL;
 
         /* Release the per-loop registry reference taken in listen. */
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
     } else if (!transport->is_server && transport->impl.inproc_client) {
         inproc_client_t* client = (inproc_client_t*)transport->impl.inproc_client;
         /* Remove from endpoint */
@@ -366,7 +371,7 @@ static void inproc_disconnect(void* impl_ptr) {
         transport->impl.inproc_client = NULL;
 
         /* Release the per-loop registry reference taken in connect. */
-        uvbus_loop_registry_release(transport->loop);
+        uvbus_loop_registry_release(transport->registry);
     }
 
     transport->is_connected = 0;

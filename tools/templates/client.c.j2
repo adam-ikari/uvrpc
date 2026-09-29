@@ -29,6 +29,7 @@
  */
 uvrpc_client_t* uvrpc_{{ service_name_lower }}_create_client(uv_loop_t* loop,
                                                      const char* address,
+                                                     uvbus_loop_registry_t* registry,
                                                      uvrpc_connect_callback_t callback,
                                                      void* ctx) {
     /* Create configuration */
@@ -38,6 +39,7 @@ uvrpc_client_t* uvrpc_{{ service_name_lower }}_create_client(uv_loop_t* loop,
     }
 
     uvrpc_config_set_loop(config, loop);
+    uvrpc_config_set_loop_registry(config, registry);
     uvrpc_config_set_address(config, address);
 
     /* Create client */

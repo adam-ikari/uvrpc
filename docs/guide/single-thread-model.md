@@ -83,9 +83,9 @@ uv_run(&loop, UV_RUN_ONCE);  // 处理响应
 
 - ✅ 无全局 loop 变量
 - ✅ 无全局服务器/客户端实例
-- ⚠️ 有 **per-loop** 共享状态：INPROC/SAMELOOP 的端点注册表挂在 `loop->data` 上，
-  带 magic 守卫，冲突时拒绝而非覆盖。这不是进程全局，但确实占用 loop 的一个字段，
-  详见 [架构文档](/architecture/) 的 `loop->data` 一节
+- ✅ 无 per-loop 隐藏状态：INPROC/SAMELOOP 的端点注册表由**调用方创建并传入**
+  （`uvbus_loop_registry_new()` + `uvrpc_config_set_loop_registry()`），
+  框架不在 loop 上留任何东西，详见 [架构文档](/architecture/)
 
 ### 唯一的全局变量
 

@@ -50,6 +50,12 @@ void uvbus_config_set_loop(uvbus_config_t* config, uv_loop_t* loop) {
     }
 }
 
+void uvbus_config_set_loop_registry(uvbus_config_t* config, uvbus_loop_registry_t* registry) {
+    if (config) {
+        config->registry = registry;
+    }
+}
+
 void uvbus_config_set_transport(uvbus_config_t* config, uvbus_transport_type_t transport) {
     if (config) {
         config->transport = transport;
@@ -132,6 +138,7 @@ uvbus_t* uvbus_server_new(uvbus_config_t* config) {
     bus->transport->is_server = 1;
     bus->transport->type = config->transport;
     bus->transport->loop = config->loop;
+    bus->transport->registry = config->registry;
     
     if (config->address) {
         bus->transport->address = uvrpc_strdup(config->address);
@@ -178,6 +185,7 @@ uvbus_t* uvbus_client_new(uvbus_config_t* config) {
     bus->transport->is_server = 0;
     bus->transport->type = config->transport;
     bus->transport->loop = config->loop;
+    bus->transport->registry = config->registry;
     
     if (config->address) {
         bus->transport->address = uvrpc_strdup(config->address);
