@@ -2,7 +2,7 @@
 slug: architecture
 title: System architecture
 role: system architecture
-updated: "2026-09-23T04:35:08"
+updated: "2026-09-29T00:12:47"
 ---
 
 # System architecture
@@ -17,7 +17,7 @@ updated: "2026-09-23T04:35:08"
 | RPC 语义层 `uvrpc_*` | config / server / client / context / msgid / idmap / FlatBuffers 编解码 / 错误码 / 重试 | `src/uvrpc_*.c`、`include/uvrpc.h` |
 | 异步原语层 | Promise、Semaphore、WaitGroup、`all/race/allSettled` 组合子；`uvasync` 调度器与信号量限流 | `src/uvrpc_primitives.c`、`src/uvasync.c`、`include/uvrpc_primitives.h`、`include/uvasync.h` |
 | 传输抽象层 **UVBus** | `uvbus_t` + vtable：`listen / connect / send / send_to / broadcast / disconnect / free`；纯字节传输 | `src/uvbus.c`、`include/uvbus.h`、`include/uvbus_config.h` |
-| 传输实现 | 五个平级驱动，同一份 vtable 契约 | `src/uvbus_transport_{tcp,udp,ipc,inproc,sameloop}.c`、`src/uv_transport*.c`、`src/uv_frame.c` |
+| 传输实现 | 五个平级驱动，同一份 vtable 契约 | `src/uvbus_transport_{tcp,udp,ipc,inproc,sameloop}.c` |
 | 底座 | 事件循环、序列化、分配器 | `deps/` 下 vendored git submodules：libuv、flatcc、mimalloc、uthash、gtest |
 
 另有两条横向支撑：**codegen**（`tools/uvrpcc.py` + `tools/templates/*.j2`，从 `schema/*.fbs` 生成 stub/client/broadcast 代码）与**帧格式**（`schema/rpc.fbs` 的单一 `RpcFrame`，见 [[minimal-rpcframe-schema]]）。
