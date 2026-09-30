@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [concurrency, backpressure, client]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-30T09:16:29"
+updated: "2026-09-30T09:39:25"
 ---
 
 <!-- compiled_truth -->
@@ -90,4 +90,10 @@ updated: "2026-09-30T09:16:29"
   kind: evidence
   summary: "缺陷（已修）：pending 槽位只在响应到达时释放，而客户端**没有任何超时/过期/清扫机制**（grep timeout|expire|reap 在 uvrpc_client.c 全空）。UDP 丢一个响应 → 该槽位占住直到客户端断开；累积到配额后表现为 UVRPC_ERROR_RATE_LIMITED，与原因毫无关联。表本身是固定容量环形缓冲（max_pending_callbacks），所以泄漏有上界，但后果是客户端逐渐不可用。另：UVRPC_ERROR_TIMEOUT = -5 早已存在且异步层（uvrpc_async_all/any）在用 —— 不需要新增错误码"
   source: "src/uvrpc_client.c:151（唯一回收路径）、grep 确认无清扫机制；include/uvrpc.h:55 (2026-09-30)"
+  affects: [pending-buffer-as-concurrency-control]
+
+- time: 2026-09-30T09:39:25
+  kind: reversal
+  summary: "被删除的 `uvrpc_config_set_timeout` 已以**同名、不同签名**加回（`uint64_t` → `int`），并且这次真的生效。旧版本在 2809d4e「只写旋钮清理」里被删，理由是能设不生效——那条判断当时是对的（当时确实没有清扫逻辑）。今天的区别不在名字，在于清扫逻辑存在了：所以「字段是死的」≠「字段不该存在」，判断依据是行为有无，不是引用数"
+  source: "git show 70f1ca8:include/uvrpc.h:267,420；git log -S uvrpc_config_set_timeout（2026-09-30）"
   affects: [pending-buffer-as-concurrency-control]
