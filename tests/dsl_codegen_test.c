@@ -28,10 +28,6 @@
 
 static int failures;
 static int handled;
-static int stop_timer_armed;
-
-/* Server and client share one loop, so the handler can stop it directly. */
-static uv_loop_t* g_loop;
 
 static void check(int ok, const char* what) {
     if (!ok) {
@@ -40,14 +36,15 @@ static void check(int ok, const char* what) {
     }
 }
 
-static void stop_soon(uv_loop_t* loop) {
-    static uv_timer_t timer;
-    if (stop_timer_armed) {
-        return;
+/* The handler cannot reach main's stack, so it only records that it ran; a
+ * watchdog timer armed in main stops the loop once handled is set (or after a
+ * timeout if the server never answers). The timer recovers the loop from its
+ * own handle, so no file-scope state is involved. */
+static void watchdog(uv_timer_t* timer) {
+    static int ticks;
+    if (handled || ++ticks > 100) {
+        uv_stop(uv_handle_get_loop((uv_handle_t*)timer));
     }
-    stop_timer_armed = 1;
-    uv_timer_init(loop, &timer);
-    uv_timer_start(&timer, (uv_timer_cb)uv_stop, 150, 0);
 }
 
 /* The user half of the generated service: decode the request and check it. */
@@ -104,26 +101,22 @@ uvrpc_error_t uvrpc_logservice_handle_request(const char* method_name,
     }
 
     (void)req;
-    stop_soon(g_loop);
+    handled = 1;
     return UVRPC_OK;
 }
-
-static uvrpc_client_t* g_client;
 
 static void on_connect(int status, void* ctx) {
     (void)ctx;
     /* SAMELOOP connects synchronously inside create_client, so this fires
-     * before main has assigned g_client. Nothing to do here -- the batch is
-     * sent from a timer started in main once the handle is known. */
+     * before the caller has the handle; the batch is sent from main once it
+     * does. A non-OK status means the send below cannot reach the server, and
+     * the watchdog stops the loop so it surfaces as handled == 0. */
     if (status != UVRPC_OK) {
-        printf("FAIL: client connection failed with %d\n", status);
         failures++;
-        uv_stop(g_loop);
     }
 }
 
-static void send_batch(uv_timer_t* timer) {
-    (void)timer;
+static void send_batch(uvrpc_client_t* client) {
     log_LogEntry_t entries[3];
     memset(entries, 0, sizeof(entries));
 
@@ -152,23 +145,22 @@ static void send_batch(uv_timer_t* timer) {
     request.entries = entries;
     request.entries_size = 3;
 
-    uvrpc_error_t ret = uvrpc_logservice_LogBatch(g_client, &request);
+    uvrpc_error_t ret = uvrpc_logservice_LogBatch(client, &request);
     if (ret != UVRPC_OK) {
         printf("FAIL: generated oneway call rejected with %d\n", (int)ret);
         failures++;
-        uv_stop(g_loop);
     }
-    /* The oneway has no completion callback. If the server answered, its
-     * handler calls stop_soon; if it never did, a guard timer started below
-     * does, and handled == 0 catches that. */
+    /* The oneway has no completion callback; the watchdog in main stops the
+     * loop once the handler has run (or after a timeout), and handled == 0
+     * catches the case where the server never answered. */
 }
 
 int main(void) {
-    /* INPROC/SAMELOOP keep their registry on loop->data, and libuv 1.47 leaves
-     * that field untouched by uv_loop_init(), so the struct must be zeroed. */
+    /* The framework never touches loop->data any more, so the struct does not
+     * have to be zeroed for that reason -- though zero-initialising is still
+     * the only safe way to declare one. */
     uv_loop_t loop = {0};
     uv_loop_init(&loop);
-    g_loop = &loop;
 
     /* SAMELOOP peers meet through a registry the caller owns. */
     uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
@@ -182,33 +174,40 @@ int main(void) {
                                                             registry);
     if (!server) {
         printf("FAIL: could not create server\n");
+        uvbus_loop_registry_free(registry);
         return 1;
     }
     if (uvrpc_logservice_start_server(server) != UVRPC_OK) {
         printf("FAIL: could not start server\n");
+        uvbus_loop_registry_free(registry);
         return 1;
     }
 
-    g_client = uvrpc_logservice_create_client(&loop, "sameloop://dsl_codegen",
-                                              registry, on_connect, NULL);
-    if (!g_client) {
+    uvrpc_client_t* client = uvrpc_logservice_create_client(&loop, "sameloop://dsl_codegen",
+                                                            registry, on_connect, NULL);
+    if (!client) {
         printf("FAIL: could not create client\n");
+        uvrpc_logservice_stop_server(server);
+        uvrpc_logservice_free_server(server);
+        uvbus_loop_registry_free(registry);
         return 1;
     }
 
-    /* g_client is set now; SAMELOOP already connected synchronously. Send
-     * from a 0-delay timer so the loop is running when it fires, and arm a
-     * guard that stops the loop if the server never answers. */
-    static uv_timer_t send_timer;
-    uv_timer_init(&loop, &send_timer);
-    uv_timer_start(&send_timer, send_batch, 0, 0);
-    stop_soon(&loop);
+    /* SAMELOOP connects synchronously inside create_client, so the client is
+     * already usable here. A watchdog stops the loop once the handler has run,
+     * or after ~2 s if it never did, so a lost message fails the test instead of
+     * hanging it. */
+    uv_timer_t watchdog_timer;
+    uv_timer_init(&loop, &watchdog_timer);
+    uv_timer_start(&watchdog_timer, watchdog, 20, 20);
 
+    send_batch(client);
     uv_run(&loop, UV_RUN_DEFAULT);
 
     check(handled == 1, "the generated stub dispatched to the user handler");
 
-    uvrpc_logservice_free_client(g_client);
+    uv_timer_stop(&watchdog_timer);
+    uvrpc_logservice_free_client(client);
     uvrpc_logservice_stop_server(server);
     uvrpc_logservice_free_server(server);
     uvbus_loop_registry_free(registry);

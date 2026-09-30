@@ -23,10 +23,8 @@ static int client_messages[NUM_CLIENTS] = {0};
  * The server keeps its handle in a file-scope pointer (assigned once the bus
  * exists, read when a message arrives); each client registers its own index as
  * its context, which is exactly what the field is for. */
-static uvbus_t* g_server;
-
 void server_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
-    (void)client_ctx; (void)server_ctx;
+    (void)client_ctx;
 
     /* Parse client ID from message */
     int client_id = -1;
@@ -40,10 +38,13 @@ void server_recv(const uint8_t* data, size_t size, void* client_ctx, void* serve
                client_id, (int)size, (char*)data, server_messages[client_id]);
     }
 
-    /* Echo back to all clients */
-    if (g_server) {
+    /* Echo back to all clients. The recv context is a pointer to a slot in main
+     * that holds the bus handle; the transport copies that slot's address and
+     * delivers it here, so the handle comes through the context. */
+    uvbus_t* server = *(uvbus_t**)server_ctx;
+    if (server) {
         const char* response = "Server broadcast";
-        uvbus_send(g_server, (const uint8_t*)response, strlen(response));
+        uvbus_send(server, (const uint8_t*)response, strlen(response));
     }
 }
 
@@ -69,6 +70,9 @@ int main() {
     printf("Number of clients: %d\n", NUM_CLIENTS);
     printf("Messages per client: %d\n\n", MESSAGES_PER_CLIENT);
 
+    /* recv-ctx slot, filled once the bus exists (see server_recv). */
+    uvbus_t* server_slot = NULL;
+
     /* Create server */
     printf("[MAIN] Creating server...\n");
     uvbus_config_t* server_config = uvbus_config_new();
@@ -79,10 +83,9 @@ int main() {
     uvbus_config_set_loop_registry(server_config, registry);
     uvbus_config_set_address(server_config, address);
     uvbus_config_set_transport(server_config, UVBUS_TRANSPORT_SAMELOOP);
-    uvbus_config_set_recv_callback(server_config, server_recv, NULL);
+    uvbus_config_set_recv_callback(server_config, server_recv, &server_slot);
 
     uvbus_t* server = uvbus_server_new(server_config);
-    g_server = server;   /* the recv callback needs it, and the config predates the bus */
     uvbus_config_free(server_config);
 
     if (!server) {
@@ -95,8 +98,8 @@ int main() {
     printf("[MAIN] Server created successfully\n");
     server->is_active = 1;
     
-    /* Set callback context AFTER server is created */
-    server->transport->callback_ctx = server;
+    /* Fill the slot the recv callback reads (see the ctx note in server_recv). */
+    server_slot = server;
 
     /* Listen on server */
     uvbus_error_t err = uvbus_listen(server);
@@ -135,8 +138,6 @@ int main() {
 
         clients[i]->is_active = 1;
         
-        /* Set callback context AFTER client is created */
-        clients[i]->transport->callback_ctx = clients[i];
         
         /* Connect client */
         uvbus_error_t err = uvbus_connect(clients[i]);

@@ -56,14 +56,18 @@ uvrpc_error_t uvrpc_logservice_handle_request(const char* method_name,
 }
 
 /* The connect callback receives only a status and the ctx it was registered
- * with. This demo runs one client, so it keeps the handle in a file-scope
- * pointer; the callback fires during uv_run, long after main assigned it. */
-static uvrpc_client_t* g_client;
-static uv_timer_t g_stop_timer;
+ * with -- no client handle. main passes a pointer to this struct and fills in
+ * the handle once create_client returns; over TCP the callback fires during
+ * uv_run, well after that. The stop timer is a stack handle in main too, and
+ * the timer callback recovers the loop from the handle itself. */
+typedef struct {
+    uvrpc_client_t* client;
+    uv_timer_t* stop_timer;
+} demo_ctx_t;
 
 static void stop_later(uv_timer_t* timer) {
     uv_timer_stop(timer);
-    uv_stop(uvrpc_client_get_loop(g_client));
+    uv_stop(uv_handle_get_loop((uv_handle_t*)timer));
 }
 
 static void send_logs(uvrpc_client_t* client) {
@@ -104,16 +108,16 @@ static void send_logs(uvrpc_client_t* client) {
 
 /* Client connection callback */
 void on_client_connect(int status, void* ctx) {
-    (void)ctx;
+    demo_ctx_t* d = (demo_ctx_t*)ctx;
     if (status == UVRPC_OK) {
-        send_logs(g_client);
+        send_logs(d->client);
     } else {
         fprintf(stderr, "Client connection failed: %d\n", status);
     }
     /* Oneway sends return as soon as the frames are queued; stopping here would
      * discard them before the server read them. Stop from a timer instead. */
-    uv_timer_init(uvrpc_client_get_loop(g_client), &g_stop_timer);
-    uv_timer_start(&g_stop_timer, stop_later, 200, 0);
+    uv_timer_init(uvrpc_client_get_loop(d->client), d->stop_timer);
+    uv_timer_start(d->stop_timer, stop_later, 200, 0);
 }
 
 int main(void) {
@@ -132,13 +136,18 @@ int main(void) {
         return 1;
     }
 
-    /* Create client */
+    /* Create client. The connect callback needs the handle to send, and it
+     * fires during uv_run -- after this assignment -- so a stack context is
+     * enough; no file-scope state is involved. */
+    demo_ctx_t d = {0};
+    uv_timer_t stop_timer;
+    d.stop_timer = &stop_timer;
     uvrpc_client_t* client = uvrpc_logservice_create_client(
         &loop,
         "tcp://127.0.0.1:6666",
         NULL,  /* registry: only INPROC/SAMELOOP need one, TCP does not */
         on_client_connect,
-        NULL
+        &d
     );
     if (!client) {
         fprintf(stderr, "Failed to create client\n");
@@ -147,7 +156,7 @@ int main(void) {
         uv_loop_close(&loop);
         return 1;
     }
-    g_client = client;
+    d.client = client;
 
     /* Run */
     uv_run(&loop, UV_RUN_DEFAULT);

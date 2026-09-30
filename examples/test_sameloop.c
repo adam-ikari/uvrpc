@@ -11,20 +11,14 @@
 static int server_received = 0;
 static int client_received = 0;
 
-/* Set once the bus exists, read when a message arrives. */
-static uvbus_t* g_server;
-
 void server_recv(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     printf("[SERVER] Received %zu bytes: %.*s\n", size, (int)size, (char*)data);
     server_received++;
 
-    /* Echo back to all clients. The handle cannot come from server_ctx: that is
-     * whatever the config registered, and the config is built before the bus
-     * exists -- this example registered NULL, so the echo never ran. */
-    (void)server_ctx;
-    if (g_server) {
+    uvbus_t* server = *(uvbus_t**)server_ctx;
+    if (server) {
         printf("[SERVER] Echoing back to clients...\n");
-        uvbus_send(g_server, data, size);
+        uvbus_send(server, data, size);
         printf("[SERVER] Echo sent\n");
     }
 }
@@ -48,6 +42,12 @@ int main() {
     printf("=== Same-Loop Transport Test ===\n");
     printf("Address: %s\n\n", address);
 
+    /* The recv callback needs the bus handle to reply, but the config is built
+     * before the bus exists -- so hand it a pointer to this slot and fill it
+     * below. The transport delivers the slot's address as the callback's
+     * server_ctx. */
+    uvbus_t* server_slot = NULL;
+
     /* Create server */
     printf("[MAIN] Creating server...\n");
     uvbus_config_t* server_config = uvbus_config_new();
@@ -58,10 +58,9 @@ int main() {
     uvbus_config_set_loop_registry(server_config, registry);
     uvbus_config_set_address(server_config, address);
     uvbus_config_set_transport(server_config, UVBUS_TRANSPORT_SAMELOOP);
-    uvbus_config_set_recv_callback(server_config, server_recv, NULL);
+    uvbus_config_set_recv_callback(server_config, server_recv, &server_slot);
 
     server = uvbus_server_new(server_config);
-    g_server = server;   /* the recv callback needs it, and the config predates the bus */
     uvbus_config_free(server_config);
 
     if (!server) {
@@ -73,8 +72,10 @@ int main() {
 
     printf("[MAIN] Server created successfully\n");
     
-    /* Set callback context after server is created */
-    server->transport->callback_ctx = server;
+    /* Fill the slot the recv callback reads. The transport copied the slot's
+     * address at listen/connect time, so filling it after the bus exists is
+     * enough -- and the slot outlives every message because it is in main. */
+    server_slot = server;
     
     /* Listen on the server */
     err = uvbus_listen(server);
@@ -107,8 +108,6 @@ int main() {
 
     printf("[MAIN] Client created successfully\n");
     
-    /* Set callback context after client is created */
-    client->transport->callback_ctx = client;
     
     /* Connect the client */
     err = uvbus_connect(client);
