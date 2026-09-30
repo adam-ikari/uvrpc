@@ -101,6 +101,15 @@ typedef enum {
 #define UVRPC_MAX_CONCURRENT_REQUESTS 100  /* Max concurrent requests per client */
 #endif
 
+#ifndef UVRPC_DEFAULT_TIMEOUT_MS
+/* A request that has not been answered after this long is reported to the
+ * application as UVRPC_ERROR_TIMEOUT. 30s is far past any healthy RPC round
+ * trip, and it only matters for transports that can lose a datagram: on UDP a
+ * lost response would otherwise hold its callback slot forever, because
+ * nothing else ever releases it. Set 0 to restore the previous behaviour. */
+#define UVRPC_DEFAULT_TIMEOUT_MS 30000
+#endif
+
 /**
  * @brief Cleanup callback for context data
  *
@@ -218,6 +227,7 @@ struct uvrpc_config {
     uvbus_transport_type_t transport;    /**< @brief Transport type (TCP/UDP/IPC/INPROC/SAMELOOP) */
     uvbus_loop_registry_t* registry;     /**< @brief Registry shared by INPROC/SAMELOOP peers (required for those two; see uvrpc_config_set_loop_registry) */
     int max_concurrent;                  /**< @brief Max concurrent requests (default: UVRPC_MAX_CONCURRENT_REQUESTS) */
+    int timeout_ms;                      /**< @brief Deadline for a request whose response never arrives, in ms (default: UVRPC_DEFAULT_TIMEOUT_MS; 0 disables it) */
     int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
     int max_clients;                     /**< @brief Maximum server clients (0 or less falls back to 1024; it does not mean unlimited) */
@@ -369,6 +379,23 @@ uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_
  * @return Configuration structure for chaining
  */
 uvrpc_config_t* uvrpc_config_set_max_pending_callbacks(uvrpc_config_t* config, int max_pending);
+
+/**
+ * @brief Set the request deadline
+ *
+ * A pending callback slot is only released when its response arrives. On a
+ * transport that can lose a datagram, a lost response would therefore hold
+ * its slot until the client is disconnected, and the failure would surface
+ * much later as UVRPC_ERROR_RATE_LIMITED with nothing pointing at the cause.
+ * With a deadline set, an unanswered request is instead reported to the
+ * application as UVRPC_ERROR_TIMEOUT and its slot is returned, no later than
+ * the next request issued on that client (see uvrpc_client_set_timeout).
+ *
+ * @param config Configuration structure
+ * @param timeout_ms Deadline in milliseconds; 0 disables it
+ * @return Configuration structure for chaining
+ */
+uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, int timeout_ms);
 
 /**
  * @brief Set the message ID offset
@@ -680,6 +707,25 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
  * @return UVRPC_OK on success, error code on failure
  */
 int uvrpc_client_set_max_concurrent(uvrpc_client_t* client, int max_concurrent);
+
+/**
+ * @brief Set the request deadline for this client
+ *
+ * Applies to requests issued from now on; a request already in flight keeps
+ * the deadline it was given.
+ *
+ * An expired request is reported with status UVRPC_ERROR_TIMEOUT and its slot
+ * is returned -- no later than the next request issued on this client. There is
+ * no per-client timer, so an idle client is not interrupted; the sweep runs
+ * where a slot is about to be taken, which is also where the concurrency quota
+ * is checked. That is what keeps a lost response from consuming slots until the
+ * client can no longer issue a request at all.
+ *
+ * @param client Client instance
+ * @param timeout_ms Deadline in milliseconds; 0 disables it
+ * @return UVRPC_OK on success, error code on failure
+ */
+int uvrpc_client_set_timeout(uvrpc_client_t* client, int timeout_ms);
 
 /**
  * @brief Get pending request count

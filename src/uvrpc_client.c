@@ -17,6 +17,7 @@
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* UVRPC_LOG_DEBUG / UVRPC_LOG_ERROR / UVRPC_LOG are provided by uvrpc.h */
 
@@ -30,6 +31,9 @@ typedef struct pending_callback {
     uint32_t msgid;          /* Message ID for validation */
     uvrpc_callback_t callback;
     void* ctx;
+    uint64_t deadline_ms;    /* Monotonic ms after which this slot is reclaimed
+                              * and the callback is invoked with
+                              * UVRPC_ERROR_TIMEOUT; 0 = no deadline */
 } pending_callback_t;
 
 /* Client structure */
@@ -56,6 +60,7 @@ struct uvrpc_client {
      * counted because they never take a slot. */
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
+    int timeout_ms;             /* Request deadline in ms; 0 = disabled */
 
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
@@ -66,6 +71,84 @@ struct uvrpc_client {
 static void cleanup_pending_callback(pending_callback_t* pending) {
     if (!pending) return;
     uvrpc_free(pending);
+}
+
+/* Monotonic milliseconds, same clock the async layer and uvasync use. Only
+ * ever compared against a stored deadline, so it does not have to be the
+ * libuv clock. */
+static uint64_t monotonic_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000u + (uint64_t)(ts.tv_nsec / 1000000);
+}
+
+/* How many expired callbacks one sweep pass reclaims and reports. A pass
+ * collects this many, hands them all over, and starts again, so the working
+ * set stays on the stack no matter how large the ring is. */
+#define UVRPC_SWEEP_BATCH 32
+
+typedef struct expired_slot {
+    uvrpc_callback_t callback;
+    void* ctx;
+    uint32_t msgid;
+} expired_slot_t;
+
+/* Reclaim pending callbacks whose deadline has passed.
+ *
+ * A slot is otherwise only released when a response for its msgid arrives, so
+ * on a transport that can drop a datagram a lost response consumes it until the
+ * client is disconnected -- and the only symptom is UVRPC_ERROR_RATE_LIMITED
+ * much later, once the ring is exhausted.
+ *
+ * Unlink-then-invoke, in that order, on purpose: every expired slot is removed
+ * from the table and freed before any callback runs, so a callback that issues
+ * another request and re-enters this function cannot find -- let alone free --
+ * a slot that is about to be reported.
+ */
+static void sweep_expired_pending(uvrpc_client_t* client) {
+    if (client->timeout_ms <= 0) return;
+
+    expired_slot_t batch[UVRPC_SWEEP_BATCH];
+
+    for (;;) {
+        uint64_t now = monotonic_ms();
+        int found = 0;
+
+        for (int i = 0; i < client->max_pending_callbacks; i++) {
+            pending_callback_t* pending = client->pending_callbacks[i];
+            if (!pending || pending->deadline_ms == 0 ||
+                pending->deadline_ms > now) {
+                continue;
+            }
+
+            client->pending_callbacks[i] = NULL;
+            if (client->current_concurrent > 0) {
+                client->current_concurrent--;
+            }
+            batch[found].callback = pending->callback;
+            batch[found].ctx = pending->ctx;
+            batch[found].msgid = pending->msgid;
+            found++;
+            cleanup_pending_callback(pending);
+
+            if (found == UVRPC_SWEEP_BATCH) break;
+        }
+
+        if (found == 0) return;
+
+        /* The table is consistent again; now tell the application. */
+        for (int i = 0; i < found; i++) {
+            uvrpc_response_t resp;
+            memset(&resp, 0, sizeof(resp));
+            resp.status = UVRPC_ERROR_TIMEOUT;
+            resp.msgid = batch[i].msgid;
+            resp.error_code = UVRPC_ERROR_TIMEOUT;
+            resp.error_message = "request timed out: no response received";
+            if (batch[i].callback) {
+                batch[i].callback(&resp, batch[i].ctx);
+            }
+        }
+    }
 }
 
 /* Transport connect callback */
@@ -222,6 +305,7 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     /* Initialize concurrency control */
     client->max_concurrent = config->max_concurrent;
     client->current_concurrent = 0;
+    client->timeout_ms = config->timeout_ms;
 
     /* Initialize ring buffer with runtime size */
     client->max_pending_callbacks = config->max_pending_callbacks;
@@ -465,6 +549,11 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
     if (callback) {
         /* One in-flight request == one registered pending callback, so the
          * concurrency quota is checked wherever a slot is taken. */
+        /* Reclaim anything already past its deadline first, so an
+         * expired slot is returned rather than counted against the quota
+         * and reported as RATE_LIMITED. */
+        sweep_expired_pending(client);
+
         if (client->max_concurrent > 0 &&
             client->current_concurrent + 1 > client->max_concurrent) {
             uvrpc_free_encoded(req_data);
@@ -478,6 +567,9 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
         }
 
         pending->msgid = msgid;
+        pending->deadline_ms = client->timeout_ms > 0
+                                 ? monotonic_ms() + (uint64_t)client->timeout_ms
+                                 : 0;
         pending->callback = callback;
         pending->ctx = ctx;
 
@@ -617,6 +709,13 @@ int uvrpc_client_set_max_concurrent(uvrpc_client_t* client, int max_concurrent) 
     return UVRPC_OK;
 }
 
+/* Set the request deadline */
+int uvrpc_client_set_timeout(uvrpc_client_t* client, int timeout_ms) {
+    if (!client) return UVRPC_ERROR_INVALID_PARAM;
+    client->timeout_ms = (timeout_ms > 0) ? timeout_ms : 0;
+    return UVRPC_OK;
+}
+
 /* Get pending request count */
 int uvrpc_client_get_pending_count(uvrpc_client_t* client) {
     if (!client) return 0;
@@ -668,6 +767,7 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
         }
 
         /* Register callback */
+        if (client->timeout_ms > 0) sweep_expired_pending(client);
         if (callbacks[i]) {
             pending_callback_t* pending = uvrpc_calloc(1, sizeof(pending_callback_t));
             if (!pending) {
@@ -683,6 +783,9 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
             }
 
             pending->msgid = (uint32_t)msgid;
+            pending->deadline_ms = client->timeout_ms > 0
+                                     ? monotonic_ms() + (uint64_t)client->timeout_ms
+                                     : 0;
             pending->callback = callbacks[i];
             pending->ctx = contexts[i];
             client->pending_callbacks[idx] = pending;

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [concurrency, backpressure, client]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-29T03:57:16"
+updated: "2026-09-30T09:16:29"
 ---
 
 <!-- compiled_truth -->
@@ -78,4 +78,16 @@ updated: "2026-09-29T03:57:16"
   kind: decision
   summary: Rewrote compiled_truth to the new best understanding
   source: "2026-09-29 修复：删除只写字段、配额改为两路径一致（实测 105/105 + demo 1000 请求 99 次退避重试）"
+  affects: [pending-buffer-as-concurrency-control]
+
+- time: 2026-09-30T09:16:07
+  kind: decision
+  summary: "新增请求截止时间（timeout_ms，默认 30s，0 关闭）：待回调槽位带 deadline，过期后归还并以 UVRPC_ERROR_TIMEOUT 通知。**清扫只在取出槽位时触发（即配额检查之前），没有 per-client 定时器** —— 契约是'通知不迟于该客户端的下一次调用'，空闲客户端不会被打断。取舍：定时器会让 uvrpc_client_free 必须走异步句柄关闭（不泵 loop 就关 loop 会拿到 UV_EBUSY），那个生命周期语义比及时通知更难改回来"
+  source: "tests/call_timeout_test.c；实测诊断：发完请求空转 400ms 回调不触发，下一次调用才补报 (2026-09-30)"
+  affects: [pending-buffer-as-concurrency-control]
+
+- time: 2026-09-30T09:16:29
+  kind: evidence
+  summary: "缺陷（已修）：pending 槽位只在响应到达时释放，而客户端**没有任何超时/过期/清扫机制**（grep timeout|expire|reap 在 uvrpc_client.c 全空）。UDP 丢一个响应 → 该槽位占住直到客户端断开；累积到配额后表现为 UVRPC_ERROR_RATE_LIMITED，与原因毫无关联。表本身是固定容量环形缓冲（max_pending_callbacks），所以泄漏有上界，但后果是客户端逐渐不可用。另：UVRPC_ERROR_TIMEOUT = -5 早已存在且异步层（uvrpc_async_all/any）在用 —— 不需要新增错误码"
+  source: "src/uvrpc_client.c:151（唯一回收路径）、grep 确认无清扫机制；include/uvrpc.h:55 (2026-09-30)"
   affects: [pending-buffer-as-concurrency-control]

@@ -2,6 +2,15 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-09-30T09:17:43"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-09-29T08:41:20"
 ---
 
@@ -105,4 +114,7 @@ graph LR
 11. ~~**性能基线取自开发机而非 CI**~~ —— **已修（2026-09-29）**： 旧表记的 ~4.9 µs / ~205,000 req/s 比同一构建的真实值差约一倍，且扩散到 9 个文件。现全部改用 `Benchmark` 工作流在 CI runner 上的实测值，测量前提见 [[uv-run-once-benchmark-methodology]]。
 12. ~~benchmark 的 UDP 语义~~ —— **已修（2026-09-29）**：不加重传，改为如实标注：跑 udp 时往 stderr 打印丢包会中止运行而非降低吞吐，参考表 7 处 UDP 行标注"仅本机 loopback"。
 13. **`tools/uvrpcc.py` 的生成产物**（部分修复，2026-09-29）—— 生成器不再崩、类型名按 flatcc 0.6 的命名空间规则正确生成，`log_service.fbs` 三个源文件编译 0 error；但 `examples/log_service_demo.c` 自身落后于库 API（`uvrpc_request_send_response` 现返回 void），该示例仍编译不过。
-14. **`loop->data` 作为注册表挂载点**（未处理，需讨论）—— 实现就是占用 libuv 的公开用户字段，用 magic 守卫拒绝冲突；这与"UVRPC 不占用 `loop->data`"的说法矛盾，且要求调用方零初始化 loop。是否换挂载点待议。
+14. ~~**`loop->data` 作为注册表挂载点**~~ —— **已解决（2026-09-30）**：注册表改由调用方创建并传入，框架不再触碰用户的 loop。起因是 magic 守卫必须解引用用户指针，而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段，`uv_loop_t loop;`（官方文档写法）实测约 **20%** 会在读取时段错误。新契约见 `uvbus_loop_registry_new()` + `uvrpc_config_set_loop_registry()`，详见 [[loop-data-registry-over-global-hash]]。
+
+15. **验收场景套件**（已设计，**待批准**，2026-09-30）：约 20 个自检场景放 `tests/acceptance/`，与 `examples/`（保持纯演示）职责分离。覆盖今天暴露的高风险类别：协议健壮性（畸形帧/垃圾字节/空方法名 —— 远程攻击面，现有零测试）、背压与限流（文档声称三种无锁拒绝，零测试）、在途生命周期（现有 lifetime 测试只测顺序释放，没测在途时释放）、负载边界、失败模式。
+    核心断言是**跨度不变性**：同一份应用逻辑跑遍 5 个传输，断言可观测行为一致 —— 传输只该改变速度，不该改变结果。已查实的跨度漏洞：UDP 的 `client_ctx` 是 `sockaddr*` 而非客户端句柄（TCP/IPC/INPROC/SAMELOOP 都是句柄），拿 ctx 回包的代码换到 UDP 就传错指针；SAMELOOP 服务端 `uvbus_send()` 段错误（已修）。UDP 那一格改为断言"丢包不得静默消耗共享资源"，而非"与 TCP 一样"（UDP 必然丢包）。

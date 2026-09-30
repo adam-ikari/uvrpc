@@ -197,6 +197,30 @@ target_include_directories(inproc_send_direction_test
 add_test(NAME inproc_send_direction COMMAND inproc_send_direction_test)
 set_tests_properties(inproc_send_direction PROPERTIES TIMEOUT 60)
 
+# A request whose response never arrives must end, with an error the
+# application can tell apart from any other. Without a deadline the
+# pending-callback slot is only released when a response arrives, so a lost
+# datagram on UDP consumes it permanently.
+add_executable(call_timeout_test
+    call_timeout_test.c
+)
+
+target_link_libraries(call_timeout_test
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(call_timeout_test
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME call_timeout COMMAND call_timeout_test)
+set_tests_properties(call_timeout PROPERTIES TIMEOUT 30)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

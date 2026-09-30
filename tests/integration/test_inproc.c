@@ -78,9 +78,10 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    /* Zero-initialize the loop: uv_loop_init preserves loop->data, which
-     * INPROC/SAMELOOP use internally for the per-loop registry, so it must
-     * start NULL. */
+    /* Zero-initialize the loop: uv_loop_init preserves loop->data, so a
+     * struct declared without an initializer carries whatever the stack
+     * held. The framework no longer reads that field, but zeroing a struct
+     * you are about to hand to a C library is the only safe habit. */
     uv_loop_t loop = {0};
     int rv = uv_loop_init(&loop);
     assert(rv == 0);

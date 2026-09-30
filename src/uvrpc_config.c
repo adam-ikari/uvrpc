@@ -25,6 +25,7 @@ uvrpc_config_t* uvrpc_config_new(void) {
     config->transport = UVBUS_TRANSPORT_TCP;  /* Default to TCP */
     config->max_concurrent = UVRPC_MAX_CONCURRENT_REQUESTS;
     config->max_pending_callbacks = UVRPC_DEFAULT_PENDING_CALLBACKS;  /* Use default instead of compile-time constant */
+    config->timeout_ms = UVRPC_DEFAULT_TIMEOUT_MS;
     config->msgid_offset = 0;  /* Default: 0 = auto-assign */
 
     return config;
@@ -90,6 +91,13 @@ uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transpo
 uvrpc_config_t* uvrpc_config_set_max_concurrent(uvrpc_config_t* config, int max_concurrent) {
     if (!config) return NULL;
     config->max_concurrent = (max_concurrent > 0) ? max_concurrent : UVRPC_MAX_CONCURRENT_REQUESTS;
+    return config;
+}
+
+/* Set the request deadline */
+uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, int timeout_ms) {
+    if (!config) return NULL;
+    config->timeout_ms = (timeout_ms > 0) ? timeout_ms : 0;
     return config;
 }
 

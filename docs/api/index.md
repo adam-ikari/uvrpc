@@ -80,6 +80,32 @@ Leaving it unset for INPROC or SAMELOOP is an error, reported when the transport
 is created. The framework keeps no hidden per-loop or process-wide state to
 fall back on, so two unrelated endpoints cannot collide by accident.
 
+#### `uvrpc_config_set_timeout()` / `uvrpc_client_set_timeout()`
+
+Set how long a request may go unanswered before the application is told. The
+config setter applies to every client built from that config; the client setter
+changes it at runtime. `0` disables it.
+
+```c
+uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, int timeout_ms);
+int uvrpc_client_set_timeout(uvrpc_client_t* client, int timeout_ms);
+```
+
+```c
+uvrpc_config_t* cfg = uvrpc_config_set_timeout(uvrpc_config_new(), 2000);
+```
+
+An expired request invokes its callback with status and error code
+`UVRPC_ERROR_TIMEOUT`. The report is delivered no later than the next request
+issued on that client — the sweep runs where a callback slot is about to be
+taken, and there is no per-client timer, so an idle client is not interrupted.
+
+This is what keeps a lost datagram from consuming a slot forever: without a
+deadline, a response that never arrives holds its slot until the client is
+disconnected, and the only symptom is `UVRPC_ERROR_RATE_LIMITED` long after the
+cause. Note that a timeout cannot tell you *why* there was no response — loss,
+a slow server, a crashed server and a wrong address look identical.
+
 Transport types (`include/uvbus.h`):
 
 | Constant | Value | Transport |
