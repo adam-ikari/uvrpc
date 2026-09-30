@@ -96,22 +96,29 @@ If you try to connect from a different process, you will get `UVBUS_ERROR_NOT_FO
 
 ## Comparison with Other Transports
 
-| Transport | Process Scope | Performance | Use Case |
-|-----------|--------------|-------------|----------|
-| INPROC | Single process | Highest (125K ops/s) | In-process modules |
-| TCP | Cross-process | High (87K ops/s) | Network communication |
-| IPC | Cross-process (same host) | High (92K ops/s) | Local IPC |
-| UDP | Cross-process | High (92K ops/s) | Broadcast/Unreliable |
+| Transport | Process Scope | Round-trip latency | Use Case |
+|-----------|--------------|--------------------|----------|
+| INPROC | Single process | ~1.00 µs | In-process modules |
+| SAMELOOP | Single loop | ~0.98 µs | Same-loop fast path |
+| IPC | Cross-process (same host) | ~10.98 µs | Local IPC |
+| UDP | Cross-process | ~20.22 µs | Broadcast/Unreliable |
+| TCP | Cross-process | ~19.92 µs | Network communication |
+
+Measured by the `Benchmark` workflow on a GitHub Actions runner (run
+`36658530099`) — sequential ping-pong, one request in flight, so these are
+latency figures and not concurrent throughput. See
+[Benchmark](/guide/benchmark).
 
 ## Best Practices
 
 1. **Use INPROC for modular design**: Break your application into modules that communicate via RPC
 2. **Share the event loop**: Always use the same `uv_loop_t` for both server and client
-3. **Clean up properly**: Free both server and client before closing the event loop
+3. **Clean up properly**: Free both server and client, then
+   `uvbus_loop_registry_free(reg)`, then close the event loop
 4. **Testing**: Great for unit tests and integration tests
 
 ## See Also
 
 - `examples/simple_inproc.c` - Complete working example
-- `docs/API_GUIDE.md` - API documentation
+- `docs/api/index.md` - API documentation
 - `README.md` - Project overview

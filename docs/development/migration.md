@@ -144,6 +144,39 @@ flatbuffers_uint8_vec_t data = uvrpc_RpcFrame_params(frame);
 - 需要显式指定传输类型
 - 更低的延迟，更高的性能
 
+#### INPROC/SAMELOOP：注册表改为调用方传入（2026-09-30）
+
+这两个传输曾把端点注册表挂在 `uv_loop_t::data` 上，也就是 libuv 唯一的每-loop
+用户字段。判断"这个指针是不是我们的"必须解引用它，而 libuv 1.47 的
+`uv_loop_init()` 会原样保留该字段，于是 `uv_loop_t loop; uv_loop_init(&loop);`
+（libuv 官方文档示范的写法）会把栈上残留留在那里，实测约五次里崩一次。
+
+现在注册表由调用方创建并传给每个需要互相通信的 config，框架不再碰 loop：
+
+**旧版本**：
+```c
+/* 无需注册表，框架自己挂在 loop->data 上 */
+uvrpc_config_set_loop(server_config, &loop);
+uvrpc_config_set_loop(client_config, &loop);
+```
+
+**新版本**：
+```c
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+uvrpc_config_set_loop(server_config, &loop);
+uvrpc_config_set_loop_registry(server_config, reg);
+uvrpc_config_set_loop(client_config, &loop);
+uvrpc_config_set_loop_registry(client_config, reg);
+/* ... 释放 server 与 client 之后： */
+uvbus_loop_registry_free(reg);
+```
+
+TCP/UDP/IPC 不需要注册表，传了会被忽略。INPROC/SAMELOOP 不传会在创建 transport
+时报错——框架没有任何隐藏的 per-loop 或进程级状态可以退回，所以两个无关的端点
+不可能"碰巧"连到一起。
+
+这是有意的破坏性变更，没有保留兼容层：留着旧的兜底等于把原来的坑继续留着。
+
 ### 内存分配变更
 
 #### 新增内存分配器支持

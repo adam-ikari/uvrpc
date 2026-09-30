@@ -158,8 +158,8 @@ request in flight), **not** pipelined throughput. Reproduce with
 | TCP       | `tcp://host:port` | Reliable network RPC |
 | UDP       | `udp://host:port` | High-throughput, loss-tolerant |
 | IPC       | `ipc:///path`     | Local inter-process |
-| INPROC    | `inproc://name`   | In-process zero-copy |
-| SAMELOOP  | `sameloop://name` | Same loop, vtable bypass |
+| INPROC    | `inproc://name`   | In-process zero-copy; needs a registry |
+| SAMELOOP  | `sameloop://name` | Same loop, vtable bypass; needs a registry |
 
 Switching transports is a one-line change — only the address prefix differs.
 

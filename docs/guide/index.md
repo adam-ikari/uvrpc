@@ -28,7 +28,9 @@ uvrpc_client_call(client, "echo", data, size, on_response, NULL);
 ```
 
 Transports are selected by address prefix — `tcp://`, `udp://`, `ipc://`,
-`inproc://`, `sameloop://` — with an identical API across all of them.
+`inproc://`, `sameloop://` — with an identical API across all of them. The two
+in-process transports take one extra config call, a registry the caller owns;
+see [Quick Start](/quick-start/).
 
 ## What UVRPC is (and isn't)
 

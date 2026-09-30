@@ -52,6 +52,34 @@ Set the transport type. Required.
 uvrpc_config_t* uvrpc_config_set_transport(uvrpc_config_t* config, uvbus_transport_type_t transport);
 ```
 
+#### `uvrpc_config_set_loop_registry()`
+
+Set the registry the INPROC or SAMELOOP transport belongs to. Required for those
+two, ignored by the socket transports.
+
+Those transports keep no state of their own: a server and a client are built
+from independent configurations and meet through this registry. Create one with
+`uvbus_loop_registry_new()`, pass the same pointer to every configuration that
+has to see the others, and free it with `uvbus_loop_registry_free()` once the
+servers and clients are gone.
+
+```c
+uvrpc_config_t* uvrpc_config_set_loop_registry(uvrpc_config_t* config,
+                                               uvbus_loop_registry_t* registry);
+```
+
+```c
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+uvrpc_config_set_loop_registry(scfg, reg);
+uvrpc_config_set_loop_registry(ccfg, reg);
+/* ... */
+uvbus_loop_registry_free(reg);
+```
+
+Leaving it unset for INPROC or SAMELOOP is an error, reported when the transport
+is created. The framework keeps no hidden per-loop or process-wide state to
+fall back on, so two unrelated endpoints cannot collide by accident.
+
 Transport types (`include/uvbus.h`):
 
 | Constant | Value | Transport |

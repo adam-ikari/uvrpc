@@ -84,8 +84,8 @@ cd uvrpc
 | TCP  | `tcp://host:port` | 可靠网络 RPC |
 | UDP  | `udp://host:port` | 高吞吐、可丢包 |
 | IPC  | `ipc:///path`     | 本地进程间 |
-| INPROC | `inproc://name` | 进程内零拷贝 |
-| SAMELOOP | `sameloop://name` | 同循环，vtable 旁路 |
+| INPROC | `inproc://name` | 进程内零拷贝；需要注册表 |
+| SAMELOOP | `sameloop://name` | 同循环，vtable 旁路；需要注册表 |
 
 切换传输只需改地址前缀，一行代码。
 

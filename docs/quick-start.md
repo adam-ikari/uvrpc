@@ -53,8 +53,8 @@ API across all of them:
 | TCP        | `tcp://host:port`    | Reliable network RPC           |
 | UDP        | `udp://host:port`    | High-throughput, loss-tolerant |
 | IPC        | `ipc:///path`        | Local inter-process            |
-| INPROC     | `inproc://name`      | In-process zero-copy           |
-| SAMELOOP   | `sameloop://name`    | Same loop, vtable bypass       |
+| INPROC     | `inproc://name`      | In-process zero-copy; needs a registry |
+| SAMELOOP   | `sameloop://name`    | Same loop, vtable bypass; needs a registry |
 
 ### Configuration
 
@@ -65,8 +65,18 @@ uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 ```
 
-Switching transports is a one-line change — only the address prefix and
-`UVBUS_TRANSPORT_*` constant differ.
+Switching between the three socket transports is a one-line change — only the
+address prefix and `UVBUS_TRANSPORT_*` constant differ. INPROC and SAMELOOP are
+the exception: they meet through a registry the caller creates and passes to
+every config that has to see the others.
+
+```c
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+uvrpc_config_set_loop_registry(server_config, reg);
+uvrpc_config_set_loop_registry(client_config, reg);
+/* ... after the servers and clients are gone: */
+uvbus_loop_registry_free(reg);
+```
 
 ## A complete RPC
 

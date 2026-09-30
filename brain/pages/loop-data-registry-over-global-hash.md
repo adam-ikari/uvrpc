@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-29T09:49:58"
+updated: "2026-09-30T03:15:29"
 ---
 
 <!-- compiled_truth -->
@@ -113,4 +113,10 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: reversal
   summary: "反转：注册表不再挂 loop->data，改由调用方创建并显式传入。API：uvbus_loop_registry_new() / uvbus_config_set_loop_registry() / uvrpc_config_set_loop_registry() / uvbus_loop_registry_free()；两个 transport 改用 transport->registry；未传注册表时 listen 直接报错并指名创建方法。理由：magic 守卫必须解引用用户指针，未零初始化的 uv_loop_t 实测约 20% 会在读取时段错误。代价：调用方多两行并自管生命周期。全部 14 个示例、benchmark 与 5 个测试已迁移"
   source: "tests/loop_registry_test.c 替换 loop_data_contract_test.c；107/107 通过 (2026-09-29)"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-30T03:15:29
+  kind: note
+  summary: "注册表改为调用方传入后，全站文档已同步：quick-start（中英）与 api/index 补上注册表用法与'切换传输不再只改一行'的例外说明；guide/index（中英）加注；首页传输表标注'需要注册表'；development/migration.md 新增该破坏性变更的迁移小节（含旧/新代码对照）；examples/INPROC_README 修掉 125K/87K/92K ops/s 这批与 CI 基线矛盾的旧数字（换成 run 36658530099 实测的往返延迟）并修掉指向不存在的 docs/API_GUIDE.md 的死链接。路线图第 5 项随之关闭"
+  source: "grep 全库复查：无残留把 loop->data 当挂载点的表述（除 design-philosophy 里解释为何不用的那段）(2026-09-30)"
   affects: [loop-data-registry-over-global-hash]

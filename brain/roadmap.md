@@ -2,6 +2,15 @@
 slug: roadmap
 title: Roadmap
 role: milestones
+updated: "2026-09-30T03:14:54"
+---
+
+# Roadmap
+
+---
+slug: roadmap
+title: Roadmap
+role: milestones
 updated: "2026-09-29T08:41:11"
 ---
 
@@ -73,7 +82,11 @@ gantt
 2. ~~**文档与代码对齐**~~ **✅ 完成（2026-09-29）**：`docs/guide/design-philosophy.md`、`docs/architecture/{index,integration}.md`、`docs/guide/benchmark.md`（整页重写）、`docs/guide/single-thread-model.md`、`docs/build-install.md`、`docs/development/{coding-standards,doxygen-examples}.md`、`docs/api/{index,generated-api}.md`、`docs/quick-start.md` 与 `docs/zh/guide/quick-start.md` 全部按代码现状改写；README 与站点/SEO 元数据的性能数字当时统一为 ~4.9 µs / ~205,000 req/s（该基线已在第 11 项被 CI 实测值取代）。`docs/api/generated-api.md` 的两段示例经**真实编译并跑通**（`Add result: 30`），顺带纠正了"把 flatcc 根指针直接当 table 用"这个会读错字段的示例错误。**结构性事实**：`docs/zh/guide/{design-philosophy,api-guide,single-thread-model}.md`、`docs/zh/build-install.md`、`docs/zh/development/{coding-standards,doxygen-examples}.md` 是指向根目录同名文件的符号链接，所以"英文"页面正文本就是中文；要真正分语言，得先把符号链接换成独立文件。
 3. ~~**补齐 mimalloc 构建的 CI 覆盖**~~ **✅ 完成（2026-09-28）**：随切片 1 解决 —— CI 新增 `default-allocator` job，所有 job 先跑 `setup_deps.sh`。
 4. **发布工程**（剩余部分）：`LICENSE` 已补、`libuvrpc_full.a` 丢符号缺陷已修；`Version` 徽章指向的 `v1.0.0a` release 仍不存在 —— 需打 tag 并在 GitHub 建 release，徽章才名副其实。
-5. **未决的架构问题**（需讨论，工期不定）：`loop->data` 占用是"框架抢用户字段"的妥协方案，是否有更干净的挂载点（per-loop hash key，或显式 `uvrpc_registry_t*` 由用户传入）值得重新评估 —— 当前唯一"框架悄悄动了用户可见字段"的地方，见 [[loop-data-registry-over-global-hash]]。
+5. ~~**未决的架构问题：`loop->data` 挂载点**~~ **✅ 已解决（2026-09-30）**：这个"框架抢用户字段"的妥协已经取消 —— 评审后决定采用当时列出的第二种方案，**注册表改由调用方创建并显式传入**，框架不再碰 loop。
+   起因是实测数据：magic 守卫必须解引用用户的 `loop->data`，而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段，`uv_loop_t loop;`（官方文档写法）实测约 **20%** 会在读取时段错误；廉价合理性检查只能拦住 1/8 的崩溃样本，不值得。
+   新契约：`uvbus_loop_registry_new()` / `uvrpc_config_set_loop_registry()` / `uvbus_loop_registry_free()`，两个 transport 从 config 取并 retain；缺注册表时创建 transport 直接报错，且没有任何隐藏的 per-loop 或进程级状态可以退回。
+   代价（调用方多两行、自管生命周期）是有意接受的 —— 零可变全局这条约束仍然成立，   而且框架再也无法触及用户的 loop。理由与证据见 [[loop-data-registry-over-global-hash]]。
+
 6. ~~**环形缓冲 `generation` 机制**~~ **✅ 完成（2026-09-29）**：按"删除无用"处理 —— `generation` 从 `pending_callback_t` 与 `uvrpc_client` 双双移除，msg-match 成为唯一的槽位校验，陈旧项回收死路径随之消失。见 [[ring-buffer-over-uthash]]。
 7. ~~**只写的并发/性能字段**~~ **✅ 完成（2026-09-29）**：`performance_mode` / `batching_*` / `pool_size` / `timeout_ms` / `pump_interval` / `send_pending` 连同其公开 setter、`uvrpc_perf_mode_t` 枚举、`uvbus_config` 的超时字段全部删除；`current_concurrent` 改为在单次与批次两条路径一致记账（此前只在批次递增、却在所有响应里递减，会向负漂移），`max_concurrent` 因此真正约束单次调用。新增 `UVRPCQuotaLiveTest.MaxConcurrentGatesSingleCalls` 锁住该语义。细节与保留/删除清单见 [[pending-buffer-as-concurrency-control]]。
 8. ~~**codec 缓冲区与分配器不一致**~~ **✅ 完成（2026-09-29）**：契约定为"**flatcc 拥有 encode 输出，只能 `free()` 释放**"，不给 builder 挂 `uvrpc_alloc` —— flatcc 是 `setup_deps.sh` 预先编译的静态库，挂钩子要么造成 `libflatcc.a ↔ libuvrpc.a` 的循环静态依赖（`uvrpc_merged` 把两者折叠进同一个 `libuvrpc_full.a`，GNU ld 不保证收敛），要么在 `src/uvrpc_flatbuffers.c` 抄一份 40 行的 `flatcc_builder_default_alloc`（随上游失同步）；两条都比现状贵，且会让已生成的 client.c 与仓库例子集体变错。实现：新增 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`），`uvrpc_client.c`(11 处) 与 `uvrpc_server.c`(6 处) 全部改走它。验证：custom 分配器下每轮往返实测 8 次跨堆释放 → 0；新增 `tests/allocator_ownership_test.c`（只在 custom 构建注册，因为 system/mimalloc 下 `uvrpc_free()` 底层就是 `free()`，看不见这个 bug）与 CI 的 `custom-allocator` job。**顺带发现**：`uv_loop_init()` 保留 `loop->data`（libuv 1.47 `deps/libuv/src/unix/loop.c:30-38`），未零初始化的 `uv_loop_t` 会让 INPROC/SAMELOOP 直接启动失败 —— 见 [[loop-data-registry-over-global-hash]]。

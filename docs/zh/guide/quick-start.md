@@ -52,8 +52,8 @@ UVRPC 有五种传输，靠地址前缀选择，API 完全一致：
 | TCP      | `tcp://host:port`    | 跨机器、可靠传输   |
 | UDP      | `udp://host:port`    | 高吞吐、可丢包     |
 | IPC      | `ipc:///path`        | 本机跨进程         |
-| INPROC   | `inproc://name`      | 进程内零拷贝       |
-| SAMELOOP | `sameloop://name`    | 同一 loop，最快    |
+| INPROC   | `inproc://name`      | 进程内零拷贝；需要注册表 |
+| SAMELOOP | `sameloop://name`    | 同一 loop，最快；需要注册表 |
 
 ### 配置
 
@@ -64,7 +64,17 @@ uvrpc_config_set_address(config, "tcp://127.0.0.1:5555");
 uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
 ```
 
-切换传输只改一行 —— 地址前缀和 `UVBUS_TRANSPORT_*` 常量而已。
+三个 socket 传输之间切换只改一行 —— 地址前缀和 `UVBUS_TRANSPORT_*` 常量而已。
+INPROC 与 SAMELOOP 是例外：它们通过一个由调用方创建、并传给每个需要互相通信的 config 的
+注册表互相找到。
+
+```c
+uvbus_loop_registry_t* reg = uvbus_loop_registry_new();
+uvrpc_config_set_loop_registry(server_config, reg);
+uvrpc_config_set_loop_registry(client_config, reg);
+/* ... server 与 client 释放之后： */
+uvbus_loop_registry_free(reg);
+```
 
 ## 完整 RPC
 
