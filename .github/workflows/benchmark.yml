@@ -38,24 +38,42 @@ jobs:
             -DUVRPC_DEBUG_LOGGING=OFF
           make -C build -j$(nproc) perf_benchmark
 
-      - name: Run perf_benchmark (all transports)
+      # One sample is not a measurement. A single 50k run on a shared runner
+      # varied by 2-3x between consecutive runs, which is larger than any cost
+      # a code change of interest would add -- so a single number cannot tell
+      # you whether a change helped. Each transport is sampled several times and
+      # the spread is reported alongside the median.
+      - name: Run perf_benchmark (all transports, N samples)
         run: |
+          SAMPLES=5
+          REQUESTS=100000
           {
             echo "## Performance benchmark (sequential ping-pong)"
             echo ""
             echo "Release build, system allocator, debug logging OFF, single thread, 8-byte payload."
+            echo "Each transport sampled $SAMPLES times with $REQUESTS requests per run; the median is the"
+            echo "comparable number and the min-max spread says how much this host can be trusted."
             echo ""
-            echo "| Transport | Round-trip latency | Throughput (1/latency) |"
-            echo "|-----------|--------------------|------------------------|"
+            echo "| Transport | Median latency | Median throughput | Best | Worst | Spread |"
+            echo "|-----------|----------------|-------------------|------|-------|--------|"
             for t in sameloop inproc ipc udp tcp; do
-              # Capture the two result lines and reformat as a table row.
-              out=$(./dist/bin/perf_benchmark 50000 "$t" 2>/dev/null)
-              lat=$(echo "$out" | grep -oE '[0-9.]+ us/req' | head -1)
-              thr=$(echo "$out" | grep -oE '[0-9,]+ req/s' | head -1)
-              # Written to the step summary and to the job log, so the numbers
-              # can be read back with `gh run view --log` instead of only being
-              # visible on the run page.
-              echo "| $t | $lat | $thr |"
+              : > /tmp/lat.$t
+              for i in $(seq 1 $SAMPLES); do
+                out=$(./dist/bin/perf_benchmark "$REQUESTS" "$t" 2>/dev/null)
+                lat=$(echo "$out" | grep -oE '[0-9.]+ us/req' | head -1 | grep -oE '[0-9.]+')
+                [ -n "$lat" ] && echo "$lat" >> /tmp/lat.$t
+              done
+              if [ ! -s /tmp/lat.$t ]; then
+                echo "| $t | (no result) | | | | |"
+                continue
+              fi
+              med=$(sort -n /tmp/lat.$t | awk '{a[NR]=$1} END {print a[int((NR+1)/2)]}')
+              lo=$(sort -n /tmp/lat.$t | head -1)
+              hi=$(sort -n /tmp/lat.$t | tail -1)
+              thr=$(awk -v l="$med" 'BEGIN {printf "%.0f", 1000000/l}')
+              spread=$(awk -v lo="$lo" -v hi="$hi" 'BEGIN {printf "%.1fx", hi/lo}')
+              echo "| $t | $med us | $thr req/s | $lo us | $hi us | $spread |"
+              echo "    samples(us): $(tr '\n' ' ' < /tmp/lat.$t)"
             done
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
