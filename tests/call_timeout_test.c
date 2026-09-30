@@ -182,7 +182,12 @@ int main(void) {
     uvrpc_server_stop(server);
     uvrpc_server_free(server);
     uvbus_loop_registry_free(registry);
-    uv_timer_stop(&timer);
+    /* Close, not just stop: a stopped handle is still open, and uv_loop_close
+     * will not release the loop's own internals while one is. */
+    uv_close((uv_handle_t*)&timer, NULL);
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 
     if (failures == 0) {

@@ -193,6 +193,12 @@ void test_config_set_get(void) {
     ASSERT_STR_EQ(config->address, TEST_TCP_ADDRESS, "Address mismatch");
     
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -245,6 +251,12 @@ void test_server_create_free(void) {
     
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -283,6 +295,12 @@ void test_client_create_free(void) {
     
     uvbus_free(client);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -309,6 +327,18 @@ void test_client_connect_no_server(void) {
     
     uvbus_free(client);
     uvbus_config_free(config);
+    /* Releasing while the attempt is in flight only drops a reference: the
+     * connect callback still has to run for the transport and the client to
+     * be reclaimed. Pump until they are, or they leak. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -337,6 +367,12 @@ void test_server_listen_stop(void) {
     
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -379,6 +415,12 @@ void test_client_send_unconnected(void) {
     
     uvbus_free(client);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -406,6 +448,12 @@ void test_server_send_inactive(void) {
     
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -433,6 +481,12 @@ void test_memory_leak(void) {
         uvbus_config_free(config);
     }
     
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -464,6 +518,12 @@ void test_get_transport_type(void) {
     uvbus_free(udp_bus);
     
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -518,6 +578,12 @@ void test_empty_address(void) {
     /* Should not crash */
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -542,6 +608,12 @@ void test_null_address(void) {
     /* Should not crash */
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -569,6 +641,12 @@ void test_server_disconnect(void) {
     
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Handles closed by uvbus_free()/uvbus_stop() are reclaimed by their
+     * close callbacks, which only run while the loop is pumped. Without
+     * this the structs they point at are still held at exit. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }

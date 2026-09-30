@@ -61,6 +61,11 @@ struct uvrpc_client {
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
     int timeout_ms;             /* Request deadline in ms; 0 = disabled */
+    /* Release count, not a free count. A connect attempt is asynchronous and
+     * its callback carries this pointer, so the struct has to outlive a
+     * uvrpc_client_free() issued while the attempt is still in flight -- which
+     * is what "connect, give up, free the client" does. */
+    int ref_count;
 
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
@@ -155,6 +160,8 @@ static void sweep_expired_pending(uvrpc_client_t* client) {
 }
 
 /* Transport connect callback */
+static void client_destroy(uvrpc_client_t* client);
+
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
 
@@ -186,7 +193,15 @@ static void client_connect_callback(int status, void* ctx) {
     if (status != 0) {
         UVRPC_LOG_ERROR("Client connection failed: %d", status);
     }
+
+    /* Drop the reference taken when the connect started. If the client was
+     * freed while the attempt was in flight this is the last one, so the
+     * teardown happens here rather than in uvrpc_client_free. */
+    if (--client->ref_count == 0) {
+        client_destroy(client);
+    }
 }
+
 /* Transport receive callback */
 static void client_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     (void)client_ctx;  /* Not used for client mode */
@@ -309,6 +324,7 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->max_concurrent = config->max_concurrent;
     client->current_concurrent = 0;
     client->timeout_ms = config->timeout_ms;
+    client->ref_count = 1;
 
     /* Initialize ring buffer with runtime size */
     client->max_pending_callbacks = config->max_pending_callbacks;
@@ -388,6 +404,12 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
     
     if (client->is_connected) return UVRPC_OK;
     
+    /* Hold the client until the connect callback has run: it carries
+     * this pointer, and uvbus_connect is asynchronous on the socket
+     * transports. Without this, connecting and then giving up frees the
+     * client out from under the pending callback. */
+    client->ref_count++;
+
     uvbus_error_t err = uvbus_connect(client->uvbus);
     if (err != UVBUS_OK) {
         return UVRPC_ERROR_TRANSPORT;
@@ -422,6 +444,12 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
         uvbus->transport->callback_ctx = client;
     }
 
+    /* Hold the client until the connect callback has run: it carries
+     * this pointer, and uvbus_connect is asynchronous on the socket
+     * transports. Without this, connecting and then giving up frees the
+     * client out from under the pending callback. */
+    client->ref_count++;
+
     uvbus_error_t err = uvbus_connect(uvbus);
     if (err != UVBUS_OK) {
         UVRPC_LOG_ERROR("uvbus_connect failed: %d", err);
@@ -445,7 +473,18 @@ void uvrpc_client_disconnect(uvrpc_client_t* client) {
 }
 
 /* Free client */
+/* Release one reference; the last one performs the teardown. */
 void uvrpc_client_free(uvrpc_client_t* client) {
+    if (!client) return;
+
+    uvrpc_client_disconnect(client);
+
+    if (--client->ref_count == 0) {
+        client_destroy(client);
+    }
+}
+
+static void client_destroy(uvrpc_client_t* client) {
     if (!client) return;
 
     uvrpc_client_disconnect(client);

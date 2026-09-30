@@ -206,11 +206,18 @@ int main(void) {
 
     check(handled == 1, "the generated stub dispatched to the user handler");
 
-    uv_timer_stop(&watchdog_timer);
+    /* Close, not just stop: a stopped handle is still open and uv_loop_close
+     * will not release the loop's internals while one is. */
+    uv_close((uv_handle_t*)&watchdog_timer, NULL);
     uvrpc_logservice_free_client(client);
     uvrpc_logservice_stop_server(server);
     uvrpc_logservice_free_server(server);
     uvbus_loop_registry_free(registry);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 
     if (failures == 0) {

@@ -123,6 +123,11 @@ static void run(const char* label, const char* address, uvbus_transport_type_t t
     }
     uvbus_free(server);
     uvbus_loop_registry_free(reg);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 }
 

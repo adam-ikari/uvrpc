@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-30T10:30:27"
+updated: "2026-09-30T11:51:33"
 ---
 
 <!-- compiled_truth -->
@@ -115,4 +115,10 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: evidence
   summary: "**已确认但未修（需设计决策）**：`on_client_connect` 从 `req->data` 取 transport，而 `connect_req.data = transport`（tcp:578、ipc:438）。**在连接还在途时释放 client/transport，之后 loop 泵到该回调就会 use-after-free**。tests/integration/test_error_handling.c 的 Test 1 正是这个场景：连不存在的服务器 → 立即 `uvrpc_client_free` → 后续 `uv_run` 崩。真实应用「连不上就放弃并释放」就是这个行为，所以是库缺陷不是测试误用。UDP 无连接回调故不受影响。修法需要给 transport 加引用计数（create 时 +1，connect 在途 +1，tcp_free 与 on_client_connect 各 -1，归零才真释放），属于传输层生命周期契约的改动，不是补一个漏"
   source: "ASan 栈：on_client_connect:402 读已释放内存（tcp_free:919 释放）（2026-09-30）"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-30T11:51:33
+  kind: decision
+  summary: "**传输与客户端改为 release 语义**（已实现并验证）： 新增公开字段 （ABI 变化，0.x 无发布时最便宜）。约定： 是**释放**不是释放内存——减一次引用，归零才真正销毁。连接在途时传输自持一份引用，由  归还，所以「连接还在途就释放传输」变成**推迟销毁**而不是让回调读已释放内存。TCP 与 IPC 同时改（两者都有同一缺陷）。 同样处理一层：它的 connect 回调带着自身指针， 在连接在途时只减引用，回调里归还。新契约一句话：**释放一个还有回调在途的对象，只是放下一份引用；必须泵 loop 回调才会真正执行**"
+  source: "tests/integration/test_error_handling.c Test 1（连 127.0.0.1:99999 后立即 free）ASan 复现；修复后 ASan+detect_leaks 全量 110/110（2026-09-30）"
   affects: [uvbus-transport-abstraction]

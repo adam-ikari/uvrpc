@@ -380,6 +380,11 @@ static void on_client_connect(uv_connect_t* req, int status) {
         return;
     }
 
+    /* Drop the reference tcp_connect took. If the application released the
+     * transport while the attempt was in flight, this is the last one and the
+     * struct is reclaimed here rather than in tcp_free. */
+    int last_ref = (ref_dec(&transport->ref_count) == 0);
+
     if (status == 0) {
         transport->is_connected = 1;
 
@@ -402,6 +407,10 @@ static void on_client_connect(uv_connect_t* req, int status) {
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }
+    }
+
+    if (last_ref) {
+        uvrpc_free(transport);
     }
 }
 
@@ -577,6 +586,12 @@ static int tcp_connect(void* impl_ptr, const char* address) {
     transport->impl.tcp_client = (void*)client;
     client->connect_req.data = transport;
     
+    /* Hold the transport for as long as the request can still fire. The
+     * callback reads req->data, so releasing it before the attempt completes
+     * leaves the callback dereferencing freed memory -- which is exactly what
+     * "connect, give up, free the client" does. */
+    ref_inc(&transport->ref_count);
+
     uv_tcp_connect(&client->connect_req, &client->tcp_handle, 
                    (const struct sockaddr*)&addr, on_client_connect);
     
@@ -908,15 +923,23 @@ static void tcp_free(void* impl_ptr) {
     if (!transport) {
         return;
     }
-    
+
     tcp_disconnect(transport);
-    
+
     if (transport->address) {
         uvrpc_free(transport->address);
         transport->address = NULL;
     }
-    
-    uvrpc_free(transport);
+
+    /* Disconnecting closes the handles; the client and server structs they
+     * point at are reclaimed by their own close callbacks, not here.
+     * Drop the owner's reference; the struct goes when the last one does. A
+     * connect still in flight holds a reference of its own, released by
+     * on_client_connect, so freeing during a connect attempt defers the
+     * destruction instead of pulling it out from under the callback. */
+    if (ref_dec(&transport->ref_count) == 0) {
+        uvrpc_free(transport);
+    }
 }
 
 /* Export function to create TCP transport */
@@ -927,6 +950,7 @@ uvbus_transport_t* create_tcp_transport(uvbus_transport_type_t type, uv_loop_t* 
     }
     
     memset(transport, 0, sizeof(uvbus_transport_t));
+    transport->ref_count = 1;
     transport->type = type;
     transport->loop = loop;
     transport->vtable = &tcp_vtable;

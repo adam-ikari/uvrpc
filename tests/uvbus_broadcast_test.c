@@ -104,6 +104,11 @@ void test_broadcast_inactive_server(void) {
 
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }
@@ -227,6 +232,11 @@ cleanup:
     uvbus_free(server);
     uvbus_config_free(server_config);
     uvbus_loop_registry_free(registry);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 }
 
@@ -315,6 +325,11 @@ void test_broadcast_no_clients(void) {
 
     uvbus_free(server);
     uvbus_config_free(config);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
     TEST_PASS();
 }

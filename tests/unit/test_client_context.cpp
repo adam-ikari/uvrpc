@@ -38,6 +38,7 @@ TEST_F(UVRPCClientContextTest, SetContext) {
     
     EXPECT_EQ(retrieved, ctx);
     EXPECT_EQ(uvrpc_context_get_data(retrieved), data);
+    uvrpc_context_free(ctx);
     
     free(data);
 }
@@ -59,7 +60,10 @@ TEST_F(UVRPCClientContextTest, SetContextWithCleanup) {
     uvrpc_context_t* ctx = uvrpc_context_new_with_cleanup(data, cleanup, &cleanup_called);
     uvrpc_client_set_context(client, ctx);
     
-    // Client will free the context when it's freed
+    /* The caller owns the context -- uvrpc_client_free() does not release it
+     * -- so the cleanup callback runs here, not at client teardown. */
+    uvrpc_context_free(ctx);
+    EXPECT_TRUE(cleanup_called);
 }
 
 TEST_F(UVRPCClientContextTest, GetContextWhenNotSet) {
@@ -92,4 +96,5 @@ TEST_F(UVRPCClientContextTest, ReplaceContext) {
     free(data1);
     free(data2);
     uvrpc_context_free(ctx1);
+    uvrpc_context_free(ctx2);
 }

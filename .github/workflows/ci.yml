@@ -102,12 +102,16 @@ jobs:
                 -DCMAKE_CXX_FLAGS="-fsanitize=address -g" \
                 -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address -Wl,-rpath,$(pwd)/deps/gtest/build/lib"
           make -C build -j$(nproc)
-      - name: Run transport lifetime test under ASan
-        run: |
-          ./dist/bin/test_transport_lifetime
-      - name: Run unit tests under ASan
+      # Every test binary, not just two of them. The TCP use-after-free and
+      # four leaks this job now catches were all invisible while it ran only
+      # test_transport_lifetime and the unit tests; the other 15 binaries had
+      # never seen a sanitizer. Leaks are part of the signal -- the 256 KB
+      # per-connection struct that leaked on every server teardown only shows
+      # up with detect_leaks=1.
+      - name: Run all tests under ASan
         run: |
           ASAN_OPTIONS=detect_leaks=1 ./dist/bin/uvrpc_tests --gtest_brief=1
+          ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build --output-on-failure
 
   performance:
     name: Performance benchmark

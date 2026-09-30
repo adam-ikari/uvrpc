@@ -177,6 +177,17 @@ struct uvbus_transport {
     int is_server;
     int is_connected;
 
+    /* Reference count, owned and manipulated by each transport.
+     *
+     * vtable->free() is a *release*, not a free: it drops this reference and
+     * the transport is destroyed only when it reaches zero. A transport takes
+     * an extra reference for every libuv callback that can still run against
+     * it after release -- the connect callback on the socket transports, for
+     * instance -- so releasing a transport whose connect is still in flight
+     * defers the destruction instead of freeing memory the pending callback
+     * would read. */
+    int ref_count;
+
     /* Virtual function table */
     const uvbus_transport_vtable_t* vtable;
 

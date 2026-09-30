@@ -111,6 +111,11 @@ int main(void) {
     uvbus_config_free(client_config);
     uvbus_config_free(server_config);
 
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 
     printf("Test complete\n");

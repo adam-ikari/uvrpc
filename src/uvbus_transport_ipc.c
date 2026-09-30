@@ -12,6 +12,10 @@
 /* UVBUS_LOG / UVBUS_LOG_DEBUG / UVBUS_LOG_ERROR are provided by uvbus.h */
 
 /* Refcount helper for broadcast buffer (single-threaded event loop) */
+static int ref_inc(int* ref_count) {
+    return ++(*ref_count);
+}
+
 static int ref_dec(int* ref_count) {
     return --(*ref_count);
 }
@@ -217,6 +221,10 @@ static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t
 static void on_client_connect(uv_connect_t* req, int status) {
     uvbus_transport_t* transport = (uvbus_transport_t*)req->data;
 
+    /* Drop the reference ipc_connect took. If the application released the
+     * transport while the attempt was in flight, this is the last one. */
+    int last_ref = (ref_dec(&transport->ref_count) == 0);
+
     UVBUS_LOG("IPC client connect callback: status=%d, callback_ctx=%p",
               status, (void*)transport->callback_ctx);
     fflush(stderr);
@@ -244,6 +252,10 @@ static void on_client_connect(uv_connect_t* req, int status) {
         if (transport->connect_cb) {
             transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
         }
+    }
+
+    if (last_ref) {
+        uvrpc_free(transport);
     }
 }
 
@@ -438,6 +450,11 @@ static int ipc_connect(void* impl_ptr, const char* address) {
     client->connect_req.data = transport;
 
     UVBUS_LOG("IPC client connecting to %s", socket_path);
+
+    /* Hold the transport for as long as the request can still fire: the
+     * callback reads req->data, so releasing it before the attempt completes
+     * leaves the callback dereferencing freed memory. */
+    ref_inc(&transport->ref_count);
 
     uv_pipe_connect(&client->connect_req, &client->pipe_handle,
                     socket_path, on_client_connect);
@@ -735,7 +752,12 @@ static void ipc_free(void* impl_ptr) {
         uvrpc_free(transport->address);
     }
     
-    uvrpc_free(transport);
+    /* Drop the owner's reference; the struct goes when the last one does. A
+     * connect still in flight holds a reference of its own, released by
+     * on_client_connect. */
+    if (ref_dec(&transport->ref_count) == 0) {
+        uvrpc_free(transport);
+    }
 }
 
 /* Export function to create IPC transport */
@@ -746,6 +768,7 @@ uvbus_transport_t* create_ipc_transport(uvbus_transport_type_t type, uv_loop_t* 
     }
     
     memset(transport, 0, sizeof(uvbus_transport_t));
+    transport->ref_count = 1;
     transport->type = type;
     transport->loop = loop;
     transport->vtable = &ipc_vtable;

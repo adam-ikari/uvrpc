@@ -190,6 +190,11 @@ int main(void) {
     uvrpc_config_free(server_config);
     uvbus_loop_registry_free(registry);
     uv_run(&loop, UV_RUN_NOWAIT);
+    /* Reclaiming the transport and its per-connection structs is deferred to
+     * uv_close callbacks, which only run while the loop is pumped. */
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 
     CHECK(g_foreign_frees == 0, "%d foreign free(s) into the pool",
