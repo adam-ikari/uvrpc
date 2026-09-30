@@ -119,6 +119,6 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
 
 - time: 2026-09-30T11:51:33
   kind: decision
-  summary: "**传输与客户端改为 release 语义**（已实现并验证）： 新增公开字段 （ABI 变化，0.x 无发布时最便宜）。约定： 是**释放**不是释放内存——减一次引用，归零才真正销毁。连接在途时传输自持一份引用，由  归还，所以「连接还在途就释放传输」变成**推迟销毁**而不是让回调读已释放内存。TCP 与 IPC 同时改（两者都有同一缺陷）。 同样处理一层：它的 connect 回调带着自身指针， 在连接在途时只减引用，回调里归还。新契约一句话：**释放一个还有回调在途的对象，只是放下一份引用；必须泵 loop 回调才会真正执行**"
+  summary: "**传输与客户端改为 release 语义**（已实现并验证）：`struct uvbus_transport` 新增公开字段 `ref_count`（ABI 变化，0.x 无发布时最便宜）。约定：`vtable->free()` 是**释放**不是释放内存 —— 减一次引用，归零才真正销毁。连接在途时传输自持一份引用，由 `on_client_connect` 归还，所以「连接还在途就释放传输」变成**推迟销毁**而不是让回调读已释放内存。TCP 与 IPC 同时改（两者同一缺陷）。`struct uvrpc_client` 同样处理一层：它的 connect 回调带着自身指针。新契约一句话：**释放一个还有回调在途的对象，只是放下一份引用；必须泵 loop 回调才会真正执行**"
   source: "tests/integration/test_error_handling.c Test 1（连 127.0.0.1:99999 后立即 free）ASan 复现；修复后 ASan+detect_leaks 全量 110/110（2026-09-30）"
   affects: [uvbus-transport-abstraction]
