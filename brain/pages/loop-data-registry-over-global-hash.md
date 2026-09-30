@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-30T03:15:29"
+updated: "2026-09-30T09:51:11"
 ---
 
 <!-- compiled_truth -->
@@ -119,4 +119,10 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: note
   summary: "注册表改为调用方传入后，全站文档已同步：quick-start（中英）与 api/index 补上注册表用法与'切换传输不再只改一行'的例外说明；guide/index（中英）加注；首页传输表标注'需要注册表'；development/migration.md 新增该破坏性变更的迁移小节（含旧/新代码对照）；examples/INPROC_README 修掉 125K/87K/92K ops/s 这批与 CI 基线矛盾的旧数字（换成 run 36658530099 实测的往返延迟）并修掉指向不存在的 docs/API_GUIDE.md 的死链接。路线图第 5 项随之关闭"
   source: "grep 全库复查：无残留把 loop->data 当挂载点的表述（除 design-philosophy 里解释为何不用的那段）(2026-09-30)"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-09-30T09:51:11
+  kind: evidence
+  summary: "[已移至 uvbus-transport-abstraction 页：TCP handle->data 类型混淆] 缺陷（已修，src/uvbus_transport_tcp.c:629）：**TCP 传输的 handle->data 被两种类型读** —— on_server_connection:251 当 uvbus_transport_t* 读（正在监听），on_server_close:357 当 uvbus_tcp_server_t* 读（关闭后）。一个指针满足不了两处。后果：tcp_free 先释放 transport，随后的关闭回调把已释放内存当 server 用 —— heap-use-after-free。修法照抄 UDP（452/461/583 本来就是关闭前把 data 改指 server）。关键教训：**UDP 做对了、TCP 做错了，而差异只能靠读源码发现，没有测试能抓到** —— 这正是跨度不变性要覆盖的东西。IPC 同样的写法（listen_pipe.data = transport）目前无害，因为 uv_close 一律传 NULL 回调"
+  source: "ASan + custom 分配器下 span_invariance 段错误；gdb/ASan 栈定位（2026-09-30）"
   affects: [loop-data-registry-over-global-hash]

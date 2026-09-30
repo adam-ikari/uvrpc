@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-29T10:13:21"
+updated: "2026-09-30T09:54:08"
 ---
 
 <!-- compiled_truth -->
@@ -91,4 +91,16 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: evidence
   summary: "SAMELOOP 响应丢失的根因不是注册表，是两个内存传输对 uvbus_send() 的语义不一致：INPROC 的 send 处理两个方向（服务端即发给所有客户端），SAMELOOP 只实现客户端→服务端，服务端调用时 impl.sameloop_client 为 NULL 直接段错误。两个示例又各自叠加了自己的 bug（从注册为 NULL 的 ctx 里取 bus 句柄；消息格式与 data[0] 解析对不上）。已让 sameloop_send 对服务端走与 broadcast 相同的路径，并把两个公共实现合并成一个函数"
   source: "tests/inproc_send_direction_test.c 在两种传输上覆盖双向；移除修复后该测试失败、恢复后通过 (2026-09-29)"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-30T09:54:08
+  kind: evidence
+  summary: "缺陷（已修，src/uvbus_transport_tcp.c:629）：**TCP 的 handle->data 被两种类型读** —— on_server_connection:251 当 uvbus_transport_t* 读（正在监听时），on_server_close:357 当 uvbus_tcp_server_t* 读（关闭后）。一个指针满足不了两处，于是 tcp_free 先释放 transport，随后的关闭回调把已释放内存当 server 用 —— heap-use-after-free。修法照抄 UDP（452/461/583 本来就在关闭前把 data 改指 server）。关键教训：**UDP 做对了、TCP 做错了，而这个差异没有任何测试能抓到，只能靠读源码发现** —— 这正是跨度不变性要覆盖的东西。IPC 同样写法（listen_pipe.data = transport）目前无害，因为 uv_close 一律传 NULL 回调"
+  source: "ASan + custom 分配器下 span_invariance 段错误；ASan 栈定位到 ref_dec / on_server_close（2026-09-30）"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-30T09:54:08
+  kind: evidence
+  summary: "**CI 的 ASan job 只跑 2 个测试**（test_transport_lifetime + gtest 单元测试），17 个集成测试全部不在 ASan 下运行。后果：上面那个 TCP use-after-free 对 CI 完全不可见；另有一个**既有泄漏**（ASan 下 test_tcp 退出时泄漏 263,794 字节 = tcp server 结构 + 一个 client 结构 + host 串，同样也无人看见）。默认分配器下 UAF 不崩只是堆布局的运气，换 custom 分配器立刻段错误"
+  source: ".github/workflows/ci.yml:107-112；ASan 下直接运行 test_tcp 复现泄漏（2026-09-30）"
   affects: [uvbus-transport-abstraction]

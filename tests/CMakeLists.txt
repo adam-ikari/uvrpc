@@ -221,6 +221,31 @@ target_include_directories(call_timeout_test
 add_test(NAME call_timeout COMMAND call_timeout_test)
 set_tests_properties(call_timeout PROPERTIES TIMEOUT 30)
 
+# Acceptance scenarios. Each file is one scenario so it can be run, read and
+# debugged on its own, and each asserts something an application would notice
+# breaking -- not just that a call returned 0.
+add_executable(span_invariance
+    acceptance/span_invariance.c
+)
+
+target_link_libraries(span_invariance
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(span_invariance
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME span_invariance COMMAND span_invariance)
+set_tests_properties(span_invariance PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 30)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

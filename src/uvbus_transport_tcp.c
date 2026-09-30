@@ -620,6 +620,13 @@ static void tcp_disconnect(void* impl_ptr) {
         
         /* Close listen handle */
         ref_dec(&server->ref_count);
+        /* The listen handle's data is the transport while listening --
+         * on_server_connection needs it -- but on_server_close expects the
+         * server, and by the time that callback runs tcp_free has already
+         * released the transport. Re-point it before closing, exactly as the
+         * UDP transport does, so each of the two callbacks sees the type it
+         * expects. */
+        server->listen_handle.data = server;
         if (!uv_is_closing((uv_handle_t*)&server->listen_handle)) {
             uv_close((uv_handle_t*)&server->listen_handle, on_server_close);
         }
