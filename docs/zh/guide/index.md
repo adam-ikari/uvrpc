@@ -26,7 +26,7 @@ uvrpc_client_connect(client);
 uvrpc_client_call(client, "echo", data, size, on_response, NULL);
 ```
 
-传输层通过地址前缀选择 —— `tcp://`、`udp://`、`ipc://`、`inproc://`、`sameloop://` —— 全部传输使用相同 API。其中两个进程内传输需要多调一次 config 接口：一个由调用方自己持有的注册表，见 [快速开始](/guide/quick-start/)。
+传输层通过地址前缀选择 —— `tcp://`、`udp://`、`ipc://`、`inproc://`、`sameloop://` —— 全部传输使用相同 API。其中两个进程内传输需要多调一次 config 接口：一个由调用方自己持有的注册表，见 [快速开始](/zh/guide/quick-start)。
 
 ## UVRPC 是什么（不是什么）
 
