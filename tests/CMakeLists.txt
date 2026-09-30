@@ -261,7 +261,32 @@ target_include_directories(protocol_robustness
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
 )
 
+# Backpressure: the three limits fail fast, name themselves, consume nothing,
+# and give the resource back once the in-flight work drains. Needs TCP -- on
+# loopback the response completes inline, so no limit is ever reached.
+add_executable(backpressure
+    acceptance/backpressure.c
+)
+
+target_link_libraries(backpressure
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(backpressure
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
 add_test(NAME protocol_robustness COMMAND protocol_robustness)
+add_test(NAME backpressure COMMAND backpressure)
+set_tests_properties(backpressure PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 90)
+
 set_tests_properties(protocol_robustness PROPERTIES
     LABELS "acceptance"
     TIMEOUT 60)
