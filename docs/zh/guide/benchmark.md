@@ -111,16 +111,25 @@ Release 构建、`-O2`、system 分配器、单线程、8 字节 payload，每�
 由 `Benchmark` 工作流在 GitHub Actions `ubuntu-latest` runner 上实测
 （run `36527761470`，commit `9c9aa24`）：
 
-| 传输 | 往返延迟 | 吞吐（1/延迟） | 适用场景 |
-|---|---|---|---|
-| SAMELOOP | 16.42 µs | ~61,000 req/s | 同 loop 内调用，vtable 短路 |
-| INPROC | 16.25 µs | ~62,000 req/s | 进程内零拷贝 |
-| IPC | 24.55 µs | ~41,000 req/s | 本机跨进程（Unix socket） |
-| UDP | 30.91 µs | ~32,000 req/s | 可容忍丢包；仅本机 loopback，见下 |
-| TCP | 30.59 µs | ~33,000 req/s | 可靠网络 RPC |
+### 这里为什么没有绝对数字表
 
-重跑该工作流即可复现。绝对值随主机而变，框架真正保证的是**比值**（进程内 ≫ 本机 socket ≫ 网络）。
-上表是**那一类 runner** 的回归基线，不是容量承诺；要用于容量评估请先在目标硬件上自测。
+本页早前有一张往返延迟表，标题里还带 run 号，读起来像规格说明。它不是。两台镜像
+相同的 GitHub Actions runner 跑同一份代码，SAMELOOP 分别报出 35.84 µs 和 16.42 µs，
+**差 2.2 倍**。那些表本身也是错的：把 SAMELOOP 列为最快，而实测它与 INPROC 持平；
+把 TCP 与 UDP 拉开 0.02 µs，而两者不可区分。
+
+脱离机器的延迟数字不是这个库的属性，所以不发布。跨主机稳定的是排序：
+
+| 传输 | 相对速度 | 适用场景 |
+|---|---|---|
+| SAMELOOP、INPROC | 最快 | 进程内，无系统调用 |
+| IPC | 约慢 1.5 倍 | 本机跨进程（Unix socket） |
+| TCP、UDP | 最慢 | 网络 |
+
+需要可用的数字就触发 `Benchmark` 工作流：它对每种传输采样 5 次，报告中位数与
+max/min 离散度，并记录测量主机的 CPU、核数、内存、内核、负载均值和调频策略 —— 写在
+run summary 和 job log 里。没有硬件信息的数字应视为未经验证。要做容量规划，请在目标
+硬件上实测。
 
 **UDP 这一行只是本机 loopback 的数字。** benchmark 是单请求在途的顺序 ping-pong，而库不重传：
 丢掉一个数据报，响应就永远不会到，stall 检测器触发，运行以 `measure stalled` 终止 —— 它不会

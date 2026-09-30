@@ -196,12 +196,17 @@ Sequential ping-pong, 8-byte payload, Release build, single thread, measured
 by the `Benchmark` workflow on a GitHub Actions runner. Absolute numbers are
 host-dependent — see [Benchmark](/guide/benchmark) for the full table.
 
-| Transport | Round-trip latency | Throughput (1/latency) |
-|-----------|-------------------|------------------------|
-| SAMELOOP / INPROC | ~16 µs | ~61,000 req/s |
-| IPC       | ~10.8 µs | ~93,000 req/s |
-| UDP       | ~20.1 µs | ~50,000 req/s (loopback only) |
-| TCP       | ~20.1 µs | ~50,000 req/s |
+| Transport | Relative speed |
+|-----------|----------------|
+| SAMELOOP / INPROC | fastest |
+| IPC       | ~1.5x slower |
+| UDP       | slowest (loopback only) |
+| TCP       | slowest |
+
+No absolute figures: two GitHub Actions runners of the same image differed by
+2.2x on identical code, so a number quoted without its host is not a property of
+the library. The `Benchmark` workflow publishes the median of five 100k-request
+runs together with the hardware it measured on.
 
 ::: warning
 "Throughput" above is the reciprocal of sequential round-trip latency (one

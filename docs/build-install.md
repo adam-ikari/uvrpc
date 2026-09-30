@@ -232,14 +232,16 @@ cmake --build build --target perf_benchmark
 顺序 ping-pong，8 字节负载，Release 构建，单线程，由 `Benchmark` 工作流在 GitHub
 Actions runner 上实测（绝对值随主机而变，完整表见 [Benchmark 指南](/guide/benchmark)）：
 
-| 传输层 | 往返延迟 | 顺序吞吐量 (1/延迟) | 适用场景 |
-|--------|----------|---------------------|----------|
-| SAMELOOP / INPROC | ~16 µs | ~61,000 req/s | 进程内零拷贝 |
-| IPC | ~10.8 µs | ~93,000 req/s | 本地进程间（Unix 套接字）|
-| UDP | ~20.1 µs | ~50,000 req/s | 可丢包（仅本机 loopback）|
-| TCP | ~20.1 µs | ~50,000 req/s | 可靠网络 RPC |
+| 传输层 | 相对速度 | 适用场景 |
+|--------|----------|----------|
+| SAMELOOP / INPROC | 最快 | 进程内零拷贝 |
+| IPC | 约慢 1.5 倍 | 本地进程间（Unix 套接字）|
+| UDP | 最慢 | 可丢包（仅本机 loopback）|
+| TCP | 最慢 | 可靠网络 RPC |
 
-> "吞吐量"为顺序往返延迟的倒数（单请求在途），非流水线吞吐。实际性能取决于硬件。
+> 这里只给相对排序，不给绝对数字：两台镜像相同的 GitHub Actions runner 在同一份
+> 代码上就差出 2.2 倍，写死任何数字都是假数据。`Benchmark` 工作流会连同 CPU、内存、
+> 内核和负载一起记录测量主机，并给出 5 次 10 万请求的中位数。
 
 详见 [Benchmark 指南](/guide/benchmark)。
 

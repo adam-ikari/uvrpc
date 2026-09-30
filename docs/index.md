@@ -7,7 +7,7 @@ titleTemplate: false
 hero:
   name: UVRPC
   text: Ultra-Fast C99 RPC Framework
-  tagline: Zero threads. Zero locks. Zero mutable globals. ~61,000 req/s in-process.
+  tagline: Zero threads. Zero locks. Zero mutable globals. In-process round-trips in tens of microseconds.
   actions:
     - theme: brand
       text: Quick Start
@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 🚀 Ultra-Fast
-    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~61,000 req/s at ~16 µs round-trip latency on a CI runner.
+    details: Built on the libuv event loop and FlatBuffers. In-process transports complete a sequential round trip in tens of microseconds; the Benchmark workflow publishes measured numbers together with the hardware they were taken on.
     link: /guide/benchmark
   - title: 🎯 Minimal by Design
     details: Zero threads, zero locks, zero file-scope globals in library code. All I/O is driven by a single libuv event loop — lock-free by construction.
@@ -131,11 +131,18 @@ on a GitHub Actions runner. Absolute numbers vary widely by host — see
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | 16.42 µs | ~61,000 req/s | Same-loop, vtable bypass |
-| INPROC    | 16.25 µs | ~62,000 req/s | In-process zero-copy |
-| IPC       | 24.55 µs | ~41,000 req/s | Local inter-process (Unix socket) |
-| UDP       | 30.91 µs | ~32,000 req/s | Loss-tolerant; loopback-only figure |
-| TCP       | 30.59 µs | ~33,000 req/s | Reliable network RPC |
+| SAMELOOP  | fastest | Same-loop, vtable bypass |
+| INPROC    | fastest | In-process zero-copy |
+| IPC       | ~1.5x slower | Local inter-process (Unix socket) |
+| UDP       | slowest | Loss-tolerant; loopback only |
+| TCP       | slowest | Reliable network RPC |
+
+> Latency figures depend on the machine as much as on the library: two
+> GitHub Actions runners of the same image differed by 2.2x on identical code.
+> So no fixed number is published here. The Benchmark workflow records the CPU,
+> memory, kernel and load of the host it measures on alongside the median of
+> five 100k-request runs -- read a number together with its host, or treat it as
+> unverified. Reproduce with `./dist/bin/perf_benchmark [requests] [transport]`.
 
 ::: warning Throughput definition
 "Throughput" above is the reciprocal of sequential round-trip latency (one

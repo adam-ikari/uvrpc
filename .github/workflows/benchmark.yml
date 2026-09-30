@@ -48,9 +48,29 @@ jobs:
           SAMPLES=5
           REQUESTS=100000
           {
+            # A latency figure is meaningless without the machine it came from:
+            # two runners of the same image differed by 2.2x on identical code.
+            # So every run records the host it measured on, in the summary and in
+            # the job log, and a number quoted without it should be treated as
+            # unverified.
             echo "## Performance benchmark (sequential ping-pong)"
             echo ""
             echo "Release build, system allocator, debug logging OFF, single thread, 8-byte payload."
+            echo ""
+            echo "### Measured on"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Host | $(uname -n) |"
+            echo "| Kernel | $(uname -sr) |"
+            echo "| CPU | $(awk -F': ' '/model name/{print $2; exit}' /proc/cpuinfo) |"
+            echo "| Cores online | $(nproc) |"
+            echo "| RAM | $(awk '/MemTotal/{printf "%.1f GiB", $2/1048576}' /proc/meminfo) |"
+            echo "| Load at start | $(awk '{print $1}' /proc/loadavg) |"
+            echo "| Governor | $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo n/a) |"
+            echo ""
+            echo "### Results"
+            echo ""
             echo "Each transport sampled $SAMPLES times with $REQUESTS requests per run; the median is the"
             echo "comparable number and the min-max spread says how much this host can be trusted."
             echo ""

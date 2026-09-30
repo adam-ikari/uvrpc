@@ -45,7 +45,7 @@ with the default allocator. For the system allocator instead of mimalloc, use
 ## ✨ Features
 
 - **Zero Threads, Zero Locks, Zero Mutable Globals** - All I/O managed by libuv event loop; no file-scope mutable globals in system/mimalloc builds (custom allocator builds have exactly one, and INPROC/SAMELOOP share an endpoint registry you create and pass in, so the framework never touches your event loop)
-- **High Performance** - ~61,000 req/s sequential round-trip on SAMELOOP/INPROC (~16 µs latency, measured on a CI runner)
+- **High Performance** - sequential round-trips in the tens of microseconds on in-process transports; see the Benchmark workflow for measured numbers on named hardware
 - **Multi-Transport Support** - TCP, UDP, IPC, INPROC, SAMELOOP
 - **Multiple RPC Modes** - Normal (request-response), Oneway (fire-and-forget), Stream (multiple responses)
 - **Zero-Copy** - FlatBuffers binary serialization; pointer-passing for in-process transports
@@ -60,13 +60,24 @@ Sequential ping-pong (one request in flight), 8-byte payload, Release build, sin
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use Case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | 16.42 µs | ~61,000 req/s | Same-loop, vtable bypass |
-| INPROC    | 16.25 µs | ~62,000 req/s | In-process zero-copy |
-| IPC       | 24.55 µs | ~41,000 req/s | Local inter-process (Unix socket) |
-| UDP       | 30.91 µs | ~32,000 req/s | Loss-tolerant; loopback-only figure |
-| TCP       | 30.59 µs | ~33,000 req/s | Reliable network RPC |
+| SAMELOOP  | fastest | Same-loop, vtable bypass |
+| INPROC    | fastest | In-process zero-copy |
+| IPC       | ~1.5x slower | Local inter-process (Unix socket) |
+| UDP       | slowest | Loss-tolerant; loopback only |
+| TCP       | slowest | Reliable network RPC |
 
-> Note: "throughput" above is the reciprocal of sequential round-trip latency (one request in flight), not pipelined throughput. Figures are the median of five 100k-request runs on a GitHub Actions `ubuntu-latest` runner (Release, system allocator, logging off); within one run they repeat to within 1%, but different runners differ by up to ~2x, so compare medians rather than single runs. Run `./dist/bin/perf_benchmark [requests] [transport]`, or the Benchmark workflow, to reproduce. UDP is loopback only — the figures say nothing about packet loss on a real network.
+The ordering is stable across hosts; the absolute numbers are not.
+
+> Latency figures depend on the machine as much as on the library: two
+> GitHub Actions runners of the same image differed by 2.2x on identical code.
+> So no fixed number is published here. The Benchmark workflow records the CPU,
+> memory, kernel and load of the host it measures on alongside the median of
+> five 100k-request runs -- read a number together with its host, or treat it as
+> unverified. Reproduce with `./dist/bin/perf_benchmark [requests] [transport]`.
+>
+> "Throughput" here means the reciprocal of sequential round-trip latency (one
+> request in flight), not pipelined throughput. UDP is loopback only and says
+> nothing about packet loss on a real network.
 
 See [benchmark/](benchmark/) for the benchmark source and methodology.
 

@@ -129,18 +129,31 @@ Release build, `-O2`, system allocator, single thread, 8-byte payload, 50,000
 round trips per transport, measured by the `Benchmark` workflow on a GitHub
 Actions `ubuntu-latest` runner (run `36527761470`, commit `9c9aa24`):
 
-| Transport | Round-trip latency | Throughput (1/latency) | Use case |
-|---|---|---|---|
-| SAMELOOP | 16.42 µs | ~61,000 req/s | same-loop, vtable bypass |
-| INPROC | 16.25 µs | ~62,000 req/s | in-process zero-copy |
-| IPC | 24.55 µs | ~41,000 req/s | local inter-process (Unix socket) |
-| UDP | 30.91 µs | ~32,000 req/s | loss-tolerant; loopback only, see below |
-| TCP | 30.59 µs | ~33,000 req/s | reliable network RPC |
+### Why there is no table of absolute numbers here
 
-Re-run the workflow to reproduce. Absolute numbers are host-dependent; the
-*ratios* (in-process ≫ local socket ≫ network) are what the design actually
-guarantees. Treat the table as a regression baseline recorded on one runner
-class, not a capacity promise.
+An earlier version of this page carried a table of round-trip latencies with a
+run ID in the caption, which read like a specification. It was not one. Two
+GitHub Actions runners from the same image, running identical code, reported
+35.84 µs and 16.42 µs for SAMELOOP — a 2.2x difference. Those tables were also
+wrong on their own terms: they put SAMELOOP first as the fastest transport when
+it measures level with INPROC, and separated TCP from UDP by 0.02 µs when the
+two are indistinguishable.
+
+A latency figure without the machine it came from is not a property of this
+library, so none is published. What is stable across hosts is the ordering:
+
+| Transport | Relative speed | Use case |
+|---|---|---|
+| SAMELOOP, INPROC | fastest | in-process, no syscall |
+| IPC | ~1.5x slower | local inter-process (Unix socket) |
+| TCP, UDP | slowest | network |
+
+To get numbers you can use, trigger the `Benchmark` workflow. It samples each
+transport five times, reports the median with the min-max spread, and records
+the CPU, core count, memory, kernel, load average and frequency governor of
+the host it measured on — in the run summary and in the job log. A number
+quoted without that host should be treated as unverified. For capacity planning,
+measure on the hardware you intend to deploy on.
 
 **The UDP row is a loopback figure and nothing more.** The benchmark is
 sequential ping-pong with exactly one request in flight, and the library does
