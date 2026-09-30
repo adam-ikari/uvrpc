@@ -5,7 +5,7 @@ const SITE = 'https://adam-ikari.github.io/uvrpc'
 export default defineConfig({
   title: 'UVRPC',
   titleTemplate: ':title · UVRPC',
-  description: 'Ultra-fast C99 RPC framework built on libuv + FlatBuffers. Zero threads, zero locks, zero mutable globals. ~205k req/s in-process.',
+  description: 'Ultra-fast C99 RPC framework built on libuv + FlatBuffers. Zero threads, zero locks, zero mutable globals. In-process round-trips in tens of microseconds.',
 
   lang: 'en-US',
   base: '/uvrpc/',
@@ -16,11 +16,11 @@ export default defineConfig({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'UVRPC' }],
     ['meta', { property: 'og:title', content: 'UVRPC — Ultra-Fast C99 RPC Framework' }],
-    ['meta', { property: 'og:description', content: 'Zero threads, zero locks, zero mutable globals. ~205k req/s in-process. TCP/UDP/IPC/INPROC/SAMELOOP.' }],
+    ['meta', { property: 'og:description', content: 'Zero threads, zero locks, zero mutable globals. In-process round-trips in tens of microseconds. TCP/UDP/IPC/INPROC/SAMELOOP.' }],
     ['meta', { property: 'og:url', content: SITE }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: 'UVRPC — Ultra-Fast C99 RPC Framework' }],
-    ['meta', { name: 'twitter:description', content: 'Zero threads, zero locks, zero mutable globals. ~205k req/s in-process. Built on libuv + FlatBuffers.' }],
+    ['meta', { name: 'twitter:description', content: 'Zero threads, zero locks, zero mutable globals. In-process round-trips in tens of microseconds. Built on libuv + FlatBuffers.' }],
     ['link', { rel: 'canonical', href: SITE + '/' }],
     ['meta', { name: 'theme-color', content: '#3aa675' }]
   ],
@@ -97,12 +97,12 @@ export default defineConfig({
       label: '简体中文',
       lang: 'zh-CN',
       link: '/zh/',
-      description: '超快速 C99 RPC 框架，基于 libuv + FlatBuffers。零线程、零锁、零可变全局。进程内约 1,000,000 req/s。',
+      description: '超快速 C99 RPC 框架，基于 libuv + FlatBuffers。零线程、零锁、零可变全局。进程内往返在数十微秒量级。',
       head: [
         ['meta', { property: 'og:title', content: 'UVRPC — 超快速 C99 RPC 框架' }],
-        ['meta', { property: 'og:description', content: '零线程、零锁、零可变全局。进程内约 1,000,000 req/s。TCP/UDP/IPC/INPROC/SAMELOOP。' }],
+        ['meta', { property: 'og:description', content: '零线程、零锁、零可变全局。进程内往返在数十微秒量级。TCP/UDP/IPC/INPROC/SAMELOOP。' }],
         ['meta', { name: 'twitter:title', content: 'UVRPC — 超快速 C99 RPC 框架' }],
-        ['meta', { name: 'twitter:description', content: '零线程、零锁、零可变全局。进程内约 1,000,000 req/s。基于 libuv + FlatBuffers。' }]
+        ['meta', { name: 'twitter:description', content: '零线程、零锁、零可变全局。进程内往返在数十微秒量级。基于 libuv + FlatBuffers。' }]
       ],
       themeConfig: {
         nav: [
