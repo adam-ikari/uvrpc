@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-29T08:24:02"
+updated: "2026-09-30T14:19:22"
 ---
 
 <!-- compiled_truth -->
@@ -111,4 +111,10 @@ CI 的 `Benchmark` 工作流就是这串命令，每种传输跑一次并把结�
   kind: decision
   summary: "UDP 语义定了：不加重传机制（那会污染被测的往返延迟），改为如实标注。perf_benchmark 在跑 udp 前往 stderr 打印一段说明——丢包表现为运行中止（measure stalled）而非吞吐下降，所以跑完的 UDP 运行只说明链路没丢包；参考表 7 处的 UDP 行统一标注仅本机"
   source: "实测：stderr 提示出现、CI 的 grep 解析不受影响 (2026-09-29)"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-09-30T14:19:22
+  kind: reversal
+  summary: "**参考表数字全部按 CI 实测重写**（2026-09-30）。此前文档声称 SAMELOOP 1.00 µs / ~1,000,000 req/s 并标注'measured on a CI runner'，而 CI 5 次 100k 采样的中位数是 **16.42 µs / ~61,000 req/s** —— 差 16.4 倍，且相对排序也不符（旧表把 SAMELOOP 列为最快，实测与 INPROC 持平；TCP 与 UDP 实测持平）。**关键测量事实：同一次 run 内 5 个样本离散度约 1.0x，但不同 CI runner 之间差 2.2 倍**（同一份代码相邻两次 run 得 35.84 µs 与 16.42 µs）。所以单次采样连判断'改动有没有让性能变慢'都做不到，必须取中位数。基准工作流已改为每传输采样 5 次 × 100k 请求，报 min/中位/max 与 max/min 比值，原始样本进 job log"
+  source: "Benchmark workflow run 36726393370（CI，实测数据）；对照 run 36711203308（35.84 µs）（2026-09-30）"
   affects: [uv-run-once-benchmark-methodology]

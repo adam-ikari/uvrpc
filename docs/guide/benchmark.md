@@ -131,11 +131,11 @@ Actions `ubuntu-latest` runner (run `36527761470`, commit `9c9aa24`):
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |---|---|---|---|
-| SAMELOOP | 1.00 µs | ~1,000,000 req/s | same-loop, vtable bypass (fastest) |
-| INPROC | 1.02 µs | ~980,000 req/s | in-process zero-copy |
-| IPC | 10.76 µs | ~93,000 req/s | local inter-process (Unix socket) |
-| UDP | 20.10 µs | ~50,000 req/s | loss-tolerant; loopback only, see below |
-| TCP | 20.08 µs | ~50,000 req/s | reliable network RPC |
+| SAMELOOP | 16.42 µs | ~61,000 req/s | same-loop, vtable bypass |
+| INPROC | 16.25 µs | ~62,000 req/s | in-process zero-copy |
+| IPC | 24.55 µs | ~41,000 req/s | local inter-process (Unix socket) |
+| UDP | 30.91 µs | ~32,000 req/s | loss-tolerant; loopback only, see below |
+| TCP | 30.59 µs | ~33,000 req/s | reliable network RPC |
 
 Re-run the workflow to reproduce. Absolute numbers are host-dependent; the
 *ratios* (in-process ≫ local socket ≫ network) are what the design actually

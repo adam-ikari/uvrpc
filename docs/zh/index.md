@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "UVRPC"
   text: "超快速 C99 RPC 框架"
-  tagline: "零线程，零锁，零可变全局。进程内约 1,000,000 req/s。"
+  tagline: "零线程，零锁，零可变全局。进程内约 61,000 req/s。"
   actions:
     - theme: brand
       text: 快速开始
@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: 🚀 超快速
-    details: "基于 libuv 事件循环和 FlatBuffers 序列化，CI runner 上 SAMELOOP/INPROC 传输约 1,000,000 req/s（~1.0 µs 往返延迟）。"
+    details: "基于 libuv 事件循环和 FlatBuffers 序列化，CI runner 上 SAMELOOP/INPROC 传输约 61,000 req/s（~16 µs 往返延迟）。"
     link: /zh/guide/benchmark
   - title: 🎯 极简设计
     details: "零线程、零锁、零可变全局。所有 I/O 由 libuv 事件循环管理，库代码无文件级可变全局变量。"
@@ -58,11 +58,11 @@ cd uvrpc
 
 | 传输层 | 往返延迟 | 吞吐量 (1/延迟) | 适用场景 |
 |--------|----------|-----------------|----------|
-| SAMELOOP | 1.00 µs | ~1,000,000 req/s | 同循环，vtable 旁路（最快）|
-| INPROC   | 1.02 µs | ~980,000 req/s | 进程内零拷贝 |
-| IPC      | 10.76 µs | ~93,000 req/s | 本地进程间（Unix 套接字）|
-| UDP      | 20.10 µs | ~50,000 req/s | 可丢包；仅本机 loopback |
-| TCP      | 20.08 µs | ~50,000 req/s | 可靠网络 RPC |
+| SAMELOOP | 16.42 µs | ~61,000 req/s | 同循环，vtable 旁路 |
+| INPROC   | 16.25 µs | ~62,000 req/s | 进程内零拷贝 |
+| IPC      | 24.55 µs | ~41,000 req/s | 本地进程间（Unix 套接字）|
+| UDP      | 30.91 µs | ~32,000 req/s | 可丢包；仅本机 loopback |
+| TCP      | 30.59 µs | ~33,000 req/s | 可靠网络 RPC |
 
 ::: warning 关于"吞吐量"
 上表"吞吐量"为顺序往返延迟的倒数（单请求在途），**非**流水线吞吐。

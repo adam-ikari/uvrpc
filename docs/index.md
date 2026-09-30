@@ -7,7 +7,7 @@ titleTemplate: false
 hero:
   name: UVRPC
   text: Ultra-Fast C99 RPC Framework
-  tagline: Zero threads. Zero locks. Zero mutable globals. ~1,000,000 req/s in-process.
+  tagline: Zero threads. Zero locks. Zero mutable globals. ~61,000 req/s in-process.
   actions:
     - theme: brand
       text: Quick Start
@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 🚀 Ultra-Fast
-    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~1,000,000 req/s at ~1.0 µs round-trip latency on a CI runner.
+    details: Built on the libuv event loop and FlatBuffers. SAMELOOP/INPROC transports deliver ~61,000 req/s at ~16 µs round-trip latency on a CI runner.
     link: /guide/benchmark
   - title: 🎯 Minimal by Design
     details: Zero threads, zero locks, zero file-scope globals in library code. All I/O is driven by a single libuv event loop — lock-free by construction.
@@ -131,11 +131,11 @@ on a GitHub Actions runner. Absolute numbers vary widely by host — see
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | 1.00 µs | ~1,000,000 req/s | Same-loop, vtable bypass (fastest) |
-| INPROC    | 1.02 µs | ~980,000 req/s | In-process zero-copy |
-| IPC       | 10.76 µs | ~93,000 req/s | Local inter-process (Unix socket) |
-| UDP       | 20.10 µs | ~50,000 req/s | Loss-tolerant; loopback-only figure |
-| TCP       | 20.08 µs | ~50,000 req/s | Reliable network RPC |
+| SAMELOOP  | 16.42 µs | ~61,000 req/s | Same-loop, vtable bypass |
+| INPROC    | 16.25 µs | ~62,000 req/s | In-process zero-copy |
+| IPC       | 24.55 µs | ~41,000 req/s | Local inter-process (Unix socket) |
+| UDP       | 30.91 µs | ~32,000 req/s | Loss-tolerant; loopback-only figure |
+| TCP       | 30.59 µs | ~33,000 req/s | Reliable network RPC |
 
 ::: warning Throughput definition
 "Throughput" above is the reciprocal of sequential round-trip latency (one
