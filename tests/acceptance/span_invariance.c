@@ -250,9 +250,14 @@ int main(void) {
 
     unlink(ipc_addr);
 
-    uv_timer_stop(&pump_timer);
+    /* Close, not just stop: a stopped handle is still open, and uv_loop_close
+     * refuses to release the loop's internals while one is. */
+    uv_close((uv_handle_t*)&pump_timer, NULL);
+    uv_close((uv_handle_t*)&watchdog, NULL);
     uvbus_loop_registry_free(registry);
-    uv_timer_stop(&watchdog);
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uv_loop_close(&loop);
 
     if (failures == 0) {

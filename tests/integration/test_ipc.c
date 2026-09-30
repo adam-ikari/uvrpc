@@ -141,6 +141,17 @@ static void* server_thread_func(void* arg) {
     uvrpc_server_stop(data->server);
     uvrpc_server_free(data->server);
     uvrpc_config_free(server_config);
+
+    /* Reclaiming the per-connection client struct, the server struct and the
+     * host string is deferred to uv_close callbacks, which only run if the
+     * loop is pumped again. Without this the thread exits still holding them
+     * -- one connected client struct alone is 256 KB. The stop handle has to
+     * be closed, not just stopped, or uv_loop_close() will not release the
+     * loop's own internals. */
+    uv_close((uv_handle_t*)&data->stop_async, NULL);
+    while (uv_loop_alive(data->loop)) {
+        uv_run(data->loop, UV_RUN_NOWAIT);
+    }
     
     return NULL;
 }

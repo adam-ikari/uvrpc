@@ -602,8 +602,11 @@ static void tcp_disconnect(void* impl_ptr) {
                 client->parent_transport = NULL;
                 /* Close TCP handle */
                 if (!uv_is_closing((uv_handle_t*)&client->tcp_handle)) {
-                    /* Increment ref count to ensure client stays alive until on_client_close */
-                    ref_inc(&client->ref_count);
+                    /* No ref_inc: ref_init left the count at 1 and this
+                     * callback is what releases it. Adding one here made the
+                     * count land on 1, so on_client_close never reached 0 and
+                     * the struct -- 256 KB, it embeds the read buffer -- was
+                     * never freed. */
                     uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
                 } else {
                     /* Handle already closing, free immediately */
@@ -618,8 +621,10 @@ static void tcp_disconnect(void* impl_ptr) {
         server->clients = NULL;
         server->client_count = 0;
         
-        /* Close listen handle */
-        ref_dec(&server->ref_count);
+        /* Close listen handle. No ref_dec here: ref_init left the count at 1
+         * and on_server_close is what releases it, so decrementing on both
+         * sides drove it to -1 and the server struct and its host string were
+         * never freed. This is the same shape as the client path below. */
         /* The listen handle's data is the transport while listening --
          * on_server_connection needs it -- but on_server_close expects the
          * server, and by the time that callback runs tcp_free has already

@@ -97,7 +97,16 @@ static void stop_async_cb(uv_async_t* handle) {
     uv_stop(data->loop);
 }
 
-/* Server thread function */
+/* Reclaiming the per-connection client struct, the server struct and the host
+ * string is deferred to uv_close callbacks, which only run while the loop is
+ * pumped. A single client struct alone is 256 KB, and this test rebuilds the
+ * server several times, so an undrained free leaks the whole set each round. */
+static void drain_server_loop(server_thread_data_t* data) {
+    while (uv_loop_alive(data->loop)) {
+        uv_run(data->loop, UV_RUN_NOWAIT);
+    }
+}
+
 static void* server_thread_func(void* arg) {
     server_thread_data_t* data = (server_thread_data_t*)arg;
     int restart_count = 0;
@@ -152,6 +161,7 @@ static void* server_thread_func(void* arg) {
             uvrpc_server_stop(data->server);
             uvrpc_server_free(data->server);
             uvrpc_config_free(server_config);
+            drain_server_loop(data);
             break;
         }
         
@@ -160,6 +170,7 @@ static void* server_thread_func(void* arg) {
         uvrpc_server_stop(data->server);
         uvrpc_server_free(data->server);
         uvrpc_config_free(server_config);
+        drain_server_loop(data);
         
         /* Reset server ready flag */
         pthread_mutex_lock(&g_mutex);
@@ -171,6 +182,12 @@ static void* server_thread_func(void* arg) {
     }
     
     printf("Server thread exiting\n");
+    /* Close, not just stop: uv_loop_close() will not release the loop's
+     * internals while a handle is still open. */
+    uv_close((uv_handle_t*)&data->stop_async, NULL);
+    while (uv_loop_alive(data->loop)) {
+        uv_run(data->loop, UV_RUN_NOWAIT);
+    }
     return NULL;
 }
 

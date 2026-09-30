@@ -101,8 +101,13 @@ int main(void) {
     printf("Client received: %d\n", client_recv_count);
 
     /* Cleanup */
+    /* Reclaiming the client and server structs is deferred to uv_close
+     * callbacks, which only run while the loop is pumped. */
     uvbus_free(client);
     uvbus_free(server);
+    while (uv_loop_alive(&loop)) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvbus_config_free(client_config);
     uvbus_config_free(server_config);
 

@@ -65,6 +65,9 @@ struct uvrpc_client {
     /* Retry configuration */
     int max_retries;            /* Maximum retry attempts (default: 0 = no retry) */
     uvasync_scheduler_t* scheduler;  /* Async scheduler for request concurrency control */
+    /* Owned by the client, borrowed by the scheduler. uvbus/uvrpc keeps no
+     * other reference, so whoever created the context destroys it. */
+    uvasync_context_t* async_ctx;
 };
 
 /* Cleanup pending callback */
@@ -362,16 +365,18 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
 
     /* Initialize uvasync scheduler for concurrency control */
     if (client->max_concurrent > 0) {
-        uvasync_context_t* async_ctx = uvasync_context_create(client->loop);
-        if (async_ctx) {
-            client->scheduler = uvasync_scheduler_create(async_ctx, client->max_concurrent);
+        client->async_ctx = uvasync_context_create(client->loop);
+        if (client->async_ctx) {
+            client->scheduler = uvasync_scheduler_create(client->async_ctx,
+                                                         client->max_concurrent);
             if (!client->scheduler) {
-                uvasync_context_destroy(async_ctx);
-                client->scheduler = NULL;
+                uvasync_context_destroy(client->async_ctx);
+                client->async_ctx = NULL;
             }
         }
     } else {
         client->scheduler = NULL;
+        client->async_ctx = NULL;
     }
 
     return client;
@@ -449,6 +454,13 @@ void uvrpc_client_free(uvrpc_client_t* client) {
     if (client->scheduler) {
         uvasync_scheduler_destroy(client->scheduler);
         client->scheduler = NULL;
+    }
+
+    /* Then the context it borrowed. The scheduler destructor reads
+     * scheduler->ctx->loop, so the order matters. */
+    if (client->async_ctx) {
+        uvasync_context_destroy(client->async_ctx);
+        client->async_ctx = NULL;
     }
 
     /* Free UVBus */

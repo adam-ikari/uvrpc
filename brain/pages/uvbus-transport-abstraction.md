@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-30T09:54:08"
+updated: "2026-09-30T10:30:27"
 ---
 
 <!-- compiled_truth -->
@@ -103,4 +103,16 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: evidence
   summary: "**CI 的 ASan job 只跑 2 个测试**（test_transport_lifetime + gtest 单元测试），17 个集成测试全部不在 ASan 下运行。后果：上面那个 TCP use-after-free 对 CI 完全不可见；另有一个**既有泄漏**（ASan 下 test_tcp 退出时泄漏 263,794 字节 = tcp server 结构 + 一个 client 结构 + host 串，同样也无人看见）。默认分配器下 UAF 不崩只是堆布局的运气，换 custom 分配器立刻段错误"
   source: ".github/workflows/ci.yml:107-112；ASan 下直接运行 test_tcp 复现泄漏（2026-09-30）"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-30T10:30:27
+  kind: evidence
+  summary: "**引用计数配对错误**（已修，tcp_disconnect）：ref_init 把 server/client 的 ref_count 置 1，而关闭回调 on_server_close/on_client_close 会 ref_dec 到 0 释放；tcp_disconnect 又**多做了一次** ref_dec(server) 和 ref_inc(client)，使计数永远到不了 0 —— 每个 TCP 连接的结构体（内联读缓冲，262,728 字节）、server 结构体和 host 串全部泄漏。客户端路径（642 行）本来是对的，服务端路径多了这两次操作。判据：一个回调一个释放，不该两边都动"
+  source: "ASan 报告：263,794 字节 / 6 次分配，栈在 on_server_connection:277、tcp_listen:481/476（2026-09-30）"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-09-30T10:30:27
+  kind: evidence
+  summary: "**已确认但未修（需设计决策）**：`on_client_connect` 从 `req->data` 取 transport，而 `connect_req.data = transport`（tcp:578、ipc:438）。**在连接还在途时释放 client/transport，之后 loop 泵到该回调就会 use-after-free**。tests/integration/test_error_handling.c 的 Test 1 正是这个场景：连不存在的服务器 → 立即 `uvrpc_client_free` → 后续 `uv_run` 崩。真实应用「连不上就放弃并释放」就是这个行为，所以是库缺陷不是测试误用。UDP 无连接回调故不受影响。修法需要给 transport 加引用计数（create 时 +1，connect 在途 +1，tcp_free 与 on_client_connect 各 -1，归零才真释放），属于传输层生命周期契约的改动，不是补一个漏"
+  source: "ASan 栈：on_client_connect:402 读已释放内存（tcp_free:919 释放）（2026-09-30）"
   affects: [uvbus-transport-abstraction]
