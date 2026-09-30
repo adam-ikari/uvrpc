@@ -241,7 +241,34 @@ target_include_directories(span_invariance
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
 )
 
+# Protocol robustness: a peer that can connect must not be able to kill the
+# process. Frames whose length is legal but whose payload is not a valid
+# FlatBuffers root used to reach the reader and take it out of bounds.
+add_executable(protocol_robustness
+    acceptance/protocol_robustness.c
+)
+
+target_link_libraries(protocol_robustness
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(protocol_robustness
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME protocol_robustness COMMAND protocol_robustness)
+set_tests_properties(protocol_robustness PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60)
+
 add_test(NAME span_invariance COMMAND span_invariance)
+
+
 set_tests_properties(span_invariance PROPERTIES
     LABELS "acceptance"
     TIMEOUT 30)

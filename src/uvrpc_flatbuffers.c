@@ -8,6 +8,7 @@ struct uvrpc_server;
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc.h"
 #include "rpc_reader.h"
+#include "rpc_verifier.h"
 #include "rpc_builder.h"
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
@@ -107,6 +108,28 @@ int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t res
     return UVRPC_OK;
 }
 
+/* Verify a buffer is a well-formed RpcFrame, then hand it to the reader.
+ *
+ * The generated as_root() does no bounds checking. Once a buffer merely looks
+ * like a root it dereferences offsets the peer chose, so a single malformed
+ * frame makes the process read out of bounds -- reachable by anyone who can
+ * open a connection. FlatCC's verifier walks the vtable and every offset
+ * against the buffer bounds first; only what it accepts reaches the reader.
+ *
+ * Returns NULL when the buffer is not a valid frame. */
+static uvrpc_RpcFrame_table_t verified_root(const uint8_t* data, size_t size) {
+    /* A FlatBuffers root needs at least the root uoffset (4 bytes) plus a
+     * table header (4 bytes). */
+    if (!data || size < 8) {
+        return NULL;
+    }
+    if (uvrpc_RpcFrame_verify_as_root(data, size) != flatcc_verify_ok) {
+        return NULL;
+    }
+    return uvrpc_RpcFrame_as_root(data);
+}
+
+
 /* Decode request frame */
 int uvrpc_decode_request(const uint8_t* data, size_t size,
                          uint32_t* out_msgid, char** out_method,
@@ -118,11 +141,8 @@ int uvrpc_decode_request(const uint8_t* data, size_t size,
     /* A FlatBuffers root needs at least the root uoffset (4 bytes) + a table
      * header (4 bytes). Reject frames too small to be a valid root before the
      * FlatCC reader trusts embedded offsets. */
-    if (size < 8) {
-        return UVRPC_ERROR;
-    }
 
-    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+    uvrpc_RpcFrame_table_t frame = verified_root(data, size);
 
     if (!frame) {
         return UVRPC_ERROR;
@@ -159,11 +179,8 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
 
     /* Reject frames too small to contain a valid FlatBuffers root (root
      * uoffset + table header) before the FlatCC reader trusts offsets. */
-    if (size < 8) {
-        return UVRPC_ERROR;
-    }
     
-    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+    uvrpc_RpcFrame_table_t frame = verified_root(data, size);
     
     if (!frame) {
         return UVRPC_ERROR;
@@ -182,9 +199,10 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
 
 /* Get frame type */
 int uvrpc_get_frame_type(const uint8_t* data, size_t size) {
-    if (!data || size < 1) return -1;
+    /* verified_root rejects a NULL buffer and anything too small to be a
+     * root, so a single length check here would only be half the answer. */
     
-    uvrpc_RpcFrame_table_t frame = uvrpc_RpcFrame_as_root(data);
+    uvrpc_RpcFrame_table_t frame = verified_root(data, size);
     if (!frame) return -1;
     
     return (int)uvrpc_RpcFrame_type(frame);

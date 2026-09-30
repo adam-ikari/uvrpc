@@ -158,7 +158,7 @@ endif()
 target_link_libraries(uvrpc PUBLIC ${LIBUV_LIBRARIES})
 target_include_directories(uvrpc PUBLIC ${LIBUV_INCLUDE_DIR})
 
-target_link_libraries(uvrpc PUBLIC ${FLATCC_LIBRARIES})
+target_link_libraries(uvrpc PUBLIC ${FLATCC_LIBRARIES} ${FLATCC_RT_LIBRARY})
 target_include_directories(uvrpc PUBLIC ${FLATCC_INCLUDE_DIR})
 
 # Add dependencies for shared library (same as static)
@@ -170,7 +170,7 @@ endif()
 target_link_libraries(uvrpc_shared PUBLIC ${LIBUV_LIBRARIES})
 target_include_directories(uvrpc_shared PUBLIC ${LIBUV_INCLUDE_DIR})
 
-target_link_libraries(uvrpc_shared PUBLIC ${FLATCC_LIBRARIES})
+target_link_libraries(uvrpc_shared PUBLIC ${FLATCC_LIBRARIES} ${FLATCC_RT_LIBRARY})
 target_include_directories(uvrpc_shared PUBLIC ${FLATCC_INCLUDE_DIR})
 
 # FlatBuffers schema
@@ -194,8 +194,9 @@ endif()
 # Custom command to generate RPC FlatCC code
 add_custom_command(
     OUTPUT ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h
+            ${GENERATED_DIR}/rpc_verifier.h
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
-    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${RPC_SCHEMA}
+    COMMAND ${FLATCC_COMPILER} -c -v -w -o ${GENERATED_DIR} ${RPC_SCHEMA}
     DEPENDS ${RPC_SCHEMA}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating FlatCC code from RPC schema"
@@ -221,7 +222,7 @@ add_custom_command(
     COMMENT "Generating FlatCC code from benchmark schema"
 )
 
-add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h)
+add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/rpc_verifier.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h)
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
@@ -310,6 +311,7 @@ file(WRITE ${UVRPC_MERGE_SCRIPT} "CREATE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuv
 file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc_pristine.a\n")
 file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${LIBUV_LIBRARIES}\n")
 file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${FLATCC_LIBRARIES}\n")
+file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${FLATCC_RT_LIBRARY}\n")
 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
     file(APPEND ${UVRPC_MERGE_SCRIPT} "ADDLIB ${MIMALLOC_LIBRARIES}\n")
 endif()

@@ -79,6 +79,24 @@ find_library(FLATCC_BASE_LIBRARY
           ${UVRPC_DEPS_ROOT}/flatcc/build
           /usr/lib /usr/local/lib)
 
+# The runtime archive holds flatcc_verify_field() and friends. Frame decoding
+# needs them: the generated reader trusts a buffer once it looks like a root,
+# so without the verifier a peer can make the server read out of bounds with a
+# single malformed frame.
+find_library(FLATCC_RT_LIBRARY
+    NAMES flatccrt
+    PATHS ${FLATCC_INSTALL_DIR}/lib
+          ${FLATCC_INSTALL_DIR}/lib64
+          ${UVRPC_DEPS_ROOT}/flatcc/build/lib
+          ${UVRPC_DEPS_ROOT}/flatcc/build
+          /usr/lib /usr/local/lib)
+
+if(NOT FLATCC_RT_LIBRARY)
+    message(FATAL_ERROR
+        "flatcc runtime library (libflatccrt) not found. Frame verification "
+        "cannot be linked. Run ./scripts/setup_deps.sh to rebuild flatcc.")
+endif()
+
 find_library(FLATCC_SUPPORT_LIBRARY
     NAMES flatccsupport flatcc_support
     PATHS ${FLATCC_INSTALL_DIR}/lib
