@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [protocol, schema, flatbuffers]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-30T13:33:19"
+updated: "2026-10-01T04:10:20"
 ---
 
 <!-- compiled_truth -->
@@ -63,4 +63,10 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
   kind: evidence
   summary: "**远程可触发的越界读（已修）**：三处解码只检查 size>=8 就调用生成的 as_root()，而 flatcc 生成的读取器**不做任何边界检查** —— 缓冲区只要'看起来像'根表，后续就按对端选定的偏移解引用。其中 uvrpc_get_frame_type 最弱（只检查 size<1）且在**每个响应的客户端路径上**都跑，所以恶意/损坏的服务端同样能触发。修法用 flatcc 自带校验器（-v 生成 rpc_verifier.h，三处统一走 verified_root）。校验器在 libflatccrt.a 里，此前项目没链接；现在链接并一并折进 libuvrpc_full.a（合并脚本本来就收多个归档，不影响分发设计）。证据：校验器打桩后 tests/acceptance/protocol_robustness.c 退出码 139（段错误），正是修复前的行为"
   source: "裸 TCP 探针 + gdb（uvrpc_decode_request <- server_recv_callback <- on_client_read）；六类畸形载荷（2026-09-30）"
+  affects: [minimal-rpcframe-schema]
+
+- time: 2026-10-01T04:10:20
+  kind: evidence
+  summary: "**负载上限：限制作用在编码后的帧而非载荷，且编码开销不是常数**（实测：0 字节载荷→帧 38、1 字节→51、100 字节→48，属 FlatBuffers 对齐），所以'最大载荷 = 65536 - 48'只是近似。三种传输的实测边界**各不相同且可复现**：TCP 65488、IPC 65484、UDP 65452（同一次 run 内二进制搜索，确定性；连跑两次结果完全一致）。三者执行的是同一个 UVBUS_DEFAULT_MAX_FRAME_SIZE，落点不同只因各自停止尺寸处的编码开销不同；UDP 少得最多，符合它是数据报协议、有低于帧上限的自身天花板。**实际后果：跨传输统一的安全载荷上限是三者中最低的 65452，不是 TCP 的 65488** —— 按 TCP 边界选尺寸的应用，换到 UDP 或 IPC 上会静默收不到响应。另外 UVBUS_MAX_FRAME_SIZE（1MB）定义了但全库无引用，是'看起来像上限的死常量'；文档若称 1MB 为硬上限即不成立"
+  source: "tests/acceptance/payload_bounds.c；三传输独立二分探针，两次复跑一致（2026-09-30）"
   affects: [minimal-rpcframe-schema]

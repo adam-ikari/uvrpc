@@ -303,6 +303,30 @@ target_include_directories(inflight_lifetime
 )
 
 add_test(NAME backpressure COMMAND backpressure)
+# Payload boundaries: what round-trips byte-identical, and that every socket
+# transport draws the line in the same place now that frames are verified.
+add_executable(payload_bounds
+    acceptance/payload_bounds.c
+)
+
+target_link_libraries(payload_bounds
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(payload_bounds
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME payload_bounds COMMAND payload_bounds)
+set_tests_properties(payload_bounds PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 120)
+
 add_test(NAME inflight_lifetime COMMAND inflight_lifetime)
 set_tests_properties(inflight_lifetime PROPERTIES
     LABELS "acceptance"
