@@ -41,7 +41,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
-#include "free_port.h"
+#include "../free_port.h"
 
 #define QUOTA 4
 #define RING_SLOTS 64

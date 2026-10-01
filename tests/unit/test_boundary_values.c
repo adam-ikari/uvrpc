@@ -9,6 +9,8 @@
 #include <string.h>
 #include <assert.h>
 #include <uv.h>
+
+#include "../free_port.h"
 #include <unistd.h>
 #include <limits.h>
 
@@ -258,11 +260,14 @@ static void test_empty_request(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6001");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -277,7 +282,7 @@ static void test_empty_request(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6001");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -314,11 +319,14 @@ static void test_max_request_size(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6002");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -357,7 +365,7 @@ static void test_max_request_size(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6002");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -395,11 +403,14 @@ static void test_single_byte_request(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6003");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -414,7 +425,7 @@ static void test_single_byte_request(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6003");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -452,11 +463,14 @@ static void test_null_params(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6004");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -471,7 +485,7 @@ static void test_null_params(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6004");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -508,11 +522,14 @@ static void test_zero_length_response(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6005");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -527,7 +544,7 @@ static void test_zero_length_response(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6005");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -564,11 +581,14 @@ static void test_stream_single_chunk(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6006");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -583,7 +603,7 @@ static void test_stream_single_chunk(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6006");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -620,11 +640,14 @@ static void test_stream_many_chunks(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6007");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -639,7 +662,7 @@ static void test_stream_many_chunks(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6007");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -679,11 +702,14 @@ static void test_oneway_null_callback(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6008");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -698,7 +724,7 @@ static void test_oneway_null_callback(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6008");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
@@ -737,11 +763,14 @@ static void test_max_pending_callbacks(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6009");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -756,7 +785,7 @@ static void test_max_pending_callbacks(void) {
     /* Create client with small pending buffer */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6009");
+    uvrpc_config_set_address(client_config, address);
     /* 64, not 10. Values below 64 -- and anything that is not a power of two
      * -- are silently replaced with the default, so asking for 10 left the
      * ring at its default size and every request below fit. The limit was
@@ -813,11 +842,14 @@ static void test_error_response(void) {
     
     uv_loop_t loop;
     uv_loop_init(&loop);
+
+    char address[64];
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", acceptance_free_port());
     
     /* Create server */
     uvrpc_config_t* server_config = uvrpc_config_new();
     uvrpc_config_set_loop(server_config, &loop);
-    uvrpc_config_set_address(server_config, "tcp://127.0.0.1:6010");
+    uvrpc_config_set_address(server_config, address);
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
@@ -832,7 +864,7 @@ static void test_error_response(void) {
     /* Create client */
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
-    uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6010");
+    uvrpc_config_set_address(client_config, address);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);

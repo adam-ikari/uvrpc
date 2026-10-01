@@ -320,6 +320,7 @@ target_link_libraries(boundary_values
 
 target_include_directories(boundary_values
     PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
 )
@@ -513,12 +514,3 @@ endif()
 # Integration tests
 add_subdirectory(integration)
 
-# Every test here links the `uvrpc` target, whose archive lives at
-# dist/lib/libuvrpc.a -- a path uvrpc_merged deliberately overwrites with the
-# merged archive. Without this dependency the linker can read that file while
-# it is being rewritten and fail with "no more archived files". It showed up
-# only after the example count grew enough to make concurrent links likely.
-get_property(_uvrpc_test_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
-foreach(_t IN LISTS _uvrpc_test_targets)
-    add_dependencies(${_t} uvrpc_merged)
-endforeach()

@@ -26,7 +26,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
-#include "free_port.h"
+#include "../free_port.h"
 
 /* Internal, on purpose: building a genuine frame to corrupt is the point. The
  * test asserts on what the server does with it, not on the encoder. */

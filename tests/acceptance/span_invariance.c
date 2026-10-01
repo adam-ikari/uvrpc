@@ -22,7 +22,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
-#include "free_port.h"
+#include "../free_port.h"
 
 #define REQ_COUNT 5
 #define PAYLOAD_LEN 5

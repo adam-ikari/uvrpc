@@ -43,7 +43,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
-#include "free_port.h"
+#include "../free_port.h"
 
 #define DRAIN_MS 400
 #define WATCHDOG_MS 40000

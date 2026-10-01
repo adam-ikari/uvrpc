@@ -345,9 +345,13 @@ endif()
 # keyed objects by basename, so libuv's src/random.c and mimalloc's src/random.c
 # collided and one was silently dropped -- users linking -l:libuvrpc_full.a got
 # "undefined reference to `uv_random'".
-# Snapshot the freshly linked archive before uvrpc_merged overwrites
-# dist/lib/libuvrpc.a with the merged result -- otherwise each rebuild would
-# ADDLIB the previous merged archive into itself and grow unboundedly.
+# Snapshot the freshly linked archive so the merge reads a fixed input. It used
+# to also overwrite dist/lib/libuvrpc.a with the merged result, which meant every
+# target that linked uvrpc had to wait for uvrpc_merged -- ld could otherwise
+# read that file while it was being rewritten and fail with "no more archived
+# files". Nothing needed that: uvrpc links libuv, flatcc and mimalloc as PUBLIC
+# libraries, so anything linking uvrpc already gets those symbols transitively.
+# The merged archive is a separate deliverable, not a shadow of libuvrpc.a.
 add_custom_command(TARGET uvrpc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:uvrpc> ${CMAKE_CURRENT_BINARY_DIR}/libuvrpc_pristine.a
     COMMENT "Snapshotting pristine libuvrpc archive"
@@ -369,7 +373,6 @@ add_custom_target(uvrpc_merged ALL
     DEPENDS uvrpc ${UVRPC_MERGE_SCRIPT}
     COMMAND bash -c "${CMAKE_AR} -M < ${UVRPC_MERGE_SCRIPT}"
     COMMAND ${CMAKE_RANLIB} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc_full.a ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libuvrpc.a
     COMMENT "Creating merged static library with all dependencies"
     VERBATIM
 )
@@ -407,12 +410,6 @@ add_subdirectory(benchmark)
         endif()
 
         add_dependencies(${name} generate_flatcc)
-        # uvrpc_merged deliberately overwrites dist/lib/libuvrpc.a with the
-        # merged archive, because -static links need libuv and flatcc inlined.
-        # That makes the file this target links against get rewritten while
-        # other targets may be reading it: `ld` then fails with "no more
-        # archived files". CMake sees no dependency here, so state it.
-        add_dependencies(${name} uvrpc_merged)
     endfunction()
 
     # Create example targets
@@ -469,7 +466,6 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(test_retry generate_dsl)
-            add_dependencies(test_retry uvrpc_merged)
 
         add_executable(generated_client_example
             examples/generated_client_example.c
@@ -484,7 +480,6 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(generated_client_example generate_dsl)
-            add_dependencies(generated_client_example uvrpc_merged)
 
         # rpc_user_impl.c is deliberately not here: it is the "fill in your
         # service logic" file, an implementation fragment with no main, so it
@@ -504,7 +499,6 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(test_multi_services generate_dsl)
-            add_dependencies(test_multi_services uvrpc_merged)
 
         # rpc_dsl_usage_example is about MathService alone, so it links that
         # service's bindings and implements that one handler -- linking all
@@ -524,7 +518,6 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(rpc_dsl_usage_example generate_dsl)
-            add_dependencies(rpc_dsl_usage_example uvrpc_merged)
 
         # This one defines handlers for all three services in the schema.
         foreach(_demo multi_service_loop_reuse)
@@ -620,56 +613,48 @@ add_executable(test_primitives_simple
     examples/test_primitives_simple.c
 )
 target_link_libraries(test_primitives_simple uvrpc pthread)
-add_dependencies(test_primitives_simple uvrpc_merged)
 
 # Test Promise combinators
 add_executable(test_promise_combinators
     examples/test_promise_combinators.c
 )
 target_link_libraries(test_promise_combinators uvrpc pthread)
-add_dependencies(test_promise_combinators uvrpc_merged)
 
 # Test Promise basic
 add_executable(test_promise_basic
     examples/test_promise_basic.c
 )
 target_link_libraries(test_promise_basic uvrpc pthread)
-add_dependencies(test_promise_basic uvrpc_merged)
 
 # Test Promise race debug
 add_executable(test_promise_race_debug
     examples/test_promise_race_debug.c
 )
 target_link_libraries(test_promise_race_debug uvrpc pthread)
-add_dependencies(test_promise_race_debug uvrpc_merged)
 
 # Test Promise race simple
 add_executable(test_promise_race_simple
     examples/test_promise_race_simple.c
 )
 target_link_libraries(test_promise_race_simple uvrpc pthread)
-add_dependencies(test_promise_race_simple uvrpc_merged)
 
 # Test Promise race only
 add_executable(test_promise_race_only
     examples/test_promise_race_only.c
 )
 target_link_libraries(test_promise_race_only uvrpc pthread)
-add_dependencies(test_promise_race_only uvrpc_merged)
 
 # uvasync demo
 add_executable(uvasync_demo
     examples/uvasync_demo.c
 )
 target_link_libraries(uvasync_demo uvrpc pthread)
-add_dependencies(uvasync_demo uvrpc_merged)
 
 # uvasync minimal test
 add_executable(uvasync_minimal_test
     examples/uvasync_minimal_test.c
 )
 target_link_libraries(uvasync_minimal_test uvrpc pthread)
-add_dependencies(uvasync_minimal_test uvrpc_merged)
 
 # Tests
 if(UVRPC_BUILD_TESTS)

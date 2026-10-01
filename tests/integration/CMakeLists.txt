@@ -243,9 +243,3 @@ target_include_directories(test_transport_lifetime
 add_test(NAME test_transport_lifetime COMMAND test_transport_lifetime)
 set_tests_properties(test_transport_lifetime PROPERTIES TIMEOUT 30)
 
-# Same reason as in tests/CMakeLists.txt: dist/lib/libuvrpc.a is rewritten by
-# uvrpc_merged, and reading it mid-rewrite breaks the link.
-get_property(_uvrpc_int_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
-foreach(_t IN LISTS _uvrpc_int_targets)
-    add_dependencies(${_t} uvrpc_merged)
-endforeach()

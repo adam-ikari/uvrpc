@@ -51,7 +51,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
-#include "free_port.h"
+#include "../free_port.h"
 #include "uvbus.h"
 #include "uvbus_config.h"
 
