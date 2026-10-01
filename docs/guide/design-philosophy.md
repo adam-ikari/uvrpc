@@ -710,7 +710,7 @@ endpoint->recv_cb(data, size, client /* 即 client_ctx */, server_ctx);
 三个含义：
 1. `data` 是**发送方的缓冲区**，回调返回后即可能失效 —— 这正是"回调期间有效"约束的根源。
 2. 调用栈是 `send() → 对端 recv_cb → 对端可能再 send()`。层数过深会加深栈，
-   SAMELOOP 用 `uv_async` 交接正是为了切断这种递归（`src/uvbus_transport_sameloop.c:8-9`）。
+   SAMELOOP 用 `uv_async` 交接正是为了切断这种递归（`src/uvbus_transport_sameloop.c:10`）。
 3. `client_ctx` 就是 `inproc_client_t*`，服务端凭它区分是哪个连接 —— 与 TCP 侧
    `uvbus_send_to(..., client_ctx)` 是同一个约定。
 
@@ -856,7 +856,7 @@ UVRPC_PERF_HIGH_THROUGHPUT)`。它的值一路被存进 config、复制进客户
 #### 回调路由数组
 
 客户端响应路由使用定长指针数组，`idx = msgid & (max_pending_callbacks - 1)`
-（`src/uvrpc_client.c:146`）：
+（`src/uvrpc_client.c:250`）：
 
 - **O(1) 查找**：位与代替取模，直接数组访问，无哈希计算
 - **可配置**：运行时 `uvrpc_config_set_max_pending_callbacks(config, n)`。`n` 必须是
@@ -882,7 +882,7 @@ uvrpc_config_set_max_pending_callbacks(config, 1 << 20);  // 高并发，上限 
 ### 自定义传输
 
 通过实现 `uvbus_transport_vtable_t`（7 个函数指针，`include/uvbus.h:129-137`）
-并把它挂到 `create_transport()` 的分支上（`src/uvbus.c:107-118`），可以添加自定义传输协议。
+并把它挂到 `create_transport()` 的分支上（`src/uvbus.c:134`），可以添加自定义传输协议。
 ### 自定义序列化
 
 通过修改 `uvrpc_flatbuffers.c` 可以支持其他序列化格式。

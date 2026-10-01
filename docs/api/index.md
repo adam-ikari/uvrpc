@@ -273,6 +273,14 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
 void uvrpc_client_disconnect(uvrpc_client_t* client);
 ```
 
+**`uvrpc_client_connect()` takes no callback.** It starts the connection and
+returns; the two names are adjacent in this list but the signatures differ, and
+passing a callback to the first will not compile. Use
+`uvrpc_client_connect_with_callback()` to run anything once connected — which
+you generally need to, because a successful return only means the attempt
+started. `uvrpc_client_call()` on a client that is not yet connected returns
+`UVRPC_ERROR_NOT_CONNECTED` rather than queueing.
+
 #### `uvrpc_client_call()`
 
 Normal request/response call. Asynchronous — the callback is invoked when the

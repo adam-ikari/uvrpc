@@ -100,7 +100,7 @@ int main(void) {
     uv_loop_t loop;
     uv_loop_init(&loop);
 
-    uvrpc_server_t* server = uvrpc_mathservice_create_server(&loop, "tcp://127.0.0.1:5555");
+    uvrpc_server_t* server = uvrpc_mathservice_create_server(&loop, "tcp://127.0.0.1:5555", NULL);
     if (!server) return 1;
     if (uvrpc_mathservice_start_server(server) != UVRPC_OK) return 1;
 
@@ -111,6 +111,22 @@ int main(void) {
     return 0;
 }
 ```
+
+### 3a. 链接哪个 .c 决定你要实现什么
+
+链接了 `<service>_server_stub.c`，就必须实现该 service 的
+`uvrpc_<service>_handle_request` —— stub 里有对它的引用，不实现会在链接期报
+undefined reference。只建客户端的程序不需要实现任何 handler，所以**不要**图省事
+把整个生成目录的 `.c` 全塞进链接命令行。
+
+| 你链接的 | 你必须提供 |
+| --- | --- |
+| `<service>_server_stub.c` | `uvrpc_<service>_handle_request()` |
+| `<service>_client.c` | 无 |
+| `<service>_rpc_common.c` | 无 |
+
+把两个 schema 的生成源合并成一个变量是很自然的做法，会让无关的 demo 也被拖进
+链接错误里。按 service 挑着链即可。
 
 ### 4. 客户端使用生成的 API
 
@@ -152,7 +168,7 @@ int main(void) {
 
     session_t s = { .loop = &loop };
     s.client = uvrpc_mathservice_create_client(&loop, "tcp://127.0.0.1:5555",
-                                               on_connect, &s);
+                                               NULL, on_connect, &s);
     if (!s.client) return 1;
 
     /* create_client 内部已发起连接；请求在 on_connect 里发出。

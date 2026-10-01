@@ -190,7 +190,7 @@ uv_loop_close(&loop);                         /* 6. 清理 loop */
 /* UVBus 句柄（server 与 client 同一类型） */
 typedef struct uvbus uvbus_t;
 
-/* 传输类型 —— 五个平级，见 src/uvbus.c:107-118 的 create_transport() */
+/* 传输类型 —— 五个平级，见 src/uvbus.c:134 的 create_transport() */
 typedef enum {
     UVBUS_TRANSPORT_TCP     = 0,
     UVBUS_TRANSPORT_UDP     = 1,
@@ -254,7 +254,7 @@ uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size);  
 ### 客户端 API
 
 ```c
-uvbus_t*      uvbus_client_new(uvbus_config_t* config);   /* include/uvbus.h:320 */
+uvbus_t*      uvbus_client_new(uvbus_config_t* config);   /* include/uvbus.h:372 */
 uvbus_error_t uvbus_connect(uvbus_t* bus);                /* :325 */
 uvbus_error_t uvbus_connect_with_callback(uvbus_t* bus,
                     uvbus_connect_callback_t cb, void* ctx); /* :330 —— 覆盖 config 里的 connect_cb */
@@ -265,7 +265,7 @@ uvbus_error_t uvbus_client_send(uvbus_t* bus, const uint8_t* data, size_t size);
 ### 两侧通用的访问器与释放
 
 ```c
-uv_loop_t*             uvbus_get_loop(uvbus_t* bus);            /* include/uvbus.h:353 */
+uv_loop_t*             uvbus_get_loop(uvbus_t* bus);            /* include/uvbus.h:405 */
 uvbus_transport_type_t uvbus_get_transport_type(uvbus_t* bus);  /* :358 */
 const char*            uvbus_get_address(uvbus_t* bus);         /* :363 */
 int                    uvbus_is_connected(uvbus_t* bus);        /* :368 */
@@ -304,14 +304,14 @@ uvbus_config_free(bus_config);      /* 值已被拷走，address 是 uvrpc_strdu
 ```
 
 handler 的类型是 `typedef void (*uvrpc_handler_t)(uvrpc_request_t* req, void* ctx)`
-（`include/uvrpc.h:182`）——回调拿到的是**请求对象**，不是裸的 `(msgid, params, size)`
+（`include/uvrpc.h:200`）——回调拿到的是**请求对象**，不是裸的 `(msgid, params, size)`
 三元组；msgid、method、payload 都从 `req` 上取。注册表是 uthash 的
-`method name → handler` 映射（`src/uvrpc_server.c:170,376,400`），查找前把方法名小写化。
+`method name → handler` 映射（`src/uvrpc_server.c:174,378,402`），查找前把方法名小写化。
 
 ### 客户端侧
 
 ```c
-/* src/uvrpc_client.c:105 —— 同样是 4 参数签名 */
+/* src/uvrpc_client.c:206 —— 同样是 4 参数签名 */
 static void client_recv_callback(const uint8_t* data, size_t size,
                                  void* client_ctx, void* server_ctx);
 
@@ -322,8 +322,8 @@ client->uvbus = uvbus_client_new(bus_config);
 ```
 
 响应**不按 `find_call()` 遍历查找**，而是按 msgid 取模直接命中环形缓冲的槽位：
-`idx = msgid & (client->max_pending_callbacks - 1)`（`src/uvrpc_client.c:146`）。
-容量必须是 2 的幂，这个契约在 `src/uvrpc_config.c:90-101` 强制校验。
+`idx = msgid & (client->max_pending_callbacks - 1)`（`src/uvrpc_client.c:250`）。
+容量必须是 2 的幂，这个契约在 `src/uvrpc_config.c:106` 强制校验。
 
 ### 编解码与错误码
 

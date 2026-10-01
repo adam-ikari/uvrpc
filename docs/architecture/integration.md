@@ -53,7 +53,7 @@ struct uvrpc_server {
 };
 ```
 
-handler 表是 uthash（`HASH_FIND_STR` / `HASH_ADD_STR`，`src/uvrpc_server.c:170,376,400`），
+handler 表是 uthash（`HASH_FIND_STR` / `HASH_ADD_STR`，`src/uvrpc_server.c:174,378,402`），
 方法名先小写化再比较。服务器结构里没有 `next_msgid`；请求 ID 由
 `uvrpc_msgid_next(client->msgid_ctx)` 在客户端生成。
 
@@ -121,7 +121,7 @@ static void server_recv_callback(const uint8_t* data, size_t size,
 2. 解码 `RpcFrame`，按 `method` 查 uthash 找 handler。
 3. 构造 `uvrpc_request_t` 后调用 handler。handler 类型是
    `typedef void (*uvrpc_handler_t)(uvrpc_request_t* req, void* ctx)`
-   （`include/uvrpc.h:182`）—— 拿到的是**请求对象**，不是 `(msgid, params, size)` 三元组。
+   （`include/uvrpc.h:200`）—— 拿到的是**请求对象**，不是 `(msgid, params, size)` 三元组。
 
 回包一律 `uvbus_send_to(server->uvbus, resp, resp_size, client_ctx)`
 （`src/uvrpc_server.c:116,221,443,478,511`）。`uvrpc_request_t` 的真实字段
@@ -167,21 +167,24 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
 ```
 
 返回 `UVRPC_OK` **不等于**已连接。而 `uvrpc_client_call()` 在未连接时直接返回
-`UVRPC_ERROR_NOT_CONNECTED`（`:505`）。UVRPC **没有** `uvrpc_is_connected()` ——
+`UVRPC_ERROR_NOT_CONNECTED`（`include/uvrpc.h:54`）。UVRPC **没有** `uvrpc_is_connected()` ——
 `uvbus_is_connected()` 存在，但 `uvbus_t` 对 RPC 用户不可见。所以正确写法是用
-`uvrpc_client_connect_with_callback()`（`include/uvrpc.h:525`），在连接回调里发起调用。
+`uvrpc_client_connect_with_callback()`（`include/uvrpc.h:588`），在连接回调里发起调用。
+
+注意 `uvrpc_client_connect()`（`include/uvrpc.h:578`）**不接受回调参数**——它只发起
+连接就返回。想在连上之后做点什么，只能用 `connect_with_callback`；名字相近，但签名不同。
 
 `connect_with_callback` 会就地改写 `uvbus->config.connect_cb` 与传输对象的回调槽
-（`src/uvrpc_client.c:311-323`）—— 这是**唯一**在 `uvbus_*_new()` 之后改动回调的路径，
+（`src/uvrpc_client.c:459-476`）—— 这是**唯一**在 `uvbus_*_new()` 之后改动回调的路径，
 属于受控例外，不要把它当成"存在 setter API"的证据。
 
 ### 响应的路由
 
-`src/uvrpc_client.c:105` 的 `client_recv_callback` 同样是 4 参数签名。它解码响应后
+`src/uvrpc_client.c:206` 的 `client_recv_callback` 同样是 4 参数签名。它解码响应后
 **不遍历查找**，而是按 msgid 直接命中槽位：
 
 ```c
-uint32_t idx = msgid & (client->max_pending_callbacks - 1);   /* :146 */
+uint32_t idx = msgid & (client->max_pending_callbacks - 1);   /* :250 */
 pending_callback_t* pending = client->pending_callbacks[idx];
 if (pending && pending->msgid == msgid) { /* 构造 uvrpc_response_t 并回调 */ }
 ```
@@ -233,8 +236,8 @@ int main(void) {
 }
 ```
 
-应答的三个真实函数：`uvrpc_response_send()`（`include/uvrpc.h:465`）、
-`uvrpc_response_send_error()`（`:475`）、`uvrpc_response_send_stream()`（`:490`）。
+应答的三个真实函数：`uvrpc_response_send()`（`include/uvrpc.h:528`）、
+`uvrpc_response_send_error()`（`:538`）、`uvrpc_response_send_stream()`（`:553`）。
 
 ### 客户端
 

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [protocol, schema, flatbuffers]
 created: "2026-09-28T17:09:45"
-updated: "2026-10-01T05:58:31"
+updated: "2026-10-01T11:29:08"
 ---
 
 <!-- compiled_truth -->
@@ -75,4 +75,10 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
   kind: reversal
   summary: "**调错方法名会返回成功**（已修，2026-09-30）。服务端把失败编码进**响应帧的 payload**（裸魔数 int32 2 + 消息文本），客户端 `resp.error_code = 0` 是无条件的、从不解析该 payload —— 于是调不存在的方法得到 `status=0, error_code=0, result_size=20`，「结果」是 `\x02\x00\x00\x00Method not found` 的 ASCII 原文。**看起来完全不像错误**：任何检查 status 再解析 result 的代码会把 4 字节整数 + 15 字节文本当类型化响应读。空方法名同样。根因：错误帧与结果帧是同一个帧，而 payload 无法自证 —— handler 完全可以合法返回 int32+文本。修法：新增 `UVRPC_FRAME_TYPE_RESPONSE_ERROR = 3`（此前 type 只有 0/1/2 且全是魔数无常量），服务端走 `uvrpc_encode_error()`，客户端在读 payload **之前**先按 frame_type 判别，错误帧解出 error_code/error_message、置 status、result_size 归零。同时修 `uvrpc_response_send_error()`（公开 API，同一缺陷）。**附带修一个会静默拖垮客户端的坑**：槽位只在 `frame_type == 1` 时释放，错误帧（3）不释放 —— 回调跑了但名额不归还，配额逐渐耗尽直至拒绝所有调用。错误是完整答案，必须与 type=1 一同释放。服务端魔数 2 改为 `UVRPC_ERROR_NOT_FOUND` (-12)。**线格式变更**：新服务端配旧客户端仍表现为「成功携带错误字节」，反之旧服务端配新客户端错误帧被忽略（静默）；0.x 无 tag 无 release，此刻改最便宜"
   source: "tests/acceptance/failure_modes.c；裸探针实测 status=0/error_code=0/result_size=20（修复前）；非空转：错误帧退回普通帧 → 5 项失败，槽位不释放 → 3 项失败（2026-09-30）"
+  affects: [minimal-rpcframe-schema]
+
+- time: 2026-10-01T11:29:08
+  kind: evidence
+  summary: "**架构文档的行号引用大面积漂移 —— 已修**（2026-09-30）。写脚本扫 docs/ 下所有  /  引用，逐条核对是否指向真实代码，**16 条可疑、14 条确认漂移**。最严重的一类是指向无关内容： 实际是 （被引用为  的 typedef 位置，真实在 :200）； 实际是 （被引用为 ，真实在 :528）； 实际是注释（被引用为 ，真实在 :54）； 实际是空行（被引用为 msgid 取模，真实在 :250）。**我改客户端错误帧处理时新增了约 145 行，把大批引用顶走了**。修正后剩余 2 条经人工确认是有意引用注释开头。**判据**：行号引用是架构文档的证据链，指向空行或  时等于没有证据 —— 这与「文档承诺不存在的东西」是同一类问题，值得定期用脚本核对而非逐个人读。另修  两处过时示例： 少了 registry 参数、 少一个参数（真实 5 个：loop/address/registry/callback/ctx）。**注意区分**： 配  与配  **两种都对**（后者是 stable free），代码库 86/63 混用，模板用后者，文档用前者 —— 不是 bug，未改"
+  source: "脚本核对 docs/ 全部行号引用 + 逐条语义比对（2026-09-30）"
   affects: [minimal-rpcframe-schema]
