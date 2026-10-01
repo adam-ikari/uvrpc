@@ -304,11 +304,14 @@ int main(void) {
   后失效；callback 里的 `resp->result` 由框架在回调结束后释放（`include/uvrpc.h:258-272`
   的 IMPORTANT 块）。要跨回调保留必须自己拷贝。
 - **flatcc 缓冲区由 flatcc 自己的分配器产生**：`uvrpc_encode_*()` 返回的字节来自
-  `flatcc_builder_finalize_buffer()`，而 flatcc 没有接入 uvrpc 的分配器钩子。这类缓冲区
-  只能用 `free()` 释放 —— 自定义分配器（`UVRPC_ALLOCATOR_DEFAULT=custom`）下
-  `uvrpc_free()` 是一个不认识 malloc 指针的池。库内部用
-  `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`）表达这条规则；调用
-  `uvrpc_encode_*()` 的用户代码直接 `free()` 即可。
+  `flatcc_builder_finalize_buffer()`，而 flatcc 不知道 uvrpc 用的是哪个分配器。这类缓冲区
+  要用 `flatcc_builder_aligned_free()` 释放，**不能**用 `uvrpc_free()` —— 在 mimalloc 构建下
+  那是另一个堆。库内部用 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`）表达这条规则。
+
+  > 这条规则过去更难发现：仓库里有过一个自定义分配器构建，`uvrpc_free()` 是一个只认自己
+  > 分配过的指针的池，跨堆释放会立刻被 CI 抓到。它需要存函数指针的全局状态，与
+  > 「零可变全局」冲突，已删除。**代价是这个检测能力一并没了** —— mimalloc 构建不是等价替代：
+  > 它不刻意构造跨堆场景。规则本身仍由本条文档和 `uvrpc_free_encoded()` 约束。
 - **`max_clients` 传 0 不是"无限"**：`src/uvrpc_server.c:259` 把 0 变成默认 1024，
   不存在 unlimited 模式（头文件注释此前写作 "0 = unlimited"，2026-09-29 已改正）。
 - **INPROC 的连接判定是 O(已见连接数)**：`client_ctxs` 靠线性扫去重
