@@ -226,8 +226,11 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
         return;
     }
 
-    /* Only handle Response frames (type=1), ignore Request frames (type=0) */
-    if (frame_type != 1 && frame_type != 2) {
+    /* Response, more-to-come, or error. Anything else -- a Request frame
+     * arriving at a client -- is not ours. */
+    if (frame_type != UVRPC_FRAME_TYPE_RESPONSE &&
+        frame_type != UVRPC_FRAME_TYPE_RESPONSE_MORE &&
+        frame_type != UVRPC_FRAME_TYPE_RESPONSE_ERROR) {
         UVRPC_LOG("Not a response frame (type=%d), ignoring", frame_type);
         uvrpc_free((void*)data);
         return;
@@ -253,13 +256,42 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
     if (pending && pending->msgid == msgid) {
         UVRPC_LOG("Found pending callback for msgid=%u (idx=%u)", msgid, idx);
         
-        /* Create response structure */
+        /* Create response structure. An error frame carries an int32 code and
+         * the message text in the very bytes a result would occupy, so it has
+         * to be read here or the caller gets a success holding raw error bytes.
+         * The message lives in this frame, so it is copied into the response
+         * struct's storage rather than pointed at. */
         uvrpc_response_t resp;
         resp.status = UVRPC_OK;
         resp.msgid = msgid;
         resp.error_code = 0;
         resp.error_message = NULL;
         resp.user_data = NULL;
+
+        char error_text[256];
+        if (frame_type == UVRPC_FRAME_TYPE_RESPONSE_ERROR) {
+            int32_t code = UVRPC_ERROR;
+            if (result_size >= sizeof(int32_t)) {
+                memcpy(&code, result, sizeof(int32_t));
+            }
+            size_t message_len = result_size - sizeof(int32_t);
+            if (result_size < sizeof(int32_t)) {
+                message_len = 0;
+            }
+            if (message_len >= sizeof(error_text)) {
+                message_len = sizeof(error_text) - 1;
+            }
+            if (message_len > 0) {
+                memcpy(error_text, result + sizeof(int32_t), message_len);
+            }
+            error_text[message_len] = '\0';
+            resp.status = code;
+            resp.error_code = code;
+            resp.error_message = error_text;
+            /* The payload was the error, not an answer: there is no result. */
+            result = NULL;
+            result_size = 0;
+        }
         resp.frame_type = frame_type;  // Store frame type for ResponseEnd detection
 
         /* Copy result data to avoid use-after-free */
@@ -288,12 +320,16 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
             frame_type = uvrpc_get_frame_type(data, size);
         }
 
-        /* Cleanup pending callback only on Response (type=1, last response)
-         * This allows multiple responses for the same msgid (stream mode)
-         * type=1: Response (last) - cleanup callback
-         * type=2: ResponseMore (more to come) - keep callback alive */
-        if (frame_type == 1) {
-            /* Response (last) - cleanup pending callback */
+        /* Release the slot once the request is finished with it.
+         *
+         *   RESPONSE        - the last frame; done
+         *   RESPONSE_ERROR  - also the last frame: an error is a complete
+         *                     answer, so holding the slot would strand the quota
+         *                     for the life of the client
+         *   RESPONSE_MORE   - the stream continues, so the slot stays
+         */
+        if (frame_type == UVRPC_FRAME_TYPE_RESPONSE ||
+            frame_type == UVRPC_FRAME_TYPE_RESPONSE_ERROR) {
             client->pending_callbacks[idx] = NULL;
             cleanup_pending_callback(pending);
             client->current_concurrent--;

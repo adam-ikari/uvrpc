@@ -97,6 +97,15 @@ typedef enum {
 #define UVRPC_MAX_PENDING_CALLBACKS (1 << 22)  /* 4,194,304 - maximum allowed */
 #endif
 
+/* RpcFrame.type. Named because the value decides who owns a frame: a client
+ * must not treat an error frame as a result, and it cannot tell by looking at
+ * the payload -- an error carries a code and a message in exactly the bytes a
+ * successful result would use. */
+#define UVRPC_FRAME_TYPE_REQUEST       0  /**< @brief Client to server */
+#define UVRPC_FRAME_TYPE_RESPONSE      1  /**< @brief Server to client, final */
+#define UVRPC_FRAME_TYPE_RESPONSE_MORE 2  /**< @brief Server to client, more to come */
+#define UVRPC_FRAME_TYPE_RESPONSE_ERROR 3 /**< @brief Server to client, the request failed; payload is int32 code then message bytes */
+
 #ifndef UVRPC_MAX_CONCURRENT_REQUESTS
 #define UVRPC_MAX_CONCURRENT_REQUESTS 100  /* Max concurrent requests per client */
 #endif
@@ -262,7 +271,7 @@ struct uvrpc_response {
     char* error_message;      /**< @brief Error message (if error_code != 0) */
     uint8_t* result;          /**< @brief Response result data (valid only during callback) */
     size_t result_size;       /**< @brief Size of result buffer */
-    int frame_type;           /**< @brief Frame type (0=Request, 1=Response, 2=ResponseEnd) */
+    int frame_type;           /**< @brief One of UVRPC_FRAME_TYPE_*, telling you whether `result` is a result */
     void* user_data;          /**< @brief User-defined data */
 };
 

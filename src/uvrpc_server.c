@@ -208,18 +208,12 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         uint8_t* resp_data = NULL;
         size_t resp_size = 0;
 
-        /* Error encoded in response data payload: code + message */
-        int32_t error_code = 2;
-        const char* error_msg = "Method not found";
-        size_t error_msg_len = strlen(error_msg);
-        size_t payload_size = sizeof(int32_t) + error_msg_len;
-        uint8_t* payload = uvrpc_alloc(payload_size);
-        if (payload) {
-            memcpy(payload, &error_code, sizeof(int32_t));
-            memcpy(payload + sizeof(int32_t), error_msg, error_msg_len);
-            uvrpc_encode_response(msgid, payload, payload_size, &resp_data, &resp_size);
-            uvrpc_free(payload);
-        }
+        /* Encoded as an error frame, not a response frame. A response would be
+         * indistinguishable from a handler that legitimately returned a small
+         * integer followed by text, and the client would hand that to the caller
+         * as a successful result. */
+        uvrpc_encode_error(msgid, UVRPC_ERROR_NOT_FOUND, "Method not found",
+                           &resp_data, &resp_size);
 
         if (resp_data) {
             /* Send error response via UVBus */
@@ -539,25 +533,14 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code, const ch
     }
 
     /* Encode error in response data payload: code + message */
-    size_t error_msg_len = error_message ? strlen(error_message) : 0;
-    size_t payload_size = sizeof(int32_t) + error_msg_len;
-    uint8_t* payload = uvrpc_alloc(payload_size);
-    if (!payload) {
-        return UVRPC_ERROR_TRANSPORT;
-    }
-
-    memcpy(payload, &error_code, sizeof(int32_t));
-    if (error_message && error_msg_len > 0) {
-        memcpy(payload + sizeof(int32_t), error_message, error_msg_len);
-    }
-
-    /* Encode response with error payload */
+    /* As an error frame, not a response frame. A response would put the code
+     * and message in the bytes the caller expects to be its result, and the
+     * client would hand that over as a successful answer. */
     uint8_t* response_data;
     size_t response_size;
 
-    int ret = uvrpc_encode_response(req->msgid, payload, payload_size,
-                                     &response_data, &response_size);
-    uvrpc_free(payload);
+    int ret = uvrpc_encode_error(req->msgid, error_code, error_message,
+                                 &response_data, &response_size);
 
     if (ret != UVRPC_OK) {
         return UVRPC_ERROR_TRANSPORT;

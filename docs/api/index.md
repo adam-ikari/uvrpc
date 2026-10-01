@@ -241,6 +241,12 @@ int uvrpc_response_send_error(uvrpc_request_t* req, int32_t error_code,
                               const char* error_message);
 ```
 
+`uvrpc_response_send_error()` ends the request the way a failure should: the
+caller's callback runs with `status` and `error_code` set to `error_code`, a
+`result_size` of zero, and `error_message` carrying the text. It is also what
+the server uses when a request names a method no handler is registered for,
+which arrives as `UVRPC_ERROR_NOT_FOUND` with "Method not found".
+
 ## Client
 
 ### `uvrpc_client_t`
@@ -321,6 +327,18 @@ uvrpc_context_t* uvrpc_client_get_context(uvrpc_client_t* client);
 
 Passed to a client callback. Fields include `status`, `msgid`, `result`,
 `result_size`, `error_code`, `error_message`.
+
+**Check `status` before reading `result`.** When a request fails — the method
+does not exist, or a handler calls `uvrpc_response_send_error()` — the callback
+still runs, with `status` and `error_code` set to the failure code,
+`error_message` describing it, `result_size` zero, and `frame_type` equal to
+`UVRPC_FRAME_TYPE_RESPONSE_ERROR`.
+
+Failures arrive as their own frame type rather than as a response whose payload
+happens to look wrong. A handler is free to return four bytes of integer
+followed by text, so a payload alone cannot say whether it is an answer or an
+error -- before this was distinguished, calling a method that did not exist
+delivered `status == UVRPC_OK` and the error's own bytes as the result.
 
 ```c
 void uvrpc_response_free(uvrpc_response_t* resp);

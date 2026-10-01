@@ -122,7 +122,7 @@ typedef enum {
     UVRPC_ERROR_CANCELLED = -8,          /**< @brief Operation was cancelled */
     UVRPC_ERROR_POOL_EXHAUSTED = -9,     /**< @brief Connection pool exhausted */
     UVRPC_ERROR_RATE_LIMITED = -11,      /**< @brief Rate limit exceeded */
-    UVRPC_ERROR_NOT_FOUND = -11,         /**< @brief Resource not found */
+    UVRPC_ERROR_NOT_FOUND = -12,         /**< @brief Resource not found */
     UVRPC_ERROR_ALREADY_EXISTS = -12,     /**< @brief Resource already exists */
     UVRPC_ERROR_INVALID_STATE = -13,     /**< @brief Invalid state for operation */
     UVRPC_ERROR_IO = -14,                 /**< @brief I/O error occurred */

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [protocol, schema, flatbuffers]
 created: "2026-09-28T17:09:45"
-updated: "2026-10-01T04:10:20"
+updated: "2026-10-01T05:58:31"
 ---
 
 <!-- compiled_truth -->
@@ -69,4 +69,10 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
   kind: evidence
   summary: "**负载上限：限制作用在编码后的帧而非载荷，且编码开销不是常数**（实测：0 字节载荷→帧 38、1 字节→51、100 字节→48，属 FlatBuffers 对齐），所以'最大载荷 = 65536 - 48'只是近似。三种传输的实测边界**各不相同且可复现**：TCP 65488、IPC 65484、UDP 65452（同一次 run 内二进制搜索，确定性；连跑两次结果完全一致）。三者执行的是同一个 UVBUS_DEFAULT_MAX_FRAME_SIZE，落点不同只因各自停止尺寸处的编码开销不同；UDP 少得最多，符合它是数据报协议、有低于帧上限的自身天花板。**实际后果：跨传输统一的安全载荷上限是三者中最低的 65452，不是 TCP 的 65488** —— 按 TCP 边界选尺寸的应用，换到 UDP 或 IPC 上会静默收不到响应。另外 UVBUS_MAX_FRAME_SIZE（1MB）定义了但全库无引用，是'看起来像上限的死常量'；文档若称 1MB 为硬上限即不成立"
   source: "tests/acceptance/payload_bounds.c；三传输独立二分探针，两次复跑一致（2026-09-30）"
+  affects: [minimal-rpcframe-schema]
+
+- time: 2026-10-01T05:58:31
+  kind: reversal
+  summary: "**调错方法名会返回成功**（已修，2026-09-30）。服务端把失败编码进**响应帧的 payload**（裸魔数 int32 2 + 消息文本），客户端  是无条件的、从不解析该 payload —— 于是调不存在的方法得到 ，结果是  的 ASCII 原文。**看起来完全不像错误**：任何检查 status 再解析 result 的代码会把 4 字节整数 + 15 字节文本当类型化响应读。空方法名同样。根因：错误帧与结果帧是同一个帧，而 payload 无法自证——handler 完全可以合法返回 int32+文本。修法：新增 （此前 type 只有 0/1/2，且全是魔数无常量），服务端走 ，客户端在读 payload **之前**先按 frame_type 判别，错误帧解出 error_code/error_message、置 status、result_size 归零。同时修 （公开 API，同一缺陷）。**附带修一个会静默拖垮客户端的坑**：槽位只在  时释放，错误帧（3）不释放 —— 回调跑了但名额不归还，配额逐渐耗尽直至拒绝所有调用。错误是完整答案，必须与 type=1 一同释放。服务端魔数 2 改为  (-12)。**线格式变更**：新服务端配旧客户端仍会表现为'成功携带错误字节'，反之旧服务端配新客户端错误帧被忽略（静默）；0.x 无 tag 无 release，此刻改最便宜"
+  source: "tests/acceptance/failure_modes.c；裸探针实测 status=0/error_code=0/result_size=20（修复前）；非空转：错误帧退回普通帧 → 5 项失败，槽位不释放 → 3 项失败（2026-09-30）"
   affects: [minimal-rpcframe-schema]

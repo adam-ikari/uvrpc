@@ -21,6 +21,11 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
                           uint8_t** out_data, size_t* out_size);
 
+/* Encode a failure frame. The payload is an int32 error code followed by the
+ * message bytes; the frame type is what distinguishes it from a result. */
+int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* message,
+                       uint8_t** out_data, size_t* out_size);
+
 int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t result_size,
                                 uint8_t** out_data, size_t* out_size);
 

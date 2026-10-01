@@ -47,8 +47,11 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 }
 
 /* Encode response frame (type=1, last response) */
-int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
-                          uint8_t** out_data, size_t* out_size) {
+/* Encode a server-to-client frame. `type` is one of UVRPC_FRAME_TYPE_*; it is
+ * what tells the client whether the payload is a result or a failure. */
+static int encode_response_typed(uint32_t msgid, const uint8_t* result,
+                                 size_t result_size, uint8_t type,
+                                 uint8_t** out_data, size_t* out_size) {
     if (!out_data || !out_size) return UVRPC_ERROR_INVALID_PARAM;
 
     flatcc_builder_t builder;
@@ -58,9 +61,6 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
     if (result && result_size > 0) {
         data_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
     }
-
-    /* type: 0 = Request, 1 = Response (last), 2 = ResponseMore */
-    uint8_t type = 1;
 
     uvrpc_RpcFrame_start_as_root(&builder);
     uvrpc_RpcFrame_type_add(&builder, type);
@@ -75,6 +75,35 @@ int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_s
 
     flatcc_builder_clear(&builder);
     return UVRPC_OK;
+}
+
+int uvrpc_encode_response(uint32_t msgid, const uint8_t* result, size_t result_size,
+                          uint8_t** out_data, size_t* out_size) {
+    return encode_response_typed(msgid, result, result_size,
+                                 UVRPC_FRAME_TYPE_RESPONSE, out_data, out_size);
+}
+
+/* Encode a failure: the payload is an int32 error code followed by the message
+ * bytes, and the frame type says so. Without the type a client cannot tell this
+ * from a result that happens to start with a small integer. */
+int uvrpc_encode_error(uint32_t msgid, int32_t error_code, const char* message,
+                       uint8_t** out_data, size_t* out_size) {
+    size_t message_len = message ? strlen(message) : 0;
+    size_t payload_size = sizeof(int32_t) + message_len;
+
+    uint8_t* payload = uvrpc_alloc(payload_size);
+    if (!payload) return UVRPC_ERROR_NO_MEMORY;
+
+    memcpy(payload, &error_code, sizeof(int32_t));
+    if (message_len > 0) {
+        memcpy(payload + sizeof(int32_t), message, message_len);
+    }
+
+    int ret = encode_response_typed(msgid, payload, payload_size,
+                                    UVRPC_FRAME_TYPE_RESPONSE_ERROR,
+                                    out_data, out_size);
+    uvrpc_free(payload);
+    return ret;
 }
 
 /* Encode response frame (type=2, more responses to come) */

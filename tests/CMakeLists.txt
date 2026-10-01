@@ -322,6 +322,31 @@ target_include_directories(payload_bounds
     ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
 )
 
+# Failure modes: a request that cannot succeed must fail legibly. The unknown
+# -method case is the sharp one -- an error used to reach the caller as a
+# successful result holding the error's own bytes.
+add_executable(failure_modes
+    acceptance/failure_modes.c
+)
+
+target_link_libraries(failure_modes
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(failure_modes
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME failure_modes COMMAND failure_modes)
+set_tests_properties(failure_modes PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 120)
+
 add_test(NAME payload_bounds COMMAND payload_bounds)
 set_tests_properties(payload_bounds PROPERTIES
     LABELS "acceptance"
