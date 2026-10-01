@@ -79,6 +79,6 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
 
 - time: 2026-10-01T11:29:08
   kind: evidence
-  summary: "**架构文档的行号引用大面积漂移 —— 已修**（2026-09-30）。写脚本扫 docs/ 下所有  /  引用，逐条核对是否指向真实代码，**16 条可疑、14 条确认漂移**。最严重的一类是指向无关内容： 实际是 （被引用为  的 typedef 位置，真实在 :200）； 实际是 （被引用为 ，真实在 :528）； 实际是注释（被引用为 ，真实在 :54）； 实际是空行（被引用为 msgid 取模，真实在 :250）。**我改客户端错误帧处理时新增了约 145 行，把大批引用顶走了**。修正后剩余 2 条经人工确认是有意引用注释开头。**判据**：行号引用是架构文档的证据链，指向空行或  时等于没有证据 —— 这与「文档承诺不存在的东西」是同一类问题，值得定期用脚本核对而非逐个人读。另修  两处过时示例： 少了 registry 参数、 少一个参数（真实 5 个：loop/address/registry/callback/ctx）。**注意区分**： 配  与配  **两种都对**（后者是 stable free），代码库 86/63 混用，模板用后者，文档用前者 —— 不是 bug，未改"
+  summary: "**架构文档的行号引用大面积漂移 —— 已修**（2026-09-30）。写脚本扫 docs/ 下所有 `src/*.c:N` / `include/*.h:N` 引用，逐条核对是否指向真实代码，**16 条可疑、14 条确认漂移**。最严重的一类是指向无关内容：`include/uvrpc.h:182` 实际是注释结束符（被引用为 `uvrpc_handler_t` 的 typedef 位置，真实在 :200）；`include/uvrpc.h:465` 实际是 `@param server`（被引用为 `uvrpc_response_send`，真实在 :528）；`include/uvrpc.h:505` 实际是注释（被引用为 `UVRPC_ERROR_NOT_CONNECTED`，真实在 :54）；`src/uvrpc_client.c:146` 实际是空行（被引用为 msgid 取模，真实在 :250）。**我改客户端错误帧处理时新增了约 145 行，把大批引用顶走了**。修正后剩余 2 条经人工确认是有意引用注释开头。**判据**：行号引用是架构文档的证据链，指向空行或注释结束符时等于没有证据 —— 这与「文档承诺不存在的东西」是同一类问题，值得定期用脚本核对而非逐个人读。另修 `docs/api/generated-api.md` 两处过时示例：`create_server` 少了 registry 参数、`create_client` 少一个参数（真实 5 个：loop/address/registry/callback/ctx）。**注意区分**：`flatcc_builder_finalize_buffer` 配 `flatcc_builder_free` 与配 `flatcc_builder_aligned_free` **两种都对**（后者是 stable free），代码库 86/63 混用，模板用后者，文档用前者 —— 不是 bug，未改"
   source: "脚本核对 docs/ 全部行号引用 + 逐条语义比对（2026-09-30）"
   affects: [minimal-rpcframe-schema]
