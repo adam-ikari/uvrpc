@@ -51,10 +51,10 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 #include "uvbus.h"
 #include "uvbus_config.h"
 
-#define BASE_PORT 48120
 #define DRAIN_MS 300
 /* A binary search over 64k takes about 17 probes; each one waits out a full
  * drain when it fails, so this is a floor, not a target. */
@@ -209,10 +209,10 @@ int main(void) {
     memset(cases, 0, sizeof(cases));
     snprintf(cases[0].name, sizeof(cases[0].name), "TCP");
     cases[0].type = UVBUS_TRANSPORT_TCP;
-    snprintf(cases[0].address, sizeof(cases[0].address), "tcp://127.0.0.1:%d", BASE_PORT);
+    snprintf(cases[0].address, sizeof(cases[0].address), "tcp://127.0.0.1:%d", acceptance_free_port());
     snprintf(cases[1].name, sizeof(cases[1].name), "UDP");
     cases[1].type = UVBUS_TRANSPORT_UDP;
-    snprintf(cases[1].address, sizeof(cases[1].address), "udp://127.0.0.1:%d", BASE_PORT + 1);
+    snprintf(cases[1].address, sizeof(cases[1].address), "udp://127.0.0.1:%d", acceptance_free_port());
     snprintf(cases[2].name, sizeof(cases[2].name), "IPC");
     cases[2].type = UVBUS_TRANSPORT_IPC;
     snprintf(cases[2].address, sizeof(cases[2].address), "%s", ipc);

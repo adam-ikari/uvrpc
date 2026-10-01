@@ -26,13 +26,16 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 
 /* Internal, on purpose: building a genuine frame to corrupt is the point. The
  * test asserts on what the server does with it, not on the encoder. */
 #include "../../src/uvrpc_flatbuffers.h"
 
-#define PORT 47721
-#define ADDR "tcp://127.0.0.1:47721"
+/* From the OS, not fixed: a hard-coded port fails for reasons that have nothing
+ * to do with what this scenario is about. */
+static int port;
+static char address[64];
 
 /* Watchdog: a scenario that must not be able to hang also must not be able to
  * wait forever to fail. */
@@ -80,7 +83,7 @@ static int dial(void) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(PORT);
+    addr.sin_port = htons((uint16_t)port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
@@ -201,8 +204,15 @@ int main(void) {
     uv_timer_start(&watchdog, watchdog_cb, WATCHDOG_MS, 0);
     uv_unref((uv_handle_t*)&watchdog);
 
+    port = acceptance_free_port();
+    if (port <= 0) {
+        printf("FAIL: could not obtain a port from the OS\n");
+        return 1;
+    }
+    snprintf(address, sizeof(address), "tcp://127.0.0.1:%d", port);
+
     uvrpc_config_t* config = uvrpc_config_set_loop(uvrpc_config_new(), &loop);
-    config = uvrpc_config_set_address(config, ADDR);
+    config = uvrpc_config_set_address(config, address);
     config = uvrpc_config_set_transport(config, UVBUS_TRANSPORT_TCP);
     uvrpc_server_t* server = uvrpc_server_create(config);
     uvrpc_config_free(config);

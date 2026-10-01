@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-30T14:19:22"
+updated: "2026-10-01T06:54:11"
 ---
 
 <!-- compiled_truth -->
@@ -117,4 +117,10 @@ CI 的 `Benchmark` 工作流就是这串命令，每种传输跑一次并把结�
   kind: reversal
   summary: "**参考表数字全部按 CI 实测重写**（2026-09-30）。此前文档声称 SAMELOOP 1.00 µs / ~1,000,000 req/s 并标注'measured on a CI runner'，而 CI 5 次 100k 采样的中位数是 **16.42 µs / ~61,000 req/s** —— 差 16.4 倍，且相对排序也不符（旧表把 SAMELOOP 列为最快，实测与 INPROC 持平；TCP 与 UDP 实测持平）。**关键测量事实：同一次 run 内 5 个样本离散度约 1.0x，但不同 CI runner 之间差 2.2 倍**（同一份代码相邻两次 run 得 35.84 µs 与 16.42 µs）。所以单次采样连判断'改动有没有让性能变慢'都做不到，必须取中位数。基准工作流已改为每传输采样 5 次 × 100k 请求，报 min/中位/max 与 max/min 比值，原始样本进 job log"
   source: "Benchmark workflow run 36726393370（CI，实测数据）；对照 run 36711203308（35.84 µs）（2026-09-30）"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-10-01T06:54:11
+  kind: evidence
+  summary: "**验收套件的端口抖动根因不是 TIME_WAIT，而是测试自己硬编码端口**：六个场景原先用 45191/45192、47721、47831-47833、47960-47963、48081-48082、48300-48302。实测与既有测试文件**无端口重叠**，但 ASan 下五次全量跑有一次失败，随后连过四次 —— 说明是运行时占用而非文件间冲突。修法：新增 tests/acceptance/free_port.h，bind 到端口 0 再 getsockname 读回内核分配的端口（六个场景共用一份实现，不各写一遍）。根治本可以做在库上——服务端暴露绑定后的实际地址——但那要给三个 socket 传输加读回逻辑并新增公开 API，超出'修复抖动'的范围，且抖动只影响测试不影响用户。修后 ASan 下连跑三次全量 115/115"
+  source: "tests/acceptance/free_port.h；端口重叠排查：grep 全部测试端口无交集（2026-09-30）"
   affects: [uv-run-once-benchmark-methodology]

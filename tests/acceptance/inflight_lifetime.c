@@ -35,9 +35,9 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 #include "uvbus.h"
 
-#define BASE_PORT 47960
 #define IN_FLIGHT 5
 #define DRAIN_MS 500
 #define WATCHDOG_MS 30000
@@ -164,7 +164,7 @@ static void check_loop_drained(uv_loop_t* loop, uv_timer_t* timer) {
 static void case_client_first(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[1/4] client released first, %d requests in flight\n", IN_FLIGHT);
     pair p;
-    if (!build_pair(loop, &p, BASE_PORT)) {
+    if (!build_pair(loop, &p, acceptance_free_port())) {
         printf("FAIL: could not bring up the pair\n");
         failures++;
         return;
@@ -184,7 +184,7 @@ static void case_client_first(uv_loop_t* loop, uv_timer_t* timer) {
 static void case_server_first(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[2/4] server released first, %d requests in flight\n", IN_FLIGHT);
     pair p;
-    if (!build_pair(loop, &p, BASE_PORT + 1)) {
+    if (!build_pair(loop, &p, acceptance_free_port())) {
         printf("FAIL: could not bring up the pair\n");
         failures++;
         return;
@@ -207,7 +207,7 @@ static void case_server_first(uv_loop_t* loop, uv_timer_t* timer) {
 static void case_response_after_client_gone(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[3/4] response delivered after the client is released\n");
     pair p;
-    if (!build_pair(loop, &p, BASE_PORT + 2)) {
+    if (!build_pair(loop, &p, acceptance_free_port())) {
         printf("FAIL: could not bring up the pair\n");
         failures++;
         return;
@@ -243,7 +243,7 @@ static void case_response_after_client_gone(uv_loop_t* loop, uv_timer_t* timer) 
 static void case_peer_disappears(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[4/4] peer disappears while the server is writing a response\n");
     pair p;
-    if (!build_pair(loop, &p, BASE_PORT + 3)) {
+    if (!build_pair(loop, &p, acceptance_free_port())) {
         printf("FAIL: could not bring up the pair\n");
         failures++;
         return;

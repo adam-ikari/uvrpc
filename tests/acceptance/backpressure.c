@@ -41,8 +41,8 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 
-#define SERVER_ADDR "tcp://127.0.0.1:47831"
 #define QUOTA 4
 #define RING_SLOTS 64
 /* Each case fills the client, so it needs its own server. */
@@ -310,9 +310,9 @@ int main(void) {
 
     /* Each case runs on its own port: a freed server's socket may linger, and
      * the three cases would otherwise share the address. */
-    case_quota(&loop, &timer, 47831);
-    case_ring(&loop, &timer, 47832);
-    case_batch(&loop, &timer, 47833);
+    case_quota(&loop, &timer, acceptance_free_port());
+    case_ring(&loop, &timer, acceptance_free_port());
+    case_batch(&loop, &timer, acceptance_free_port());
 
     uv_close((uv_handle_t*)&timer, NULL);
     uv_close((uv_handle_t*)&watchdog, NULL);

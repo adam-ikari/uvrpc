@@ -43,8 +43,8 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 
-#define BASE_PORT 48300
 #define DRAIN_MS 400
 #define WATCHDOG_MS 40000
 
@@ -157,7 +157,7 @@ static void tear_down(uv_loop_t* loop, uv_timer_t* timer, pair* p) {
 static void case_unknown_method(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[1/3] a method that does not exist\n");
     pair p;
-    bring_up(loop, &p, BASE_PORT, 64);
+    bring_up(loop, &p, acceptance_free_port(), 64);
 
     reset();
     uvrpc_client_call(p.client, "no_such_method", (const uint8_t*)"x", 1,
@@ -193,7 +193,7 @@ static void case_unknown_method(uv_loop_t* loop, uv_timer_t* timer) {
 static void case_empty_method(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[2/3] an empty method name\n");
     pair p;
-    bring_up(loop, &p, BASE_PORT + 1, 64);
+    bring_up(loop, &p, acceptance_free_port(), 64);
 
     reset();
     uvrpc_client_call(p.client, "", (const uint8_t*)"x", 1, on_response, NULL);
@@ -214,7 +214,7 @@ static void case_empty_method(uv_loop_t* loop, uv_timer_t* timer) {
 static void case_failure_releases_the_slot(uv_loop_t* loop, uv_timer_t* timer) {
     printf("\n[3/3] a failure returns its callback slot\n");
     pair p;
-    bring_up(loop, &p, BASE_PORT + 2, 4);
+    bring_up(loop, &p, acceptance_free_port(), 4);
 
     reset();
 

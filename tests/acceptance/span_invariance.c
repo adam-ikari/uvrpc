@@ -22,6 +22,7 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "free_port.h"
 
 #define REQ_COUNT 5
 #define PAYLOAD_LEN 5
@@ -201,11 +202,20 @@ int main(void) {
     snprintf(ipc_addr, sizeof(ipc_addr), "ipc:///tmp/uvrpc_span_%d.sock",
              (int)getpid());
 
+    /* Ports from the OS, not fixed: a hard-coded one fails for reasons that
+     * have nothing to do with span invariance. */
+    char tcp_addr[64];
+    char udp_addr[64];
+    snprintf(tcp_addr, sizeof(tcp_addr), "tcp://127.0.0.1:%d",
+             acceptance_free_port());
+    snprintf(udp_addr, sizeof(udp_addr), "udp://127.0.0.1:%d",
+             acceptance_free_port());
+
     transport_case cases[] = {
         {"INPROC",   UVBUS_TRANSPORT_INPROC,   "inproc://uvrpc_span"},
         {"SAMELOOP", UVBUS_TRANSPORT_SAMELOOP, "sameloop://uvrpc_span"},
-        {"TCP",      UVBUS_TRANSPORT_TCP,      "tcp://127.0.0.1:45191"},
-        {"UDP",      UVBUS_TRANSPORT_UDP,      "udp://127.0.0.1:45192"},
+        {"TCP",      UVBUS_TRANSPORT_TCP,      tcp_addr},
+        {"UDP",      UVBUS_TRANSPORT_UDP,      udp_addr},
         {"IPC",      UVBUS_TRANSPORT_IPC,      ipc_addr},
     };
     const int case_count = (int)(sizeof(cases) / sizeof(cases[0]));
