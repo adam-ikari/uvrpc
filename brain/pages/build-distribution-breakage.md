@@ -113,6 +113,6 @@ updated: "2026-10-01T11:39:35"
 
 - time: 2026-10-01T11:39:35
   kind: reversal
-  summary: "**构建竞态：uvrpc_merged 覆盖 libuvrpc.a 与链接并发**（已修，2026-09-30）。 是  目标，它刻意把  **覆盖**到 （因为示例用  链合并归档，需要 libuv/flatcc 内联）。但所有示例目标链的是 CMake 目标 ，CMake **完全不知道**这个文件路径会被重写 —— 于是  可能正在读  时被  截断重写，报 。**今天新增约 20 个示例目标后并发链接者暴增，CI 的 ASan job 首次暴露**；本地表现为需要反复 ，我当时误判为「共享 dist 的混合状态」，实际是同一个缺陷。修法：给每个链  的目标加 （示例 14 处显式 + tests/ 与 tests/integration/ 各用  批量加）。验证：CI 同样的 ASan 配置连做三次干净构建，0 错误。注意  不含子目录目标，所以 integration 子目录要单独加"
+  summary: "**构建竞态：uvrpc_merged 覆盖 libuvrpc.a 与链接并发**（已修，2026-09-30）。`uvrpc_merged` 是 `ALL` 目标，它刻意把 `dist/lib/libuvrpc_full.a` **覆盖**到 `dist/lib/libuvrpc.a`（因为示例用 `-static` 链合并归档，需要 libuv/flatcc 内联）。但所有示例目标链的是 CMake 目标 `uvrpc`，CMake **完全不知道**这个文件路径会被重写 —— 于是 `ld` 可能正在读 `libuvrpc.a` 时被覆盖，报 `error adding symbols: no more archived files`。**今天新增约 20 个示例目标后并发链接者暴增，CI 的 ASan job 首次暴露**；本地表现为需要反复 `rm -rf dist`，我当时误判为「共享 dist 的混合状态」，实际是同一个缺陷。修法：给每个链 `uvrpc` 的目标加 `add_dependencies(<t> uvrpc_merged)`（示例 14 处显式 + tests/ 与 tests/integration/ 各用 `get_property(BUILDSYSTEM_TARGETS)` 批量加）。验证：CI 同样的 ASan 配置连做三次干净构建，0 错误。注意 `BUILDSYSTEM_TARGETS` 不含子目录目标，所以 integration 子目录要单独加"
   source: "CI 日志 'error adding symbols: no more archived files' + CMakeLists.txt:374 的 copy 指令（2026-09-30）"
   affects: [build-distribution-breakage]
