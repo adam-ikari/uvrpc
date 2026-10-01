@@ -12,9 +12,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <uv.h>
-#include "generated/rpc_mathservice_api.h"
-#include "generated/rpc_echoservice_api.h"
-#include "generated/rpc_userservice_api.h"
+#include "rpc_mathservice_api.h"
+#include "rpc_echoservice_api.h"
+#include "rpc_userservice_api.h"
 
 /* MathService handler implementation */
 int uvrpc_mathservice_handle_request(const char* method_name, 

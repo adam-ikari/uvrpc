@@ -71,7 +71,12 @@ class RPCParser:
         """Parse the schema file"""
         with open(self.schema_file, 'r') as f:
             content = f.read()
-        
+        # Strip comments before anything reads the text. Each pattern below
+        # scans the whole file, so a schema documenting its own syntax inside
+        # a block comment -- "rpc_service ServiceName { ... }" -- used to be
+        # parsed as a real service and generate code that does not compile.
+        content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+        content = re.sub(r'//[^\n]*', '', content)
         # Extract namespace
         ns_match = re.search(r'namespace\s+(\w+);', content)
         if ns_match:

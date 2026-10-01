@@ -178,6 +178,7 @@ set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schema)
 set(RPC_SCHEMA ${SCHEMA_DIR}/rpc.fbs)
 set(BENCHMARK_SERVER_SCHEMA ${SCHEMA_DIR}/benchmark_server.fbs)
 set(BENCHMARK_SCHEMA ${SCHEMA_DIR}/benchmark.fbs)
+set(RPC_EXAMPLE_SCHEMA ${SCHEMA_DIR}/rpc_example.fbs)
 set(GENERATED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated)
 
 # Find flatcc compiler
@@ -222,7 +223,18 @@ add_custom_command(
     COMMENT "Generating FlatCC code from benchmark schema"
 )
 
-add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/rpc_verifier.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h)
+# Generate FlatCC code from the example schema. flatbuffers_demo needs this and
+# nothing else produced it, so the demo was unbuildable.
+add_custom_command(
+    OUTPUT ${GENERATED_DIR}/rpc_example_reader.h ${GENERATED_DIR}/rpc_example_builder.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENERATED_DIR}
+    COMMAND ${FLATCC_COMPILER} -c -w -o ${GENERATED_DIR} ${RPC_EXAMPLE_SCHEMA}
+    DEPENDS ${RPC_EXAMPLE_SCHEMA}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating FlatCC code from rpc-example schema"
+)
+
+add_custom_target(generate_flatcc DEPENDS ${GENERATED_DIR}/rpc_reader.h ${GENERATED_DIR}/rpc_builder.h ${GENERATED_DIR}/rpc_verifier.h ${GENERATED_DIR}/benchmark_server_reader.h ${GENERATED_DIR}/benchmark_server_builder.h ${GENERATED_DIR}/benchmark_reader.h ${GENERATED_DIR}/benchmark_builder.h ${GENERATED_DIR}/rpc_example_reader.h ${GENERATED_DIR}/rpc_example_builder.h)
 add_dependencies(uvrpc generate_flatcc)
 add_dependencies(uvrpc_shared generate_flatcc)
 
@@ -254,37 +266,72 @@ foreach(_candidate IN LISTS _dsl_candidates)
 endforeach()
 
 if(UVRPC_DSL_AVAILABLE)
-    set(_dsl_ns log_logservice)
     file(GLOB _dsl_templates ${CMAKE_CURRENT_SOURCE_DIR}/tools/templates/*.j2)
-    add_custom_command(
-        OUTPUT ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_client.c
-               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_rpc_common.c
-               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_server_stub.c
-               ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_api.h
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${UVRPC_DSL_GEN_DIR}
-        COMMAND ${UVRPC_DSL_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
-                --flatcc ${FLATCC_COMPILER}
-                ${CMAKE_CURRENT_SOURCE_DIR}/schema/log_service.fbs
-                -o ${UVRPC_DSL_GEN_DIR}
-        # The templates decide what the generated code does, so editing one
-        # must rerun the generator rather than leave dependents on stale output.
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
-                ${CMAKE_CURRENT_SOURCE_DIR}/schema/log_service.fbs
-                ${_dsl_templates}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Generating RPC DSL code from log_service.fbs"
-        VERBATIM
-    )
+
+    # Generate the RPC DSL bindings for one schema. ARGN lists the service
+    # prefixes the generator emits for it; each yields four files. The output
+    # list has to be spelled out because add_executable resolves its sources at
+    # generate time, and an output CMake does not know about is one it will not
+    # wait for.
+    function(uvrpc_dsl_generate prefix schema outdir)
+        set(_outputs "")
+        set(_sources "")
+        foreach(_svc IN LISTS ARGN)
+            foreach(_ext _client.c _rpc_common.c _server_stub.c _api.h)
+                list(APPEND _outputs ${outdir}/${_svc}${_ext})
+            endforeach()
+            list(APPEND _sources ${outdir}/${_svc}_client.c)
+            list(APPEND _sources ${outdir}/${_svc}_rpc_common.c)
+            list(APPEND _sources ${outdir}/${_svc}_server_stub.c)
+        endforeach()
+        get_filename_component(_schema_name ${schema} NAME_WE)
+        add_custom_command(
+            OUTPUT ${_outputs}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
+            COMMAND ${UVRPC_DSL_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
+                    --flatcc ${FLATCC_COMPILER}
+                    ${schema}
+                    -o ${outdir}
+            # The templates decide what the generated code does, so editing one
+            # must rerun the generator rather than leave dependents on stale
+            # output.
+            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/uvrpcc.py
+                    ${schema}
+                    ${_dsl_templates}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating RPC DSL code from ${_schema_name}.fbs"
+            VERBATIM
+        )
+        set_source_files_properties(${_sources} PROPERTIES GENERATED TRUE)
+        # A server stub references that service's handler, so linking one
+        # pulls in a symbol the program has to supply. A client-only demo wants
+        # the wrappers without that obligation, so both lists are exported.
+        set(_clients "")
+        foreach(_svc IN LISTS ARGN)
+            list(APPEND _clients ${outdir}/${_svc}_client.c)
+        endforeach()
+        # Named outputs, not ones keyed off the directory: a variable name
+        # cannot contain the slashes in the path.
+        set(${prefix}_SOURCES "${_sources}" PARENT_SCOPE)
+        set(${prefix}_CLIENT_SOURCES "${_clients}" PARENT_SCOPE)
+        set(${prefix}_APIS "" PARENT_SCOPE)
+        foreach(_svc IN LISTS ARGN)
+            list(APPEND _apis ${outdir}/${_svc}_api.h)
+        endforeach()
+        set(${prefix}_APIS "${_apis}" PARENT_SCOPE)
+    endfunction()
+
+    set(UVRPC_DSL_API_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/rpc_api)
+    uvrpc_dsl_generate(LOG_SERVICE ${SCHEMA_DIR}/log_service.fbs ${UVRPC_DSL_GEN_DIR}
+                       log_logservice)
+    uvrpc_dsl_generate(RPC_API ${SCHEMA_DIR}/rpc_api.fbs ${UVRPC_DSL_API_GEN_DIR}
+                       rpc_mathservice rpc_userservice rpc_echoservice)
+
     # add_executable resolves its sources at generate time, so sources that a
     # custom command has not produced yet have to be declared GENERATED or
     # configuration fails outright on a clean checkout.
-    set(UVRPC_DSL_SOURCES
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_client.c
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_rpc_common.c
-        ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_server_stub.c
-    )
-    set_source_files_properties(${UVRPC_DSL_SOURCES} PROPERTIES GENERATED TRUE)
-    add_custom_target(generate_dsl DEPENDS ${UVRPC_DSL_GEN_DIR}/${_dsl_ns}_api.h)
+    set(UVRPC_DSL_SOURCES ${LOG_SERVICE_SOURCES} ${RPC_API_SOURCES})
+    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS})
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
     message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")
@@ -383,7 +430,7 @@ add_subdirectory(benchmark)
         foreach(_demo log_simple_demo log_service_demo)
             add_executable(${_demo}
                 examples/${_demo}.c
-                ${UVRPC_DSL_SOURCES}
+                ${LOG_SERVICE_SOURCES}
             )
             target_link_libraries(${_demo} uvrpc Threads::Threads m rt dl)
             target_include_directories(${_demo}
@@ -395,9 +442,67 @@ add_subdirectory(benchmark)
             )
             add_dependencies(${_demo} generate_dsl)
         endforeach()
+        # Same story for the demos built on schema/rpc_api.fbs: the generator
+        # could already produce these bindings, but the build only ever asked it
+        # for log_service.fbs, so these files had no code to compile against.
+        # rpc_user_impl.c is deliberately not here: it is the "fill in your
+        # service logic" file, an implementation fragment with no main, so it
+        # has nothing to link on its own.
+        # test_multi_services only creates clients, so it links no server
+        # stub -- the stubs reference per-service handlers it never defines.
+        add_executable(test_multi_services
+            examples/test_multi_services.c
+            ${RPC_API_CLIENT_SOURCES}
+        )
+        target_link_libraries(test_multi_services uvrpc Threads::Threads m rt dl)
+        target_include_directories(test_multi_services
+            PRIVATE
+            ${UVRPC_DSL_API_GEN_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/generated
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+        )
+        add_dependencies(test_multi_services generate_dsl)
+
+        # rpc_dsl_usage_example is about MathService alone, so it links that
+        # service's bindings and implements that one handler -- linking all
+        # three would demand two handlers it has no reason to define.
+        add_executable(rpc_dsl_usage_example
+            examples/rpc_dsl_usage_example.c
+            ${UVRPC_DSL_API_GEN_DIR}/rpc_mathservice_client.c
+            ${UVRPC_DSL_API_GEN_DIR}/rpc_mathservice_rpc_common.c
+            ${UVRPC_DSL_API_GEN_DIR}/rpc_mathservice_server_stub.c
+        )
+        target_link_libraries(rpc_dsl_usage_example uvrpc Threads::Threads m rt dl)
+        target_include_directories(rpc_dsl_usage_example
+            PRIVATE
+            ${UVRPC_DSL_API_GEN_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/generated
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+        )
+        add_dependencies(rpc_dsl_usage_example generate_dsl)
+
+        # This one defines handlers for all three services in the schema.
+        foreach(_demo multi_service_loop_reuse)
+            add_executable(${_demo}
+                examples/${_demo}.c
+                ${RPC_API_SOURCES}
+            )
+            target_link_libraries(${_demo} uvrpc Threads::Threads m rt dl)
+            target_include_directories(${_demo}
+                PRIVATE
+                ${UVRPC_DSL_API_GEN_DIR}
+                ${CMAKE_CURRENT_SOURCE_DIR}/generated
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+            )
+            add_dependencies(${_demo} generate_dsl)
+        endforeach()
     else()
-        message(STATUS "Skipping log_service demos: RPC DSL codegen unavailable")
+        message(STATUS "Skipping the DSL demos: RPC DSL codegen unavailable")
     endif()
+
     
     # Scenarios and the uvbus-level demos. They were written long ago and simply
     # never registered, so nothing had compiled them since; registering them is
@@ -405,6 +510,7 @@ add_subdirectory(benchmark)
     foreach(_extra
         scenario_1_simple_request_response
         scenario_4_broadcast_mode
+        flatbuffers_demo
         scenario_2_streaming_data_transfer
         scenario_3_oneway_logging
         scenario_5_mixed_mode_api

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-01T07:54:23"
+updated: "2026-10-01T10:17:37"
 ---
 
 <!-- compiled_truth -->
@@ -97,4 +97,10 @@ updated: "2026-10-01T07:54:23"
   kind: evidence
   summary: "**示例腐化的根因是「从未注册」而非漏生成**（2026-09-30）：`examples/` 有 58 个源文件，实际产出二进制的 44 个，**23 个有源码无二进制**。逐个试编译后：**13 个编译干净、只是从未注册**（scenario_1~5、simple_stream_dsl、stream_api_demo、test_10_requests、test_semaphore/2、test_simple_server、uvbus_minimal/standalone/working_test）；`scenario_4_broadcast_mode` 是 `printf` 参数列表里误插一行 `fflush(stdout);` 的语法错误；`multi_service_loop_reuse` / `test_multi_services` 是 API 漂移（生成器 create_server 加了 registry 参数、create_client 加了 connect callback）；`rpc_dsl_usage_example` 的 include 路径写成了 `../../include/`（它并不在子目录里）。README 此前称这些「多数需要额外 schema 生成」—— **不实**，13 个只要注册即可。剩下 8 个确有障碍：5 个需要把 `generate_dsl` 从硬编码 log_service 泛化到多 schema（或为 rpc_example.fbs 生成 flatcc 读码器）；`stream_dsl_demo` 用了生成器不产出的类型（`_t` vs `_ref_t`，示例与生成器契约不一致）；`generated_client_example` / `test_retry` 需要 `rpc_benchmark_builder.h` 而仓库**从无** `rpc_benchmark.fbs`。判据：注册本身就是防腐化手段 —— 今天验收套件挖出的缺陷根因都是「没有测试会编译这段代码」"
   source: "examples/*.c 逐个试编译 + dist/bin 反查（2026-09-30）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-01T10:17:37
+  kind: reversal
+  summary: "**生成器不剥离注释 —— 真实缺陷，已修**（2026-09-30）。 的  把四个正则（namespace / table / enum / rpc_service）全部跑在**含注释的原文**上；逐行处理时虽剥离注释（第 117 行），但 service 正则扫的是全文。于是  里那段讲语法的  被当成真 service，生成  引用不存在的 ，**任何用到该 schema 的目标都链接失败**。修法：读入后一次性  剥离  与  再解析，下游全部干净。同时  从硬编码单个 schema 泛化为  函数，并导出  /  /  三个命名列表 —— 变量名不能含路径里的斜杠，且 server stub 会引用本 service 的 handler，只用客户端的 demo 不该被迫实现它（ 即是）。另一个真实发现：**server stub 链接即要求实现该 service 的 handler**，所以不能把两个 schema 的生成源合并进同一个变量（曾导致  与 log_service demo 被 rpc_api 源污染而链接失败）。 **故意没有 ** —— 它是实现片段，不该注册为可执行目标。示例从 23 个无二进制降到 4 个（/ 需要仓库从未存在的 ； 用生成器不产出的  而非 ）"
+  source: "gcc -c 定位到 rpc_servicename_client.c:146 undefined type（2026-09-30）"
   affects: [build-distribution-breakage]

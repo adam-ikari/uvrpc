@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-#include "generated/rpc_mathservice_api.h"
-#include "generated/rpc_echoservice_api.h"
+#include "rpc_mathservice_api.h"
+#include "rpc_echoservice_api.h"
 
 /* Response callback */
 static void on_response(uvrpc_response_t* resp, void* ctx) {

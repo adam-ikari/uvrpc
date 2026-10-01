@@ -437,10 +437,13 @@ if(UVRPC_DSL_AVAILABLE)
     # The GENERATED property is directory-scoped, so it has to be set here too:
     # add_executable resolves sources at generate time and these do not exist
     # until generate_dsl runs.
-    set_source_files_properties(${UVRPC_DSL_SOURCES} PROPERTIES GENERATED TRUE)
+    # Only log_service: the test asserts on that generator's output. Linking
+    # the rpc_api bindings as well would demand three service handlers it does
+    # not implement, because every server stub references its own.
+    set_source_files_properties(${LOG_SERVICE_SOURCES} PROPERTIES GENERATED TRUE)
     add_executable(dsl_codegen_test
         dsl_codegen_test.c
-        ${UVRPC_DSL_SOURCES}
+        ${LOG_SERVICE_SOURCES}
     )
 
     add_dependencies(dsl_codegen_test generate_dsl)

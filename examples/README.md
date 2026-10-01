@@ -134,28 +134,30 @@ RPC 层没有"发布-订阅"这种 API，广播是传输层能力：`uvbus_broad
 
 ## 仓库里有源码但当前没有构建目标的示例
 
-这些文件存在于 `examples/`，但 CMake 没有为它们创建 target，所以 `dist/bin/` 里没有对应
-二进制。**不要按名字去找它们** —— 也没有隐藏的开关能打开。
-
-剩下这 8 个都有具体障碍，不是漏注册：
+这 4 个文件存在于 `examples/`，但没有对应的 `dist/bin/` 二进制。**不要按名字去找它们**
+—— 没有开关能打开，每个都有具体障碍：
 
 | 示例 | 障碍 |
 | --- | --- |
-| `multi_service_loop_reuse.c`、`test_multi_services.c` | 需要 `schema/rpc_api.fbs` 的 DSL 代码。生成器能产出（`uvrpcc.py` 手工跑一次即可验证），但构建系统的 `generate_dsl` 目标只覆盖了 `log_service.fbs` 一个 schema，接入需要把那段 CMake 泛化 |
-| `flatbuffers_demo.c` | 需要 `rpc_example_builder.h`，即 `schema/rpc_example.fbs` 的 flatcc 读码器，构建里没有为它生成 |
-| `rpc_user_impl.c`、`rpc_dsl_usage_example.c` | 需要 `schema/rpc_api.fbs` 的 DSL 代码，同上 |
+| `rpc_user_impl.c` | 它是"填入你的服务逻辑"的实现片段，**故意没有 `main`**，单独链接不成程序。它的正确用法是连同生成的 `_server_stub.c` 一起编进你自己的可执行文件 |
 | `stream_dsl_demo.c` | 使用生成器并不产出的类型 `uvrpc_stream_StreamRequest_t`（生成的是 `_ref_t`）。这是示例与生成器契约不一致，不是漏生成 |
-| `generated_client_example.c`、`test_retry.c` | 需要 `rpc_benchmark_builder.h`，但仓库里**没有** `rpc_benchmark.fbs` —— 这个 schema 从未存在，所以无法生成 |
+| `generated_client_example.c`、`test_retry.c` | 需要 `rpc_benchmark_builder.h`，但仓库里**没有** `rpc_benchmark.fbs` —— 这个 schema 从未存在，所以没有任何东西能生成它 |
 
-历史上这里有 23 个，其中 14 个只是从未注册：13 个能直接编译，加上
-`scenario_4_broadcast_mode.c`（`printf` 参数列表里误插了一行 `fflush(stdout)`，导致语法
-错误）。它们现已纳入 `CMakeLists.txt`，注册本身就是防止再次腐化的手段 —— 今天套件里
-挖出的几个真实缺陷，根因都是"没有测试会编译这段代码"。
+## 已修复的同类问题
 
-`log_service_demo.c` 与 `log_simple_demo.c` 由 RPC DSL 生成（`schema/log_service.fbs`），
-构建系统的 `generate_dsl` 目标会产出并纳入 `dist/bin/`。前提是构建机上有一个能
-`import jinja2` 的 python3；没有的话这两个示例与 `dsl_codegen` 测试会被跳过，库本身照常
-构建。
+历史上这里有 23 个。现已修复 19 个，其中值得记录的：
+
+- **13 个只是从未注册**，编译零错误，缺的是 `create_example_target(...)`
+- `scenario_4_broadcast_mode.c` 的 `printf` 参数列表里误插了一行 `fflush(stdout);`，是语法错误，从未编译过
+- `multi_service_loop_reuse.c`、`test_multi_services.c` 漂移于生成 API：`create_server` 增加了 registry 参数、`create_client` 增加了 connect callback
+- `flatbuffers_demo.c` 需要 `rpc_example.fbs` 的 flatcc 读码器，而构建从未为它生成
+- `rpc_dsl_usage_example.c` 混用了三套不一致的 API，包括 `rpc_register_all()` 和 `MathService_Add()` —— **这两个函数在生成器和模板里都不存在**，是照着从未实现的特性写的
+
+最后两条的根因值得记住：`generate_dsl` 目标只覆盖了 `log_service.fbs` 一个 schema，而生成器**没有剥离注释**
+—— 它把 schema 里那段讲语法的 `/* rpc_service ServiceName { ... } */` 当成真service，生成出无法编译的代码。
+两处都已修在根上：DSL 生成泛化到多个 schema，解析前统一剥离注释。
+
+**注册本身就是防腐化手段** —— 今天验收套件挖出的每个真实缺陷，根因都是"没有测试会编译这段代码"。
 
 ## 配套文档
 
