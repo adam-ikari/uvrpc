@@ -2,10 +2,14 @@
  * @file uvrpc_allocator.h
  * @brief UVRPC Memory Allocator
  * 
- * Provides a flexible memory allocation interface supporting three modes:
+ * Provides a memory allocation interface supporting two modes, both chosen at
+ * compile time:
  * - system: Uses standard malloc/free (best compatibility)
  * - mimalloc: Uses mimalloc high-performance allocator (default)
- * - custom: Uses user-provided custom allocator
+ *
+ * There is no runtime-pluggable allocator. One would need a file-scope
+ * function table, and "zero mutable globals" is a rule here rather than a
+ * preference, so the option is deliberately absent.
  * 
  * @author UVRPC Team
  * @date 2026
@@ -31,56 +35,9 @@ extern "C" {
  */
 typedef enum {
     UVRPC_ALLOCATOR_SYSTEM = 0,   /**< @brief System malloc/free */
-    UVRPC_ALLOCATOR_MIMALLOC = 1, /**< @brief Mimalloc (default) */
-    UVRPC_ALLOCATOR_CUSTOM = 2    /**< @brief User-defined allocator */
+    UVRPC_ALLOCATOR_MIMALLOC = 1  /**< @brief Mimalloc (default) */
 } uvrpc_allocator_type_t;
 
-/**
- * @brief Custom allocator function type - alloc
- * 
- * @param size Size to allocate
- * @return Pointer to allocated memory, or NULL on failure
- */
-typedef void* (*uvrpc_alloc_fn)(size_t size);
-
-/**
- * @brief Custom allocator function type - calloc
- * 
- * @param count Number of elements
- * @param size Size of each element
- * @return Pointer to allocated memory, or NULL on failure
- */
-typedef void* (*uvrpc_calloc_fn)(size_t count, size_t size);
-
-/**
- * @brief Custom allocator function type - realloc
- * 
- * @param ptr Pointer to reallocate
- * @param size New size
- * @return Pointer to reallocated memory, or NULL on failure
- */
-typedef void* (*uvrpc_realloc_fn)(void* ptr, size_t size);
-
-/**
- * @brief Custom allocator function type - free
- * 
- * @param ptr Pointer to free
- */
-typedef void (*uvrpc_free_fn)(void* ptr);
-
-/**
- * @brief Custom allocator interface
- * 
- * Structure containing function pointers for a custom allocator.
- */
-typedef struct {
-    uvrpc_alloc_fn alloc;       /**< @brief Allocation function */
-    uvrpc_calloc_fn calloc;     /**< @brief Calloc function */
-    uvrpc_realloc_fn realloc;   /**< @brief Realloc function */
-    uvrpc_free_fn free;         /**< @brief Free function */
-    const char* name;           /**< @brief Allocator name */
-    void* user_data;            /**< @brief User data */
-} uvrpc_custom_allocator_t;
 
 /**
  * @defgroup AllocatorAPI Allocator API
@@ -89,12 +46,14 @@ typedef struct {
  */
 
 /**
- * @brief Initialize allocator (runtime selection)
- * 
- * @param type Allocator type
- * @param custom Custom allocator (required if type is CUSTOM)
+ * @brief Report a runtime allocator request that cannot be honoured
+ *
+ * The allocator is fixed at compile time, so this cannot change it. Passing
+ * a type other than the compiled-in one is logged and otherwise ignored.
+ *
+ * @param type Allocator type requested
  */
-void uvrpc_allocator_init(uvrpc_allocator_type_t type, const uvrpc_custom_allocator_t* custom);
+void uvrpc_allocator_init(uvrpc_allocator_type_t type);
 
 /**
  * @brief Cleanup allocator resources

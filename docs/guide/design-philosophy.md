@@ -143,9 +143,9 @@ UVRPC 基于 libuv 事件循环，所有 I/O 操作都在单线程中异步执�
 **实现层面**：
 - **INPROC/SAMELOOP 传输**：端点表放在**调用方创建并传入的注册表**里，既不是进程全局，
   也不占用 loop 的字段
-- **内存分配器**：只有自定义分配器模式下有一个全局函数指针表 `g_custom_allocator`，
-  且被编译门控（`UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM`）；
-  system/mimalloc 构建里**没有任何分配器状态**
+- **内存分配器**：编译期二选一（system / mimalloc），**没有任何分配器状态**。
+  曾存在过一个可插拔的自定义分配器，它需要一个全局函数指针表，与本原则冲突；
+  它没有任何使用者、测试或 CI 覆盖，因此已删除，而不是用条件编译把它藏起来
 - **vtable 是常量**：5 个传输的 `static const uvbus_transport_vtable_t` 落在
   `.data.rel.ro.local`，运行时只读
 - **设计原则**：优先"把状态挂到本来就该拥有它的对象上"（`loop`、`client`、`server`），

@@ -36,8 +36,8 @@ option(UVRPC_BUILD_TESTS "Build tests" OFF)
 option(UVRPC_BUILD_EXAMPLES "Build examples" ON)
 
 # Memory allocator option (default: mimalloc)
-set(UVRPC_ALLOCATOR_DEFAULT "mimalloc" CACHE STRING "Memory allocator: system, mimalloc, or custom")
-set_property(CACHE UVRPC_ALLOCATOR_DEFAULT PROPERTY STRINGS "system" "mimalloc" "custom")
+set(UVRPC_ALLOCATOR_DEFAULT "mimalloc" CACHE STRING "Memory allocator: system or mimalloc")
+set_property(CACHE UVRPC_ALLOCATOR_DEFAULT PROPERTY STRINGS "system" "mimalloc")
 
 # Add Mimalloc include if using mimalloc
 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
@@ -45,10 +45,8 @@ if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "mimalloc")
     add_definitions(-DUVRPC_DEFAULT_ALLOCATOR=1)
 elseif(UVRPC_ALLOCATOR_DEFAULT STREQUAL "system")
     add_definitions(-DUVRPC_DEFAULT_ALLOCATOR=0)
-elseif(UVRPC_ALLOCATOR_DEFAULT STREQUAL "custom")
-    add_definitions(-DUVRPC_DEFAULT_ALLOCATOR=2)
 else()
-    message(FATAL_ERROR "Invalid allocator type: ${UVRPC_ALLOCATOR_DEFAULT}. Must be 'system', 'mimalloc', or 'custom'")
+    message(FATAL_ERROR "Invalid allocator type: ${UVRPC_ALLOCATOR_DEFAULT}. Must be 'system' or 'mimalloc'")
 endif()
 
 message(STATUS "UVRPC Allocator: ${UVRPC_ALLOCATOR_DEFAULT}")

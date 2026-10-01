@@ -305,6 +305,46 @@ target_include_directories(inflight_lifetime
 add_test(NAME backpressure COMMAND backpressure)
 # Payload boundaries: what round-trips byte-identical, and that every socket
 # transport draws the line in the same place now that frames are verified.
+# The boundary-value suite had a main() and a binary committed months ago but
+# no build target, so nothing had compiled or run it since.
+add_executable(boundary_values
+    unit/test_boundary_values.c
+)
+
+target_link_libraries(boundary_values
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(boundary_values
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME boundary_values COMMAND boundary_values)
+set_tests_properties(boundary_values PROPERTIES LABELS "unit" TIMEOUT 120)
+
+# "Zero mutable globals" is the first design constraint, and it has been broken
+# before. This test reads the compiled objects so the claim is checked rather
+# than asserted in prose; the object list is passed in because only the build
+# system knows where they are.
+add_executable(no_globals acceptance/no_globals.c)
+
+target_link_libraries(no_globals pthread m rt)
+
+target_include_directories(no_globals
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+add_test(NAME no_globals
+    COMMAND no_globals $<TARGET_OBJECTS:uvrpc>
+)
+set_tests_properties(no_globals PROPERTIES LABELS "invariant" TIMEOUT 60)
+
 add_executable(payload_bounds
     acceptance/payload_bounds.c
 )

@@ -17,9 +17,9 @@ class AllocatorTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Register the compile-time allocator type. In system/mimalloc builds
-        // this is a no-op (type is fixed); in custom builds it would register
-        // function pointers (none here, so custom falls back to system malloc).
-        uvrpc_allocator_init((uvrpc_allocator_type_t)UVRPC_DEFAULT_ALLOCATOR, NULL);
+        // A no-op: the allocator is fixed at compile time, and the call only
+        // logs if the requested type is not the compiled-in one.
+        uvrpc_allocator_init((uvrpc_allocator_type_t)UVRPC_DEFAULT_ALLOCATOR);
     }
 
     void TearDown() override {

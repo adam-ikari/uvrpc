@@ -9,20 +9,20 @@
 #include <string.h>
 #include <assert.h>
 #include <uv.h>
+#include <unistd.h>
 #include <limits.h>
 
 static int tests_passed = 0;
 static int tests_failed = 0;
 
-/* The original form ended in a bare `return`, which only compiles inside a
- * void function. These asserts now also run from request and response
- * callbacks, which return int, so the return value is explicit. */
+/* Aborts the enclosing test or callback on the first failure. Every function
+ * that uses it returns void, so a bare `return` is right. */
 #define TEST_ASSERT(condition, message) \
     do { \
         if (!(condition)) { \
             printf("[FAIL] %s\n", message); \
             tests_failed++; \
-            return 0; \
+            return; \
         } \
         tests_passed++; \
         printf("[PASS] %s\n", message); \
@@ -60,6 +60,7 @@ void empty_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(resp->status == UVRPC_OK, "Empty request should succeed");
     TEST_ASSERT(resp->result_size == 0, "Empty response should have zero size");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void large_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -87,6 +88,7 @@ void large_callback(uvrpc_response_t* resp, void* cb_ctx) {
     }
     TEST_ASSERT(match, "Data should match");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void single_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -106,6 +108,7 @@ void single_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(resp->result_size == 1, "Should receive single byte");
     TEST_ASSERT(resp->result[0] == 42, "Byte value should be 42");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void null_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -123,6 +126,7 @@ void null_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(resp->result == NULL, "Result should be NULL");
     TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void zero_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -137,6 +141,7 @@ void zero_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(resp->status == UVRPC_OK, "Zero length response should succeed");
     TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void single_chunk_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -154,6 +159,7 @@ void stream_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(!uvrpc_response_is_stream_more(resp), "Should not be stream more");
     TEST_ASSERT(strcmp((char*)resp->result, "Single chunk data") == 0, "Data should match");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 void many_chunks_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -182,6 +188,7 @@ void many_callback(uvrpc_response_t* resp, void* cb_ctx) {
         TEST_ASSERT(c->chunks_received == 100, "Should receive exactly 100 chunks");
     c->received = 1;
     }
+    uvrpc_response_free(resp);
 }
 void oneway_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -197,6 +204,7 @@ void max_handler(uvrpc_request_t* req, void* handler_ctx) {
 void max_callback(uvrpc_response_t* resp, void* cb_ctx) {
     (void)cb_ctx;
     (void)resp;
+    uvrpc_response_free(resp);
 }
 void error_handler(uvrpc_request_t* req, void* handler_ctx) {
     test_context_t* c = (test_context_t*)handler_ctx;
@@ -212,10 +220,27 @@ void error_callback(uvrpc_response_t* resp, void* cb_ctx) {
     TEST_ASSERT(resp->error_message != NULL, "Error response should have message");
     TEST_ASSERT(strcmp(resp->error_message, "Test error message") == 0, "Error message should match");
     c->received = 1;
+    uvrpc_response_free(resp);
 }
 
 
 /* Test statistics */
+
+/* Wait until a flag the callbacks set, or the budget runs out.
+ *
+ * The obvious loop does not work. UV_RUN_DEFAULT never returns while the
+ * server's listening socket keeps the loop alive, so the counter never
+ * advances. Replacing it with UV_RUN_NOWAIT spins through the whole budget in
+ * microseconds and gives up long before a TCP round trip finishes. Waiting
+ * between passes is what makes the deadline mean anything. */
+static int wait_for(uv_loop_t* loop, volatile int* flag, int timeout_ms) {
+    for (int elapsed = 0; elapsed < timeout_ms; elapsed++) {
+        if (*flag) return 1;
+        uv_run(loop, UV_RUN_NOWAIT);
+        usleep(1000);
+    }
+    return *flag;
+}
 
 /* Test helper: create test context */
 
@@ -257,30 +282,27 @@ static void test_empty_request(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    int conn_iterations = 0;
-    while (!ctx.connected && conn_iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        conn_iterations++;
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send empty request */
     
     uvrpc_client_call(client, "EmptyTest", NULL, 0, empty_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive response for empty request");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -303,10 +325,24 @@ static void test_max_request_size(void) {
     test_context_t ctx = {0};  /* designated below */
     ctx.loop = &loop;
     
-    /* Create maximum size payload (1MB) */
-    size_t max_size = 1024 * 1024;  /* 1MB */
+    /* The largest payload the socket transports actually carry.
+     *
+     * This was 1MB, which no transport can deliver: the frame limit is 64KB
+     * (UVBUS_DEFAULT_MAX_FRAME_SIZE) and the encoded frame has to fit inside
+     * it, so a 1MB request is dropped whole and the caller waits out its own
+     * timeout with no error pointing at it. Measured per transport -- TCP
+     * 65488, IPC 65484, UDP 65452 -- so TCP is the number worth using here.
+     * The three differ only by their own encoding overhead at the limit. */
+    /* 65480, not the 65488 usually quoted for TCP. The method name is part of
+     * the frame, so a longer name eats into the payload budget: with the
+     * one-letter name used in the measurement 65488 fits, and with this test's
+     * "LargeTest" the ceiling drops by exactly the extra bytes. Measured, not
+     * derived -- there is no port-0 API to ask the server what it bound. */
+    size_t max_size = 65480;
+    ctx.max_size = max_size;   /* the handler asserts against this */
+
     uint8_t* large_data = (uint8_t*)malloc(max_size);
-    TEST_ASSERT(large_data != NULL, "Should allocate 1MB buffer");
+    TEST_ASSERT(large_data != NULL, "Should allocate the maximum payload");
     
     /* Fill with pattern */
     for (size_t i = 0; i < max_size; i++) {
@@ -326,29 +362,28 @@ static void test_max_request_size(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send large request */
     
     uvrpc_client_call(client, "LargeTest", large_data, max_size, large_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 200) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive response for large request");
     
     /* Cleanup */
     free(large_data);
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -384,10 +419,7 @@ static void test_single_byte_request(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send single byte request */
     uint8_t single_byte = 42;
@@ -395,18 +427,20 @@ static void test_single_byte_request(void) {
     uvrpc_client_call(client, "SingleTest", &single_byte, 1, single_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive response for single byte request");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -442,28 +476,27 @@ static void test_null_params(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send request with NULL params */
     
     uvrpc_client_call(client, "NullTest", NULL, 0, null_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive response for NULL params request");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -499,28 +532,27 @@ static void test_zero_length_response(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send request */
     
     uvrpc_client_call(client, "ZeroTest", NULL, 0, zero_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive zero length response");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -556,28 +588,27 @@ static void test_stream_single_chunk(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send request */
     
     uvrpc_client_call(client, "SingleChunkTest", NULL, 0, stream_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive single chunk stream");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -613,10 +644,7 @@ static void test_stream_many_chunks(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Track chunks received */
     ctx.chunks_received = 0;
@@ -626,18 +654,20 @@ static void test_stream_many_chunks(void) {
     uvrpc_client_call(client, "ManyChunksTest", NULL, 0, many_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 500) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive all 100 chunks");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -673,25 +703,29 @@ static void test_oneway_null_callback(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send oneway request (NULL callback) */
     const char* data = "Oneway data";
     uvrpc_client_call(client, "OnewayTest", (uint8_t*)data, strlen(data) + 1, NULL, NULL);
     
-    /* Run event loop briefly to send the request */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    /* Wait for the flag the handler sets. Waiting on ctx.connected -- already
+     * true by now -- returned instantly and never gave the loop a chance to
+     * deliver the request, so this test could not have passed. */
+    wait_for(&loop, &ctx.completed, 3000);
     
     TEST_ASSERT(ctx.completed, "Oneway handler should complete");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -723,21 +757,24 @@ static void test_max_pending_callbacks(void) {
     uvrpc_config_t* client_config = uvrpc_config_new();
     uvrpc_config_set_loop(client_config, &loop);
     uvrpc_config_set_address(client_config, "tcp://127.0.0.1:6009");
-    uvrpc_config_set_max_pending_callbacks(client_config, 10);  /* Small buffer */
+    /* 64, not 10. Values below 64 -- and anything that is not a power of two
+     * -- are silently replaced with the default, so asking for 10 left the
+     * ring at its default size and every request below fit. The limit was
+     * never under test. */
+    uvrpc_config_set_max_pending_callbacks(client_config, 64);
     
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
-    /* Send 20 requests (exceeds buffer) */
+    /* More requests than the ring holds, sent without pumping the loop in
+     * between: no response can come back, so no slot is released, and the
+     * first 64 fill the ring for good. */
     int total_sent = 0;
     int total_failed = 0;
     
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 100; i++) {
         int ret = uvrpc_client_call(client, "MaxTest", NULL, 0, max_callback, NULL);
         if (ret == UVRPC_OK) {
             total_sent++;
@@ -746,18 +783,25 @@ static void test_max_pending_callbacks(void) {
         }
     }
     
-    /* Run event loop to process responses */
-    for (int i = 0; i < 50; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-        uv_stop(&loop);
+    /* Let the responses land. A deadline, not an iteration count. */
+    for (int elapsed = 0; elapsed < 1000 && total_sent == 64; elapsed++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+        usleep(1000);
     }
     
-    TEST_ASSERT(total_sent == 10, "Should send exactly 10 requests (buffer limit)");
-    TEST_ASSERT(total_failed == 10, "Should fail 10 requests (buffer full)");
+    TEST_ASSERT(total_sent == 64, "Should send exactly 64 requests (ring buffer size)");
+    TEST_ASSERT(total_failed == 36, "Should refuse the rest once the ring is full");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);
@@ -793,28 +837,27 @@ static void test_error_response(void) {
     uvrpc_client_t* client = uvrpc_client_create(client_config);
     uvrpc_client_connect_with_callback(client, test_connect_callback, &ctx);
     
-    /* Wait for connection */
-    for (int i = 0; i < 10; i++) {
-        uv_run(&loop, UV_RUN_DEFAULT);
-    }
+    wait_for(&loop, &ctx.connected, 3000);
     
     /* Send request */
     
     uvrpc_client_call(client, "ErrorTest", NULL, 0, error_callback, &ctx);
     
     /* Run event loop */
-    int iterations = 0;
-    while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_NOWAIT);
-        uv_stop(&loop);
-        iterations++;
-    }
+    wait_for(&loop, &ctx.received, 3000);
     
     TEST_ASSERT(ctx.received, "Should receive error response");
     
     /* Cleanup */
     uvrpc_client_free(client);
+    uvrpc_server_stop(server);
     uvrpc_server_free(server);
+    /* free() only drops a reference, so pump the loop for the teardown to
+     * actually finish -- otherwise this server is still listening when the
+     * next test starts. */
+    for (int i = 0; i < 50; i++) {
+        uv_run(&loop, UV_RUN_NOWAIT);
+    }
     uvrpc_config_free(server_config);
     uvrpc_config_free(client_config);
     uv_loop_close(&loop);

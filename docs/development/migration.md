@@ -179,24 +179,12 @@ TCP/UDP/IPC 不需要注册表，传了会被忽略。INPROC/SAMELOOP 不传会�
 
 ### 内存分配变更
 
-#### 新增内存分配器支持
+#### 内存分配器
 
-**新版本**：
-```c
-// 使用 mimalloc（默认）
-uvrpc_allocator_init(UVRPC_ALLOCATOR_MIMALLOC, NULL);
-
-// 使用系统分配器
-uvrpc_allocator_init(UVRPC_ALLOCATOR_SYSTEM, NULL);
-
-// 使用自定义分配器
-uvrpc_custom_allocator_t custom = {
-    .alloc = my_alloc,
-    .free = my_free,
-    // ...
-};
-uvrpc_allocator_init(UVRPC_ALLOCATOR_CUSTOM, &custom);
-```
+分配器在**编译期**选定，构建时用 `-DUVRPC_ALLOCATOR_DEFAULT=system|mimalloc`。
+运行期没有可插拔的分配器：`uvrpc_custom_allocator_t` 与 `UVRPC_ALLOCATOR_CUSTOM`
+已删除，因为可插拔需要一个全局函数指针表，与"零可变全局"这一原则冲突。
+`uvrpc_allocator_init()` 保留，签名改为只收类型；传入非编译期类型时记日志并忽略。
 
 ### 迁移步骤
 

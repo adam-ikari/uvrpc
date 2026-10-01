@@ -118,9 +118,9 @@ void uvbus_config_set_error_callback(uvbus_config_t* config, uvbus_error_callbac
  * so an application using just INPROC or SAMELOOP never sees the change.
  */
 static void ignore_sigpipe_once(void) {
-    static int done = 0;
-    if (done) return;
-    done = 1;
+    /* No "already done" guard. signal() is idempotent, and the guard would be a
+     * mutable file-scope variable -- the one thing this library does not have.
+     * Paying one syscall per socket transport creation buys that back. */
     signal(SIGPIPE, SIG_IGN);
 }
 

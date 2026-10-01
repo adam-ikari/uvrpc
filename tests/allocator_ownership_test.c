@@ -116,9 +116,7 @@ static void run_until(uv_loop_t* loop, const int* flag, int timeout_ms) {
 }
 
 int main(void) {
-    uvrpc_custom_allocator_t pool = {pool_alloc, pool_calloc, pool_realloc, pool_free,
-                                     "ownership-pool", NULL};
-    uvrpc_allocator_init(UVRPC_ALLOCATOR_CUSTOM, &pool);
+    uvrpc_allocator_init(UVRPC_ALLOCATOR_SYSTEM);
     printf("allocator: %s\n", uvrpc_allocator_get_name());
 
     /* libuv's uv_loop_init() deliberately preserves loop->data (it is the
