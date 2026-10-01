@@ -409,6 +409,12 @@ add_subdirectory(benchmark)
         endif()
 
         add_dependencies(${name} generate_flatcc)
+        # uvrpc_merged deliberately overwrites dist/lib/libuvrpc.a with the
+        # merged archive, because -static links need libuv and flatcc inlined.
+        # That makes the file this target links against get rewritten while
+        # other targets may be reading it: `ld` then fails with "no more
+        # archived files". CMake sees no dependency here, so state it.
+        add_dependencies(${name} uvrpc_merged)
     endfunction()
 
     # Create example targets
@@ -444,6 +450,7 @@ add_subdirectory(benchmark)
                 ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
             )
             add_dependencies(${_demo} generate_dsl)
+            add_dependencies(${_demo} uvrpc_merged)
         endforeach()
         # Same story for the demos built on schema/rpc_api.fbs: the generator
         # could already produce these bindings, but the build only ever asked it
@@ -464,6 +471,7 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(test_retry generate_dsl)
+            add_dependencies(test_retry uvrpc_merged)
 
         add_executable(generated_client_example
             examples/generated_client_example.c
@@ -478,6 +486,7 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(generated_client_example generate_dsl)
+            add_dependencies(generated_client_example uvrpc_merged)
 
         # rpc_user_impl.c is deliberately not here: it is the "fill in your
         # service logic" file, an implementation fragment with no main, so it
@@ -497,6 +506,7 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(test_multi_services generate_dsl)
+            add_dependencies(test_multi_services uvrpc_merged)
 
         # rpc_dsl_usage_example is about MathService alone, so it links that
         # service's bindings and implements that one handler -- linking all
@@ -516,6 +526,7 @@ add_subdirectory(benchmark)
             ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
         )
         add_dependencies(rpc_dsl_usage_example generate_dsl)
+            add_dependencies(rpc_dsl_usage_example uvrpc_merged)
 
         # This one defines handlers for all three services in the schema.
         foreach(_demo multi_service_loop_reuse)
@@ -611,48 +622,56 @@ add_executable(test_primitives_simple
     examples/test_primitives_simple.c
 )
 target_link_libraries(test_primitives_simple uvrpc pthread)
+add_dependencies(test_primitives_simple uvrpc_merged)
 
 # Test Promise combinators
 add_executable(test_promise_combinators
     examples/test_promise_combinators.c
 )
 target_link_libraries(test_promise_combinators uvrpc pthread)
+add_dependencies(test_promise_combinators uvrpc_merged)
 
 # Test Promise basic
 add_executable(test_promise_basic
     examples/test_promise_basic.c
 )
 target_link_libraries(test_promise_basic uvrpc pthread)
+add_dependencies(test_promise_basic uvrpc_merged)
 
 # Test Promise race debug
 add_executable(test_promise_race_debug
     examples/test_promise_race_debug.c
 )
 target_link_libraries(test_promise_race_debug uvrpc pthread)
+add_dependencies(test_promise_race_debug uvrpc_merged)
 
 # Test Promise race simple
 add_executable(test_promise_race_simple
     examples/test_promise_race_simple.c
 )
 target_link_libraries(test_promise_race_simple uvrpc pthread)
+add_dependencies(test_promise_race_simple uvrpc_merged)
 
 # Test Promise race only
 add_executable(test_promise_race_only
     examples/test_promise_race_only.c
 )
 target_link_libraries(test_promise_race_only uvrpc pthread)
+add_dependencies(test_promise_race_only uvrpc_merged)
 
 # uvasync demo
 add_executable(uvasync_demo
     examples/uvasync_demo.c
 )
 target_link_libraries(uvasync_demo uvrpc pthread)
+add_dependencies(uvasync_demo uvrpc_merged)
 
 # uvasync minimal test
 add_executable(uvasync_minimal_test
     examples/uvasync_minimal_test.c
 )
 target_link_libraries(uvasync_minimal_test uvrpc pthread)
+add_dependencies(uvasync_minimal_test uvrpc_merged)
 
 # Tests
 if(UVRPC_BUILD_TESTS)

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-01T10:53:56"
+updated: "2026-10-01T11:39:35"
 ---
 
 <!-- compiled_truth -->
@@ -109,4 +109,10 @@ updated: "2026-10-01T10:53:56"
   kind: evidence
   summary: "**58 个示例源码，57 个产出二进制**（2026-09-30 完成）。唯一例外 `rpc_user_impl.c` **故意没有 `main`** —— 它是「填入你的服务逻辑」的实现片段，不是可运行程序，正确用法是连同生成的 `_server_stub.c` 编进自己的可执行文件（README 已给出 cc 命令）。最后三个的根因各不相同：**(1) `stream_dsl_demo.c` 把 flatbuffers 读法写成 C++ 成员访问**（`chunk->chunk_id`）并用一个两边都不存在的类型 `StreamRequest_t`；flatcc 的 `as_root` 返回表指针，字段必须走生成的访问器 `StreamChunk_chunk_id(chunk)`；另有一个 wrapper 函数定义嵌在 `main` 内部（C89 不允许嵌套函数）。**(2) `test_retry.c` / `generated_client_example.c` 对着一个早已改名的 API 世代写的**：`rpc_client_create()`（现为 config + `uvrpc_client_create`）、响应字段 `resp->data`（现为 `resp->result`）、`BenchmarkService_Add()`（不存在）、`rpc_benchmark.fbs`（仓库从未有）。**重试功能本身一直存在**，只是搬到了 client 上（`uvrpc_client_set_max_retries(client, n)`），所以这是可救的漂移而非虚构特性 —— 注意与更早的 `rpc_register_all()` / `MathService_Add()` 区分，后者确实从未实现。修法：把 `schema/benchmark.fbs` 也接入 `uvrpc_dsl_generate`，用其 `rpc_service BenchmarkService` 生成 `uvrpc_benchmarkservice_Add`。**(3) 连接回调是 `uvrpc_client_connect_with_callback()`**，`uvrpc_client_connect()` 无回调参数 —— 写示例时容易踩「看起来应该带回调」的直觉"
   source: "58/57 产出核对；flatcc 访问器与 as_root 语义查 deps/flatcc flatbuffers_common_reader.h:575（2026-09-30）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-01T11:39:35
+  kind: reversal
+  summary: "**构建竞态：uvrpc_merged 覆盖 libuvrpc.a 与链接并发**（已修，2026-09-30）。 是  目标，它刻意把  **覆盖**到 （因为示例用  链合并归档，需要 libuv/flatcc 内联）。但所有示例目标链的是 CMake 目标 ，CMake **完全不知道**这个文件路径会被重写 —— 于是  可能正在读  时被  截断重写，报 。**今天新增约 20 个示例目标后并发链接者暴增，CI 的 ASan job 首次暴露**；本地表现为需要反复 ，我当时误判为「共享 dist 的混合状态」，实际是同一个缺陷。修法：给每个链  的目标加 （示例 14 处显式 + tests/ 与 tests/integration/ 各用  批量加）。验证：CI 同样的 ASan 配置连做三次干净构建，0 错误。注意  不含子目录目标，所以 integration 子目录要单独加"
+  source: "CI 日志 'error adding symbols: no more archived files' + CMakeLists.txt:374 的 copy 指令（2026-09-30）"
   affects: [build-distribution-breakage]
