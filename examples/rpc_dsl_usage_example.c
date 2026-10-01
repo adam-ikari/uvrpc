@@ -55,8 +55,6 @@ int uvrpc_mathservice_handle_request(const char* method_name,
     void* buf = flatcc_builder_finalize_buffer(&builder, &size);
     uvrpc_request_send_response(req, UVRPC_OK, buf, size);
 
-    flatcc_builder_aligned_free(buf);
-    flatcc_builder_clear(&builder);
     return UVRPC_OK;
 }
 
@@ -120,29 +118,18 @@ int main(int argc, char** argv) {
         }
         printf("Connected!\n\n");
 
-        /* A typed call: build the request, hand it to the generated wrapper. */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-
-        rpc_MathAddRequest_start_as_root(&builder);
-        rpc_MathAddRequest_a_add(&builder, 10);
-        rpc_MathAddRequest_b_add(&builder, 20);
-        rpc_MathAddRequest_end_as_root(&builder);
-
-        size_t size = 0;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-        rpc_MathAddRequest_table_t request = rpc_MathAddRequest_as_root(buf);
+        /* A typed call: fill in the schema's POJO and the generated wrapper
+         * serializes it. No buffer to build, none to free. */
+        rpc_MathAddRequest_t request = { .a = 10, .b = 20 };
 
         printf("Calling Add(10, 20)...\n");
-        uvrpc_mathservice_Add(client, on_response, NULL, request);
+        uvrpc_mathservice_Add(client, on_response, NULL, &request);
 
         /* Let the call and its response complete. */
         for (int i = 0; i < 50; i++) {
             uv_run(&loop, UV_RUN_DEFAULT);
         }
 
-        flatcc_builder_aligned_free(buf);
-        flatcc_builder_clear(&builder);
         uvrpc_mathservice_free_client(client);
     } else {
         fprintf(stderr, "usage: %s <server|client> [address]\n", argv[0]);

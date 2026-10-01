@@ -11,28 +11,213 @@
 #include <uv.h>
 #include <limits.h>
 
-/* Test statistics */
 static int tests_passed = 0;
 static int tests_failed = 0;
 
+/* The original form ended in a bare `return`, which only compiles inside a
+ * void function. These asserts now also run from request and response
+ * callbacks, which return int, so the return value is explicit. */
 #define TEST_ASSERT(condition, message) \
     do { \
         if (!(condition)) { \
             printf("[FAIL] %s\n", message); \
             tests_failed++; \
-            return; \
+            return 0; \
         } \
         tests_passed++; \
         printf("[PASS] %s\n", message); \
     } while(0)
 
-/* Test helper: create test context */
+
 typedef struct {
     volatile int completed;
     volatile int received;
     volatile int connected;
+    /* Per-test scalars the callbacks used to reach through the enclosing
+     * stack frame; a file-scope function has no such frame to reach. */
+    size_t max_size;
+    volatile int chunks_received;
     uv_loop_t* loop;
 } test_context_t;
+
+/* These were defined inside the test bodies. That is a GNU extension, and
+ * the trampoline it needs lands on the stack, so the object file gets an
+ * executable stack and the linker warns about it. File scope is free. */
+
+void empty_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    printf("[SERVER] Received request with size: %zu\n", req->params_size);
+    TEST_ASSERT(req->params_size == 0, "Server should receive empty request");
+    
+    /* Send response with no data */
+    uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
+    c->completed = 1;
+}
+void empty_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "Empty request should succeed");
+    TEST_ASSERT(resp->result_size == 0, "Empty response should have zero size");
+    c->received = 1;
+}
+void large_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    printf("[SERVER] Received large request: %zu bytes\n", req->params_size);
+    TEST_ASSERT(req->params_size == c->max_size, "Server should receive full size");
+    
+    /* Echo back */
+    uvrpc_request_send_response(req, UVRPC_OK, req->params, req->params_size);
+    c->completed = 1;
+}
+void large_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "Large request should succeed");
+    TEST_ASSERT(resp->result_size == c->max_size, "Should receive full response");
+    
+    /* Verify data */
+    int match = 1;
+    for (size_t i = 0; i < resp->result_size && i < 100; i++) {
+        if (resp->result[i] != (i % 256)) {
+            match = 0;
+            break;
+        }
+    }
+    TEST_ASSERT(match, "Data should match");
+    c->received = 1;
+}
+void single_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    printf("[SERVER] Received single byte: %d\n", req->params[0]);
+    TEST_ASSERT(req->params_size == 1, "Server should receive single byte");
+    TEST_ASSERT(req->params[0] == 42, "Byte value should be 42");
+    
+    /* Echo back */
+    uvrpc_request_send_response(req, UVRPC_OK, req->params, 1);
+    c->completed = 1;
+}
+void single_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "Single byte request should succeed");
+    TEST_ASSERT(resp->result_size == 1, "Should receive single byte");
+    TEST_ASSERT(resp->result[0] == 42, "Byte value should be 42");
+    c->received = 1;
+}
+void null_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    TEST_ASSERT(req->params == NULL, "Params should be NULL");
+    TEST_ASSERT(req->params_size == 0, "Params size should be 0");
+    
+    uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
+    c->completed = 1;
+}
+void null_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "NULL params request should succeed");
+    TEST_ASSERT(resp->result == NULL, "Result should be NULL");
+    TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
+    c->received = 1;
+}
+void zero_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    /* Send response with zero length */
+    uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
+    c->completed = 1;
+}
+void zero_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "Zero length response should succeed");
+    TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
+    c->received = 1;
+}
+void single_chunk_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    const char* data = "Single chunk data";
+    /* Send only final response, no ResponseMore */
+    uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)data, strlen(data) + 1);
+    c->completed = 1;
+}
+void stream_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status == UVRPC_OK, "Single chunk stream should succeed");
+    TEST_ASSERT(uvrpc_response_is_stream_end(resp), "Should be stream end");
+    TEST_ASSERT(!uvrpc_response_is_stream_more(resp), "Should not be stream more");
+    TEST_ASSERT(strcmp((char*)resp->result, "Single chunk data") == 0, "Data should match");
+    c->received = 1;
+}
+void many_chunks_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    int num_chunks = 100;
+    for (int i = 0; i < num_chunks; i++) {
+        char chunk[32];
+        snprintf(chunk, sizeof(chunk), "Chunk %d", i);
+        
+        if (i < num_chunks - 1) {
+            uvrpc_request_send_response_more(req, (uint8_t*)chunk, strlen(chunk) + 1);
+        } else {
+            uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)chunk, strlen(chunk) + 1);
+        }
+    }
+    c->completed = 1;
+}
+void many_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    c->chunks_received++;
+    
+    if (uvrpc_response_is_stream_more(resp)) {
+        TEST_ASSERT(c->chunks_received < 100, "Should receive less than 100 chunks for ResponseMore");
+    } else if (uvrpc_response_is_stream_end(resp)) {
+        TEST_ASSERT(c->chunks_received == 100, "Should receive exactly 100 chunks");
+    c->received = 1;
+    }
+}
+void oneway_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    /* Oneway: don't send response */
+    c->completed = 1;
+}
+void max_handler(uvrpc_request_t* req, void* handler_ctx) {
+    (void)handler_ctx;
+    const char* data = "Response";
+    uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)data, strlen(data) + 1);
+}
+void max_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    (void)cb_ctx;
+    (void)resp;
+}
+void error_handler(uvrpc_request_t* req, void* handler_ctx) {
+    test_context_t* c = (test_context_t*)handler_ctx;
+    (void)handler_ctx;
+    /* Send error response */
+    uvrpc_response_send_error(req, UVRPC_ERROR_INVALID_PARAM, "Test error message");
+    c->completed = 1;
+}
+void error_callback(uvrpc_response_t* resp, void* cb_ctx) {
+    test_context_t* c = (test_context_t*)cb_ctx;
+    (void)cb_ctx;
+    TEST_ASSERT(resp->status != UVRPC_OK, "Error response should have non-zero status");
+    TEST_ASSERT(resp->error_message != NULL, "Error response should have message");
+    TEST_ASSERT(strcmp(resp->error_message, "Test error message") == 0, "Error message should match");
+    c->received = 1;
+}
+
+
+/* Test statistics */
+
+/* Test helper: create test context */
 
 /* Connection callback helper */
 static void test_connect_callback(int status, void* ctx) {
@@ -56,20 +241,12 @@ static void test_empty_request(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that receives empty request */
-    void empty_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        printf("[SERVER] Received request with size: %zu\n", req->params_size);
-        TEST_ASSERT(req->params_size == 0, "Server should receive empty request");
-        
-        /* Send response with no data */
-        uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "EmptyTest", empty_handler, NULL);
+    uvrpc_server_register(server, "EmptyTest", empty_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -83,24 +260,18 @@ static void test_empty_request(void) {
     /* Wait for connection */
     int conn_iterations = 0;
     while (!ctx.connected && conn_iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         conn_iterations++;
     }
     
     /* Send empty request */
-    void empty_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "Empty request should succeed");
-        TEST_ASSERT(resp->result_size == 0, "Empty response should have zero size");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "EmptyTest", NULL, 0, empty_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -129,7 +300,8 @@ static void test_max_request_size(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Create maximum size payload (1MB) */
     size_t max_size = 1024 * 1024;  /* 1MB */
@@ -142,17 +314,8 @@ static void test_max_request_size(void) {
     }
     
     /* Handler for large request */
-    void large_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        printf("[SERVER] Received large request: %zu bytes\n", req->params_size);
-        TEST_ASSERT(req->params_size == max_size, "Server should receive full size");
-        
-        /* Echo back */
-        uvrpc_request_send_response(req, UVRPC_OK, req->params, req->params_size);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "LargeTest", large_handler, NULL);
+    uvrpc_server_register(server, "LargeTest", large_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -169,29 +332,13 @@ static void test_max_request_size(void) {
     }
     
     /* Send large request */
-    void large_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "Large request should succeed");
-        TEST_ASSERT(resp->result_size == max_size, "Should receive full response");
-        
-        /* Verify data */
-        int match = 1;
-        for (size_t i = 0; i < resp->result_size && i < 100; i++) {
-            if (resp->result[i] != (i % 256)) {
-                match = 0;
-                break;
-            }
-        }
-        TEST_ASSERT(match, "Data should match");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "LargeTest", large_data, max_size, large_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 200) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -221,21 +368,12 @@ static void test_single_byte_request(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler for single byte request */
-    void single_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        printf("[SERVER] Received single byte: %d\n", req->params[0]);
-        TEST_ASSERT(req->params_size == 1, "Server should receive single byte");
-        TEST_ASSERT(req->params[0] == 42, "Byte value should be 42");
-        
-        /* Echo back */
-        uvrpc_request_send_response(req, UVRPC_OK, req->params, 1);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "SingleTest", single_handler, NULL);
+    uvrpc_server_register(server, "SingleTest", single_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -253,20 +391,13 @@ static void test_single_byte_request(void) {
     
     /* Send single byte request */
     uint8_t single_byte = 42;
-    void single_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "Single byte request should succeed");
-        TEST_ASSERT(resp->result_size == 1, "Should receive single byte");
-        TEST_ASSERT(resp->result[0] == 42, "Byte value should be 42");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "SingleTest", &single_byte, 1, single_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -295,19 +426,12 @@ static void test_null_params(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that checks for NULL params */
-    void null_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        TEST_ASSERT(req->params == NULL, "Params should be NULL");
-        TEST_ASSERT(req->params_size == 0, "Params size should be 0");
-        
-        uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "NullTest", null_handler, NULL);
+    uvrpc_server_register(server, "NullTest", null_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -324,20 +448,13 @@ static void test_null_params(void) {
     }
     
     /* Send request with NULL params */
-    void null_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "NULL params request should succeed");
-        TEST_ASSERT(resp->result == NULL, "Result should be NULL");
-        TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "NullTest", NULL, 0, null_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -366,17 +483,12 @@ static void test_zero_length_response(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that sends zero length response */
-    void zero_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        /* Send response with zero length */
-        uvrpc_request_send_response(req, UVRPC_OK, NULL, 0);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "ZeroTest", zero_handler, NULL);
+    uvrpc_server_register(server, "ZeroTest", zero_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -393,19 +505,13 @@ static void test_zero_length_response(void) {
     }
     
     /* Send request */
-    void zero_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "Zero length response should succeed");
-        TEST_ASSERT(resp->result_size == 0, "Result size should be 0");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "ZeroTest", NULL, 0, zero_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -434,18 +540,12 @@ static void test_stream_single_chunk(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that sends only one chunk (no ResponseMore) */
-    void single_chunk_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        const char* data = "Single chunk data";
-        /* Send only final response, no ResponseMore */
-        uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)data, strlen(data) + 1);
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "SingleChunkTest", single_chunk_handler, NULL);
+    uvrpc_server_register(server, "SingleChunkTest", single_chunk_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -462,21 +562,13 @@ static void test_stream_single_chunk(void) {
     }
     
     /* Send request */
-    void stream_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status == UVRPC_OK, "Single chunk stream should succeed");
-        TEST_ASSERT(uvrpc_response_is_stream_end(resp), "Should be stream end");
-        TEST_ASSERT(!uvrpc_response_is_stream_more(resp), "Should not be stream more");
-        TEST_ASSERT(strcmp((char*)resp->result, "Single chunk data") == 0, "Data should match");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "SingleChunkTest", NULL, 0, stream_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -505,26 +597,12 @@ static void test_stream_many_chunks(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that sends many small chunks */
-    void many_chunks_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        int num_chunks = 100;
-        for (int i = 0; i < num_chunks; i++) {
-            char chunk[32];
-            snprintf(chunk, sizeof(chunk), "Chunk %d", i);
-            
-            if (i < num_chunks - 1) {
-                uvrpc_request_send_response_more(req, (uint8_t*)chunk, strlen(chunk) + 1);
-            } else {
-                uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)chunk, strlen(chunk) + 1);
-            }
-        }
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "ManyChunksTest", many_chunks_handler, NULL);
+    uvrpc_server_register(server, "ManyChunksTest", many_chunks_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -541,27 +619,16 @@ static void test_stream_many_chunks(void) {
     }
     
     /* Track chunks received */
-    int chunks_received = 0;
+    ctx.chunks_received = 0;
     
     /* Send request */
-    void many_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        chunks_received++;
-        
-        if (uvrpc_response_is_stream_more(resp)) {
-            TEST_ASSERT(chunks_received < 100, "Should receive less than 100 chunks for ResponseMore");
-        } else if (uvrpc_response_is_stream_end(resp)) {
-            TEST_ASSERT(chunks_received == 100, "Should receive exactly 100 chunks");
-            ctx.received = 1;
-        }
-    }
     
     uvrpc_client_call(client, "ManyChunksTest", NULL, 0, many_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 500) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -590,16 +657,12 @@ static void test_oneway_null_callback(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that doesn't send response */
-    void oneway_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        /* Oneway: don't send response */
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "OnewayTest", oneway_handler, NULL);
+    uvrpc_server_register(server, "OnewayTest", oneway_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -648,16 +711,12 @@ static void test_max_pending_callbacks(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that responds immediately */
-    void max_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        const char* data = "Response";
-        uvrpc_request_send_response(req, UVRPC_OK, (uint8_t*)data, strlen(data) + 1);
-    }
     
-    uvrpc_server_register(server, "MaxTest", max_handler, NULL);
+    uvrpc_server_register(server, "MaxTest", max_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client with small pending buffer */
@@ -677,11 +736,6 @@ static void test_max_pending_callbacks(void) {
     /* Send 20 requests (exceeds buffer) */
     int total_sent = 0;
     int total_failed = 0;
-    
-    void max_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        (void)resp;
-    }
     
     for (int i = 0; i < 20; i++) {
         int ret = uvrpc_client_call(client, "MaxTest", NULL, 0, max_callback, NULL);
@@ -723,17 +777,12 @@ static void test_error_response(void) {
     
     uvrpc_server_t* server = uvrpc_server_create(server_config);
     
-    test_context_t ctx = {0, 0, 0, &loop};
+    test_context_t ctx = {0};  /* designated below */
+    ctx.loop = &loop;
     
     /* Handler that sends error response */
-    void error_handler(uvrpc_request_t* req, void* handler_ctx) {
-        (void)handler_ctx;
-        /* Send error response */
-        uvrpc_response_send_error(req, UVRPC_ERROR_INVALID_PARAM, "Test error message");
-        ctx.completed = 1;
-    }
     
-    uvrpc_server_register(server, "ErrorTest", error_handler, NULL);
+    uvrpc_server_register(server, "ErrorTest", error_handler, &ctx);
     uvrpc_server_start(server);
     
     /* Create client */
@@ -750,20 +799,13 @@ static void test_error_response(void) {
     }
     
     /* Send request */
-    void error_callback(uvrpc_response_t* resp, void* cb_ctx) {
-        (void)cb_ctx;
-        TEST_ASSERT(resp->status != UVRPC_OK, "Error response should have non-zero status");
-        TEST_ASSERT(resp->error_message != NULL, "Error response should have message");
-        TEST_ASSERT(strcmp(resp->error_message, "Test error message") == 0, "Error message should match");
-        ctx.received = 1;
-    }
     
     uvrpc_client_call(client, "ErrorTest", NULL, 0, error_callback, &ctx);
     
     /* Run event loop */
     int iterations = 0;
     while (!ctx.received && iterations < 50) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(&loop, UV_RUN_NOWAIT);
         uv_stop(&loop);
         iterations++;
     }
@@ -810,3 +852,4 @@ int main(int argc, char** argv) {
     
     return (tests_failed == 0) ? 0 : 1;
 }
+

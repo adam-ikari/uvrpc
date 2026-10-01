@@ -108,27 +108,16 @@ int main(int argc, char** argv) {
     printf("\nSending %d Add requests with retry logic...\n", num_requests);
 
     for (int i = 0; i < num_requests; i++) {
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
+        /* The generated wrapper takes the schema's POJO, not a serialized
+         * buffer: it serializes for you. */
+        benchmark_AddRequest_t request = { .a = i, .b = i + 1 };
 
-        benchmark_AddRequest_start_as_root(&builder);
-        benchmark_AddRequest_a_add(&builder, i);
-        benchmark_AddRequest_b_add(&builder, i + 1);
-        benchmark_AddRequest_end_as_root(&builder);
-
-        size_t size = 0;
-        void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-        benchmark_AddRequest_table_t request = benchmark_AddRequest_as_root(buf);
-
-        int ret = uvrpc_benchmarkservice_Add(client, on_response, NULL, request);
+        int ret = uvrpc_benchmarkservice_Add(client, on_response, NULL, &request);
         if (ret == UVRPC_OK) {
             printf("Sent request #%d\n", i + 1);
         } else {
             printf("Failed to send request #%d (error: %d) - will retry...\n", i + 1, ret);
         }
-
-        flatcc_builder_aligned_free(buf);
-        flatcc_builder_clear(&builder);
 
         uv_run(&loop, UV_RUN_DEFAULT);
     }

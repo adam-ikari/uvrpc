@@ -74,22 +74,13 @@ int main(int argc, char** argv) {
         uv_run(&loop, UV_RUN_DEFAULT);
     }
 
-    flatcc_builder_t builder;
-    flatcc_builder_init(&builder);
-    benchmark_AddRequest_start_as_root(&builder);
-    benchmark_AddRequest_a_add(&builder, 10);
-    benchmark_AddRequest_b_add(&builder, 20);
-    benchmark_AddRequest_end_as_root(&builder);
-
-    size_t size = 0;
-    void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-    benchmark_AddRequest_table_t request = benchmark_AddRequest_as_root(buf);
+    /* The generated wrapper takes the schema's POJO and serializes it; there
+     * is no buffer to build or free here. */
+    benchmark_AddRequest_t request = { .a = 10, .b = 20 };
 
     printf("Calling Add(10, 20)...\n");
-    uvrpc_benchmarkservice_Add(client, on_response, NULL, request);
+    uvrpc_benchmarkservice_Add(client, on_response, NULL, &request);
 
-    flatcc_builder_aligned_free(buf);
-    flatcc_builder_clear(&builder);
 
     for (int i = 0; i < 100; i++) {
         uv_run(&loop, UV_RUN_DEFAULT);

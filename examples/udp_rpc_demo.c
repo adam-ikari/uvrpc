@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 static volatile int g_running = 1;
+static int request_count = 0;
 
 void signal_handler(int sig) {
     (void)sig;
@@ -40,6 +41,30 @@ void add_handler(uvrpc_request_t* req, void* ctx) {
         fprintf(stderr, "Invalid params size: %zu\n", req->params_size);
         uvrpc_request_send_response(req, -1, NULL, 0);
     }
+}
+
+/* These were nested inside run_client(), which is a GNU extension: the
+ * trampoline it needs lives on the stack, so the object file ends up with an
+ * executable stack and the linker warns. File scope costs nothing here. */
+static void echo_callback(uvrpc_response_t* resp, void* ctx) {
+    (void)ctx;
+    if (resp->status == 0) {
+        printf("  Echo response: %.*s\n", (int)resp->result_size, resp->result);
+    } else {
+        printf("  Echo failed: status=%d\n", resp->status);
+    }
+    request_count++;
+}
+
+static void add_callback(uvrpc_response_t* resp, void* ctx) {
+    (void)ctx;
+    if (resp->status == 0 && resp->result_size == 4) {
+        int32_t result = *((int32_t*)resp->result);
+        printf("  Add result: %d\n", result);
+    } else {
+        printf("  Add failed: status=%d\n", resp->status);
+    }
+    request_count++;
 }
 
 int run_server(uv_loop_t* loop, const char* address) {
@@ -119,17 +144,6 @@ int run_client(uv_loop_t* loop, const char* address) {
 
     /* Test echo */
     printf("Test 1: Echo\n");
-    static int request_count = 0;
-    void echo_callback(uvrpc_response_t* resp, void* ctx) {
-        (void)ctx;
-        if (resp->status == 0) {
-            printf("  Echo response: %.*s\n", (int)resp->result_size, resp->result);
-        } else {
-            printf("  Echo failed: status=%d\n", resp->status);
-        }
-        request_count++;
-    }
-
     const char* echo_msg = "Hello UDP RPC!";
     uvrpc_client_call(client, "echo",
                       (const uint8_t*)echo_msg, strlen(echo_msg),
@@ -137,17 +151,6 @@ int run_client(uv_loop_t* loop, const char* address) {
 
     /* Test add */
     printf("\nTest 2: Add\n");
-    void add_callback(uvrpc_response_t* resp, void* ctx) {
-        (void)ctx;
-        if (resp->status == 0 && resp->result_size == 4) {
-            int32_t result = *((int32_t*)resp->result);
-            printf("  Add result: %d\n", result);
-        } else {
-            printf("  Add failed: status=%d\n", resp->status);
-        }
-        request_count++;
-    }
-
     int32_t add_params[2] = {10, 20};
     uvrpc_client_call(client, "add",
                       (const uint8_t*)add_params, sizeof(add_params),

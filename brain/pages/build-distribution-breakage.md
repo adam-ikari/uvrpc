@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-01T11:39:35"
+updated: "2026-10-01T12:11:25"
 ---
 
 <!-- compiled_truth -->
@@ -115,4 +115,10 @@ updated: "2026-10-01T11:39:35"
   kind: reversal
   summary: "**构建竞态：uvrpc_merged 覆盖 libuvrpc.a 与链接并发**（已修，2026-09-30）。`uvrpc_merged` 是 `ALL` 目标，它刻意把 `dist/lib/libuvrpc_full.a` **覆盖**到 `dist/lib/libuvrpc.a`（因为示例用 `-static` 链合并归档，需要 libuv/flatcc 内联）。但所有示例目标链的是 CMake 目标 `uvrpc`，CMake **完全不知道**这个文件路径会被重写 —— 于是 `ld` 可能正在读 `libuvrpc.a` 时被覆盖，报 `error adding symbols: no more archived files`。**今天新增约 20 个示例目标后并发链接者暴增，CI 的 ASan job 首次暴露**；本地表现为需要反复 `rm -rf dist`，我当时误判为「共享 dist 的混合状态」，实际是同一个缺陷。修法：给每个链 `uvrpc` 的目标加 `add_dependencies(<t> uvrpc_merged)`（示例 14 处显式 + tests/ 与 tests/integration/ 各用 `get_property(BUILDSYSTEM_TARGETS)` 批量加）。验证：CI 同样的 ASan 配置连做三次干净构建，0 错误。注意 `BUILDSYSTEM_TARGETS` 不含子目录目标，所以 integration 子目录要单独加"
   source: "CI 日志 'error adding symbols: no more archived files' + CMakeLists.txt:374 的 copy 指令（2026-09-30）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-01T12:11:25
+  kind: reversal
+  summary: "**CI 的 warning-clean 检查抓出两类问题**（已修，2026-09-30）。**(1) 嵌套函数导致可执行栈**： 有 2 个、 有 19 个回调定义在函数体内（GNU 扩展，trampoline 落在栈上），使 .o 带可执行 .note.GNU-stack，链接器告警  而 CI 判定失败。修法：全部移到文件作用域；原本靠嵌套捕获的 // 改走  参数（/ 加进 ）。**踩坑**：给结构体加字段后，原有的位置化初始化  会把  悄悄挪进新字段 —— 已全部改为  + 逐字段赋值。**(2) 生成的客户端 API 签名是 POJO 不是 flatcc 指针**：生成的 wrapper 签名 ，而  是生成器在  里造的 **POJO 结构体** ，不是 flatcc 的 。我先前三个示例直接传了  的表指针，触发 （CI 失败）。正确用法是填 POJO 再传地址，**不需要手搓 flatbuffers**。注意该 API **非对称**：请求侧是 POJO（代你序列化），响应侧回调拿的是原始字节（仍需  解析）。**另发现一个从未运行的死测试**： 有 main、有 9 月 23 日签入的二进制，但**没有构建目标** —— 几个月来从未编译、从未在 CI 跑。注册后发现它本身是坏的：9 个轮询循环用 ，而监听的 server 让 loop 永不返回，第一个调用就死锁（旧二进制同样卡，只是卡在更后面）。最小探针证明**库没问题**（connect/请求/响应全通）。修好轮询后 Test 1 仍断言失败（空响应未到达），**判定超出'修 CI 警告'的范围 —— 修到能跑等于重写一个 900 行套件，故撤销注册**，但保留可执行栈修复（CI 需要）与其内部改进"
+  source: "CI 日志 'requires executable stack' + 三个示例的 -Wincompatible-pointer-types；最小探针 /tmp/p1 证明库正常（2026-09-30）"
   affects: [build-distribution-breakage]
