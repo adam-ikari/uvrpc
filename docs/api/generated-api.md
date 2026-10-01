@@ -133,6 +133,19 @@ undefined reference。只建客户端的程序不需要实现任何 handler，�
 每个方法给两条路：`uvrpc_<service>_<Method>`（回调式）与
 `uvrpc_<service>_<Method>_sync`（内部走 `uvrpc_async`，可带超时）。
 
+注意请求侧收的是 **POJO**，不是 flatbuffers 的表指针 —— 两者名字接近但不是一回事：
+
+|类型|定义在|是什么|
+| --- | --- | --- |
+|`rpc_MathAddRequest_t`|生成器造的，`*_rpc_common.h`|普通结构体 `{int32_t a; int32_t b;}`|
+|`rpc_MathAddRequest_table_t`|flatcc 的 reader 头|指向已解析 buffer 的指针|
+
+wrapper 接受前者并代你序列化。传 `_as_root()` 的返回值（后者）会得到
+`-Wincompatible-pointer-types` 警告，行为也是错的。
+
+这个 API 是**非对称**的：请求侧给 POJO，响应侧回调拿到的仍是原始字节，需要自己
+`rpc_MathAddResponse_as_root(resp->result)` 解析。
+
 ```c
 #include "generated/rpc_mathservice_api.h"
 
@@ -148,6 +161,7 @@ static void on_add(uvrpc_response_t* resp, void* ctx) {
         rpc_MathAddResponse_table_t r = rpc_MathAddResponse_as_root(resp->result);
         printf("Add result: %d\n", rpc_MathAddResponse_result(r));
     }
+
     uv_stop(s->loop);          /* 否则 UV_RUN_DEFAULT 不会返回：连接句柄仍活跃 */
 }
 
