@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-09-29T08:40:55"
+updated: "2026-10-01T07:54:23"
 ---
 
 <!-- compiled_truth -->
@@ -91,4 +91,10 @@ updated: "2026-09-29T08:40:55"
   kind: reversal
   summary: "反转：CI 首次全绿。修完 DSL 生成目录/cppcheck 后，run 36543459605 的 8 个 job 与 CI、Benchmark、文档部署三条流水线全部 success —— 而此前可查的每一次运行（最近 20 次，最早 2026-02-19）都是 failure。构建/分发这条线从今天起由流水线本身守护"
   source: "gh run view 36543459605：非 success 的 job 数为 0 (2026-09-29)"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-01T07:54:23
+  kind: evidence
+  summary: "**示例腐化的根因是「从未注册」而非漏生成**（2026-09-30）： 有 58 个源文件，实际产出二进制的有 44 个，**23 个有源码无二进制**。逐个试编译后：**13 个编译干净、只是从未注册**（scenario_1~5、simple_stream_dsl、stream_api_demo、test_10_requests、test_semaphore/2、test_simple_server、uvbus_minimal/standalone/working_test）； 是  参数列表里误插一行  的语法错误；/ 是 API 漂移（生成器 create_server 加了 registry 参数、create_client 加了 connect callback）； 的 include 路径写成了 （它并不在子目录里）。README 此前称这些「多数需要额外 schema 生成」——**不实**，13 个只要注册即可。剩下 8 个确有障碍：5 个需要把  从硬编码 log_service 泛化到多 schema（或为 rpc_example.fbs 生成 flatcc 读码器）； 用了生成器不产出的类型（ vs ，示例与生成器契约不一致）；/ 需要  而仓库**从无** 。判据：注册本身就是防腐化手段——今天验收套件挖出的缺陷根因都是「没有测试会编译这段代码」"
+  source: "examples/*.c 逐个试编译 + dist/bin 反查（2026-09-30）"
   affects: [build-distribution-breakage]

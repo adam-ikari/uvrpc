@@ -45,9 +45,9 @@ static void subscriber_callback(uvrpc_response_t* resp, void* ctx) {
     
     if (resp->status == UVRPC_OK && resp->result && resp->result_size > 0) {
         printf("[SUBSCRIBER %s] Received broadcast: %s\n", 
-fflush(stdout);
                context->subscriber_id ? context->subscriber_id : "unknown",
                (char*)resp->result);
+        fflush(stdout);
         context->messages_received++;
         
         /* 每个订阅者收到 3 条消息后停止 */

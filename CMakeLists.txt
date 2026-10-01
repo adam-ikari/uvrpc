@@ -399,6 +399,28 @@ add_subdirectory(benchmark)
         message(STATUS "Skipping log_service demos: RPC DSL codegen unavailable")
     endif()
     
+    # Scenarios and the uvbus-level demos. They were written long ago and simply
+    # never registered, so nothing had compiled them since; registering them is
+    # what keeps them from rotting the way the unregistered ones did.
+    foreach(_extra
+        scenario_1_simple_request_response
+        scenario_4_broadcast_mode
+        scenario_2_streaming_data_transfer
+        scenario_3_oneway_logging
+        scenario_5_mixed_mode_api
+        simple_stream_dsl
+        stream_api_demo
+        test_10_requests
+        test_semaphore
+        test_semaphore2
+        test_simple_server
+        uvbus_minimal_test
+        uvbus_standalone_test
+        uvbus_working_example
+    )
+        create_example_target(${_extra})
+    endforeach()
+
     # Streaming RPC examples
     create_example_target(streaming_demo)
 

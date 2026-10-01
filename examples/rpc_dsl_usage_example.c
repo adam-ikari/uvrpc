@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../include/uvrpc.h"
-#include "../../generated/rpc/rpc_api.h"
+#include "../include/uvrpc.h"
+#include "../generated/rpc/rpc_api.h"
 
 /* External user implementation */
 extern int rpc_handle_request(const char* method_name, const void* request, uvrpc_request_t* req);

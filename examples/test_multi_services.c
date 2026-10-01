@@ -28,14 +28,14 @@ int main() {
     printf("Testing multiple services...\n");
     
     /* Create MathService client */
-    uvrpc_client_t* math_client = uvrpc_mathservice_create_client(&loop, "tcp://127.0.0.1:5555", NULL, NULL);
+    uvrpc_client_t* math_client = uvrpc_mathservice_create_client(&loop, "tcp://127.0.0.1:5555", NULL, NULL, NULL);
     if (!math_client) {
         printf("Failed to create MathService client\n");
         return 1;
     }
     
     /* Create EchoService client */
-    uvrpc_client_t* echo_client = uvrpc_echoservice_create_client(&loop, "tcp://127.0.0.1:5556", NULL, NULL);
+    uvrpc_client_t* echo_client = uvrpc_echoservice_create_client(&loop, "tcp://127.0.0.1:5556", NULL, NULL, NULL);
     if (!echo_client) {
         printf("Failed to create EchoService client\n");
         uvrpc_mathservice_free_client(math_client);

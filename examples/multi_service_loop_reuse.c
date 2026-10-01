@@ -148,21 +148,21 @@ int main() {
     printf("Starting multiple services in a single event loop...\n");
     
     /* Create and start MathService */
-    uvrpc_server_t* math_server = uvrpc_mathservice_create_server(&loop, "tcp://127.0.0.1:5555");
+    uvrpc_server_t* math_server = uvrpc_mathservice_create_server(&loop, "tcp://127.0.0.1:5555", NULL);
     if (math_server) {
         uvrpc_mathservice_start_server(math_server);
         printf("MathService started on tcp://127.0.0.1:5555\n");
     }
     
     /* Create and start EchoService */
-    uvrpc_server_t* echo_server = uvrpc_echoservice_create_server(&loop, "tcp://127.0.0.1:5556");
+    uvrpc_server_t* echo_server = uvrpc_echoservice_create_server(&loop, "tcp://127.0.0.1:5556", NULL);
     if (echo_server) {
         uvrpc_echoservice_start_server(echo_server);
         printf("EchoService started on tcp://127.0.0.1:5556\n");
     }
     
     /* Create and start UserService */
-    uvrpc_server_t* user_server = uvrpc_userservice_create_server(&loop, "tcp://127.0.0.1:5557");
+    uvrpc_server_t* user_server = uvrpc_userservice_create_server(&loop, "tcp://127.0.0.1:5557", NULL);
     if (user_server) {
         uvrpc_userservice_start_server(user_server);
         printf("UserService started on tcp://127.0.0.1:5557\n");

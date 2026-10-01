@@ -107,26 +107,55 @@ RPC 层没有"发布-订阅"这种 API，广播是传输层能力：`uvbus_broad
 （`include/uvbus.h`）。发布者不关心订阅者数量，订阅者可以随时进出；UDP 是它的典型用法。
 参考实现见 `examples/scenario_4_broadcast_mode.c`（当前不在构建目标里，见下）。
 
+## 场景演示与 uvbus 级示例
+
+这 13 个此前没有构建目标，即"写完就再没人编译过"。它们能跑通，但没有输出说明；下面是它们
+各自的用途。
+
+| 示例 | 说明 |
+| --- | --- |
+| `scenario_1_simple_request_response.c` | 场景 1：最小请求-响应 |
+| `scenario_2_streaming_data_transfer.c` | 场景 2：流式传输数据 |
+| `scenario_3_oneway_logging.c` | 场景 3：oneway 发日志，不等响应 |
+| `scenario_4_broadcast_mode.c` | 场景 4：广播模式 |
+| `scenario_5_mixed_mode_api.c` | 场景 5：三种模式混用 |
+| `stream_api_demo.c` / `simple_stream_dsl.c` | 流式 API 的两种写法 |
+| `test_10_requests.c` | 连续 10 次请求 |
+| `test_simple_server.c` | 只启服务器，配套单独的客户端 |
+| `test_semaphore.c` / `test_semaphore2.c` | 信号量两种用法 |
+| `uvbus_minimal_test.c` / `uvbus_standalone_test.c` / `uvbus_working_example.c` | uvbus 传输层脱离 uvrpc 单独使用 |
+
+```bash
+# 终端 1
+./dist/bin/scenario_1_simple_request_response
+# 终端 2
+./dist/bin/simple_client
+```
+
 ## 仓库里有源码但当前没有构建目标的示例
 
 这些文件存在于 `examples/`，但 CMake 没有为它们创建 target，所以 `dist/bin/` 里没有对应
-二进制。多数是历史上需要额外 schema 生成而被跳过的（`CMakeLists.txt` 里仍有注释记录）。
+二进制。**不要按名字去找它们** —— 也没有隐藏的开关能打开。
 
-`scenario_1_simple_request_response.c`、`scenario_2_streaming_data_transfer.c`、
-`scenario_3_oneway_logging.c`、`scenario_4_broadcast_mode.c`、
-`scenario_5_mixed_mode_api.c`、`multi_service_loop_reuse.c`、`flatbuffers_demo.c`、
-`generated_client_example.c`、`rpc_dsl_usage_example.c`、`rpc_user_impl.c`、
-`stream_dsl_demo.c`、`stream_api_demo.c`、`simple_stream_dsl.c`、`test_10_requests.c`、
-`test_multi_services.c`、`test_retry.c`、`test_semaphore.c`、`test_semaphore2.c`、
-`test_simple_server.c`、`uvbus_minimal_test.c`、`uvbus_standalone_test.c`、
-`uvbus_working_example.c`
+剩下这 8 个都有具体障碍，不是漏注册：
 
-要用它们：手动编译，或给 `CMakeLists.txt` 补一个 `create_example_target(...)`。
+| 示例 | 障碍 |
+| --- | --- |
+| `multi_service_loop_reuse.c`、`test_multi_services.c` | 需要 `schema/rpc_api.fbs` 的 DSL 代码。生成器能产出（`uvrpcc.py` 手工跑一次即可验证），但构建系统的 `generate_dsl` 目标只覆盖了 `log_service.fbs` 一个 schema，接入需要把那段 CMake 泛化 |
+| `flatbuffers_demo.c` | 需要 `rpc_example_builder.h`，即 `schema/rpc_example.fbs` 的 flatcc 读码器，构建里没有为它生成 |
+| `rpc_user_impl.c`、`rpc_dsl_usage_example.c` | 需要 `schema/rpc_api.fbs` 的 DSL 代码，同上 |
+| `stream_dsl_demo.c` | 使用生成器并不产出的类型 `uvrpc_stream_StreamRequest_t`（生成的是 `_ref_t`）。这是示例与生成器契约不一致，不是漏生成 |
+| `generated_client_example.c`、`test_retry.c` | 需要 `rpc_benchmark_builder.h`，但仓库里**没有** `rpc_benchmark.fbs` —— 这个 schema 从未存在，所以无法生成 |
 
-`log_service_demo.c` 与 `log_simple_demo.c` **不在此列** —— 它们是 RPC DSL 生成的
-（`schema/log_service.fbs`），现在由构建系统的 `generate_dsl` 目标产出代码并纳入
-`dist/bin/`。前提是构建机上有一个能 `import jinja2` 的 python3；没有的话这两个示例与
-`dsl_codegen` 测试会被跳过，库本身照常构建。
+历史上这里有 23 个，其中 14 个只是从未注册：13 个能直接编译，加上
+`scenario_4_broadcast_mode.c`（`printf` 参数列表里误插了一行 `fflush(stdout)`，导致语法
+错误）。它们现已纳入 `CMakeLists.txt`，注册本身就是防止再次腐化的手段 —— 今天套件里
+挖出的几个真实缺陷，根因都是"没有测试会编译这段代码"。
+
+`log_service_demo.c` 与 `log_simple_demo.c` 由 RPC DSL 生成（`schema/log_service.fbs`），
+构建系统的 `generate_dsl` 目标会产出并纳入 `dist/bin/`。前提是构建机上有一个能
+`import jinja2` 的 python3；没有的话这两个示例与 `dsl_codegen` 测试会被跳过，库本身照常
+构建。
 
 ## 配套文档
 
