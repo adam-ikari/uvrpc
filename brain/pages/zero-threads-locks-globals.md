@@ -85,6 +85,6 @@ custom 构建中亦仅由 `uvrpc_allocator_init()` 写一次、之后只读。**
 
 - time: 2026-10-01T15:35:22
   kind: reversal
-  summary: "删除 CUSTOM 分配器时判断失误：它并非「没有使用者」（2026-10-01）。我只 grep 了 uvrpc_allocator_init / UVRPC_ALLOCATOR_CUSTOM / uvrpc_custom_allocator_t，而 CI 里那个 job 传的是 CMake 字符串 custom，所以没被匹配到 —— 删掉能力后 CI 的 Custom allocator build 在配置阶段直接失败。**判据：删除一个能力之前，要找的是「谁依赖它」，不是「谁调用了它的符号」——构建配置、CI 任务、文档示例都是使用者，符号搜索看不到它们**。代价必须说明白：那个 job 是仓库里唯一能捕获跨堆释放的构建（自定义池只认自己分配过的指针），能力删除后该检测一并消失；mimalloc 构建不是等价替代，它不刻意构造跨堆场景。现在这条规则（flatcc 缓冲区用 flatcc_builder_aligned_free，不能用 uvrpc_free）只由 docs/architecture/integration.md 和 uvrpc_free_encoded() 约束，没有自动化守护。另：同一个提交里我还漏看了 CI 里的 custom job，说明「逐个 grep 确认没有使用者」这种验证方式本身就是不可靠的，应该直接问「这个能力的删除会让什么失败」再动手。"
+  summary: "删除 CUSTOM 分配器时判断失误：它并非「没有使用者」（2026-10-01）。我只 grep 了 uvrpc_allocator_init / UVRPC_ALLOCATOR_CUSTOM / uvrpc_custom_allocator_t，而 CI 里那个 job 传的是 CMake 字符串 custom，所以没被匹配到 —— 删掉能力后 CI 的 Custom allocator build 在配置阶段直接失败。**判据：删除一个能力之前，要找的是「谁依赖它」，不是「谁调用了它的符号」——构建配置、CI 任务、文档示例都是使用者，符号搜索看不到它们**。**更正（次日）**：我随后声称「删掉它损失了跨堆释放检测，是真实的覆盖率下降」，这个结论是错的，现已收回。查证：库内 231 个 uvrpc_free() 调用点与 97 个 uvrpc_alloc() 分配点，两个方向的违规都是 0 处；生成代码、测试、示例均正确；uvrpc_encode_*() 不是公开 API（在 src/ 而非 include/），风险封闭在仓库内。**没有任何已知缺陷需要那个 job 守护**，所以删除没有付出实际代价，也没有该补的检测机制。补充实测：跨堆释放是静默的 —— mimalloc 构建下 mi_free() 作用在 malloc() 指针上不报错、退出码 0，这类错误只能靠人守。**判据补充：说某项删除「有代价」之前，要先证明代价存在**；我因为那个 job 的注释写得很可信，就直接采信了，没去数违规次数。"
   source: "CI 配置阶段失败：CMakeLists.txt:49 Invalid allocator type（2026-10-01）"
   affects: [zero-threads-locks-globals]

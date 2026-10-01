@@ -308,10 +308,16 @@ int main(void) {
   要用 `flatcc_builder_aligned_free()` 释放，**不能**用 `uvrpc_free()` —— 在 mimalloc 构建下
   那是另一个堆。库内部用 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`）表达这条规则。
 
-  > 这条规则过去更难发现：仓库里有过一个自定义分配器构建，`uvrpc_free()` 是一个只认自己
-  > 分配过的指针的池，跨堆释放会立刻被 CI 抓到。它需要存函数指针的全局状态，与
-  > 「零可变全局」冲突，已删除。**代价是这个检测能力一并没了** —— mimalloc 构建不是等价替代：
-  > 它不刻意构造跨堆场景。规则本身仍由本条文档和 `uvrpc_free_encoded()` 约束。
+  > 这条错误是**静默**的：mimalloc 构建下用 `uvrpc_free()` 释放 flatcc 缓冲区，
+  > `mi_free()` 作用在 `malloc()` 指针上不报错，退出码 0。所以它只能靠人守，不能指望测试。
+  >
+  > 仓库里曾有一个自定义分配器构建，`uvrpc_free()` 是一个只认自己分配过的指针的池，
+  > 跨堆释放会立刻被 CI 抓到。它需要存函数指针的全局状态，与「零可变全局」冲突，已删除。
+  > 查证删除的代价：库内 231 个 `uvrpc_free()` 调用点、97 个 `uvrpc_alloc()` 分配点，
+  > 两个方向的违规都是 **0 处**，测试与示例也正确，且 `uvrpc_encode_*()` 不是公开 API
+  > （在 `src/` 而非 `include/`），风险封闭在仓库内。**没有需要守护的已知缺陷**，
+  > 因此不补检测机制 —— 规则写在 `uvrpc_free_encoded()` 的定义处，比一个会随重构失效的
+  > 文本匹配检查更可靠。
 - **`max_clients` 传 0 不是"无限"**：`src/uvrpc_server.c:259` 把 0 变成默认 1024，
   不存在 unlimited 模式（头文件注释此前写作 "0 = unlimited"，2026-09-29 已改正）。
 - **INPROC 的连接判定是 O(已见连接数)**：`client_ctxs` 靠线性扫去重
