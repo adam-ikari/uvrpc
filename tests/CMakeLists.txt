@@ -282,7 +282,32 @@ target_include_directories(backpressure
 )
 
 add_test(NAME protocol_robustness COMMAND protocol_robustness)
+# Releasing an endpoint while it still owes work, and a peer disappearing
+# mid-response. The existing transport_lifetime test covers only the uvbus
+# layer, only loopback transports, and only with nothing in flight.
+add_executable(inflight_lifetime
+    acceptance/inflight_lifetime.c
+)
+
+target_link_libraries(inflight_lifetime
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(inflight_lifetime
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
 add_test(NAME backpressure COMMAND backpressure)
+add_test(NAME inflight_lifetime COMMAND inflight_lifetime)
+set_tests_properties(inflight_lifetime PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 90)
+
 set_tests_properties(backpressure PROPERTIES
     LABELS "acceptance"
     TIMEOUT 90)

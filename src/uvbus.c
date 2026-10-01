@@ -14,6 +14,7 @@
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 /* Transport creation functions */
 extern uvbus_transport_t* create_tcp_transport(uvbus_transport_type_t type, uv_loop_t* loop);
@@ -96,7 +97,44 @@ void uvbus_config_set_error_callback(uvbus_config_t* config, uvbus_error_callbac
     }
 }
 
+
+/* A peer that goes away must not take the process with it.
+ *
+ * When a server writes a response to a connection the client has just closed,
+ * the kernel raises SIGPIPE, whose default action terminates the process. On
+ * Linux libuv only sets SO_NOSIGPIPE, which is a macOS socket option, so the
+ * signal is delivered as-is. libuv surfaces the same failure as UV_EPIPE on
+ * the write callback, which is where a caller can actually respond to it.
+ *
+ * This is not an exotic ordering. A client timing out, crashing, losing the
+ * network, or a load balancer closing an idle connection all land here, and a
+ * TCP RPC server that dies because one client hung up is not a server anyone
+ * can run.
+ *
+ * SIGPIPE is process-wide, so this is a side effect on the host application:
+ * it can no longer rely on SIGPIPE for its own sockets. The alternative is
+ * that creating a TCP transport leaves a handler installed that can kill any
+ * process in the program, which is worse. Only the socket transports do this,
+ * so an application using just INPROC or SAMELOOP never sees the change.
+ */
+static void ignore_sigpipe_once(void) {
+    static int done = 0;
+    if (done) return;
+    done = 1;
+    signal(SIGPIPE, SIG_IGN);
+}
+
+/* True for the transports that can raise SIGPIPE. INPROC and SAMELOOP hand
+ * bytes over in process and never touch a socket. */
+static int transport_uses_sockets(uvbus_transport_type_t type) {
+    return type == UVBUS_TRANSPORT_TCP ||
+           type == UVBUS_TRANSPORT_UDP ||
+           type == UVBUS_TRANSPORT_IPC;
+}
 static uvbus_transport_t* create_transport(uvbus_transport_type_t type, uv_loop_t* loop) {
+    if (transport_uses_sockets(type)) {
+        ignore_sigpipe_once();
+    }
     switch (type) {
         case UVBUS_TRANSPORT_TCP:
             return create_tcp_transport(type, loop);

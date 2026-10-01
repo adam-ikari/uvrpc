@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, architecture, uvbus]
 created: "2026-09-28T17:09:45"
-updated: "2026-09-30T11:51:33"
+updated: "2026-10-01T02:59:22"
 ---
 
 <!-- compiled_truth -->
@@ -121,4 +121,10 @@ inproc / sameloop 需要"按名字找到对端"，这份状态**不在传输对�
   kind: decision
   summary: "**传输与客户端改为 release 语义**（已实现并验证）：`struct uvbus_transport` 新增公开字段 `ref_count`（ABI 变化，0.x 无发布时最便宜）。约定：`vtable->free()` 是**释放**不是释放内存 —— 减一次引用，归零才真正销毁。连接在途时传输自持一份引用，由 `on_client_connect` 归还，所以「连接还在途就释放传输」变成**推迟销毁**而不是让回调读已释放内存。TCP 与 IPC 同时改（两者同一缺陷）。`struct uvrpc_client` 同样处理一层：它的 connect 回调带着自身指针。新契约一句话：**释放一个还有回调在途的对象，只是放下一份引用；必须泵 loop 回调才会真正执行**"
   source: "tests/integration/test_error_handling.c Test 1（连 127.0.0.1:99999 后立即 free）ASan 复现；修复后 ASan+detect_leaks 全量 110/110（2026-09-30）"
+  affects: [uvbus-transport-abstraction]
+
+- time: 2026-10-01T02:59:22
+  kind: decision
+  summary: "**SIGPIPE 会杀死进程（已修）**：服务端往客户端刚关闭的连接写响应时，内核抛 SIGPIPE，默认动作是终止进程。libuv 在 Linux 上只设 macOS 的 SO_NOSIGPIPE，所以信号照常送达；libuv 本身把同一失败以 UV_EPIPE 交给写回调，那才是调用方能处理的地方。**这不是罕见时序**——客户端超时、崩溃、掉网、负载均衡清理空闲连接都会走到这里；'客户端挂了就死的 TCP RPC 服务器'不是能上线的服务器。修法：create_transport 里对 socket 类传输（TCP/UDP/IPC）一次性 signal(SIGPIPE, SIG_IGN)，INPROC/SAMELOOP 不碰。代价是 SIGPIPE 是进程级的，对宿主应用有副作用（它不能再靠 SIGPIPE 处理自己的 socket）；但不装的代价是'建一个 TCP 传输就给全进程装了个能杀人的 handler'，更糟"
+  source: "tests/acceptance/inflight_lifetime.c case 4；gdb 栈：__libc_write <- uv_try_write <- uv_write2 <- tcp_send_to <- uvrpc_request_send_response；去掉该行后测试退出码 141（2026-09-30）"
   affects: [uvbus-transport-abstraction]
