@@ -1,84 +1,104 @@
 /**
- * Example: Using auto-generated client API
- * 
- * This example shows how to use the generated rpc_client_create() function
- * to create and connect a client. The connection process runs asynchronously
- * in the event loop.
+ * The generated client API, end to end.
+ *
+ * Creating a client is a config plus uvrpc_client_create; the connection runs
+ * asynchronously, so the loop has to be pumped. Calling a method is a typed
+ * wrapper the generator derives from the schema's service block -- here
+ * uvrpc_benchmarkservice_Add, with the request type from benchmark.fbs.
+ *
+ * Run the server first:
+ *   ./rpc_dsl_demo server
+ *   ./generated_client_example [address]
  */
 
 #include "../include/uvrpc.h"
-#include "../generated/rpc_benchmark/rpc_benchmark_builder.h"
-#include "../generated/rpc_benchmark/rpc_benchmark_reader.h"
-#include "../generated/rpc_benchmark/rpc_api.h"
+#include "benchmark_benchmarkservice_api.h"
+#include "benchmark_builder.h"
+#include "benchmark_reader.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <uv.h>
 
-/* Connection callback */
-void on_connect(int status, void* ctx) {
+static void on_connect(int status, void* ctx) {
     (void)ctx;
-    if (status == 0) {
+    if (status == UVRPC_OK) {
         printf("Client connected successfully!\n");
     } else {
         printf("Connection failed with status: %d\n", status);
     }
 }
 
-/* Response callback */
-void on_response(uvrpc_response_t* resp, void* ctx) {
+static void on_response(uvrpc_response_t* resp, void* ctx) {
     (void)ctx;
-    if (resp && resp->data) {
-        rpc_BenchmarkAddResponse_table_t result = 
-            rpc_BenchmarkAddResponse_as_root(resp->data);
-        int32_t sum = rpc_BenchmarkAddResponse_result(result);
-        printf("Add result: %d\n", sum);
+    /* Check status before reading result: a failed request carries no result,
+     * and saying so is the point of the status field. */
+    if (resp->status == UVRPC_OK && resp->result && resp->result_size > 0) {
+        benchmark_AddResponse_table_t result = benchmark_AddResponse_as_root(resp->result);
+        printf("Add result: %lld\n", (long long)benchmark_AddResponse_result(result));
+    } else {
+        fprintf(stderr, "Add failed: status=%d %s\n", (int)resp->status,
+                resp->error_message ? resp->error_message : "");
     }
+    uvrpc_response_free(resp);
 }
 
-int main() {
-    /* Create event loop */
+int main(int argc, char** argv) {
+    const char* address = (argc > 1) ? argv[1] : "tcp://127.0.0.1:5555";
+
     uv_loop_t loop;
     uv_loop_init(&loop);
-    
-    /* Create and connect client (async) */
+
+    uvrpc_config_t* config = uvrpc_config_new();
+    uvrpc_config_set_loop(config, &loop);
+    uvrpc_config_set_address(config, address);
+
     printf("Creating client and initiating connection...\n");
-    uvrpc_client_t* client = rpc_client_create(&loop, "tcp://127.0.0.1:5555", on_connect, NULL);
+    uvrpc_client_t* client = uvrpc_client_create(config);
+    uvrpc_config_free(config);
     if (!client) {
         fprintf(stderr, "Failed to create client\n");
+        uv_loop_close(&loop);
         return 1;
     }
-    
-    /* Wait a bit for connection to establish */
+
+    if (uvrpc_client_connect_with_callback(client, on_connect, NULL) != UVRPC_OK) {
+        fprintf(stderr, "Failed to start connecting\n");
+        uvrpc_client_free(client);
+        uv_loop_close(&loop);
+        return 1;
+    }
+
+    /* The connect happens in the loop; pumping is what lets it finish. */
     for (int i = 0; i < 100; i++) {
         uv_run(&loop, UV_RUN_DEFAULT);
     }
-    
-    /* Prepare request */
+
     flatcc_builder_t builder;
     flatcc_builder_init(&builder);
-    rpc_BenchmarkAddRequest_start_as_root(&builder);
-    rpc_BenchmarkAddRequest_a_add(&builder, 10);
-    rpc_BenchmarkAddRequest_b_add(&builder, 20);
-    rpc_BenchmarkAddRequest_end_as_root(&builder);
-    
-    size_t size;
+    benchmark_AddRequest_start_as_root(&builder);
+    benchmark_AddRequest_a_add(&builder, 10);
+    benchmark_AddRequest_b_add(&builder, 20);
+    benchmark_AddRequest_end_as_root(&builder);
+
+    size_t size = 0;
     void* buf = flatcc_builder_finalize_buffer(&builder, &size);
-    
-    /* Call RPC method */
+    benchmark_AddRequest_table_t request = benchmark_AddRequest_as_root(buf);
+
     printf("Calling Add(10, 20)...\n");
-    BenchmarkService_Add(client, rpc_BenchmarkAddRequest_as_root(buf), on_response, NULL);
-    
-    free(buf);
+    uvrpc_benchmarkservice_Add(client, on_response, NULL, request);
+
+    flatcc_builder_aligned_free(buf);
     flatcc_builder_clear(&builder);
-    
-    /* Run event loop to handle response */
+
     for (int i = 0; i < 100; i++) {
         uv_run(&loop, UV_RUN_DEFAULT);
     }
-    
-    /* Cleanup */
-    rpc_client_free(client);
+
+    uvrpc_client_free(client);
+    uv_run(&loop, UV_RUN_NOWAIT);
     uv_loop_close(&loop);
-    
+
     printf("Example completed\n");
     return 0;
 }

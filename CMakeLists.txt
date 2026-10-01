@@ -326,12 +326,15 @@ if(UVRPC_DSL_AVAILABLE)
                        log_logservice)
     uvrpc_dsl_generate(RPC_API ${SCHEMA_DIR}/rpc_api.fbs ${UVRPC_DSL_API_GEN_DIR}
                        rpc_mathservice rpc_userservice rpc_echoservice)
+    set(UVRPC_DSL_BENCH_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/benchmark)
+    uvrpc_dsl_generate(BENCH ${SCHEMA_DIR}/benchmark.fbs ${UVRPC_DSL_BENCH_GEN_DIR}
+                       benchmark_benchmarkservice)
 
     # add_executable resolves its sources at generate time, so sources that a
     # custom command has not produced yet have to be declared GENERATED or
     # configuration fails outright on a clean checkout.
     set(UVRPC_DSL_SOURCES ${LOG_SERVICE_SOURCES} ${RPC_API_SOURCES})
-    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS})
+    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS})
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
     message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")
@@ -445,6 +448,37 @@ add_subdirectory(benchmark)
         # Same story for the demos built on schema/rpc_api.fbs: the generator
         # could already produce these bindings, but the build only ever asked it
         # for log_service.fbs, so these files had no code to compile against.
+        # The retry demo: retry count lives on the client, and the benchmark
+        # schema's service supplies the typed Add wrapper.
+        add_executable(test_retry
+            examples/test_retry.c
+            ${BENCH_CLIENT_SOURCES}
+            ${BENCH_SOURCES_RPC_COMMON}
+        )
+        target_link_libraries(test_retry uvrpc Threads::Threads m rt dl)
+        target_include_directories(test_retry
+            PRIVATE
+            ${UVRPC_DSL_BENCH_GEN_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/generated
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+        )
+        add_dependencies(test_retry generate_dsl)
+
+        add_executable(generated_client_example
+            examples/generated_client_example.c
+            ${BENCH_CLIENT_SOURCES}
+        )
+        target_link_libraries(generated_client_example uvrpc Threads::Threads m rt dl)
+        target_include_directories(generated_client_example
+            PRIVATE
+            ${UVRPC_DSL_BENCH_GEN_DIR}
+            ${CMAKE_CURRENT_SOURCE_DIR}/generated
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+        )
+        add_dependencies(generated_client_example generate_dsl)
+
         # rpc_user_impl.c is deliberately not here: it is the "fill in your
         # service logic" file, an implementation fragment with no main, so it
         # has nothing to link on its own.
@@ -515,6 +549,7 @@ add_subdirectory(benchmark)
         scenario_3_oneway_logging
         scenario_5_mixed_mode_api
         simple_stream_dsl
+        stream_dsl_demo
         stream_api_demo
         test_10_requests
         test_semaphore

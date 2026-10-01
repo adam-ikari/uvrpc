@@ -15,11 +15,12 @@ uvrpc_error_t uvrpc_streamservice_handle_request(const char* method_name,
                                                     const void* request,
                                                     uvrpc_request_t* req) {
     if (strcmp(method_name, "StreamRequest") == 0) {
-        uvrpc_stream_StreamRequest_t* stream_req = uvrpc_stream_StreamRequest_as_root(request);
+        uvrpc_stream_StreamRequest_table_t stream_req = uvrpc_stream_StreamRequest_as_root(request);
         
-        int chunk_count = stream_req->chunk_count;
-        int chunk_size = stream_req->chunk_size;
-        int delay_ms = stream_req->delay_ms;
+        /* flatcc reads fields through generated accessors, not struct members. */
+        int chunk_count = uvrpc_stream_StreamRequest_chunk_count(stream_req);
+        int chunk_size = uvrpc_stream_StreamRequest_chunk_size(stream_req);
+        int delay_ms = uvrpc_stream_StreamRequest_delay_ms(stream_req);
         
         printf("[SERVER] Received stream request: %d chunks, %d bytes each, %dms delay\n",
                chunk_count, chunk_size, delay_ms);
@@ -79,18 +80,18 @@ static void stream_callback(uvrpc_response_t* resp, void* ctx) {
     (void)ctx;
     
     if (resp->result && resp->result_size > 0) {
-        uvrpc_stream_StreamChunk_t* chunk = uvrpc_stream_StreamChunk_as_root(resp->result);
+        uvrpc_stream_StreamChunk_table_t chunk = uvrpc_stream_StreamChunk_as_root(resp->result);
         
         total_chunks++;
         
         if (uvrpc_response_is_stream_more(resp)) {
             printf("[CLIENT] Chunk %d/%d: %zu bytes (more)\n",
-                   chunk->chunk_id, chunk->total_chunks,
+                   uvrpc_stream_StreamChunk_chunk_id(chunk), uvrpc_stream_StreamChunk_total_chunks(chunk),
                    flatbuffers_uint8_vec_len(uvrpc_stream_StreamChunk_data(chunk)));
         } else if (uvrpc_response_is_stream_end(resp)) {
             requests_completed++;
             printf("[CLIENT] Chunk %d/%d: %zu bytes (last)\n",
-                   chunk->chunk_id, chunk->total_chunks,
+                   uvrpc_stream_StreamChunk_chunk_id(chunk), uvrpc_stream_StreamChunk_total_chunks(chunk),
                    flatbuffers_uint8_vec_len(uvrpc_stream_StreamChunk_data(chunk)));
             printf("[CLIENT] Request #%d complete (total chunks: %d)\n",
                    requests_completed, total_chunks);
@@ -101,6 +102,12 @@ static void stream_callback(uvrpc_response_t* resp, void* ctx) {
             }
         }
     }
+}
+
+/* Register handler - use a wrapper to call DSL handler */
+static void stream_handler_wrapper(uvrpc_request_t* req, void* ctx) {
+    (void)ctx;
+    uvrpc_streamservice_handle_request(req->method, req->params, req);
 }
 
 int main(int argc, char** argv) {
@@ -129,11 +136,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    /* Register handler - use a wrapper to call DSL handler */
-    static void stream_handler_wrapper(uvrpc_request_t* req, void* ctx) {
-        (void)ctx;
-        uvrpc_streamservice_handle_request(req->method, req->params, req);
-    }
     
     uvrpc_server_register(server, "uvrpc_stream.StreamRequest", stream_handler_wrapper, NULL);
     uvrpc_server_start(server);

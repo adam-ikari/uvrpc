@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-01T10:17:37"
+updated: "2026-10-01T10:53:56"
 ---
 
 <!-- compiled_truth -->
@@ -103,4 +103,10 @@ updated: "2026-10-01T10:17:37"
   kind: reversal
   summary: "**生成器不剥离注释 —— 真实缺陷，已修**（2026-09-30）。`tools/uvrpcc.py` 的 `parse()` 把四个正则（namespace / table / enum / rpc_service）全部跑在**含注释的原文**上；逐行处理时虽剥离注释（第 117 行），但 service 正则扫的是全文。于是 `schema/rpc_api.fbs` 里那段讲语法的块注释被当成真 service，生成 `rpc_servicename_*.c` 引用不存在的 `rpc_ResponseType_table_t`，**任何用到该 schema 的目标都链接失败**。修法：读入后一次性 `re.sub` 剥离块注释与行注释再解析，下游全部干净。同时 `generate_dsl` 从硬编码单个 schema 泛化为 `uvrpc_dsl_generate(prefix schema outdir ...)` 函数，并导出 `${prefix}_SOURCES` / `${prefix}_CLIENT_SOURCES` / `${prefix}_APIS` 三个命名列表 —— 变量名不能含路径里的斜杠，且 server stub 会引用本 service 的 handler，只用客户端的 demo 不该被迫实现它（`test_multi_services` 即是）。另一个真实发现：**server stub 链接即要求实现该 service 的 handler**，所以不能把两个 schema 的生成源合并进同一个变量（曾导致 `dsl_codegen_test` 与 log_service demo 被 rpc_api 源污染而链接失败）。`rpc_user_impl.c` **故意没有 `main`** —— 它是实现片段，不该注册为可执行目标。示例从 23 个无二进制降到 4 个（`generated_client_example` / `test_retry` 需要仓库从未存在的 `rpc_benchmark.fbs`；`stream_dsl_demo` 用生成器不产出的 `_t` 而非 `_ref_t`）"
   source: "gcc -c 定位到 rpc_servicename_client.c:146 undefined type（2026-09-30）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-01T10:53:56
+  kind: evidence
+  summary: "**58 个示例源码，57 个产出二进制**（2026-09-30 完成）。唯一例外  **故意没有 ** —— 它是「填入你的服务逻辑」的实现片段，不是可运行程序，正确用法是连同生成的  编进自己的可执行文件（README 已给出 cc 命令）。最后三个的根因各不相同：**(1)  把 flatbuffers 读法写成 C++ 成员访问**（）并用一个两边都不存在的类型 ；flatcc 的  返回表指针，字段必须走生成的访问器 ；另有一个 wrapper 函数定义嵌在  内部（C89 不允许嵌套函数）。**(2)  /  对着一个早已改名的 API 世代写的**：（现为 config + ）、响应字段 （现为 ）、（不存在）、（仓库从未有）。**重试功能本身一直存在**，只是搬到了 client 上（），所以这是可救的漂移而非虚构特性 —— 注意与更早的 / 区分，后者确实从未实现。修法：把  也接入 ，用其  生成 。**(3) 连接回调是 **， 无回调参数 —— 写示例时容易踩看起来应该带回调的直觉"
+  source: "58/57 产出核对；flatcc 访问器与 as_root 语义查 deps/flatcc flatbuffers_common_reader.h:575（2026-09-30）"
   affects: [build-distribution-breakage]

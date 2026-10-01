@@ -132,26 +132,34 @@ RPC 层没有"发布-订阅"这种 API，广播是传输层能力：`uvbus_broad
 ./dist/bin/simple_client
 ```
 
-## 仓库里有源码但当前没有构建目标的示例
+## 唯一没有二进制的示例
 
-这 4 个文件存在于 `examples/`，但没有对应的 `dist/bin/` 二进制。**不要按名字去找它们**
-—— 没有开关能打开，每个都有具体障碍：
+`rpc_user_impl.c` **故意没有 `main`** —— 它是"填入你的服务逻辑"的实现片段，不是可运行程序。
+它的正确用法是连同生成的 `_server_stub.c` 一起编进你自己的可执行文件：
 
-| 示例 | 障碍 |
-| --- | --- |
-| `rpc_user_impl.c` | 它是"填入你的服务逻辑"的实现片段，**故意没有 `main`**，单独链接不成程序。它的正确用法是连同生成的 `_server_stub.c` 一起编进你自己的可执行文件 |
-| `stream_dsl_demo.c` | 使用生成器并不产出的类型 `uvrpc_stream_StreamRequest_t`（生成的是 `_ref_t`）。这是示例与生成器契约不一致，不是漏生成 |
-| `generated_client_example.c`、`test_retry.c` | 需要 `rpc_benchmark_builder.h`，但仓库里**没有** `rpc_benchmark.fbs` —— 这个 schema 从未存在，所以没有任何东西能生成它 |
+```bash
+cc -I build/generated/rpc_api -I include my_main.c \
+   build/generated/rpc_api/rpc_mathservice_server_stub.c \
+   build/generated/rpc_api/rpc_mathservice_rpc_common.c \
+   -o my_service dist/lib/libuvrpc.a -lpthread -lm -lrt -ldl
+```
+
+`multi_service_loop_reuse.c` 与 `rpc_dsl_usage_example.c` 就是活例子：它们各自实现了
+`uvrpc_<service>_handle_request`，然后链接生成的 stub。
+
+除此之外，`examples/` 下 58 个源文件全部产出 `dist/bin/` 二进制。
 
 ## 已修复的同类问题
 
-历史上这里有 23 个。现已修复 19 个，其中值得记录的：
+历史上这里有 23 个。现已全部处理完，其中值得记录的：
 
 - **13 个只是从未注册**，编译零错误，缺的是 `create_example_target(...)`
 - `scenario_4_broadcast_mode.c` 的 `printf` 参数列表里误插了一行 `fflush(stdout);`，是语法错误，从未编译过
 - `multi_service_loop_reuse.c`、`test_multi_services.c` 漂移于生成 API：`create_server` 增加了 registry 参数、`create_client` 增加了 connect callback
 - `flatbuffers_demo.c` 需要 `rpc_example.fbs` 的 flatcc 读码器，而构建从未为它生成
 - `rpc_dsl_usage_example.c` 混用了三套不一致的 API，包括 `rpc_register_all()` 和 `MathService_Add()` —— **这两个函数在生成器和模板里都不存在**，是照着从未实现的特性写的
+- `stream_dsl_demo.c` 把 flatbuffers 读法写成了 C++ 成员访问（`chunk->chunk_id`）并用一个两边都不存在的类型 `StreamRequest_t`；flatcc 的 `as_root` 返回表指针，字段要走生成的访问器
+- `test_retry.c` 与 `generated_client_example.c` 对着一个早已改名的 API 世代写的：`rpc_client_create()`、响应字段 `resp->data`、`BenchmarkService_Add()`、以及一个从未存在的 `rpc_benchmark.fbs`。重试功能本身**一直存在**，只是搬到了 client 上（`uvrpc_client_set_max_retries`）
 
 最后两条的根因值得记住：`generate_dsl` 目标只覆盖了 `log_service.fbs` 一个 schema，而生成器**没有剥离注释**
 —— 它把 schema 里那段讲语法的 `/* rpc_service ServiceName { ... } */` 当成真service，生成出无法编译的代码。
