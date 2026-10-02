@@ -346,6 +346,48 @@ add_test(NAME no_globals
 )
 set_tests_properties(no_globals PROPERTIES LABELS "invariant" TIMEOUT 60)
 
+# These two, like the boundary suite below, had a main() and no build target.
+# Unlike that one they were not broken -- they compile, link and pass as they
+# stand, which means 46 assertions had been sitting unrun for months simply
+# because nothing built them.
+add_executable(boundary_simple unit/test_boundary_simple.c)
+
+target_link_libraries(boundary_simple
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(boundary_simple
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME boundary_simple COMMAND boundary_simple)
+set_tests_properties(boundary_simple PROPERTIES LABELS "unit" TIMEOUT 120)
+
+add_executable(stream_response unit/test_stream_response.c)
+
+target_link_libraries(stream_response
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(stream_response
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME stream_response COMMAND stream_response)
+set_tests_properties(stream_response PROPERTIES LABELS "unit" TIMEOUT 120)
+
 add_executable(payload_bounds
     acceptance/payload_bounds.c
 )
