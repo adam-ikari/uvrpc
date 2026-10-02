@@ -90,7 +90,6 @@ set(UVRPC_SOURCES
     src/uvrpc_flatbuffers.c
     src/uvrpc_server.c
     src/uvrpc_client.c
-    src/uvrpc_service.c
     src/uvrpc_msgid.c
     src/uvrpc_idmap.c
     src/uvrpc_allocator.c
@@ -119,11 +118,9 @@ set(UVRPC_HEADERS
     include/uvrpc_primitives.h
     include/uvrpc_strerror.h
     include/uvrpc_async.h
-    include/uvrpc_service.h
     include/uvbus.h
     include/uvbus_config.h
     src/uvrpc_flatbuffers.h
-    src/uvrpc_service.h
 )
 
 # Static library
