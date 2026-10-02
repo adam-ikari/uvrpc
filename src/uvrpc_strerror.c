@@ -18,6 +18,8 @@ const char* uvrpc_strerror(int error_code) {
             return "Not connected to server";
         case UVRPC_ERROR_TIMEOUT:
             return "Operation timed out";
+        case UVRPC_ERROR_TRANSPORT_BUSY:
+            return "Transport busy, retry later";
         case UVRPC_ERROR_TRANSPORT:
             return "Transport layer error";
         case UVRPC_ERROR_CALLBACK_LIMIT:

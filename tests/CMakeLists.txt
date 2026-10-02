@@ -25,6 +25,7 @@ add_executable(uvrpc_tests
     unit/test_client.cpp
     unit/test_config.cpp
     unit/test_idmap.cpp
+    unit/test_strerror.cpp
 )
 
 # Integration tests (require libuv)
