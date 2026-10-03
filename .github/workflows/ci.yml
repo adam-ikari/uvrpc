@@ -113,6 +113,41 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 ./dist/bin/uvrpc_tests --gtest_brief=1
           ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build --output-on-failure
 
+  undefined-check:
+    # Undefined behaviour is not something AddressSanitizer looks for. What
+    # this job found on its first run: sameloop_client_t was declared
+    # __attribute__((aligned(64))) but allocated with plain uvrpc_alloc, so
+    # every member access on it was UB -- invisible on x86, a fault on a
+    # strict-alignment machine. A second finding was in a test, casting a stack
+    # int to the registry type and then reading through it.
+    #
+    # -fno-sanitize-recover=all makes any UB abort the process rather than
+    # print and continue, so a test cannot pass while logging errors.
+    name: Undefined behaviour (UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
+      - name: Build with UndefinedBehaviorSanitizer
+        run: |
+          cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_ALLOCATOR_DEFAULT=system \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_FLAGS="-fsanitize=undefined -fno-sanitize-recover=all -g" \
+                -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-sanitize-recover=all -g" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined -Wl,-rpath,$(pwd)/deps/gtest/build/lib"
+          make -C build -j$(nproc)
+      - name: Run all tests under UBSan
+        run: |
+          UBSAN_OPTIONS=print_stacktrace=1 ./dist/bin/uvrpc_tests --gtest_brief=1
+          UBSAN_OPTIONS=print_stacktrace=1 ctest --test-dir build --output-on-failure
+
   performance:
     name: Performance benchmark
     runs-on: ubuntu-latest

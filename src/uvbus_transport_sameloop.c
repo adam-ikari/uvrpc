@@ -46,7 +46,7 @@ typedef struct sameloop_client {
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
     sameloop_server_t* server;  /* Back-pointer: avoids scanning the registry on disconnect */
-} __attribute__((aligned(64))) sameloop_client_t;  /* Cache line aligned */
+} sameloop_client_t;
 
 /* Forward declarations */
 static sameloop_server_t* find_server(uvbus_loop_registry_t* reg, const char* name);

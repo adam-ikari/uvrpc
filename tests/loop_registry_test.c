@@ -49,7 +49,11 @@ int main(void) {
     /* 3. A pointer that is not a registry is rejected -- and rejecting it does
      * not dereference anything the caller does not own, which is the whole
      * point of the change. */
-    int user_token = 0;
+    /* uint64_t rather than int: the check below reads reg->magic through this
+     * pointer, and a 4-aligned stack int would make that read itself undefined.
+     * Passing something the caller legitimately owns is the point, so it has to
+     * be an object it may legally read -- aligned as the type requires. */
+    uint64_t user_token = 0;
     check(!uvbus_loop_registry_is_valid(NULL), "NULL is not a registry");
     check(!uvbus_loop_registry_is_valid((uvbus_loop_registry_t*)&user_token),
           "a caller's own object is not mistaken for a registry");
@@ -64,7 +68,7 @@ int main(void) {
     {
         uv_loop_t loop = {0};
         uv_loop_init(&loop);
-        int* mine = &user_token;
+        uint64_t* mine = &user_token;
         loop.data = mine;
 
         check(loop.data == mine, "the caller keeps its loop->data");
