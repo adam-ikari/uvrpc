@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [constraint, concurrency, architecture]
 created: "2026-09-28T17:08:01"
-updated: "2026-10-01T15:35:22"
+updated: "2026-10-04T13:38:21"
 ---
 
 <!-- compiled_truth -->
@@ -87,4 +87,10 @@ custom 构建中亦仅由 `uvrpc_allocator_init()` 写一次、之后只读。**
   kind: reversal
   summary: "删除 CUSTOM 分配器时判断失误：它并非「没有使用者」（2026-10-01）。我只 grep 了 uvrpc_allocator_init / UVRPC_ALLOCATOR_CUSTOM / uvrpc_custom_allocator_t，而 CI 里那个 job 传的是 CMake 字符串 custom，所以没被匹配到 —— 删掉能力后 CI 的 Custom allocator build 在配置阶段直接失败。**判据：删除一个能力之前，要找的是「谁依赖它」，不是「谁调用了它的符号」——构建配置、CI 任务、文档示例都是使用者，符号搜索看不到它们**。**更正（次日）**：我随后声称「删掉它损失了跨堆释放检测，是真实的覆盖率下降」，这个结论是错的，现已收回。查证：库内 231 个 uvrpc_free() 调用点与 97 个 uvrpc_alloc() 分配点，两个方向的违规都是 0 处；生成代码、测试、示例均正确；uvrpc_encode_*() 不是公开 API（在 src/ 而非 include/），风险封闭在仓库内。**没有任何已知缺陷需要那个 job 守护**，所以删除没有付出实际代价，也没有该补的检测机制。补充实测：跨堆释放是静默的 —— mimalloc 构建下 mi_free() 作用在 malloc() 指针上不报错、退出码 0，这类错误只能靠人守。**判据补充：说某项删除「有代价」之前，要先证明代价存在**；我因为那个 job 的注释写得很可信，就直接采信了，没去数违规次数。"
   source: "CI 配置阶段失败：CMakeLists.txt:49 Invalid allocator type（2026-10-01）"
+  affects: [zero-threads-locks-globals]
+
+- time: 2026-10-04T13:38:21
+  kind: reversal
+  summary: "UBSan 一轮就挖出 6 个测试失败的未定义行为（2026-10-02）。此前 CI 只有 ASan，而 ASan 不看 UB。根因一：sameloop_client_t 声明 __attribute__((aligned(64)))（缓存行对齐，意图避免伪共享），但用 uvrpc_alloc 分配 —— malloc/mi_malloc 只保证 16 字节对齐，于是每次成员访问都是 UB；x86 容忍错位访问所以隐形，严格对齐架构同一份代码直接崩。判断：删属性而非兑现它。理由：避免伪共享需要两个核并发写同一条缓存行，而这个库零线程（zero threads 是文档约束），不可能并发写；结构体只有 5 个指针、8 字节自然对齐，malloc 本来就给。判据：对齐属性如果分配器不保证就不成立，且零线程下伪共享是线程化心智带进来的假设。根因二：loop_registry_test 把栈上 int 的地址强转成 registry 类型，is_valid 读 reg->magic 时该地址不满足 8 字节对齐 —— 读取本身是 UB，不是被测代码的错；改成 uint64_t token。CI 新增 undefined-check job，用 -fno-sanitize-recover=all（UB 直接 abort，否则测试会在底下刷错误的同时通过）。TSan 跳过：零线程无数据竞争可查。判据：除了内存安全（ASan）还须覆盖未定义行为，且 sanitizer 必须 fail-fast。"
+  source: "UBSan 首跑 6 失败；aligned(64) 结构体未对齐（2026-10-02）"
   affects: [zero-threads-locks-globals]
