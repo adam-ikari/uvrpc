@@ -136,6 +136,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake build-essential clang
       - name: Build vendored dependencies
+      - name: Generate flatcc reader for rpc.fbs
+        run: |
+          # The decoder includes rpc_reader.h, which is a build product, not
+          # committed. The fuzzer job compiles with clang directly and so skips
+          # the CMake generate_flatcc target; run the same command here.
+          mkdir -p generated
+          deps/flatcc/bin/flatcc -c -v -w -o generated schema/rpc.fbs
         run: ./scripts/setup_deps.sh
       - name: Build the fuzzer
         run: |
