@@ -113,6 +113,57 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 ./dist/bin/uvrpc_tests --gtest_brief=1
           ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build --output-on-failure
 
+  fuzz:
+    # The frame decoder is the attack surface of a network library. The
+    # acceptance suite has a hand-written malformed-frame scenario, but a
+    # fuzzer drives both decoders with whatever it mutates and reports a crash
+    # on the first input that reads out of bounds. Locally 5.6M executions
+    # against the seeds produced no crash and no UB on the current code.
+    #
+    # Built with clang directly rather than via CMake: libFuzzer supplies its
+    # own main, and CMake's compiler test does not link a fuzzer main, so the
+    # configure step would fail. The decoder pulls in four sources from src/
+    # plus the flatcc and libuv archives; the rest of the library is not
+    # needed to exercise the parse path.
+    name: Fuzz the frame decoder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential clang
+      - name: Build vendored dependencies
+        run: ./scripts/setup_deps.sh
+      - name: Build the fuzzer
+        run: |
+          clang -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer -g \
+            -I include -I src -I generated -I deps/libuv/include \
+            -I deps/flatcc/include -I deps/uthash/include \
+            -DUVRPC_DEFAULT_ALLOCATOR=0 \
+            fuzz/frame_decoder.c src/uvrpc_flatbuffers.c src/uvrpc_allocator.c \
+            src/uvrpc_strerror.c \
+            deps/flatcc/lib/libflatcc.a deps/flatcc/lib/libflatccrt.a \
+            deps/libuv/build/libuv.a \
+            -lpthread -lm -lrt -ldl -o frame_fuzzer
+      - name: Build the corpus generator and seed
+        run: |
+          gcc -g -I include -I src -I generated -I deps/libuv/include \
+            -I deps/flatcc/include -I deps/uthash/include \
+            -DUVRPC_DEFAULT_ALLOCATOR=0 \
+            fuzz/make_corpus.c src/uvrpc_flatbuffers.c src/uvrpc_allocator.c \
+            src/uvrpc_strerror.c \
+            deps/flatcc/lib/libflatcc.a deps/flatcc/lib/libflatccrt.a \
+            deps/libuv/build/libuv.a \
+            -lpthread -lm -lrt -ldl -o make_corpus
+          mkdir -p fuzz_corpus && ./make_corpus fuzz_corpus
+      - name: Run the fuzzer
+        run: |
+          ./frame_fuzzer fuzz/corpus fuzz_corpus \
+            -max_total_time=60 -rss_limit_mb=2560 -print_final_stats=1
+
   undefined-check:
     # Undefined behaviour is not something AddressSanitizer looks for. What
     # this job found on its first run: sameloop_client_t was declared
