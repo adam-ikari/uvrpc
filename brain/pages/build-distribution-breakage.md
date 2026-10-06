@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-01T12:11:25"
+updated: "2026-10-06T00:03:27"
 ---
 
 <!-- compiled_truth -->
@@ -121,4 +121,10 @@ updated: "2026-10-01T12:11:25"
   kind: reversal
   summary: "**CI 的 warning-clean 检查抓出两类问题**（已修，2026-09-30）。**(1) 嵌套函数导致可执行栈**：`examples/udp_rpc_demo.c` 有 2 个、`tests/unit/test_boundary_values.c` 有 19 个回调定义在函数体内（GNU 扩展，trampoline 落在栈上），使目标文件带可执行 .note.GNU-stack，链接器告警 `requires executable stack` 而 CI 判定失败。修法：全部移到文件作用域；原本靠嵌套捕获的 `ctx` / `max_size` / `chunks_received` 改走回调本来就有的 `void* ctx` 参数（两个标量加进 `test_context_t`）。**踩坑**：给结构体加字段后，原有的位置化初始化会把 `&loop` 悄悄挪进新字段 —— 已全部改为零初始化加逐字段赋值。**(2) 生成的客户端 API 签名是 POJO 不是 flatcc 指针**：生成的 wrapper 签名形如 `const benchmark_AddRequest_t*`，而 `benchmark_AddRequest_t` 是生成器在 `*_rpc_common.h` 里造的 **POJO 结构体**，不是 flatcc 的表指针类型。我先前三个示例直接传了 `*_as_root()` 的表指针，触发 `-Wincompatible-pointer-types`（CI 失败）。正确用法是填 POJO 再传地址，**不需要手搓 flatbuffers**。注意该 API **非对称**：请求侧是 POJO（代你序列化），响应侧回调拿的仍是原始字节（需 `*_as_root` 解析）。**另发现一个从未运行的死测试**：`tests/unit/test_boundary_values.c` 有 main、有 9 月 23 日签入的二进制，但**没有构建目标** —— 几个月来从未编译、从未在 CI 跑。注册后发现它本身是坏的：9 个轮询循环用 `uv_run(UV_RUN_DEFAULT)`，而监听的 server 让 loop 永不返回，第一个调用就死锁（旧二进制同样卡，只是卡在更后面）。最小探针证明**库没问题**（connect/请求/响应全通）。修好轮询后 Test 1 仍断言失败（空响应未到达），**判定超出「修 CI 警告」的范围 —— 修到能跑等于重写一个 900 行套件，故撤销注册**，但保留可执行栈修复（CI 需要）与其内部改进"
   source: "CI 日志 'requires executable stack' + 三个示例的 -Wincompatible-pointer-types；最小探针 /tmp/p1 证明库正常（2026-09-30）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-06T00:03:27
+  kind: evidence
+  summary: "**frame decoder fuzzer 已接入 CI 并跑 4500 万次**（2026-10-06）。攻击面是网络库的解码路径，fuzz job 用 clang + libFuzzer 直接编译（不走 CMake，因 libFuzzer 自带 main 会让 CMake 编译器测试失败），本地 160 万次/9 秒无崩溃，CI 上 4500 万次/61 秒无崩溃无 UB。**两个坑**：(1) `rpc_reader.h` 是 flatcc 构建产物**不入库**，fuzz job 绕过 CMake 时必须在编译前手动跑 `flatcc -c -v -w -o generated schema/rpc.fbs`（镜像 generate_flatcc）。(2) **YAML 重复键**：把生成步骤插进前一个 step 的 name 和 run 之间会产生重复 `run:` 键；Python 的 `yaml.safe_load` **默认保留最后一个重复键、不报错**，本地看起来有效但 GitHub 直接拒绝整个 workflow（run 在启动前即失败，报 workflow file issue）。修后必须用会抛异常的自定义 loader 检测重复键，不能信默认解析。判据：CI 的构建错误要区分『workflow 语法层』与『任务执行层』——前者任何 job 都不会跑"
+  source: ".github/workflows/ci.yml fuzz job；CI 日志 Done 45029162 runs（2026-10-05）"
   affects: [build-distribution-breakage]
