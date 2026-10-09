@@ -2,6 +2,15 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-10-09T01:12:13"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-09-30T09:17:43"
 ---
 
@@ -116,5 +125,5 @@ graph LR
 13. **`tools/uvrpcc.py` 的生成产物**（部分修复，2026-09-29）—— 生成器不再崩、类型名按 flatcc 0.6 的命名空间规则正确生成，`log_service.fbs` 三个源文件编译 0 error；但 `examples/log_service_demo.c` 自身落后于库 API（`uvrpc_request_send_response` 现返回 void），该示例仍编译不过。
 14. ~~**`loop->data` 作为注册表挂载点**~~ —— **已解决（2026-09-30）**：注册表改由调用方创建并传入，框架不再触碰用户的 loop。起因是 magic 守卫必须解引用用户指针，而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段，`uv_loop_t loop;`（官方文档写法）实测约 **20%** 会在读取时段错误。新契约见 `uvbus_loop_registry_new()` + `uvrpc_config_set_loop_registry()`，详见 [[loop-data-registry-over-global-hash]]。
 
-15. **验收场景套件**（已设计，**待批准**，2026-09-30）：约 20 个自检场景放 `tests/acceptance/`，与 `examples/`（保持纯演示）职责分离。覆盖今天暴露的高风险类别：协议健壮性（畸形帧/垃圾字节/空方法名 —— 远程攻击面，现有零测试）、背压与限流（文档声称三种无锁拒绝，零测试）、在途生命周期（现有 lifetime 测试只测顺序释放，没测在途时释放）、负载边界、失败模式。
-    核心断言是**跨度不变性**：同一份应用逻辑跑遍 5 个传输，断言可观测行为一致 —— 传输只该改变速度，不该改变结果。已查实的跨度漏洞：UDP 的 `client_ctx` 是 `sockaddr*` 而非客户端句柄（TCP/IPC/INPROC/SAMELOOP 都是句柄），拿 ctx 回包的代码换到 UDP 就传错指针；SAMELOOP 服务端 `uvbus_send()` 段错误（已修）。UDP 那一格改为断言"丢包不得静默消耗共享资源"，而非"与 TCP 一样"（UDP 必然丢包）。
+15. ~~**验收场景套件**~~ **✅ 已实现（2026-09-30 设计 → 2026-10-09 全部落地）**：`tests/acceptance/` 下 7 个场景，全部注册进 ctest 并带 `acceptance` 标签 —— `span_invariance`（五传输跨度不变性）、`protocol_robustness`（畸形帧远程攻击面）、`backpressure`（三层无锁拒绝 + 槽位归还）、`inflight_lifetime`（在途释放）、`payload_bounds`（负载边界按传输钉住）、`failure_modes`（未知方法不得伪装成成功）、`await_span`（阻塞 await 的跨传输语义，2026-10-09 新增）。`ctest -L acceptance` 一条命令出总判。设计稿：`docs/superpowers/specs/2026-09-30-acceptance-scenarios-design.md`；其中提出的共享 `acceptance/harness.h` **未采纳** —— 改为每个场景自带 check 与看门狗，"每场景一个文件、可单独运行调试"优先于去重。
+16. **`src/uvrpc_async.c` 与 `src/uvrpc_primitives.c` 曾零测试** —— **✅ 已补（2026-10-09）**：这两处共约 1650 行公开 API，此前在 `tests/` 里一次都没出现，只靠 `examples/` 兜底，而 demo 不作断言。审计查出并修复 9 个缺陷，其中三个是语义级的：await 在任何持有 socket 句柄的传输上**永不返回**（用了 `UV_RUN_DEFAULT`，正是本项目自己写下的反模式）；`longjmp` 绕过传输层的 `uvrpc_free(buf->base)`，**每次 socket await 泄漏 64 KB** 读缓冲；`uvrpc_promise_wait()` 对永不 settle 的 promise **返回 `UVRPC_OK`**。另有 `race()` 对每个输家 use-after-free、`ctx_free` 释放仍武装的定时器、两处栈上定时器被延迟 close 等。新增 `tests/unit/test_primitives.cpp`（17 例）与 `tests/acceptance/await_span.c`。详见 [[blocking-await-runs-the-loop-inline]]。

@@ -284,6 +284,11 @@ int uvrpc_promise_is_pending(uvrpc_promise_t* promise);
  * @param result Output pointer to result data
  * @param result_size Output pointer to result size
  * @return UVRPC_OK on success, error code on failure
+ * 
+ * @note Both outputs are set to `NULL` / `0` before anything can fail, so a
+ *       caller that ignores the return value reads an empty result rather than
+ *       an uninitialised one. The result points into the promise and stays
+ *       valid until the promise is resolved again, cleaned up or destroyed.
  */
 int uvrpc_promise_get_result(uvrpc_promise_t* promise, uint8_t** result, size_t* result_size);
 
@@ -333,8 +338,14 @@ void uvrpc_promise_destroy(uvrpc_promise_t* promise);
 /**
  * @brief Wait for Promise to complete synchronously (blocking)
  * 
- * Blocks until the promise is fulfilled or rejected.
+ * Runs the event loop until the promise is fulfilled or rejected. Other work on
+ * the same loop runs while it waits, which is the point: a response arriving on
+ * an open client connection is processed here and settles the promise.
  * WARNING: This blocks the current thread, do not use in event loop callbacks.
+ * 
+ * If the loop runs out of work while the promise is still pending -- there is
+ * nothing left that could settle it -- this gives up and returns
+ * `UVRPC_ERROR_TIMEOUT` rather than reporting success.
  * 
  * @code
  * uvrpc_promise_t* p = uvrpc_promise_create(loop);
@@ -343,17 +354,19 @@ void uvrpc_promise_destroy(uvrpc_promise_t* promise);
  * // Wait for completion (blocks until promise settles)
  * int ret = uvrpc_promise_wait(p);
  * if (ret == UVRPC_OK) {
- *     uint8_t* result;
- *     size_t size;
- *     uvrpc_promise_get_result(p, &result, &size);
- *     // Use result
+ *     uint8_t* result = NULL;
+ *     size_t size = 0;
+ *     if (uvrpc_promise_get_result(p, &result, &size) == UVRPC_OK) {
+ *         // Use result
+ *     }
  * }
  * 
  * uvrpc_promise_destroy(p);
  * @endcode
  * 
  * @param promise Promise to wait for
- * @return UVRPC_OK if fulfilled, error code if rejected
+ * @return `UVRPC_OK` if fulfilled, the promise's error code if rejected,
+ *         `UVRPC_ERROR_TIMEOUT` if the loop ran out of work first
  */
 int uvrpc_promise_wait(uvrpc_promise_t* promise);
 

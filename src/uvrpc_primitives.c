@@ -128,20 +128,35 @@ int uvrpc_promise_wait(uvrpc_promise_t* promise) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    /* Run event loop until promise is settled */
+    /* Run the event loop until the promise is settled.
+     *
+     * UV_RUN_ONCE, not UV_RUN_DEFAULT: DEFAULT only returns once the loop has
+     * no referenced handles left, and a single connected client is enough to
+     * keep the loop referenced forever. Under DEFAULT the response that settles
+     * the promise is processed *inside* the call that never returns, so the
+     * answer arrives and wait() still never comes back. ONCE returns once a
+     * batch of events has been handled, which is what lets this loop re-check
+     * the state.
+     *
+     * ran == 0 means the loop has nothing left to do, so the event that would
+     * settle this promise cannot fire. Continuing would spin. */
     while (promise->state == UVRPC_PROMISE_PENDING) {
-        int ran = uv_run(promise->loop, UV_RUN_DEFAULT);
+        int ran = uv_run(promise->loop, UV_RUN_ONCE);
         if (ran == 0) {
-            /* No more pending events - break to avoid busy loop */
             break;
         }
     }
-    
+
     if (promise->state == UVRPC_PROMISE_FULFILLED) {
         return UVRPC_OK;
-    } else {
+    }
+    if (promise->state == UVRPC_PROMISE_REJECTED) {
         return promise->error_code;
     }
+    /* Still pending. Returning error_code here would return 0 -- UVRPC_OK --
+     * because a pending promise has no error code, and the caller would go on
+     * to read a result that does not exist. Say we gave up instead. */
+    return UVRPC_ERROR_TIMEOUT;
 }
 
 /* Resolve promise */
@@ -243,17 +258,29 @@ int uvrpc_promise_is_pending(uvrpc_promise_t* promise) {
 
 /* Get result */
 int uvrpc_promise_get_result(uvrpc_promise_t* promise, uint8_t** result, size_t* result_size) {
-    if (!promise || !result || !result_size) {
+    if (!result || !result_size) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
+
+    /* Clear the outputs before anything can fail. On the failure paths below
+     * they would otherwise be left exactly as the caller passed them, and the
+     * documented usage ignores this function's return value:
+     *     uvrpc_promise_get_result(p, &result, &size);  // use result
+     * so an unwritten *size hands back whatever was on the stack. */
+    *result = NULL;
+    *result_size = 0;
+
+    if (!promise) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
     if (promise->state != UVRPC_PROMISE_FULFILLED) {
         return UVRPC_ERROR_INVALID_STATE;
     }
-    
+
     *result = promise->result;
     *result_size = promise->result_size;
-    
+
     return UVRPC_OK;
 }
 
@@ -527,6 +554,10 @@ typedef struct {
     int total_count;
     int completed_count;
     int rejected;
+    /* How many promises have not reported yet. Every one of them holds this
+     * pointer, so the context is freed only once the last one is done -- which
+     * is also what makes the early return on rejection safe. */
+    int remaining;
     uint8_t** results;
     size_t* result_sizes;
     uv_loop_t* loop;
@@ -536,6 +567,10 @@ typedef struct {
 typedef struct {
     uvrpc_promise_t* combined;
     int completed;
+    /* How many of the raced promises have not called back yet. Every one of
+     * them was handed this pointer, so the context has to outlive all of them,
+     * not just the winner -- see on_promise_race_callback(). */
+    int remaining;
     uv_loop_t* loop;
 } promise_race_context_t;
 
@@ -552,12 +587,30 @@ typedef struct {
     uv_loop_t* loop;
 } promise_all_settled_context_t;
 
+/* Release a Promise.all() context and the result copies it holds. */
+static void promise_all_context_free(promise_all_context_t* ctx) {
+    for (int i = 0; i < ctx->total_count; i++) {
+        if (ctx->results && ctx->results[i]) {
+            UVRPC_FREE(ctx->results[i]);
+        }
+    }
+    if (ctx->results) UVRPC_FREE(ctx->results);
+    if (ctx->result_sizes) UVRPC_FREE(ctx->result_sizes);
+    UVRPC_FREE(ctx);
+}
+
 /* Callback for Promise.all() individual promise */
 static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
     promise_all_context_t* ctx = (promise_all_context_t*)user_data;
-    
-    /* If already rejected, do nothing */
+
+    /* Once one promise has rejected the combined one is already rejected, but
+     * this context still has to outlive the promises that have not reported
+     * yet -- they all hold this pointer. So every path below ends by counting
+     * one down, and the last one out frees. */
     if (ctx->rejected) {
+        if (--ctx->remaining == 0) {
+            promise_all_context_free(ctx);
+        }
         return;
     }
 
@@ -565,10 +618,14 @@ static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
     if (uvrpc_promise_is_rejected(promise)) {
         /* Mark as rejected and reject combined promise */
         ctx->rejected = 1;
-        
+
         const char* error = uvrpc_promise_get_error(promise);
         int32_t error_code = uvrpc_promise_get_error_code(promise);
         uvrpc_promise_reject(ctx->combined, error_code, error);
+
+        if (--ctx->remaining == 0) {
+            promise_all_context_free(ctx);
+        }
         return;
     }
     
@@ -587,6 +644,7 @@ static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
     
     /* Increment completed count */
     int completed = ++ctx->completed_count;
+    --ctx->remaining;
     
     /* If all completed, resolve combined promise */
     if (completed == ctx->total_count) {
@@ -621,14 +679,7 @@ static void on_promise_all_callback(uvrpc_promise_t* promise, void* user_data) {
         }
         
         /* Cleanup context */
-        for (int i = 0; i < ctx->total_count; i++) {
-            if (ctx->results[i]) {
-                UVRPC_FREE(ctx->results[i]);
-            }
-        }
-        UVRPC_FREE(ctx->results);
-        UVRPC_FREE(ctx->result_sizes);
-        UVRPC_FREE(ctx);
+        promise_all_context_free(ctx);
     }
 }
 
@@ -648,7 +699,10 @@ int uvrpc_promise_all(uvrpc_promise_t** promises, int count, uvrpc_promise_t* co
     ctx->total_count = count;
     ctx->completed_count = 0;
     ctx->rejected = 0;
+    ctx->remaining = count;
     ctx->loop = loop;
+    ctx->results = NULL;
+    ctx->result_sizes = NULL;
     
     /* Allocate result arrays */
     ctx->results = (uint8_t**)UVRPC_MALLOC(count * sizeof(uint8_t*));
@@ -674,44 +728,47 @@ int uvrpc_promise_all(uvrpc_promise_t** promises, int count, uvrpc_promise_t* co
 /* Callback for Promise.race() individual promise */
 static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) {
     promise_race_context_t* ctx = (promise_race_context_t*)user_data;
-    
-    
-    
-    /* Single-threaded guard: only the first callback to reach here processes.
-     * Safe because uv_async_send queues callbacks for the next event loop
-     * iteration — they cannot preempt each other within the same tick. */
-    if (ctx->completed) {
-        return;
+
+    /* Single-threaded guard: only the first callback to reach here forwards to
+     * the combined promise. Safe because uv_async_send queues callbacks for the
+     * next event loop iteration — they cannot preempt each other within the
+     * same tick. */
+    if (!ctx->completed) {
+        ctx->completed = 1;
+
+        /* Forward result/rejection */
+        if (uvrpc_promise_is_fulfilled(promise)) {
+            uint8_t* result = NULL;
+            size_t result_size = 0;
+            int ret = uvrpc_promise_get_result(promise, &result, &result_size);
+            if (ret == UVRPC_OK) {
+                uint8_t* result_copy = UVRPC_MALLOC(result_size);
+                if (result_copy) {
+                    memcpy(result_copy, result, result_size);
+
+                    uvrpc_promise_resolve(ctx->combined, result_copy, result_size);
+                    UVRPC_FREE(result_copy);
+                } else {
+                    uvrpc_promise_reject(ctx->combined, UVRPC_ERROR_NO_MEMORY, "Failed to allocate result copy");
+                }
+            } else {
+                uvrpc_promise_reject(ctx->combined, ret, "Failed to get result");
+            }
+        } else if (uvrpc_promise_is_rejected(promise)) {
+            const char* error = uvrpc_promise_get_error(promise);
+            int32_t error_code = uvrpc_promise_get_error_code(promise);
+            uvrpc_promise_reject(ctx->combined, error_code, error);
+        }
     }
 
-    ctx->completed = 1;
-    
-    /* Forward result/rejection */
-    if (uvrpc_promise_is_fulfilled(promise)) {
-        uint8_t* result = NULL;
-        size_t result_size = 0;
-        int ret = uvrpc_promise_get_result(promise, &result, &result_size);
-        if (ret == UVRPC_OK) {
-            uint8_t* result_copy = UVRPC_MALLOC(result_size);
-            if (result_copy) {
-                memcpy(result_copy, result, result_size);
-                
-                uvrpc_promise_resolve(ctx->combined, result_copy, result_size);
-                UVRPC_FREE(result_copy);
-            } else {
-                uvrpc_promise_reject(ctx->combined, UVRPC_ERROR_NO_MEMORY, "Failed to allocate result copy");
-            }
-        } else {
-            uvrpc_promise_reject(ctx->combined, ret, "Failed to get result");
-        }
-    } else if (uvrpc_promise_is_rejected(promise)) {
-        const char* error = uvrpc_promise_get_error(promise);
-        int32_t error_code = uvrpc_promise_get_error_code(promise);
-        uvrpc_promise_reject(ctx->combined, error_code, error);
+    /* Free only once every raced promise has reported. Freeing here instead --
+    * which is what this used to do -- left the losers holding a dangling
+     * pointer: the next one to settle read ctx->completed from freed memory.
+     * A race over N promises where the other N-1 settle later was a
+     * use-after-free on every one of them. */
+    if (--ctx->remaining == 0) {
+        UVRPC_FREE(ctx);
     }
-    
-    
-    UVRPC_FREE(ctx);
 }
 
 /* Promise.race() - Wait for first promise to complete */
@@ -728,6 +785,7 @@ int uvrpc_promise_race(uvrpc_promise_t** promises, int count, uvrpc_promise_t* c
     
     ctx->combined = combined;
     ctx->completed = 0;
+    ctx->remaining = count;
     ctx->loop = loop;
     
     /* Set callbacks for all promises */

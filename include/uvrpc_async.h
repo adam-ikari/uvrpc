@@ -2,7 +2,9 @@
  * @file uvrpc_async.h
  * @brief UVRPC Async/Await API
  * 
- * Provides coroutine-like async/await syntax for C using libuv event loop.
+ * Provides coroutine-like async/await syntax for C by running the libuv event
+ * loop inline: an awaited call blocks the calling thread until the response
+ * arrives, and other work on the same loop runs in the meantime.
  * This API allows writing asynchronous code in a synchronous style.
  * 
  * @author UVRPC Team
@@ -43,10 +45,11 @@ extern "C" {
 #endif
 
 /**
- * @brief Async context for coroutine execution
- * 
+ * @brief Async context for await blocks
+ *
  * Opaque structure representing an async context for executing
- * async/await blocks.
+ * async/await blocks. One context serves one UVRPC_ASYNC block; the timeout
+ * it is given applies to each awaited call in that block.
  */
 typedef struct uvrpc_async_ctx uvrpc_async_ctx_t;
 
@@ -79,8 +82,15 @@ void uvrpc_async_ctx_free(uvrpc_async_ctx_t* ctx);
 
 /**
  * Execute async block
+ *
+ * The timeout applies to each awaited call individually, not to the block.
+ *
  * @param ctx async context
- * @param timeout_ms timeout in milliseconds (0 for no timeout)
+ * @param timeout_ms timeout in milliseconds. 0 means no deadline: each awaited
+ *        call then blocks until the response arrives or the loop runs out of
+ *        work. On a socket transport the connection keeps the loop referenced,
+ *        so a response that never comes means waiting forever -- pass a
+ *        non-zero value unless the peer is known to answer.
  * @return UVRPC_OK on success, error code on failure
  */
 int uvrpc_async_exec(uvrpc_async_ctx_t* ctx, uint64_t timeout_ms);
@@ -88,12 +98,20 @@ int uvrpc_async_exec(uvrpc_async_ctx_t* ctx, uint64_t timeout_ms);
 /**
  * Client call with async/await
  * This function should be called within UVRPC_ASYNC block
+ *
+ * Blocks the calling thread while it runs the loop, so the response can be
+ * received and dispatched. Other work on the same loop runs in the meantime --
+ * this is not a nested or private loop.
+ *
  * @param client RPC client
  * @param method method name
  * @param params request parameters
  * @param params_size parameter size
- * @param result output result pointer
- * @return UVRPC_OK on success
+ * @param result output result pointer, owned by the caller; free it with
+ *        uvrpc_async_result_free()
+ * @return `UVRPC_OK` on success, `UVRPC_ERROR_TIMEOUT` if the deadline expired
+ *         or the loop had nothing left that could produce a response,
+ *         `UVRPC_ERROR_NO_MEMORY` if the result could not be copied out
  */
 int uvrpc_client_call_async(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                              const char* method, const uint8_t* params,
@@ -221,7 +239,12 @@ int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx);
  */
 int uvrpc_async_get_pending_count(uvrpc_async_ctx_t* ctx);
 
-/* Helper macros for async/await syntax */
+/* Helper macros for async/await syntax.
+ *
+ * The block form is a bare `goto async_cleanup` on failure, so the label has to
+ * exist in the enclosing function -- that is why both macros can only be used
+ * inside a function that also has one. Neither macro blocks on its own: the
+ * awaited call does, by running the loop. */
 #define UVRPC_ASYNC(ctx, timeout_ms) \
     { \
         int _async_status = uvrpc_async_exec((ctx), (timeout_ms)); \

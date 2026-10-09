@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [constraint, concurrency, architecture]
 created: "2026-09-28T17:08:01"
-updated: "2026-10-04T13:38:21"
+updated: "2026-10-09T01:11:41"
 ---
 
 <!-- compiled_truth -->
@@ -94,3 +94,9 @@ custom 构建中亦仅由 `uvrpc_allocator_init()` 写一次、之后只读。**
   summary: "UBSan 一轮就挖出 6 个测试失败的未定义行为（2026-10-02）。此前 CI 只有 ASan，而 ASan 不看 UB。根因一：sameloop_client_t 声明 __attribute__((aligned(64)))（缓存行对齐，意图避免伪共享），但用 uvrpc_alloc 分配 —— malloc/mi_malloc 只保证 16 字节对齐，于是每次成员访问都是 UB；x86 容忍错位访问所以隐形，严格对齐架构同一份代码直接崩。判断：删属性而非兑现它。理由：避免伪共享需要两个核并发写同一条缓存行，而这个库零线程（zero threads 是文档约束），不可能并发写；结构体只有 5 个指针、8 字节自然对齐，malloc 本来就给。判据：对齐属性如果分配器不保证就不成立，且零线程下伪共享是线程化心智带进来的假设。根因二：loop_registry_test 把栈上 int 的地址强转成 registry 类型，is_valid 读 reg->magic 时该地址不满足 8 字节对齐 —— 读取本身是 UB，不是被测代码的错；改成 uint64_t token。CI 新增 undefined-check job，用 -fno-sanitize-recover=all（UB 直接 abort，否则测试会在底下刷错误的同时通过）。TSan 跳过：零线程无数据竞争可查。判据：除了内存安全（ASan）还须覆盖未定义行为，且 sanitizer 必须 fail-fast。"
   source: "UBSan 首跑 6 失败；aligned(64) 结构体未对齐（2026-10-02）"
   affects: [zero-threads-locks-globals]
+
+- time: 2026-10-09T01:11:41
+  kind: evidence
+  summary: "阻塞式 await 改为内联跑 loop + uv_stop，移除 setjmp/longjmp：longjmp 曾绕过传输层的 uvrpc_free(buf->base)，每次 socket await 泄漏 64 KB 读缓冲。零可变全局约束未受影响（未引入 file-scope 可变变量）"
+  source: "src/uvrpc_async.c, 2026-10-09"
+  affects: [blocking-await-runs-the-loop-inline]

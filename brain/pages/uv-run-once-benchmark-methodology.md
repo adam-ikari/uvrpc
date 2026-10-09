@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-10-01T06:54:11"
+updated: "2026-10-09T01:11:41"
 ---
 
 <!-- compiled_truth -->
@@ -124,3 +124,9 @@ CI 的 `Benchmark` 工作流就是这串命令，每种传输跑一次并把结�
   summary: "**验收套件的端口抖动根因不是 TIME_WAIT，而是测试自己硬编码端口**：六个场景原先用 45191/45192、47721、47831-47833、47960-47963、48081-48082、48300-48302。实测与既有测试文件**无端口重叠**，但 ASan 下五次全量跑有一次失败，随后连过四次 —— 说明是运行时占用而非文件间冲突。修法：新增 tests/acceptance/free_port.h，bind 到端口 0 再 getsockname 读回内核分配的端口（六个场景共用一份实现，不各写一遍）。根治本可以做在库上——服务端暴露绑定后的实际地址——但那要给三个 socket 传输加读回逻辑并新增公开 API，超出'修复抖动'的范围，且抖动只影响测试不影响用户。修后 ASan 下连跑三次全量 115/115"
   source: "tests/acceptance/free_port.h；端口重叠排查：grep 全部测试端口无交集（2026-09-30）"
   affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-10-09T01:11:41
+  kind: evidence
+  summary: "库里发现的反模式不止 benchmark：src/uvrpc_async.c 与 src/uvrpc_primitives.c 曾用 UV_RUN_DEFAULT 做等待，在任何持有 socket 句柄的传输上永不返回。已全部改为 UV_RUN_ONCE，并加 tests/acceptance/await_span.c 守住"
+  source: "src/uvrpc_async.c, src/uvrpc_primitives.c, 2026-10-09"
+  affects: [blocking-await-runs-the-loop-inline]

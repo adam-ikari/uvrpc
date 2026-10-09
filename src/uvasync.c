@@ -78,14 +78,17 @@ void uvasync_context_destroy(uvasync_context_t* ctx) {
 
     /* If we own the loop, close and free it */
     if (ctx->owns_loop && ctx->loop) {
-        /* Run event loop one more time to process any pending cleanup callbacks */
-        uv_run(ctx->loop, UV_RUN_DEFAULT);
+        /* Drain whatever is already pending -- NOWAIT, because this is a
+         * teardown path and nothing here is waiting for a new event. DEFAULT
+         * would block until the loop has no referenced handles left, so a
+         * client the caller forgot to disconnect would hang the destructor. */
+        uv_run(ctx->loop, UV_RUN_NOWAIT);
 
         /* Close the loop */
         int ret = uv_loop_close(ctx->loop);
         if (ret == UV_EBUSY) {
             /* Loop is still busy, run once more to process remaining handles */
-            uv_run(ctx->loop, UV_RUN_DEFAULT);
+            uv_run(ctx->loop, UV_RUN_NOWAIT);
             uv_loop_close(ctx->loop);
         }
 
@@ -177,11 +180,11 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler) {
         return;
     }
 
-    /* Wait for all pending tasks to complete */
+    /* Let whatever is already queued run. NOWAIT: this is teardown, and DEFAULT
+     * would block until nothing on the loop is referenced any more. */
     int active = scheduler->active_tasks;
     if (active > 0) {
-        /* Run event loop to process remaining tasks */
-        uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
+        uv_run(scheduler->ctx->loop, UV_RUN_NOWAIT);
     }
 
     /* Cleanup semaphore */
@@ -416,8 +419,12 @@ int uvasync_scheduler_wait_all(
         }
 
         /* No more pending handles — the event that would settle this wait
-         * cannot fire, so continuing would be a busy loop. */
-        int ran = uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
+         * cannot fire, so continuing would be a busy loop.
+         *
+         * UV_RUN_ONCE, not DEFAULT: DEFAULT only returns once nothing on the
+         * loop is referenced any more, so a single open client connection
+         * turns this wait into a hang rather than a wait. */
+        int ran = uv_run(scheduler->ctx->loop, UV_RUN_ONCE);
         if (ran == 0) {
             break;
         }
@@ -496,7 +503,10 @@ int uvasync_submit_and_wait(
             return UVASYNC_ERROR_WAIT_TIMEOUT;
         }
 
-        int ran = uv_run(scheduler->ctx->loop, UV_RUN_DEFAULT);
+        /* UV_RUN_ONCE returns after each batch of events so this condition can
+         * be re-checked; DEFAULT would not return at all while a client
+         * connection keeps the loop referenced. */
+        int ran = uv_run(scheduler->ctx->loop, UV_RUN_ONCE);
         if (ran == 0) {
             break;
         }

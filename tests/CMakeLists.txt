@@ -31,6 +31,7 @@ add_executable(uvrpc_tests
 # Integration tests (require libuv)
 add_executable(uvrpc_integration_tests
     unit/test_async.cpp
+    unit/test_primitives.cpp
     unit/test_uvbus.cpp
     unit/test_context.cpp
     unit/test_server_context.cpp
@@ -456,6 +457,33 @@ add_test(NAME span_invariance COMMAND span_invariance)
 set_tests_properties(span_invariance PROPERTIES
     LABELS "acceptance"
     TIMEOUT 30)
+
+# The blocking await, across all five transports. It pumps the loop while it
+# waits, so the transport decides whether the wait ends: the loopback pair hold
+# no socket and behaved correctly by accident, while TCP held a referenced
+# handle and never returned at all. Only a cross-transport scenario catches
+# that -- the async demos all run on INPROC.
+add_executable(await_span
+    acceptance/await_span.c
+)
+
+target_link_libraries(await_span
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(await_span
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME await_span COMMAND await_span)
+set_tests_properties(await_span PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 90)
 
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
