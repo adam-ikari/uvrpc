@@ -181,27 +181,59 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
  * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout
  */
 int uvrpc_async_race(uvrpc_async_ctx_t* ctx,
-                      uvrpc_client_t** clients,
-                      const char** methods,
-                      const uint8_t** params_array,
-                      size_t* params_sizes,
-                      uvrpc_async_result_t** result,
-                      int* completed_index,
-                      int count,
-                      uint64_t timeout_ms);
+                     uvrpc_client_t** clients,
+                     const char** methods,
+                     const uint8_t** params_array,
+                     size_t* params_sizes,
+                     uvrpc_async_result_t** result,
+                     int* completed_index,
+                     int count,
+                     uint64_t timeout_ms);
+
+/**
+ * Retry a call until it succeeds or the attempts run out.
+ *
+ * Delays `retry_delay_ms` between attempts, running the loop to wait it out
+ * exactly the way every other wait in this API does. `0` means no retry, not
+ * "retry immediately".
+ *
+ * @param ctx async context, inside a running UVRPC_ASYNC block
+ * @param client RPC client
+ * @param method method name
+ * @param params request parameters
+ * @param params_size parameter size
+ * @param result output result pointer, freed and set to NULL between attempts
+ * @param max_retries maximum number of retries (not counting the first try)
+ * @param retry_delay_ms delay before each retry
+ * @return `UVRPC_OK` when a call succeeded with no error code. Otherwise the
+ *         last failure: the call's status if the call itself was rejected, or
+ *         the response's `error_code` if the server answered with an error.
+ *         Returns `UVRPC_ERROR_INVALID_STATE` if the context is not in a
+ *         running block -- every attempt would be rejected for a reason no
+ *         amount of retrying fixes.
+ */
+int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
+                      const char* method, const uint8_t* params,
+                      size_t params_size, uvrpc_async_result_t** result,
+                      int max_retries, uint64_t retry_delay_ms);
 
 /**
  * Execute async call with retry and exponential backoff (Promise.retry)
- * @param ctx async context
+ *
+ * Same as uvrpc_async_retry(), but the delay before attempt N is
+ * `initial_delay_ms * backoff_multiplier^N`. `backoff_multiplier` below 1 is
+ * clamped to 2.0, and `initial_delay_ms` of 0 becomes 100.
+ *
+ * @param ctx async context, inside a running UVRPC_ASYNC block
  * @param client RPC client
  * @param method method name
  * @param params request parameters
  * @param params_size parameter size
  * @param result output result pointer
  * @param max_retries maximum number of retries
- * @param initial_delay_ms initial delay between retries in milliseconds
+ * @param initial_delay_ms delay before the first retry
  * @param backoff_multiplier multiplier for exponential backoff (e.g., 2.0)
- * @return UVRPC_OK on success, error code on failure
+ * @return as uvrpc_async_retry()
  */
 int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                                    const char* method, const uint8_t* params,

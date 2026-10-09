@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [async, event-loop, libuv, memory-safety, transport-invariance]
 created: "2026-10-09T01:11:21"
-updated: "2026-10-09T01:11:35"
+updated: "2026-10-09T12:30:54"
 ---
 
 <!-- compiled_truth -->
@@ -109,4 +109,10 @@ updated: "2026-10-09T01:11:35"
   kind: decision
   summary: Rewrote compiled_truth to the new best understanding
   source: "2026-10-09 会话：全量审计 src/uvrpc_async.c / src/uvrpc_primitives.c（此前两者在 tests/ 里零命中）"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-10-09T12:30:54
+  kind: note
+  summary: "重试路径同批审计：uvrpc_async_retry / retry_with_backoff 曾零测试且四条故障 —— 只重试一次（延迟回调 retry_ctx 内含正在运行的 timer，释放后无法再触发）、重试 timer 从不 uv_close 导致 uv_loop_close 永久 UV_EBUSY、返回 UVRPC_ERROR 被误当失败（concurrent_demo 一直打印 Retry failed）、以及服务端报错时返回 UVRPC_OK。改为内联 retry_loop + 堆分配 backoff_delay。另发现 uvrpc_async_race() 在公开头文件里声明但全库无定义，任何调用者链接失败"
+  source: "tests/unit/test_retry.cpp, 2026-10-09"
   affects: [blocking-await-runs-the-loop-inline]

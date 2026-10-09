@@ -221,21 +221,29 @@ int main(int argc, char* argv[]) {
     uvrpc_async_ctx_t* async_ctx = uvrpc_async_ctx_new(&loop);
     uvrpc_async_result_t* async_result = NULL;
 
-    /* Retry with exponential backoff */
-    int retry_status = uvrpc_async_retry_with_backoff(async_ctx, client, "echo",
-                                                       (const uint8_t*)test_data,
-                                                       strlen(test_data),
-                                                       &async_result,
-                                                       3,  /* max retries */
-                                                       100,  /* initial delay 100ms */
-                                                       2.0);  /* backoff multiplier */
+    /* A UVRPC_ASYNC block, which is what starts the context: the retry runs
+     * inside it. Without this every attempt would be rejected for a reason
+     * retrying cannot fix, and this used to print "[Async] Retry failed"
+     * against a server that answers every time. */
+    UVRPC_ASYNC(async_ctx, 5000) {
+        /* Retry with exponential backoff */
+        int retry_status = uvrpc_async_retry_with_backoff(async_ctx, client, "echo",
+                                                           (const uint8_t*)test_data,
+                                                           strlen(test_data),
+                                                           &async_result,
+                                                           3,  /* max retries */
+                                                           100,  /* initial delay 100ms */
+                                                           2.0);  /* backoff multiplier */
 
-    if (retry_status == UVRPC_OK && async_result) {
-        printf("[Async] Retry succeeded after backoff\n");
-        uvrpc_async_result_free(async_result);
-    } else {
-        printf("[Async] Retry failed\n");
+        if (retry_status == UVRPC_OK && async_result) {
+            printf("[Async] Retry succeeded after backoff\n");
+            uvrpc_async_result_free(async_result);
+        } else {
+            printf("[Async] Retry failed\n");
+        }
     }
+
+async_cleanup:
 
     /* === Demo 4: Async cancellation === */
     printf("\n=== Demo 4: Async Cancellation ===\n");

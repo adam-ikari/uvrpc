@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [concurrency, backpressure, client]
 created: "2026-09-28T17:15:24"
-updated: "2026-09-30T09:39:25"
+updated: "2026-10-09T12:31:13"
 ---
 
 <!-- compiled_truth -->
@@ -97,3 +97,9 @@ updated: "2026-09-30T09:39:25"
   summary: "被删除的 `uvrpc_config_set_timeout` 已以**同名、不同签名**加回（`uint64_t` → `int`），并且这次真的生效。旧版本在 2809d4e「只写旋钮清理」里被删，理由是能设不生效——那条判断当时是对的（当时确实没有清扫逻辑）。今天的区别不在名字，在于清扫逻辑存在了：所以「字段是死的」≠「字段不该存在」，判断依据是行为有无，不是引用数"
   source: "git show 70f1ca8:include/uvrpc.h:267,420；git log -S uvrpc_config_set_timeout（2026-09-30）"
   affects: [pending-buffer-as-concurrency-control]
+
+- time: 2026-10-09T12:31:13
+  kind: note
+  summary: "重试的失败码现在是服务端给的 error_code（不是库造的 UVRPC_ERROR）：uvrpc_async_retry / retry_with_backoff 用 UVRPC_OK 只在 call 完成且 error_code 为 0 时返回，否则回传最后一次失败的 status 或 error_code。调用方得以区分被拒绝与服务端回答了一个错误"
+  source: "src/uvrpc_async.c, 2026-10-09"
+  affects: [blocking-await-runs-the-loop-inline]

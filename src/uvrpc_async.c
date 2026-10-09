@@ -27,32 +27,42 @@
 #define UVRPC_MAX_ASYNC_CALLS 100
 #define UVRPC_MAX_CONCURRENT_CALLS 20
 
-/* Retry context for timer-based retry */
-typedef struct retry_context {
-    uvrpc_client_t* client;
-    char* method;
-    uint8_t* params;
-    size_t params_size;
-    uvrpc_async_result_t** result;
-    int attempt;
-    int max_retries;
-    uint64_t retry_delay_ms;
-    uvrpc_async_ctx_t* ctx;
+/* A backoff delay between retry attempts.
+ *
+ * Used to be a retry_context_t holding the client, method and params, with the
+ * uv_timer_t embedded in it, and the timer callback did the retry and then freed
+ * the struct -- the one containing the timer that was running it. Three defects
+ * came out of that shape, all measured:
+ *
+ *   - the handle was never uv_close()d, so after any retry the loop could never
+ *     be closed: uv_loop_close() returned UV_EBUSY (-16) permanently;
+ *   - the callback fired once and freed itself, so `max_retries` did nothing.
+ *     A server that failed four times before succeeding was still served only
+ *     twice -- one call plus one retry -- no matter how many retries were asked
+ *     for;
+ *   - it returned UVRPC_ERROR to mean "a retry is scheduled", which the caller
+ *     cannot distinguish from failure. That is why concurrent_demo has always
+ *     printed "[Async] Retry failed" against a server that answers every time.
+ *
+ * Retrying is now inline in the retry functions, where the attempt counter lives
+ * and where the delay can be waited for the same way every other wait in this
+ * file is: run the loop until the timer says so. No context to free, no handle
+ * to leak, and the return value means what it says. */
+typedef struct {
     uv_timer_t timer;
-} retry_context_t;
+    int elapsed;
+} backoff_delay_t;
 
-/* Timer callback for retry delay */
-static void retry_delay_callback(uv_timer_t* handle) {
-    retry_context_t* retry_ctx = (retry_context_t*)handle->data;
+static void backoff_elapsed(uv_timer_t* handle) {
+    backoff_delay_t* d = (backoff_delay_t*)handle->data;
+    d->elapsed = 1;
+    /* libuv 1.47 has no uv_timer_get_loop(); a uv_timer_t is a uv_handle_t as
+     * far as the public API is concerned. */
+    uv_stop(uv_handle_get_loop((uv_handle_t*)handle));
+}
 
-    /* Retry the call */
-    uvrpc_client_call_async(retry_ctx->ctx, retry_ctx->client, retry_ctx->method,
-                           retry_ctx->params, retry_ctx->params_size, retry_ctx->result);
-
-    /* Cleanup retry context */
-    uvrpc_free(retry_ctx->method);
-    uvrpc_free(retry_ctx->params);
-    uvrpc_free(retry_ctx);
+static void backoff_closed(uv_handle_t* handle) {
+    uvrpc_free(handle);
 }
 
 /* Async context structure */
@@ -553,6 +563,106 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
     return UVRPC_ERROR_TIMEOUT;
 }
 
+/* Run the loop for `delay_ms`. Returns 0 if the delay could not be set up, in
+ * which case the caller should give up rather than retry immediately -- a retry
+ * with no delay is a hot loop against a server that is already failing. */
+static int wait_backoff(uv_loop_t* loop, uint64_t delay_ms) {
+    if (delay_ms == 0) {
+        return 1;
+    }
+
+    backoff_delay_t* d = (backoff_delay_t*)uvrpc_alloc(sizeof(backoff_delay_t));
+    if (!d) {
+        return 0;
+    }
+    if (uv_timer_init(loop, &d->timer) != 0) {
+        uvrpc_free(d);
+        return 0;
+    }
+    d->elapsed = 0;
+    d->timer.data = d;
+    uv_timer_start(&d->timer, backoff_elapsed, delay_ms, 0);
+
+    while (!d->elapsed) {
+        if (uv_run(loop, UV_RUN_ONCE) == 0) {
+            break;  /* nothing left to run: the timer cannot fire */
+        }
+    }
+
+    /* Stop and close, and let the close callback free it: uv_close() only queues
+     * the work, so freeing here would leave the handle on the loop's queue. */
+    uv_timer_stop(&d->timer);
+    uv_close((uv_handle_t*)&d->timer, backoff_closed);
+    return d->elapsed;
+}
+
+/* How long to wait before each attempt. Two policies share one loop: a fixed
+ * delay, and exponential backoff. Returning 0 means do not retry. */
+typedef uint64_t (*retry_delay_fn)(int attempt, void* user);
+
+static uint64_t retry_constant_delay(int attempt, void* user) {
+    (void)attempt;
+    return *(uint64_t*)user;
+}
+
+/* The shared retry loop.
+ *
+ * The status returned is the one the caller cares about: UVRPC_OK only when a
+ * call completed AND carried no error code. uvrpc_client_call_async() returns
+ * UVRPC_OK for a call the server answered with an error frame, so taking its
+ * return value on its own would report success for a service that is failing. */
+static int retry_loop(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
+                      const char* method, const uint8_t* params,
+                      size_t params_size, uvrpc_async_result_t** result,
+                      int max_retries, retry_delay_fn delay_for, void* user) {
+    /* What to report if every attempt fails. Kept as two values because a
+     * rejected call and an answered-but-erroneous one are different pieces of
+     * information and the caller needs the more specific one. */
+    int last_call_status = UVRPC_ERROR;
+    int32_t last_error_code = 0;
+
+    for (int attempt = 0; attempt <= max_retries; attempt++) {
+        int call_status = uvrpc_client_call_async(ctx, client, method, params,
+                                                  params_size, result);
+
+        if (call_status == UVRPC_OK && *result) {
+            if ((*result)->error_code == 0) {
+                return UVRPC_OK;
+            }
+            /* The call worked; the service answered with an error. */
+            last_call_status = UVRPC_OK;
+            last_error_code = (*result)->error_code;
+        } else {
+            last_call_status = call_status;
+            last_error_code = 0;
+        }
+
+        if (*result) {
+            uvrpc_async_result_free(*result);
+            *result = NULL;
+        }
+
+        if (attempt == max_retries) {
+            break;
+        }
+
+        uint64_t delay_ms = delay_for(attempt, user);
+        if (delay_ms == 0) {
+            break;  /* no retry was wanted */
+        }
+        if (!wait_backoff(ctx->loop, delay_ms)) {
+            /* The delay could not be set up, or the loop had nothing left to
+             * run it on. Stop rather than hammer the remaining attempts. */
+            break;
+        }
+    }
+
+    if (last_call_status != UVRPC_OK) {
+        return last_call_status;
+    }
+    return last_error_code != 0 ? last_error_code : UVRPC_ERROR;
+}
+
 /* Promise.retry - retry failed calls */
 int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                        const char* method, const uint8_t* params,
@@ -561,57 +671,19 @@ int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
     if (!ctx || !client || !method || !result) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
-    if (max_retries < 0) max_retries = 3;
-    
-    for (int attempt = 0; attempt <= max_retries; attempt++) {
-        int status = uvrpc_client_call_async(ctx, client, method, params, params_size, result);
-        
-        if (status == UVRPC_OK && *result && (*result)->error_code == 0) {
-            return UVRPC_OK;
-        }
-        
-        if (*result) {
-            uvrpc_async_result_free(*result);
-            *result = NULL;
-        }
-        
-        if (attempt < max_retries && retry_delay_ms > 0) {
-            /* Non-blocking delay using timer - return to caller, retry will be triggered by timer */
-            /* Store retry context for timer callback */
-            retry_context_t* retry_ctx = uvrpc_alloc(sizeof(retry_context_t));
-            if (!retry_ctx) {
-                return UVRPC_ERROR;
-            }
-            retry_ctx->client = client;
-            retry_ctx->method = uvrpc_strdup(method);
-            retry_ctx->params = uvrpc_alloc(params_size);
-            if (!retry_ctx->method || !retry_ctx->params) {
-                uvrpc_free(retry_ctx->method);
-                uvrpc_free(retry_ctx->params);
-                uvrpc_free(retry_ctx);
-                return UVRPC_ERROR;
-            }
-            memcpy(retry_ctx->params, params, params_size);
-            retry_ctx->params_size = params_size;
-            retry_ctx->result = result;
-            retry_ctx->attempt = attempt;
-            retry_ctx->max_retries = max_retries;
-            retry_ctx->retry_delay_ms = retry_delay_ms;
-            retry_ctx->ctx = ctx;
-            
-            uv_timer_init(ctx->loop, &retry_ctx->timer);
-            retry_ctx->timer.data = retry_ctx;
-            uv_timer_start(&retry_ctx->timer, retry_delay_callback, retry_delay_ms, 0);
-            
-            return UVRPC_ERROR;  /* Will retry via timer */
-        }
-    }
-    
-    return UVRPC_ERROR;
-}
 
-/* Promise.timeout - call with timeout */
+    if (max_retries < 0) max_retries = 3;
+
+    /* The context has to be in a running block: uvrpc_client_call_async()
+     * rejects the call otherwise, and a rejected call is not a server failure,
+     * so retrying it would just burn the attempts. */
+    if (!ctx->is_running) {
+        return UVRPC_ERROR_INVALID_STATE;
+    }
+
+    return retry_loop(ctx, client, method, params, params_size, result,
+                      max_retries, retry_constant_delay, &retry_delay_ms);
+}
 int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                          const char* method, const uint8_t* params,
                          size_t params_size, uvrpc_async_result_t** result,
@@ -647,6 +719,20 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
     return uvrpc_client_call_async(ctx, client, method, params, params_size, result);
 }
 
+/* The exponential-backoff delay policy for retry_loop(). */
+typedef struct {
+    uint64_t initial_delay_ms;
+    double multiplier;
+} backoff_policy_t;
+
+static uint64_t backoff_delay(int attempt, void* user) {
+    backoff_policy_t* p = (backoff_policy_t*)user;
+    /* attempt here is the number of failures so far, so the first delay is the
+     * initial one. */
+    double factor = pow(p->multiplier, (double)attempt);
+    return (uint64_t)((double)p->initial_delay_ms * factor);
+}
+
 /* Promise.retry with exponential backoff */
 int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                                    const char* method, const uint8_t* params,
@@ -661,53 +747,33 @@ int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* clien
     if (initial_delay_ms == 0) initial_delay_ms = 100;
     if (backoff_multiplier < 1.0) backoff_multiplier = 2.0;
 
-    for (int attempt = 0; attempt <= max_retries; attempt++) {
-        int status = uvrpc_client_call_async(ctx, client, method, params, params_size, result);
-
-        if (status == UVRPC_OK && *result && (*result)->error_code == 0) {
-            return UVRPC_OK;
-        }
-
-        if (*result) {
-            uvrpc_async_result_free(*result);
-            *result = NULL;
-        }
-
-        if (attempt < max_retries) {
-            /* Calculate delay with exponential backoff */
-            uint64_t delay_ms = (uint64_t)(initial_delay_ms * pow(backoff_multiplier, attempt));
-
-            /* Non-blocking delay using timer */
-            retry_context_t* retry_ctx = uvrpc_alloc(sizeof(retry_context_t));
-            if (!retry_ctx) {
-                return UVRPC_ERROR;
-            }
-            retry_ctx->client = client;
-            retry_ctx->method = uvrpc_strdup(method);
-            retry_ctx->params = uvrpc_alloc(params_size);
-            if (!retry_ctx->method || !retry_ctx->params) {
-                uvrpc_free(retry_ctx->method);
-                uvrpc_free(retry_ctx->params);
-                uvrpc_free(retry_ctx);
-                return UVRPC_ERROR;
-            }
-            memcpy(retry_ctx->params, params, params_size);
-            retry_ctx->params_size = params_size;
-            retry_ctx->result = result;
-            retry_ctx->attempt = attempt;
-            retry_ctx->max_retries = max_retries;
-            retry_ctx->retry_delay_ms = delay_ms;
-            retry_ctx->ctx = ctx;
-
-            uv_timer_init(ctx->loop, &retry_ctx->timer);
-            retry_ctx->timer.data = retry_ctx;
-            uv_timer_start(&retry_ctx->timer, retry_delay_callback, delay_ms, 0);
-
-            return UVRPC_ERROR;  /* Will retry via timer */
-        }
+    /* See uvrpc_async_retry(): a context outside a running block would have
+     * every attempt rejected for a reason retrying cannot fix. */
+    if (!ctx->is_running) {
+        return UVRPC_ERROR_INVALID_STATE;
     }
 
-    return UVRPC_ERROR;
+    backoff_policy_t policy;
+    policy.initial_delay_ms = initial_delay_ms;
+    policy.multiplier = backoff_multiplier;
+
+    return retry_loop(ctx, client, method, params, params_size, result,
+                      max_retries, backoff_delay, &policy);
+}
+
+/* uvrpc_async_race() -- declared in the header with no definition anywhere in
+ * the library until now. Same signature and behaviour as uvrpc_async_any(). */
+int uvrpc_async_race(uvrpc_async_ctx_t* ctx,
+                     uvrpc_client_t** clients,
+                     const char** methods,
+                     const uint8_t** params_array,
+                     size_t* params_sizes,
+                     uvrpc_async_result_t** result,
+                     int* completed_index,
+                     int count,
+                     uint64_t timeout_ms) {
+    return uvrpc_async_any(ctx, clients, methods, params_array, params_sizes,
+                           result, completed_index, count, timeout_ms);
 }
 
 /* Cancel all pending async operations */
