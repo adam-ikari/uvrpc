@@ -245,28 +245,34 @@ int main(int argc, char* argv[]) {
 
 async_cleanup:
 
-    /* === Demo 4: Async cancellation === */
-    printf("\n=== Demo 4: Async Cancellation ===\n");
+    /* === Demo 4: abandoning an async block === */
+    printf("\n=== Demo 4: Abandoning an Async Block ===\n");
 
+    /* This used to "start 5 async operations and cancel them", which cannot
+     * happen: an awaited call blocks until it has answered, so there is never
+     * more than one of yours in flight, and uvrpc_async_get_pending_count() is
+     * always 0 by construction. It printed "Started 0 async operations" against
+     * a server that answers every time, and the demo was showing an API shape
+     * that does not exist rather than a bug.
+     *
+     * What uvrpc_async_cancel_all() actually does is abandon a block: stop the
+     * deadline and reset it. That is what the `async_cleanup` label above is
+     * for, and it is reachable -- a call that gives up on its deadline lands
+     * here with the timer still armed. */
     uvrpc_async_ctx_t* cancel_ctx = uvrpc_async_ctx_new(&loop);
+    uvrpc_async_result_t* cancel_result = NULL;
 
-    /* Start multiple async operations */
-    for (int i = 0; i < 5; i++) {
-        uvrpc_client_call_async(cancel_ctx, client, "echo",
-                                (const uint8_t*)test_data,
-                                strlen(test_data),
-                                &async_result);
-    }
+    uvrpc_async_exec(cancel_ctx, 5000);
+    int first = uvrpc_client_call_async(cancel_ctx, client, "echo",
+                                        (const uint8_t*)test_data,
+                                        strlen(test_data), &cancel_result);
+    printf("first call: %s\n", first == UVRPC_OK ? "ok" : "failed");
+    if (cancel_result) uvrpc_async_result_free(cancel_result);
 
-    int pending_async = uvrpc_async_get_pending_count(cancel_ctx);
-    printf("Started %d async operations\n", pending_async);
-
-    /* Cancel all pending operations */
+    /* Abandon the block: the 5 s deadline above is now stopped, so freeing the
+     * context does not leave an armed timer behind. */
     uvrpc_async_cancel_all(cancel_ctx);
-    printf("Cancelled all async operations\n");
-
-    pending_async = uvrpc_async_get_pending_count(cancel_ctx);
-    printf("Remaining pending operations: %d\n", pending_async);
+    printf("abandoned the block; the deadline is stopped\n");
 
     uvrpc_async_ctx_free(cancel_ctx);
     uvrpc_async_ctx_free(async_ctx);
