@@ -267,26 +267,16 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
  * It cannot cancel work in flight: an awaited call blocks until it has
  * answered or its deadline expired, so by the time you can call this there is
  * no call of yours still waiting. To stop a request you have not issued yet,
- * do not issue it.
+ * do not issue it. For the same reason there is no "how many are in flight"
+ * query on this API, and there never was a useful one -- see the removed
+ * uvrpc_async_get_pending_count(), which could only ever return 0.
+ *
+ * Do not call this from inside a response callback.
  *
  * @param ctx async context
  * @return UVRPC_OK on success
  */
 int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx);
-
-/**
- * Number of awaited calls that have not produced a result yet.
- *
- * Always 0 outside an awaited call, and 0 inside one too: a result is handed to
- * the caller the moment it arrives. Kept because it is in the public header,
- * but do not build a control-flow decision on it -- there is nothing to wait
- * for. Measured over 60 calls against a service that failed 53 of them, with
- * deadlines both expiring and not: peak 0.
- *
- * @param ctx async context
- * @return number of pending operations
- */
-int uvrpc_async_get_pending_count(uvrpc_async_ctx_t* ctx);
 
 /* Helper macros for async/await syntax.
  *

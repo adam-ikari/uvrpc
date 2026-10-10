@@ -250,10 +250,9 @@ async_cleanup:
 
     /* This used to "start 5 async operations and cancel them", which cannot
      * happen: an awaited call blocks until it has answered, so there is never
-     * more than one of yours in flight, and uvrpc_async_get_pending_count() is
-     * always 0 by construction. It printed "Started 0 async operations" against
-     * a server that answers every time, and the demo was showing an API shape
-     * that does not exist rather than a bug.
+     * more than one of yours in flight. It printed "Started 0 async operations"
+     * against a server that answers every time, and the demo was showing an API
+     * shape that does not exist rather than a bug.
      *
      * What uvrpc_async_cancel_all() actually does is abandon a block: stop the
      * deadline and reset it. That is what the `async_cleanup` label above is

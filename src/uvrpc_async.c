@@ -65,11 +65,15 @@ static void backoff_closed(uv_handle_t* handle) {
     uvrpc_free(handle);
 }
 
-/* Async context structure */
+/* Async context structure.
+ *
+ * pending_results[] is the awaited call's single slot array. It is not a queue:
+ * an awaited call blocks until its result is in place, takes it, and clears the
+ * slot, so the array is empty between calls. That is why there is no "pending
+ * count" here to report -- see the note on uvrpc_async_cancel_all(). */
 struct uvrpc_async_ctx {
     uv_loop_t* loop;
     int is_running;
-    int call_count;
     uvrpc_async_result_t* pending_results[UVRPC_MAX_ASYNC_CALLS];
     int current_call;
     /* Set when the response could not be copied out, so the wait reports a
@@ -85,11 +89,10 @@ struct uvrpc_async_ctx {
      * process down. */
     uv_timer_t* timeout_timer;
     int timed_out;
-    
+
     /* For concurrent operations */
     int concurrent_count;
     int completed_count;
-    int concurrent_indices[UVRPC_MAX_CONCURRENT_CALLS];
     uvrpc_async_result_t* concurrent_results[UVRPC_MAX_CONCURRENT_CALLS];
     int any_completed;
 };
@@ -181,7 +184,6 @@ uvrpc_async_ctx_t* uvrpc_async_ctx_new(uv_loop_t* loop) {
     memset(ctx, 0, sizeof(uvrpc_async_ctx_t));
     ctx->loop = loop;
     ctx->is_running = 0;
-    ctx->call_count = 0;
     ctx->current_call = -1;
     ctx->timeout_ms = 0;
     ctx->timed_out = 0;
@@ -776,20 +778,27 @@ int uvrpc_async_race(uvrpc_async_ctx_t* ctx,
                            result, completed_index, count, timeout_ms);
 }
 
-/* Cancel all pending async operations */
+/* Abandon the current async block: stop the deadline and reset it.
+ *
+ * This cannot cancel work in flight, and the pending_results sweep below cannot
+ * either: an awaited call blocks until it has answered or its deadline expired,
+ * so every slot is clear by the time a caller can reach this. The sweep is
+ * kept only as teardown symmetry with uvrpc_async_ctx_free(), which has the
+ * same loop over the same field.
+ *
+ * Do not call this from inside a response callback. That callback runs within
+ * the wait loop, which is about to read the slot this would free. */
 int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx) {
     if (!ctx) return UVRPC_ERROR_INVALID_PARAM;
 
-    /* Stop the timeout timer if it is armed. Do not close it: cancelling the
-     * in-flight work is not the same as tearing the context down, and the next
-     * UVRPC_ASYNC block re-arms this same handle. It is closed by
-     * uvrpc_async_ctx_free(). */
+    /* Stop the timeout timer if it is armed. Do not close it: abandoning a block
+     * is not the same as tearing the context down, and the next UVRPC_ASYNC
+     * block re-arms this same handle. It is closed by uvrpc_async_ctx_free(). */
     if (ctx->timeout_timer) {
         uv_timer_stop(ctx->timeout_timer);
         ctx->timed_out = 1;
     }
 
-    /* Free all pending results */
     for (int i = 0; i < UVRPC_MAX_ASYNC_CALLS; i++) {
         if (ctx->pending_results[i]) {
             uvrpc_async_result_free(ctx->pending_results[i]);
@@ -797,23 +806,8 @@ int uvrpc_async_cancel_all(uvrpc_async_ctx_t* ctx) {
         }
     }
 
-    /* Reset state */
-    ctx->call_count = 0;
     ctx->current_call = -1;
     ctx->is_running = 0;
 
     return UVRPC_OK;
-}
-
-/* Get pending async operation count */
-int uvrpc_async_get_pending_count(uvrpc_async_ctx_t* ctx) {
-    if (!ctx) return 0;
-
-    int count = 0;
-    for (int i = 0; i < UVRPC_MAX_ASYNC_CALLS; i++) {
-        if (ctx->pending_results[i] != NULL) {
-            count++;
-        }
-    }
-    return count;
 }

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [async, event-loop, libuv, memory-safety, transport-invariance]
 created: "2026-10-09T01:11:21"
-updated: "2026-10-09T12:30:54"
+updated: "2026-10-10T11:29:51"
 ---
 
 <!-- compiled_truth -->
@@ -115,4 +115,16 @@ updated: "2026-10-09T12:30:54"
   kind: note
   summary: "重试路径同批审计：uvrpc_async_retry / retry_with_backoff 曾零测试且四条故障 —— 只重试一次（延迟回调 retry_ctx 内含正在运行的 timer，释放后无法再触发）、重试 timer 从不 uv_close 导致 uv_loop_close 永久 UV_EBUSY、返回 UVRPC_ERROR 被误当失败（concurrent_demo 一直打印 Retry failed）、以及服务端报错时返回 UVRPC_OK。改为内联 retry_loop + 堆分配 backoff_delay。另发现 uvrpc_async_race() 在公开头文件里声明但全库无定义，任何调用者链接失败"
   source: "tests/unit/test_retry.cpp, 2026-10-09"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-10-10T07:33:28
+  kind: note
+  summary: "阻塞式 await 的结构性后果：pending_results[] 在等待循环外恒为 NULL，所以 uvrpc_async_get_pending_count() 恒返回 0（实测 60 次调用、其中 53 次服务端失败、deadline 有失效有不失效，峰值 0）。ctx->call_count 只被写 0 从不自增，concurrent_indices[] 声明后从未使用。cancel_all 的 pending 清理分支同理不可达，它真正的作用是放弃一个"
+  source: "examples/concurrent_demo.c, include/uvrpc_async.h, 2026-10-10"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-10-10T11:29:51
+  kind: reversal
+  summary: "推翻上一条 timeline 里保留并加警告的结论：维护者决定不留。uvrpc_async_get_pending_count() 已从公开头文件与实现中删除（它数的东西按构造恒为空，只能返回 0；两个断言 0==0 的测试一起删掉——那是在给一个不可能报出别的东西的函数钉死行为）。ctx->call_count（只被写 0，从不自增）与 concurrent_indices[]（声明后从未使用）一并删除。cancel_all 里对 pending_results 的清扫保留，理由是它与 ctx_free 中同一字段上的同一循环对称，且注释已写明它在等待语义下不可达"
+  source: "维护者决定 2026-10-10; src/uvrpc_async.c, include/uvrpc_async.h, tests/unit/test_async.cpp"
   affects: [blocking-await-runs-the-loop-inline]

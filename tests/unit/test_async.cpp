@@ -39,20 +39,13 @@ TEST_F(UVRPCAsyncTest, FreeNullAsyncResult) {
     // Should not crash
 }
 
-TEST_F(UVRPCAsyncTest, GetPendingCount) {
-    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(&loop);
-    ASSERT_NE(ctx, nullptr);
-    
-    int count = uvrpc_async_get_pending_count(ctx);
-    EXPECT_EQ(count, 0);
-    
-    uvrpc_async_ctx_free(ctx);
-}
-
-TEST_F(UVRPCAsyncTest, GetPendingCountFromNullContext) {
-    int count = uvrpc_async_get_pending_count(nullptr);
-    EXPECT_EQ(count, 0);
-}
+/* uvrpc_async_get_pending_count() used to live here with two cases asserting it
+ * returned 0. It was deleted: an awaited call blocks until it has answered or
+ * its deadline expired, so it counts ctx->pending_results[], which the wait loop
+ * always hands to the caller and clears. The counter is 0 by construction --
+ * measured over 60 calls against a service that failed 53 of them, with
+ * deadlines both expiring and not: peak 0. A test asserting 0 == 0 was pinning
+ * a function that could not report anything else. */
 
 TEST_F(UVRPCAsyncTest, CancelAllFromNullContext) {
     int ret = uvrpc_async_cancel_all(nullptr);
