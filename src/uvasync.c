@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h> /* offsetof */
 #include <time.h>
 
 /* Memory allocation macros */
@@ -130,6 +131,71 @@ static void on_task_complete(uvrpc_promise_t* result_promise, void* user_data);
  * Async Scheduler Implementation
  * ============================================================================ */
 
+/* The semaphore's and the waitgroup's uv_async_t are embedded in this block,
+ * and uv_close() only *queues* the close: libuv goes on pointing at the handle
+ * until a later loop turn actually runs it. Destroying the scheduler used to
+ * hand the block straight back, so every subsequent uv_run() read handles
+ * inside memory that belonged to nobody -- 51 invalid accesses on one
+ * client/loop cycle, on all three transports, with nothing observable going
+ * wrong: the block is normally still mapped and unclaimed, so the reads land on
+ * stale-but-readable memory. This is the same shape as a promise outliving its
+ * own handle, and it fired on every uvrpc_client_free() rather than on an edge
+ * case.
+ *
+ * The obvious repair -- drain the loop before freeing -- does not work, for
+ * two reasons that are worth writing down because both were tried:
+ *
+ *   uv_run() skips its entire body while loop->stop_flag != 0 and only clears
+ *   the flag on the way out. uvrpc_await() leaves that flag set via uv_stop(),
+ *   so the drain would be a silent no-op in exactly the situation that needs
+ *   it; and where the flag *was* clear, running the loop from inside
+ *   client_destroy() also drives uvbus's own queued closes before uvbus_free()
+ *   has run, re-entering a teardown halfway through.
+ *
+ * So the block outlives its closes instead. There are two of them, hence a
+ * countdown rather than a single close callback: the last one to fire frees it.
+ */
+static void scheduler_release(uvasync_scheduler_t* scheduler) {
+    if (!scheduler || scheduler->pending_closes <= 0) {
+        return;
+    }
+    if (--scheduler->pending_closes > 0) {
+        return;
+    }
+    if (scheduler->stats) {
+        UVASYNC_FREE(scheduler->stats);
+        scheduler->stats = NULL;
+    }
+    UVASYNC_FREE(scheduler);
+}
+
+/* The owner is recovered by offset rather than through handle->data: data
+ * points at the semaphore / the waitgroup, because semaphore_async_callback()
+ * and waitgroup_async_callback() read it, and an async event already signalled
+ * can dispatch between uv_close() and the close running. Repointing data would
+ * hand those callbacks a scheduler where they expect a semaphore. */
+static void scheduler_semaphore_closed(uv_handle_t* handle) {
+    scheduler_release((uvasync_scheduler_t*)((char*)handle
+        - offsetof(uvasync_scheduler_t, concurrency_limit.async_handle)));
+}
+
+static void scheduler_waitgroup_closed(uv_handle_t* handle) {
+    scheduler_release((uvasync_scheduler_t*)((char*)handle
+        - offsetof(uvasync_scheduler_t, waitgroup.async_handle)));
+}
+
+/* Queue a close on a handle embedded in this block and count it, so the block
+ * is released only once every close it owns has actually run. uvasync.c is the
+ * only code that reaches these members, and it never closes one twice. */
+static void scheduler_close(uvasync_scheduler_t* scheduler, uv_handle_t* handle,
+                            uv_close_cb cb) {
+    if (uv_is_closing(handle)) {
+        return;
+    }
+    scheduler->pending_closes++;
+    uv_close(handle, cb);
+}
+
 uvasync_scheduler_t* uvasync_scheduler_create(
     uvasync_context_t* ctx,
     int max_concurrency
@@ -161,8 +227,12 @@ uvasync_scheduler_t* uvasync_scheduler_create(
     /* Initialize waitgroup for tracking completion */
     ret = uvrpc_waitgroup_init(&scheduler->waitgroup, ctx->loop);
     if (ret != UVRPC_OK) {
+        /* The semaphore's handle is embedded in this block and its close is
+         * only queued, so the block cannot go back until that close has run. */
+        scheduler_close(scheduler,
+                        (uv_handle_t*)&scheduler->concurrency_limit.async_handle,
+                        scheduler_semaphore_closed);
         uvrpc_semaphore_cleanup(&scheduler->concurrency_limit);
-        UVASYNC_FREE(scheduler);
         return NULL;
     }
     
@@ -187,18 +257,46 @@ void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler) {
         uv_run(scheduler->ctx->loop, UV_RUN_NOWAIT);
     }
 
+    /* Statistics hold no handle, so they go now: scheduler_release() only runs
+     * once a close has completed, which needs a loop turn this function
+     * deliberately does not take. */
+    if (scheduler->stats) {
+        UVASYNC_FREE(scheduler->stats);
+        scheduler->stats = NULL;
+    }
+
+    /* Queue both closes first, so that they carry the callbacks which release
+     * this block. The two cleanups below queue with NULL callbacks and guard on
+     * uv_is_closing(), so they find the handles already closing and skip their
+     * own uv_close() -- while the bookkeeping that still has to happen runs as
+     * usual: the semaphore's waiters are separate heap blocks, and the
+     * waitgroup's completion promise is a borrowed pointer that has to be
+     * dropped before it is abandoned. */
+    scheduler_close(scheduler,
+                    (uv_handle_t*)&scheduler->concurrency_limit.async_handle,
+                    scheduler_semaphore_closed);
+    scheduler_close(scheduler,
+                    (uv_handle_t*)&scheduler->waitgroup.async_handle,
+                    scheduler_waitgroup_closed);
+
     /* Cleanup semaphore */
     uvrpc_semaphore_cleanup(&scheduler->concurrency_limit);
 
     /* Cleanup waitgroup */
     uvrpc_waitgroup_cleanup(&scheduler->waitgroup);
 
-    /* Free statistics */
-    if (scheduler->stats) {
-        UVASYNC_FREE(scheduler->stats);
-    }
-
-    UVASYNC_FREE(scheduler);
+    /* Deliberately not freed here. Both handles live inside this block and both
+     * closes are only queued, so freeing it now would hand libuv back two
+     * pointers into memory it is still going to walk -- which is what this used
+     * to do. scheduler_release() gives the block back once the last of them has
+     * run, and callers do turn their loop over afterwards: uvrpc_client_free()
+     * is always followed by one, and that following turn was exactly where the
+     * freed block was being read.
+     *
+     * Should neither close be queueable, the block would never be released.
+     * These two members are reachable only from this file, which does not close
+     * them ahead of this point, so that state does not arise -- and freeing
+     * here regardless would only reinstate the use-after-free. */
 }
 
 /* Get current time in milliseconds */

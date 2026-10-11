@@ -261,7 +261,11 @@ struct uvasync_task {
  * - Statistics tracking
  * - Dynamic concurrency adjustment
  * 
- * @note Zero-allocation when stack-allocated (~200 bytes)
+ * @note Allocated by uvasync_scheduler_create(), and released by
+ *       uvasync_scheduler_destroy() only once the two handles it embeds have
+ *       actually been closed -- so it must be heap memory. It cannot be
+ *       stack-allocated: destroy() queues the closes and the block has to
+ *       outlive them.
  */
 struct uvasync_scheduler {
     uvasync_context_t* ctx;              /**< @brief Async context */
@@ -272,6 +276,16 @@ struct uvasync_scheduler {
     int completed_tasks;                  /**< @brief Total tasks completed */
     int failed_tasks;                     /**< @brief Total tasks failed */
     uvasync_stats_t* stats;              /**< @brief Detailed statistics (pointer to avoid incomplete type) */
+    /**
+     * @brief Closes queued on handles embedded in this block, still owed one
+     *
+     * The semaphore and the waitgroup each hold a uv_async_t *inside* this
+     * struct, and uv_close() only queues the close -- libuv keeps pointing at
+     * the handle until a later loop turn. So this block cannot go back before
+     * those closes have run, and because there are two of them the last close
+     * to fire is what frees it. See uvasync_scheduler_destroy().
+     */
+    int pending_closes;
 };
 
 /**
@@ -310,9 +324,21 @@ uvasync_scheduler_t* uvasync_scheduler_create(
 
 /**
  * @brief Destroy async scheduler
- * 
+ *
  * Waits for all pending tasks to complete, then cleans up resources.
- * 
+ *
+ * The block is not returned to the allocator on this call. Its concurrency
+ * semaphore and its completion waitgroup each hold a uv_async_t *inside* it,
+ * and uv_close() only queues the close -- libuv keeps pointing at those handles
+ * until a later loop turn has run them. So this function queues them and
+ * returns, and the last close to complete is what frees `scheduler`, which
+ * also drops `stats`.
+ *
+ * Two things follow for the caller. `scheduler` is unusable from here on, and
+ * the loop it was created on must still be pumped afterwards, or the block is
+ * never released: every uvrpc_client_free() is already followed by one, and it
+ * was the turn immediately after it that used to read freed memory.
+ *
  * @param scheduler Scheduler to destroy
  */
 void uvasync_scheduler_destroy(uvasync_scheduler_t* scheduler);

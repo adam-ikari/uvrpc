@@ -6,6 +6,7 @@
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h> /* offsetof */
 #include <unistd.h>
 #include <stdint.h>
 
@@ -80,6 +81,51 @@ struct uvbus_ipc_server {
     /* LibUV handle - kept at end */
     uv_pipe_t listen_pipe;
 };
+
+/* ============================================================================
+ * Close callbacks
+ *
+ * The pipe handle lives *inside* these structs, and uv_close() only queues the
+ * close: libuv goes on pointing at the handle until a later loop turn has
+ * actually run it. Every one of the six call sites below freed the struct
+ * immediately after queueing, handing back memory libuv was still going to
+ * walk. It reads it without complaint -- on the turn after uvrpc_client_free()
+ * uv__stream_destroy() touches the 64KB IPC client block (65,928 bytes) and
+ * uv__drain() touches the server block (304 bytes) -- and nothing observable
+ * goes wrong, because that memory is still mapped and unclaimed. The normal
+ * teardown paths in the TCP and UDP transports already pass callbacks; these
+ * are the sites that passed NULL.
+ *
+ * The owner is recovered by offset rather than through handle->data: the listen
+ * handle carries the transport there, because on_server_connection() reads it,
+ * and repointing it would hand that callback a server where it expects a
+ * transport.
+ * ============================================================================ */
+
+static void on_ipc_client_closed(uv_handle_t* handle) {
+    uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)
+        ((char*)handle - offsetof(uvbus_ipc_client_t, pipe_handle));
+
+    /* socket_path belongs to the client-side struct only: an accepted
+     * connection is zeroed and owns no path. */
+    if (client->socket_path) {
+        uvrpc_free(client->socket_path);
+    }
+    uvrpc_free(client);
+}
+
+static void on_ipc_listen_closed(uv_handle_t* handle) {
+    uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)
+        ((char*)handle - offsetof(uvbus_ipc_server_t, listen_pipe));
+
+    if (server->socket_path) {
+        uvrpc_free(server->socket_path);
+    }
+    if (server->clients) {
+        uvrpc_free(server->clients);
+    }
+    uvrpc_free(server);
+}
 
 /* Parse address */
 static int parse_ipc_address(const char* address, char** socket_path) {
@@ -304,8 +350,8 @@ static void on_server_connection(uv_stream_t* server, int status) {
         /* Start reading */
         uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
     } else {
-        uv_close((uv_handle_t*)&client->pipe_handle, NULL);
-        uvrpc_free(client);
+        /* uv_close() only queues: this block goes with the callback. */
+        uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
     }
 }
 
@@ -383,10 +429,9 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     int bind_result = uv_pipe_bind(&server->listen_pipe, socket_path);
     if (bind_result != 0) {
         UVBUS_LOG_ERROR("Bind failed: %s", uv_strerror(bind_result));
-        uv_close((uv_handle_t*)&server->listen_pipe, NULL);
-        uvrpc_free(server->socket_path);
-        uvrpc_free(server->clients);
-        uvrpc_free(server);
+        /* The listen pipe is inside the server block, so the block goes with
+         * the close rather than now. */
+        uv_close((uv_handle_t*)&server->listen_pipe, on_ipc_listen_closed);
         return UVBUS_ERROR_IO;
     }
     
@@ -394,10 +439,7 @@ static int ipc_listen(void* impl_ptr, const char* address) {
     int listen_result = uv_listen((uv_stream_t*)&server->listen_pipe, 128, on_server_connection);
     if (listen_result != 0) {
         UVBUS_LOG_ERROR("Listen failed: %s", uv_strerror(listen_result));
-        uv_close((uv_handle_t*)&server->listen_pipe, NULL);
-        uvrpc_free(server->socket_path);
-        uvrpc_free(server->clients);
-        uvrpc_free(server);
+        uv_close((uv_handle_t*)&server->listen_pipe, on_ipc_listen_closed);
         return UVBUS_ERROR_IO;
     }
     
@@ -471,31 +513,31 @@ static void ipc_disconnect(void* impl_ptr) {
     
     if (transport->is_server && transport->impl.ipc_server) {
         uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
-        /* Close all client connections */
+        /* Close all client connections. Each accepted client carries a pipe
+         * inside its own block, so the free has to ride the close. */
         for (int i = 0; i < server->client_count; i++) {
             if (server->clients[i]) {
-                uv_close((uv_handle_t*)&server->clients[i]->pipe_handle, NULL);
-                uvrpc_free(server->clients[i]);
+                uv_close((uv_handle_t*)&server->clients[i]->pipe_handle,
+                         on_ipc_client_closed);
             }
         }
+        /* The array holds no handle, so it can go now -- and it has to be
+         * cleared rather than left dangling, because on_ipc_listen_closed()
+         * frees whatever it finds here. */
         uvrpc_free(server->clients);
-        
-        /* Close listen handle */
-        uv_close((uv_handle_t*)&server->listen_pipe, NULL);
-        
-        /* Remove socket file */
+        server->clients = NULL;
+
+        /* Close listen handle; the server block goes with it. */
+        uv_close((uv_handle_t*)&server->listen_pipe, on_ipc_listen_closed);
+
+        /* Remove socket file, while the path is still ours to read. */
         unlink(server->socket_path);
-        
-        uvrpc_free(server->socket_path);
-        uvrpc_free(server);
+
         transport->impl.ipc_server = NULL;
     } else if (!transport->is_server && transport->impl.ipc_client) {
         uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)transport->impl.ipc_client;
-        /* Close client connection */
-        uv_close((uv_handle_t*)&client->pipe_handle, NULL);
-        
-        uvrpc_free(client->socket_path);
-        uvrpc_free(client);
+        /* Close client connection; socket_path and the block follow the close. */
+        uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
         transport->impl.ipc_client = NULL;
     }
     

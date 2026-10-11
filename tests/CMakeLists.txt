@@ -538,6 +538,51 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
+# Freeing a client has to outlive the closes it queues: uvrpc_client_free()
+# walks into uvasync_scheduler_destroy(), which closes two uv_async_t handles
+# embedded in the scheduler's own block and then hands the block back. The
+# closes only run on a later loop turn, so they read memory that has already
+# been freed. Nothing crashes -- the block is still mapped -- so the plain entry
+# cannot see it and exists only to keep the transport/teardown path honest. The
+# memcheck entry is the one that catches the defect.
+add_executable(client_teardown
+    acceptance/client_teardown.c
+)
+
+target_link_libraries(client_teardown
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(client_teardown
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME client_teardown COMMAND client_teardown)
+set_tests_properties(client_teardown PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME client_teardown_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:client_teardown>
+    )
+    set_tests_properties(client_teardown_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.
