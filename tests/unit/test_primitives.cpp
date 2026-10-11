@@ -28,6 +28,7 @@
 #include <string>
 
 #include "uvrpc.h"
+#include "uvrpc_allocator.h"   /* uvrpc_free(), to give back combinator output */
 #include "uvrpc_primitives.h"
 
 namespace {
@@ -503,6 +504,174 @@ TEST_F(Promises, CombinatorsRejectBadArguments) {
               UVRPC_ERROR_INVALID_PARAM);
 
     FinishCombined();
+}
+
+/* ------------------------------------------- the blocking combinators */
+
+/* uvrpc_promise_all_sync() and uvrpc_promise_race_sync() kept their combined
+ * promise in a local and then uvrpc_promise_cleanup()ed it. cleanup() queues a
+ * uv_close(), and a queued close is not a completed one: libuv reads the handle
+ * on the next loop turn, by which point the function has returned and its frame
+ * is gone. Measured, over two already-resolved promises and a plain call:
+ *
+ *     all_sync -> UVRPC_OK
+ *     uv_run() -> SIGSEGV
+ *
+ * What these assert is therefore not the return value but that the process is
+ * still running and the loop still closes. The result layout is checked too,
+ * because the blob these hand back has a format and no other test had ever
+ * called them. */
+
+/* Walk the combined blob uvrpc_promise_all() writes: an int count, then per
+ * result a size_t followed immediately by that result's bytes. Returns the
+ * concatenated bytes, or "" if the framing does not parse. */
+static std::string UnpackCombined(const uint8_t* result, size_t size,
+                                  int* out_count) {
+    *out_count = -1;
+    if (!result || size < sizeof(int)) return "";
+
+    int count = 0;
+    memcpy(&count, result, sizeof(count));
+    *out_count = count;
+
+    const uint8_t* cursor = result + sizeof(int);
+    const uint8_t* const end = result + size;
+    std::string joined;
+    for (int i = 0; i < count && cursor + sizeof(size_t) <= end; i++) {
+        size_t chunk = 0;
+        memcpy(&chunk, cursor, sizeof(chunk));
+        cursor += sizeof(chunk);
+        if (cursor + chunk > end) return "";  /* framing runs past the end */
+        joined.append(reinterpret_cast<const char*>(cursor), chunk);
+        cursor += chunk;
+    }
+    if (cursor != end) return "";  /* trailing bytes: framing did not parse */
+    return joined;
+}
+
+TEST_F(Promises, SyncAllCombinesResultsAndLeavesTheLoopUsable) {
+    auto* a = uvrpc_promise_create(&loop);
+    auto* b = uvrpc_promise_create(&loop);
+    ASSERT_NE(a, nullptr);
+    ASSERT_NE(b, nullptr);
+    uvrpc_promise_resolve(a, (const uint8_t*)"aa", 2);
+    uvrpc_promise_resolve(b, (const uint8_t*)"bbb", 3);
+
+    uvrpc_promise_t* promises[] = {a, b};
+    uint8_t* result = nullptr;
+    size_t size = 0;
+
+    EXPECT_EQ(uvrpc_promise_all_sync(promises, 2, &result, &size, &loop),
+              UVRPC_OK);
+
+    /* The combined promise has been released by now. The loop still has its
+     * close to run, and running it is exactly where the old stack-local frame
+     * was read: this is the assertion that catches the defect. */
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+    SUCCEED() << "the loop still turned over after all_sync returned";
+
+    int count = 0;
+    if (result) {
+        EXPECT_EQ(UnpackCombined(result, size, &count), "aabbb");
+        EXPECT_EQ(count, 2);
+        uvrpc_free(result);
+    } else {
+        FAIL() << "all_sync returned OK with no result";
+    }
+
+    /* Close the inputs so TearDown is not racing these. Note the loop is left
+     * to TearDown: uvrpc_promise_wait() already drained it, and TearDown has to
+     * be the one to run uv_loop_close(). */
+    uvrpc_promise_destroy(a);
+    uvrpc_promise_destroy(b);
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+}
+
+/* Rejection reaches the caller as a failure rather than as an empty success. */
+TEST_F(Promises, SyncAllReportsARejection) {
+    auto* a = uvrpc_promise_create(&loop);
+    auto* b = uvrpc_promise_create(&loop);
+    ASSERT_NE(a, nullptr);
+    ASSERT_NE(b, nullptr);
+    uvrpc_promise_resolve(a, (const uint8_t*)"ok", 2);
+    uvrpc_promise_reject(b, UVRPC_ERROR_NOT_FOUND, "no such thing");
+
+    uvrpc_promise_t* promises[] = {a, b};
+    uint8_t* result = reinterpret_cast<uint8_t*>(0x1);
+    size_t size = 1;
+
+    /* uvrpc_promise_wait() hands back the rejection's own code, and the
+     * combinator forwards it -- not a generic "invalid state". */
+    EXPECT_EQ(uvrpc_promise_all_sync(promises, 2, &result, &size, &loop),
+              UVRPC_ERROR_NOT_FOUND);
+    /* The out-parameters are not half-filled on the failure path. */
+    EXPECT_EQ(result, reinterpret_cast<uint8_t*>(0x1));
+    EXPECT_EQ(size, 1u);
+
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+
+    uvrpc_promise_destroy(a);
+    uvrpc_promise_destroy(b);
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+}
+
+TEST_F(Promises, SyncRaceTakesTheSettledPromise) {
+    auto* settled = uvrpc_promise_create(&loop);
+    auto* pending = uvrpc_promise_create(&loop);
+    ASSERT_NE(settled, nullptr);
+    ASSERT_NE(pending, nullptr);
+    /* Resolved before the race is run, so this one is unambiguous -- the
+     * alternative (two resolved promises) leaves the winner to whichever
+     * callback the loop dispatches first, which is not worth asserting. */
+    uvrpc_promise_resolve(settled, (const uint8_t*)"winner", 6);
+
+    uvrpc_promise_t* promises[] = {pending, settled};
+    uint8_t* result = nullptr;
+    size_t size = 0;
+
+    EXPECT_EQ(uvrpc_promise_race_sync(promises, 2, &result, &size, &loop),
+              UVRPC_OK);
+
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(size, 6u);
+    if (result && size == 6) {
+        EXPECT_EQ(memcmp(result, "winner", 6), 0);
+    }
+    uvrpc_free(result);
+    uvrpc_promise_destroy(settled);
+
+    /* The loser settles *after* race_sync() has already returned and released
+     * the combined promise, which is the interesting case: the race context is
+     * still alive and still holding a pointer to that combined promise. It
+     * must be safe, because on_promise_race_callback() forwards to the combined
+     * promise only from the first callback and this is not the first -- it
+     * just counts down and frees the context. The context frees on this last
+     * report, so leaving `pending` unresolved here would leak it. */
+    uvrpc_promise_resolve(pending, (const uint8_t*)"late", 4);
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+    uvrpc_promise_destroy(pending);
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+}
+
+TEST_F(Promises, SyncCombinatorsRejectBadArguments) {
+    uint8_t* result = nullptr;
+    size_t size = 0;
+    uvrpc_promise_t* promises[] = {nullptr};
+
+    EXPECT_EQ(uvrpc_promise_all_sync(nullptr, 1, &result, &size, &loop),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_promise_all_sync(promises, 0, &result, &size, &loop),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_promise_all_sync(promises, 1, &result, &size, nullptr),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_promise_race_sync(nullptr, 1, &result, &size, &loop),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_promise_race_sync(promises, 0, &result, &size, &loop),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_promise_race_sync(promises, 1, &result, &size, nullptr),
+              UVRPC_ERROR_INVALID_PARAM);
 }
 
 /* ------------------------------------------------------------ semaphore */

@@ -64,32 +64,73 @@ int uvrpc_promise_init(uvrpc_promise_t* promise, uv_loop_t* loop) {
     return UVRPC_OK;
 }
 
-/* Cleanup promise */
-void uvrpc_promise_cleanup(uvrpc_promise_t* promise) {
-    if (!promise) return;
-    
-    /* Close async handle if not closing */
-    if (!uv_is_closing((uv_handle_t*)&promise->async_handle)) {
-        uv_close((uv_handle_t*)&promise->async_handle, NULL);
-    }
-    
-    /* Free result */
+/* Release the promise's payload -- result bytes, error message, and the state
+ * that describes them. Says nothing about the async handle, so it is safe to
+ * call from a path where the handle's close is already queued. */
+static void promise_release_payload(uvrpc_promise_t* promise) {
     if (promise->result) {
         uvrpc_free(promise->result);
         promise->result = NULL;
     }
-    
-    /* Free error message */
+
     if (promise->error_message) {
         uvrpc_free(promise->error_message);
         promise->error_message = NULL;
     }
-    
+
     promise->state = UVRPC_PROMISE_PENDING;
     promise->result_size = 0;
     promise->error_code = 0;
     promise->callback = NULL;
     promise->callback_data = NULL;
+}
+
+/* Close callback for a promise uvrpc_promise_destroy() is releasing.
+ *
+ * uv_close() only *queues* the close: libuv keeps a pointer to the handle and
+ * reads it when the loop next runs, so the struct cannot go back to the
+ * allocator before that. uvrpc_promise_destroy() used to call cleanup() and
+ * then free immediately, which handed libuv memory that was already gone.
+ * Measured with valgrind, on a promise that was settled before being
+ * destroyed and whose loop then turned over:
+ *
+ *     Invalid read of size 8 at uv_run
+ *       144 bytes inside a block of size 200 free'd by uvrpc_promise_destroy
+ *       block alloc'd at uvrpc_promise_create
+ *
+ * It does not crash in practice only because the freed block is usually still
+ * mapped and unclaimed -- which is the worst kind of not-crashing. Where the
+ * struct is a stack local it is worse than latent: uvrpc_promise_all_sync()
+ * and uvrpc_promise_race_sync() put theirs on the stack, and after they
+ * returned the next uv_run() segfaulted.
+ *
+ * async_handle.data is the promise, set by uvrpc_promise_init() and owned by
+ * the library. This callback is only ever attached by destroy(), so reaching
+ * it always means "release the struct". */
+static void promise_handle_closed(uv_handle_t* handle) {
+    uvrpc_promise_t* promise = (uvrpc_promise_t*)handle->data;
+    handle->data = NULL;
+    uvrpc_free(promise);
+}
+
+/* Cleanup promise.
+ *
+ * Releases the payload and closes the async handle, but does NOT free the
+ * promise struct: whether it is a stack local, a caller's own allocation, or a
+ * uvrpc_promise_create() result is not this function's business. The caller
+ * keeps ownership and has to keep the struct valid until the loop has run the
+ * close -- uv_close() does not take effect synchronously. That constraint is
+ * what uvrpc_promise_all_sync() got wrong; it is documented on the declaration
+ * in the header. */
+void uvrpc_promise_cleanup(uvrpc_promise_t* promise) {
+    if (!promise) return;
+
+    promise_release_payload(promise);
+
+    /* Close async handle if not closing */
+    if (!uv_is_closing((uv_handle_t*)&promise->async_handle)) {
+        uv_close((uv_handle_t*)&promise->async_handle, NULL);
+    }
 }
 
 /* Create and initialize a Promise (convenience function) */
@@ -112,14 +153,34 @@ uvrpc_promise_t* uvrpc_promise_create(uv_loop_t* loop) {
     return promise;
 }
 
-/* Cleanup and free a Promise (convenience function) */
+/* Cleanup and free a Promise (convenience function).
+ *
+ * The struct is released by the close callback rather than on the spot:
+ * uv_close() only queues the close, so libuv still points at the handle and
+ * reads it on the next loop turn. Freeing here first was a use-after-free on
+ * every promise this function ever released -- see promise_handle_closed()
+ * for the valgrind report. The consequence for callers is that the memory
+ * lives one loop turn longer than destroy() returns; nothing is reachable
+ * after this point, since the payload was released above.
+ *
+ * uv_close() must not be queued twice -- libuv asserts on it -- so a promise
+ * already passed to uvrpc_promise_cleanup() has a close on the loop with no
+ * callback attached, and this cannot safely take it over or free the struct
+ * under it. That sequence (cleanup, then destroy) leaks deliberately rather
+ * than freeing memory the queued close still refers to, and no code in this
+ * tree does it. */
 void uvrpc_promise_destroy(uvrpc_promise_t* promise) {
     if (!promise) {
         return;
     }
-    
-    uvrpc_promise_cleanup(promise);
-    UVRPC_FREE(promise);
+
+    promise_release_payload(promise);
+
+    if (uv_is_closing((uv_handle_t*)&promise->async_handle)) {
+        return;
+    }
+
+    uv_close((uv_handle_t*)&promise->async_handle, promise_handle_closed);
 }
 
 /* Wait for Promise to complete synchronously (blocking) */
@@ -609,12 +670,27 @@ typedef struct {
 typedef struct {
     uvrpc_promise_t* combined;
     int completed;
-    /* How many of the raced promises have not called back yet. Every one of
-     * them was handed this pointer, so the context has to outlive all of them,
-     * not just the winner -- see on_promise_race_callback(). */
-    int remaining;
     uv_loop_t* loop;
+    /* A copy of the caller's array, not a pointer to it: the caller's array
+     * has no reason to outlive the call, and this context needs to reach every
+     * participant after the race has been decided. See
+     * on_promise_race_callback(). */
+    uvrpc_promise_t** participants;
+    int participant_count;
 } promise_race_context_t;
+
+/* Stands in for on_promise_race_callback() once the race is over.
+ *
+ * Not NULL, deliberately. promise_async_callback() only runs its uv_unref()
+ * for a handle whose callback is set, and a participant is uv_ref()'d the
+ * moment it resolves or rejects. Replacing the callback with NULL instead of
+ * with this would leave the loser with a ref that nobody ever drops, and a
+ * loop with a referenced handle and nothing pending blocks forever in
+ * uv_run(UV_RUN_ONCE) -- the next wait would hang rather than fail. */
+static void promise_race_noop(uvrpc_promise_t* promise, void* user_data) {
+    (void)promise;
+    (void)user_data;
+}
 
 /* Context for Promise.allSettled() */
 typedef struct {
@@ -771,10 +847,11 @@ int uvrpc_promise_all(uvrpc_promise_t** promises, int count, uvrpc_promise_t* co
 static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) {
     promise_race_context_t* ctx = (promise_race_context_t*)user_data;
 
-    /* Single-threaded guard: only the first callback to reach here forwards to
-     * the combined promise. Safe because uv_async_send queues callbacks for the
-     * next event loop iteration — they cannot preempt each other within the
-     * same tick. */
+    /* The race is decided by the first callback to reach here, so this is
+     * also where the context stops needing to exist -- see further down for
+     * why it cannot just be left counting down. Safe because uv_async_send
+     * queues callbacks for the next event loop iteration, so they cannot
+     * preempt each other within the same tick. */
     if (!ctx->completed) {
         ctx->completed = 1;
 
@@ -801,16 +878,44 @@ static void on_promise_race_callback(uvrpc_promise_t* promise, void* user_data) 
             int32_t error_code = uvrpc_promise_get_error_code(promise);
             uvrpc_promise_reject(ctx->combined, error_code, error);
         }
+
+        /* Detach the rest and release the context now, instead of waiting for
+         * every participant to report in.
+         *
+         * The old arrangement counted `remaining` down to 0 and freed on the
+         * last report, because freeing here had already been tried and left
+         * the losers reading a `completed` flag out of freed memory. But a
+         * loser that never settles never reports, and a race is over the
+         * moment it is decided -- there is nothing left to wait for. The two
+         * together leaked this context on every race that had a participant
+         * which did not finish: measured under valgrind, 24 bytes definitely
+         * lost, allocated by uvrpc_promise_race(). Silent by nature, since
+         * nothing crashes and the block is small.
+         *
+         * Detaching is what makes freeing here sound. Each participant is
+         * swapped to promise_race_noop() *only* where it is still running this
+         * race's callback -- same callback, same context -- so a callback the
+         * caller installed afterwards is left untouched, and nothing that
+         * points at this context survives the free. */
+        for (int i = 0; i < ctx->participant_count; i++) {
+            uvrpc_promise_t* participant = ctx->participants[i];
+            if (participant && participant->callback == on_promise_race_callback
+                && participant->callback_data == ctx) {
+                participant->callback = promise_race_noop;
+                participant->callback_data = NULL;
+            }
+        }
+
+        UVRPC_FREE(ctx->participants);
+        UVRPC_FREE(ctx);
+        return;
     }
 
-    /* Free only once every raced promise has reported. Freeing here instead --
-    * which is what this used to do -- left the losers holding a dangling
-     * pointer: the next one to settle read ctx->completed from freed memory.
-     * A race over N promises where the other N-1 settle later was a
-     * use-after-free on every one of them. */
-    if (--ctx->remaining == 0) {
-        UVRPC_FREE(ctx);
-    }
+    /* Unreachable on the single-threaded dispatch path: the loop above swaps
+     * every participant that still runs this callback before releasing the
+     * context, so a second call here would mean reaching a context that is
+     * already gone. Left as a no-op rather than a countdown, because counting
+     * a field that no longer exists is the exact failure being removed. */
 }
 
 /* Promise.race() - Wait for first promise to complete */
@@ -827,14 +932,24 @@ int uvrpc_promise_race(uvrpc_promise_t** promises, int count, uvrpc_promise_t* c
     
     ctx->combined = combined;
     ctx->completed = 0;
-    ctx->remaining = count;
     ctx->loop = loop;
-    
+
+    /* Own the array. on_promise_race_callback() has to reach every participant
+     * once the race is decided, and the caller's array is not ours to assume
+     * anything about after this returns. */
+    ctx->participants = (uvrpc_promise_t**)UVRPC_MALLOC(count * sizeof(uvrpc_promise_t*));
+    if (!ctx->participants) {
+        UVRPC_FREE(ctx);
+        return UVRPC_ERROR_NO_MEMORY;
+    }
+    memcpy(ctx->participants, promises, count * sizeof(uvrpc_promise_t*));
+    ctx->participant_count = count;
+
     /* Set callbacks for all promises */
     for (int i = 0; i < count; i++) {
         uvrpc_promise_set_callback(promises[i], on_promise_race_callback, ctx);
     }
-    
+
     return UVRPC_OK;
 }
 
@@ -999,37 +1114,45 @@ int uvrpc_promise_all_settled(uvrpc_promise_t** promises, int count, uvrpc_promi
     return UVRPC_OK;
 }
 
-/* Promise.all() - Synchronous version (blocking) */
-int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count,
-                        uint8_t** result, size_t* result_size,
-                        uv_loop_t* loop) {
-    if (!promises || count <= 0 || !loop) {
-        return UVRPC_ERROR_INVALID_PARAM;
+/* The body shared by uvrpc_promise_all_sync() and uvrpc_promise_race_sync().
+ *
+ * The combined promise is heap-allocated rather than a local, and released
+ * through uvrpc_promise_destroy(). It holds a libuv async handle, and a handle
+ * can only be given back by uv_close(), which merely queues the close -- so
+ * the struct has to still be there when the loop runs it. On the stack it was
+ * not: the function returned, its frame died, and the next uv_run() read the
+ * dead frame. Measured, with two already-resolved promises and a plain call:
+ *
+ *     all_sync -> UVRPC_OK
+ *     then uv_run() -> SIGSEGV
+ *
+ * Which combinator to run is passed in rather than branched on, because the
+ * two sync wrappers are otherwise identical. */
+static int promise_combine_sync(uvrpc_promise_t** promises, int count,
+                                uint8_t** result, size_t* result_size,
+                                uv_loop_t* loop,
+                                int (*combine)(uvrpc_promise_t**, int,
+                                               uvrpc_promise_t*, uv_loop_t*)) {
+    uvrpc_promise_t* combined = uvrpc_promise_create(loop);
+    if (!combined) {
+        return UVRPC_ERROR_NO_MEMORY;
     }
-    
-    /* Create combined promise */
-    uvrpc_promise_t combined;
-    int ret = uvrpc_promise_init(&combined, loop);
+
+    int ret = combine(promises, count, combined, loop);
     if (ret != UVRPC_OK) {
+        uvrpc_promise_destroy(combined);
         return ret;
     }
-    
-    /* Run Promise.all() */
-    ret = uvrpc_promise_all(promises, count, &combined, loop);
-    if (ret != UVRPC_OK) {
-        uvrpc_promise_cleanup(&combined);
-        return ret;
-    }
-    
+
     /* Wait for completion */
-    ret = uvrpc_promise_wait(&combined);
-    
+    ret = uvrpc_promise_wait(combined);
+
     /* Get result and transfer ownership to caller */
     if (ret == UVRPC_OK && result && result_size) {
         uint8_t* internal_result = NULL;
         size_t internal_size = 0;
-        uvrpc_promise_get_result(&combined, &internal_result, &internal_size);
-        
+        uvrpc_promise_get_result(combined, &internal_result, &internal_size);
+
         /* Copy result to transfer ownership to caller */
         if (internal_result && internal_size > 0) {
             *result = (uint8_t*)UVRPC_MALLOC(internal_size);
@@ -1044,11 +1167,24 @@ int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count,
             *result_size = 0;
         }
     }
-    
-    /* Cleanup - this will free internal result memory */
-    uvrpc_promise_cleanup(&combined);
-    
+
+    /* Releases the payload now and the struct on the loop's next close. The
+     * copy above is what makes that safe: the caller's bytes are its own. */
+    uvrpc_promise_destroy(combined);
+
     return ret;
+}
+
+/* Promise.all() - Synchronous version (blocking) */
+int uvrpc_promise_all_sync(uvrpc_promise_t** promises, int count,
+                        uint8_t** result, size_t* result_size,
+                        uv_loop_t* loop) {
+    if (!promises || count <= 0 || !loop) {
+        return UVRPC_ERROR_INVALID_PARAM;
+    }
+
+    return promise_combine_sync(promises, count, result, result_size, loop,
+                                uvrpc_promise_all);
 }
 
 /* Promise.race() - Synchronous version (blocking) */
@@ -1058,47 +1194,7 @@ int uvrpc_promise_race_sync(uvrpc_promise_t** promises, int count,
     if (!promises || count <= 0 || !loop) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
-    /* Create combined promise */
-    uvrpc_promise_t combined;
-    int ret = uvrpc_promise_init(&combined, loop);
-    if (ret != UVRPC_OK) {
-        return ret;
-    }
-    
-    /* Run Promise.race() */
-    ret = uvrpc_promise_race(promises, count, &combined, loop);
-    if (ret != UVRPC_OK) {
-        uvrpc_promise_cleanup(&combined);
-        return ret;
-    }
-    
-    /* Wait for completion */
-    ret = uvrpc_promise_wait(&combined);
-    
-    /* Get result and transfer ownership to caller */
-    if (ret == UVRPC_OK && result && result_size) {
-        uint8_t* internal_result = NULL;
-        size_t internal_size = 0;
-        uvrpc_promise_get_result(&combined, &internal_result, &internal_size);
-        
-        /* Copy result to transfer ownership to caller */
-        if (internal_result && internal_size > 0) {
-            *result = (uint8_t*)UVRPC_MALLOC(internal_size);
-            if (*result) {
-                memcpy(*result, internal_result, internal_size);
-                *result_size = internal_size;
-            } else {
-                ret = UVRPC_ERROR_NO_MEMORY;
-            }
-        } else {
-            *result = NULL;
-            *result_size = 0;
-        }
-    }
-    
-    /* Cleanup - this will free internal result memory */
-    uvrpc_promise_cleanup(&combined);
-    
-    return ret;
+
+    return promise_combine_sync(promises, count, result, result_size, loop,
+                                uvrpc_promise_race);
 }

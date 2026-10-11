@@ -487,6 +487,57 @@ set_tests_properties(await_span PROPERTIES
     LABELS "acceptance"
     TIMEOUT 90)
 
+# Promise lifetime: the combined promise the blocking combinators build, and the
+# struct uvrpc_promise_destroy() releases, both hold a libuv handle, and a
+# handle is only given back once the loop has run the close uv_close() queues.
+# Two of the three defects this pins are invisible to a plain run -- destroy()
+# reads freed memory that is usually still mapped, and a 24-byte context leak
+# crashes nothing -- so the memcheck entry is the one that carries them. The
+# plain entry exists because the third defect segfaults outright, which is the
+# cheaper signal when it is available.
+add_executable(promise_lifetime
+    acceptance/promise_lifetime.c
+)
+
+target_link_libraries(promise_lifetime
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(promise_lifetime
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME promise_lifetime COMMAND promise_lifetime)
+set_tests_properties(promise_lifetime PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60)
+
+# --error-exitcode, so valgrind's findings fail the test rather than print and
+# pass. errors-for-leak-kinds=definite: this file hands every allocation back,
+# but "still reachable" at exit is normal for libuv's own bookkeeping and would
+# make the entry fail forever. Leak check is full so the losing report names the
+# allocating frame.
+find_program(UVRPC_VALGRIND_EXECUTABLE valgrind)
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME promise_lifetime_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:promise_lifetime>
+    )
+    set_tests_properties(promise_lifetime_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

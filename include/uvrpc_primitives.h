@@ -211,9 +211,19 @@ int uvrpc_promise_init(uvrpc_promise_t* promise, uv_loop_t* loop);
 /**
  * @brief Cleanup a promise
  * 
- * Frees any allocated resources. Does not free the promise structure itself.
+ * Frees the payload (result bytes, error message) and closes the embedded
+ * libuv handle. Does not free the promise structure itself.
  * 
  * @param promise Promise to cleanup
+ * 
+ * @note uv_close() only *queues* the close: libuv keeps pointing at the handle
+ *       and reads it the next time the loop runs. The structure therefore has
+ *       to stay valid until the loop has been given a turn afterwards, so it
+ *       is safe to return from a function that holds a stack-local promise
+ *       only if no further uv_run() happens first. uvrpc_promise_all_sync()
+ *       once got this wrong and segfaulted on the following uv_run().
+ *       uvrpc_promise_destroy() releases a uvrpc_promise_create() result
+ *       without that requirement.
  */
 void uvrpc_promise_cleanup(uvrpc_promise_t* promise);
 
@@ -337,9 +347,18 @@ uvrpc_promise_t* uvrpc_promise_create(uv_loop_t* loop);
 /**
  * @brief Cleanup and free a Promise (convenience function)
  * 
- * Combines uvrpc_promise_cleanup() + free() for easier use.
+ * Releases the payload immediately and hands the structure back once the loop
+ * has run the close for the handle it holds -- uv_close() only queues that
+ * close, so freeing on the spot would leave libuv reading memory that had
+ * already been given back.
  * 
  * @param promise Promise to destroy (must be allocated with uvrpc_promise_create())
+ * 
+ * @note The memory goes one loop turn after this returns rather than inside
+ *       it. Nothing is reachable by then: the payload is already released.
+ *       Because a handle may not be closed twice, do not pass a promise here
+ *       after uvrpc_promise_cleanup() on the same one -- it is left alone
+ *       rather than released.
  */
 void uvrpc_promise_destroy(uvrpc_promise_t* promise);
 
