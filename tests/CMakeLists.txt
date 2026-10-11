@@ -32,6 +32,7 @@ add_executable(uvrpc_tests
 add_executable(uvrpc_integration_tests
     unit/test_async.cpp
     unit/test_primitives.cpp
+    unit/test_combinators.cpp
     unit/test_retry.cpp
     unit/test_uvbus.cpp
     unit/test_context.cpp

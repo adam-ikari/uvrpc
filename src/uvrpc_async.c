@@ -65,6 +65,14 @@ static void backoff_closed(uv_handle_t* handle) {
     uvrpc_free(handle);
 }
 
+/* One entry of an async context's concurrent_slots[]: the per-call record that
+ * concurrent_callback() receives in place of the context itself, so it can tell
+ * which of the N concurrent calls this response answers. */
+typedef struct {
+    struct uvrpc_async_ctx* owner;
+    int index;
+} concurrent_call_slot_t;
+
 /* Async context structure.
  *
  * pending_results[] is the awaited call's single slot array. It is not a queue:
@@ -90,8 +98,24 @@ struct uvrpc_async_ctx {
     uv_timer_t* timeout_timer;
     int timed_out;
 
-    /* For concurrent operations */
-    int concurrent_count;
+    /* For the concurrent combinators -- uvrpc_async_all(), _any(), _race().
+     *
+     * concurrent_slots[] carries the one thing concurrent_callback() needs and
+     * cannot get anywhere else: which of the N calls this response belongs to.
+     * It used to be read from resp->user_data, and that channel is not wired:
+     * client_recv_callback() assigns resp.user_data = NULL and nothing in the
+     * library ever sets it, so every response arrived claiming index 0. With
+     * three calls, one result came back and the other two were overwritten and
+     * leaked. Measured: all() over three calls against a service that answered
+     * every one returned results[0] set and results[1], results[2] NULL.
+     *
+     * The slots live here rather than being allocated per call because a
+     * combinator can return on its deadline while responses are still in
+     * flight, and those callbacks land later. Owning them here keeps the
+     * memory alive until the context is freed; concurrent_active is what tells
+     * a late arrival that nobody is waiting for it any more. */
+    concurrent_call_slot_t concurrent_slots[UVRPC_MAX_CONCURRENT_CALLS];
+    int concurrent_active;
     int completed_count;
     uvrpc_async_result_t* concurrent_results[UVRPC_MAX_CONCURRENT_CALLS];
     int any_completed;
@@ -202,6 +226,17 @@ void uvrpc_async_ctx_free(uvrpc_async_ctx_t* ctx) {
             ctx->pending_results[i] = NULL;
         }
     }
+
+    /* Free concurrent results too. A combinator that returned on its deadline
+     * leaves the results that did land sitting here, and nothing else in the
+     * teardown reached them. */
+    for (int i = 0; i < UVRPC_MAX_CONCURRENT_CALLS; i++) {
+        if (ctx->concurrent_results[i]) {
+            uvrpc_async_result_free(ctx->concurrent_results[i]);
+            ctx->concurrent_results[i] = NULL;
+        }
+    }
+    ctx->concurrent_active = 0;
     
     /* The timeout timer may still be armed -- a call that succeeded on its
      * first response leaves the deadline running. Stop it, then hand it to
@@ -342,15 +377,41 @@ void uvrpc_async_result_free(uvrpc_async_result_t* result) {
     uvrpc_free(result);
 }
 
-/* Callback for concurrent operations */
+/* Callback for the concurrent combinators.
+ *
+ * `ctx` is not the uvrpc_async_ctx_t directly -- it is one of the context's
+ * concurrent_slots[], which is how this callback learns which call it is
+ * serving. See the note on concurrent_slots[]: resp->user_data is always NULL,
+ * so it cannot carry the index.
+ */
 static void concurrent_callback(uvrpc_response_t* resp, void* ctx) {
-    uvrpc_async_ctx_t* async_ctx = (uvrpc_async_ctx_t*)ctx;
-    int index = (int)(intptr_t)resp->user_data;
-    
-    /* Store result */
+    concurrent_call_slot_t* slot = (concurrent_call_slot_t*)ctx;
+    if (!slot || !slot->owner) return;
+
+    uvrpc_async_ctx_t* async_ctx = slot->owner;
+    int index = slot->index;
+
+    /* A response that outlived its combinator. The caller already returned on
+     * its deadline and the results array it was handed has been taken apart, so
+     * this answer has nowhere to go. Dropping it here is what keeps the slots
+     * reusable: without this check the late arrival lands in a slot the next
+     * combinator owns. */
+    if (!async_ctx->concurrent_active) return;
+
+    /* The index comes from our own slot array, but a corrupt frame or a
+     * mismatched library could still put this out of range, and the write below
+     * is unchecked. */
+    if (index < 0 || index >= UVRPC_MAX_CONCURRENT_CALLS) return;
+
+    /* A second answer for a slot that already has one: the first wins, and the
+     * second is freed rather than left to leak. */
+    if (async_ctx->concurrent_results[index]) {
+        uvrpc_async_result_free(async_ctx->concurrent_results[index]);
+    }
+
     uvrpc_async_result_t* result = uvrpc_alloc(sizeof(uvrpc_async_result_t));
     if (!result) return;
-    
+
     result->status = resp->status;
     result->msgid = resp->msgid;
     result->error_code = resp->error_code;
@@ -453,12 +514,20 @@ int uvrpc_async_all(uvrpc_async_ctx_t* ctx,
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    /* Initialize concurrent state */
-    ctx->concurrent_count = count;
+    /* Initialize concurrent state. The slots point back at this context, so the
+     * callback can recover the destination for its result. */
     ctx->completed_count = 0;
     ctx->any_completed = 0;
-    for (int i = 0; i < count; i++) {
-        ctx->concurrent_results[i] = NULL;
+    ctx->concurrent_active = 1;
+    for (int i = 0; i < UVRPC_MAX_CONCURRENT_CALLS; i++) {
+        /* Free rather than null: a response that landed after a previous
+         * combinator timed out is still here, and nulling would drop it. */
+        if (ctx->concurrent_results[i]) {
+            uvrpc_async_result_free(ctx->concurrent_results[i]);
+            ctx->concurrent_results[i] = NULL;
+        }
+        ctx->concurrent_slots[i].owner = ctx;
+        ctx->concurrent_slots[i].index = i;
     }
     
     /* Setup timeout */
@@ -466,11 +535,8 @@ int uvrpc_async_all(uvrpc_async_ctx_t* ctx,
 
     /* Start all concurrent calls */
     for (int i = 0; i < count; i++) {
-        uvrpc_response_t* resp_wrapper = uvrpc_alloc(sizeof(uvrpc_response_t));
-        resp_wrapper->user_data = (void*)(intptr_t)i;
-        
         uvrpc_client_call(clients[i], methods[i], params_array[i], params_sizes[i],
-                          concurrent_callback, ctx);
+                          concurrent_callback, &ctx->concurrent_slots[i]);
     }
     
     /* Wait for all to complete. UV_RUN_ONCE returns after each batch of
@@ -483,7 +549,21 @@ int uvrpc_async_all(uvrpc_async_ctx_t* ctx,
 
     int timed_out = deadline_stop(deadline);
 
+    /* Whatever is still armed is answered after this returns, and those answers
+     * have nowhere to go -- so disarm the slots before leaving, which is what
+     * makes concurrent_callback() drop them. */
+    ctx->concurrent_active = 0;
+
     if (timed_out) {
+        /* The results that did land before the deadline were never handed to
+         * anyone, and nothing else would free them: this used to return without
+         * touching them. */
+        for (int i = 0; i < UVRPC_MAX_CONCURRENT_CALLS; i++) {
+            if (ctx->concurrent_results[i]) {
+                uvrpc_async_result_free(ctx->concurrent_results[i]);
+                ctx->concurrent_results[i] = NULL;
+            }
+        }
         return UVRPC_ERROR_TIMEOUT;
     }
     
@@ -519,12 +599,17 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
         return UVRPC_ERROR_INVALID_PARAM;
     }
     
-    /* Initialize concurrent state */
-    ctx->concurrent_count = count;
+    /* Initialize concurrent state. Same slot wiring as uvrpc_async_all(). */
     ctx->completed_count = 0;
     ctx->any_completed = 0;
-    for (int i = 0; i < count; i++) {
-        ctx->concurrent_results[i] = NULL;
+    ctx->concurrent_active = 1;
+    for (int i = 0; i < UVRPC_MAX_CONCURRENT_CALLS; i++) {
+        if (ctx->concurrent_results[i]) {
+            uvrpc_async_result_free(ctx->concurrent_results[i]);
+            ctx->concurrent_results[i] = NULL;
+        }
+        ctx->concurrent_slots[i].owner = ctx;
+        ctx->concurrent_slots[i].index = i;
     }
     
     /* Setup timeout */
@@ -533,7 +618,7 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
     /* Start all concurrent calls */
     for (int i = 0; i < count; i++) {
         uvrpc_client_call(clients[i], methods[i], params_array[i], params_sizes[i],
-                          concurrent_callback, ctx);
+                          concurrent_callback, &ctx->concurrent_slots[i]);
     }
 
     /* Wait for any to complete. UV_RUN_ONCE, not DEFAULT -- see the note in
@@ -547,18 +632,48 @@ int uvrpc_async_any(uvrpc_async_ctx_t* ctx,
 
     /* The deadline is released exactly once, whichever way this left. */
     int timed_out = deadline_stop(deadline);
+
+    /* Disarm the slots: the losers of this race are answered after this returns
+     * and their results belong to nobody. */
+    ctx->concurrent_active = 0;
+
     if (timed_out) {
+        /* Nothing is handed out on this path, so every result that landed is
+         * released here -- this used to return without touching them. */
+        for (int i = 0; i < UVRPC_MAX_CONCURRENT_CALLS; i++) {
+            if (ctx->concurrent_results[i]) {
+                uvrpc_async_result_free(ctx->concurrent_results[i]);
+                ctx->concurrent_results[i] = NULL;
+            }
+        }
         return UVRPC_ERROR_TIMEOUT;
     }
 
-    /* Find completed result */
+    /* Hand out the winner, and take it out of the array so the sweep below
+     * cannot release it. */
+    int winner = -1;
     for (int i = 0; i < count; i++) {
         if (ctx->concurrent_results[i]) {
             *result = ctx->concurrent_results[i];
             *completed_index = i;
             ctx->concurrent_results[i] = NULL;
-            return UVRPC_OK;
+            winner = i;
+            break;
         }
+    }
+
+    /* Release the losers. Several calls are in flight by construction, and only
+     * one answer can be handed out; the rest were leaked here on both paths. */
+    for (int i = 0; i < count; i++) {
+        if (i == winner) continue;
+        if (ctx->concurrent_results[i]) {
+            uvrpc_async_result_free(ctx->concurrent_results[i]);
+            ctx->concurrent_results[i] = NULL;
+        }
+    }
+
+    if (winner >= 0) {
+        return UVRPC_OK;
     }
 
     /* Nothing completed and no deadline expired: the loop ran out of work. */
