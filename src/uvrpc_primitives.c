@@ -496,6 +496,11 @@ int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop) {
 void uvrpc_waitgroup_cleanup(uvrpc_waitgroup_t* wg) {
     if (!wg) return;
     
+    /* Detach the completion promise. It belongs to the caller, and after this
+     * the wait group is torn down -- so a done() that somehow still ran would
+     * have nothing left to settle. */
+    wg->completion_promise = NULL;
+
     if (!uv_is_closing((uv_handle_t*)&wg->async_handle)) {
         uv_close((uv_handle_t*)&wg->async_handle, NULL);
     }
@@ -513,6 +518,11 @@ int uvrpc_waitgroup_add(uvrpc_waitgroup_t* wg, int delta) {
     return UVRPC_OK;
 }
 
+/* Settle the wait group's completion promise, if one was taken and has not
+ * settled yet. Declared here because done() reaches it and the definition
+ * reads better next to get_promise(). */
+static void waitgroup_settle(uvrpc_waitgroup_t* wg);
+
 /* Signal one operation done */
 int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg) {
     if (!wg) {
@@ -522,7 +532,14 @@ int uvrpc_waitgroup_done(uvrpc_waitgroup_t* wg) {
     /* Decrement the pending operation count */
     --wg->count;
 
-    /* Note: In a real implementation, we would resolve the completion promise here */
+    /* Count reached zero: settle the completion promise, if the caller asked
+     * for one. Resolving is what makes the documented pattern work -- the
+     * promise used to be settled by uvrpc_waitgroup_get_promise() itself, at
+     * once, whatever the count was, so a callback fired while every operation
+     * was still outstanding. */
+    if (wg->count == 0) {
+        waitgroup_settle(wg);
+    }
 
     return UVRPC_OK;
 }
@@ -532,16 +549,41 @@ int uvrpc_get_count(uvrpc_waitgroup_t* wg) {
     return wg ? wg->count : 0;
 }
 
+/* Settle the completion promise, once, if there is one.
+ *
+ * The promise belongs to the caller -- uvrpc_waitgroup_init() did not allocate
+ * it and uvrpc_waitgroup_cleanup() does not free it -- so this only ever
+ * resolves, never releases. The state check is what makes it idempotent: done()
+ * can reach zero more than once across add()/done() cycles, and a promise that
+ * has already settled must not be settled again. */
+static void waitgroup_settle(uvrpc_waitgroup_t* wg) {
+    if (!wg->completion_promise) return;
+    if (wg->completion_promise->state != UVRPC_PROMISE_PENDING) return;
+
+    int result = 0;
+    uvrpc_promise_resolve(wg->completion_promise, (uint8_t*)&result,
+                          sizeof(int));
+    /* Detached: a later cycle of add()/done() must not settle a promise the
+     * caller has already been handed and may have cleaned up. */
+    wg->completion_promise = NULL;
+}
+
 /* Get completion promise (JavaScript-style) */
 int uvrpc_waitgroup_get_promise(uvrpc_waitgroup_t* wg, uvrpc_promise_t* promise) {
     if (!wg || !promise) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
-    /* In a real implementation, we would track the promise and resolve it when count reaches 0 */
-    /* For now, this is a simplified version that always resolves immediately */
-    int result = 0;
-    return uvrpc_promise_resolve(promise, (uint8_t*)&result, sizeof(int));
+
+    /* An idle wait group is already satisfied, so this settles at once -- the
+     * case the old unconditional resolve happened to get right. With work
+     * outstanding the promise stays pending until the count reaches zero, which
+     * is what uvrpc_waitgroup_done() now does. */
+    wg->completion_promise = promise;
+    if (wg->count <= 0) {
+        waitgroup_settle(wg);
+    }
+
+    return UVRPC_OK;
 }
 
 /* ============================================================================

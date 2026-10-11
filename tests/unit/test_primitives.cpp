@@ -600,3 +600,114 @@ TEST_F(Promises, WaitGroupCountsUpAndDown) {
 
     uvrpc_waitgroup_cleanup(nullptr);
 }
+
+/* The completion promise. uvrpc_waitgroup_get_promise() resolved immediately
+ * no matter what the count was, and uvrpc_waitgroup_done() never resolved
+ * anything -- both were stubs, with the source saying so ("In a real
+ * implementation, we would resolve the completion promise here").
+ *
+ * That breaks the usage the header itself documents:
+ *
+ *     uvrpc_waitgroup_add(&wg, 10);
+ *     ... 10 async operations, each calling uvrpc_waitgroup_done(&wg) ...
+ *     uvrpc_waitgroup_get_promise(&wg, p);
+ *     uvrpc_promise_then(p, on_all_done, context);
+ *
+ * Here on_all_done fires while all ten are still outstanding, which is the one
+ * thing a wait group exists to prevent. */
+TEST_F(Promises, WaitGroupPromiseWaitsForTheCountToReachZero) {
+    InitWaitGroup();
+    /* Heap, not a local: uvrpc_promise_cleanup() closes a libuv handle and
+     * that close is deferred, so the memory has to outlive the next loop
+     * iteration. uvrpc_promise_create() is how the rest of this file does it. */
+    uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+    ASSERT_NE(p, nullptr);
+
+    /* Three operations outstanding, then the promise is taken -- the order in
+     * the header's example. It must be pending until the third done(). */
+    EXPECT_EQ(uvrpc_waitgroup_add(&waitgroup, 3), UVRPC_OK);
+    EXPECT_EQ(uvrpc_waitgroup_get_promise(&waitgroup, p), UVRPC_OK);
+    EXPECT_TRUE(uvrpc_promise_is_pending(p)) << "resolved with 3 still to go";
+
+    EXPECT_EQ(uvrpc_waitgroup_done(&waitgroup), UVRPC_OK);
+    EXPECT_TRUE(uvrpc_promise_is_pending(p)) << "resolved with 2 still to go";
+
+    EXPECT_EQ(uvrpc_waitgroup_done(&waitgroup), UVRPC_OK);
+    EXPECT_TRUE(uvrpc_promise_is_pending(p)) << "resolved with 1 still to go";
+
+    EXPECT_EQ(uvrpc_waitgroup_done(&waitgroup), UVRPC_OK);
+    EXPECT_EQ(uvrpc_get_count(&waitgroup), 0);
+
+    /* Resolving is not the same as the callback having run: uvrpc_promise_*
+     * deliver through uv_async_send, so the loop has to turn over. */
+    ASSERT_TRUE(PumpUntil(&loop, [&] { return uvrpc_promise_is_fulfilled(p); }))
+        << "the promise never resolved after the count reached zero";
+
+    int32_t count_at_zero = -1;
+    uint8_t* bytes = nullptr;
+    size_t size = 0;
+    ASSERT_EQ(uvrpc_promise_get_result(p, &bytes, &size), UVRPC_OK);
+    EXPECT_EQ(size, sizeof(int32_t));
+    if (bytes && size == sizeof(int32_t)) {
+        memcpy(&count_at_zero, bytes, sizeof(int32_t));
+    }
+    EXPECT_EQ(count_at_zero, 0) << "the completion promise should report 0 left";
+
+    uvrpc_promise_destroy(p);
+}
+
+/* The other order: a promise taken when nothing is outstanding resolves at
+ * once, which is what the previous unconditional behaviour looked like -- and
+ * is correct for an empty wait group. */
+TEST_F(Promises, WaitGroupPromiseResolvesAtOnceWhenNothingIsOutstanding) {
+    InitWaitGroup();
+    uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+    ASSERT_NE(p, nullptr);
+
+    EXPECT_EQ(uvrpc_waitgroup_get_promise(&waitgroup, p), UVRPC_OK);
+    ASSERT_TRUE(PumpUntil(&loop, [&] { return uvrpc_promise_is_fulfilled(p); }))
+        << "an idle wait group never resolved its promise";
+
+    uvrpc_promise_destroy(p);
+}
+
+/* A promise taken across a fresh add()/done() cycle must not be settled a
+ * second time: the wait group detaches it once it has fired. Settling the same
+ * promise twice would be UVRPC_ERROR_INVALID_STATE at best, and at worst the
+ * caller's callback runs again for a completion it already handled. */
+TEST_F(Promises, WaitGroupPromiseIsSettledOnlyOnce) {
+    InitWaitGroup();
+    uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+    ASSERT_NE(p, nullptr);
+
+    EXPECT_EQ(uvrpc_waitgroup_add(&waitgroup, 1), UVRPC_OK);
+    EXPECT_EQ(uvrpc_waitgroup_get_promise(&waitgroup, p), UVRPC_OK);
+    EXPECT_EQ(uvrpc_waitgroup_done(&waitgroup), UVRPC_OK);
+    ASSERT_TRUE(PumpUntil(&loop, [&] { return uvrpc_promise_is_fulfilled(p); }));
+    EXPECT_EQ(uvrpc_promise_get_error_code(p), 0);
+
+    /* A second cycle. The old promise has fired and must stay exactly as it
+     * was -- not re-resolved, not rejected. */
+    EXPECT_EQ(uvrpc_waitgroup_add(&waitgroup, 1), UVRPC_OK);
+    EXPECT_EQ(uvrpc_waitgroup_done(&waitgroup), UVRPC_OK);
+    for (int i = 0; i < 10; i++) uv_run(&loop, UV_RUN_ONCE);
+
+    EXPECT_TRUE(uvrpc_promise_is_fulfilled(p));
+    EXPECT_FALSE(uvrpc_promise_is_rejected(p));
+
+    uvrpc_promise_destroy(p);
+}
+
+TEST_F(Promises, WaitGroupPromiseRejectsBadArguments) {
+    InitWaitGroup();
+    uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+    ASSERT_NE(p, nullptr);
+
+    EXPECT_EQ(uvrpc_waitgroup_get_promise(nullptr, p),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_waitgroup_get_promise(&waitgroup, nullptr),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_TRUE(uvrpc_promise_is_pending(p));
+
+    uvrpc_promise_destroy(p);
+}

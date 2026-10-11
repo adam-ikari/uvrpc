@@ -498,20 +498,19 @@ int uvrpc_semaphore_get_waiting_count(uvrpc_semaphore_t* semaphore);
 /**
  * @brief WaitGroup structure
  *
- * JavaScript-style usage:
+ * Usage:
  * @code
  * uvrpc_waitgroup_t wg;
  * uvrpc_waitgroup_init(&wg, &loop);
  * uvrpc_waitgroup_add(&wg, 10);
- * 
+ *
  * // In each async operation callback:
  * uvrpc_waitgroup_done(&wg);
- * 
- * // Get completion promise
- * uvrpc_promise_t* p = malloc(sizeof(uvrpc_promise_t));
- * uvrpc_promise_init(p, &loop);
+ *
+ * // Get completion promise, taken while the work is still outstanding
+ * uvrpc_promise_t* p = uvrpc_promise_create(&loop);
  * uvrpc_waitgroup_get_promise(&wg, p);
- * 
+ *
  * uvrpc_promise_then(p, on_all_done, context);
  * @endcode
  */
@@ -520,6 +519,13 @@ struct uvrpc_waitgroup {
     int count;                                /**< @brief Operation count */
     uv_async_t async_handle;                  /**< @brief Async handle for notification */
     int is_callback_scheduled;                /**< @brief Whether callback is scheduled */
+    /* Set by uvrpc_waitgroup_get_promise(), cleared once the count reaches
+     * zero and the promise has been settled. It belongs to the caller: init did
+     * not allocate it and cleanup does not free it. Without this field the
+     * completion promise was settled by get_promise() itself, immediately --
+     * so a wait group's callback fired while every operation was still
+     * outstanding, which is the one thing the pattern exists to prevent. */
+    uvrpc_promise_t* completion_promise;
 };
 
 /**
@@ -573,15 +579,30 @@ int uvrpc_get_count(uvrpc_waitgroup_t* wg);
 
 /**
  * @brief Get completion promise (JavaScript-style)
- * 
- * Returns a Promise that resolves when all operations are complete.
- * 
+ *
+ * Hands back a promise that resolves when the count reaches zero. If nothing
+ * is outstanding it resolves at once, which is the same thing: an idle wait
+ * group has already finished.
+ *
+ * The promise is yours -- this only ever resolves it, and does not free it.
+ * Take it once: after it fires the wait group detaches it, so a later
+ * add()/done() cycle cannot settle it a second time.
+ *
  * JavaScript-style usage:
  * @code
- * uvrpc_promise_t* p = uvrpc_waitgroup_get_promise(&wg);
+ * uvrpc_waitgroup_add(&wg, 10);
+ *
+ * // In each async operation callback:
+ * uvrpc_waitgroup_done(&wg);
+ *
+ * uvrpc_promise_t* p = uvrpc_promise_create(&loop);
+ * uvrpc_waitgroup_get_promise(&wg, p);
  * uvrpc_promise_then(p, on_all_complete, context);
  * @endcode
- * 
+ *
+ * Note the order: the promise is taken with the work outstanding, so the
+ * callback fires once, when the tenth done() lands.
+ *
  * @param wg WaitGroup instance
  * @param promise Promise to resolve when count reaches 0
  * @return UVRPC_OK on success, error code on failure
