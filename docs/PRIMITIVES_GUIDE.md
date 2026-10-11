@@ -198,10 +198,16 @@ A simplified barrier pattern that counts operations. Useful for fire-and-forget 
 
 ```c
 uvrpc_waitgroup_t wg;
-uvrpc_waitgroup_init(&wg, loop, on_all_done, NULL);
+uvrpc_waitgroup_init(&wg, loop);
 
 // Add 10 operations
 uvrpc_waitgroup_add(&wg, 10);
+
+// Take the completion promise while the operations are still outstanding.
+// It stays pending until the tenth done() lands.
+uvrpc_promise_t* done = uvrpc_promise_create(loop);
+uvrpc_waitgroup_get_promise(&wg, done);
+uvrpc_promise_then(done, on_all_done, NULL);
 
 // Start operations
 for (int i = 0; i < 10; i++) {
@@ -215,12 +221,19 @@ void on_response(uvrpc_response_t* resp, void* ctx) {
     uvrpc_waitgroup_done(wg);
 }
 
-void on_all_done(uvrpc_waitgroup_t* wg, void* user_data) {
+void on_all_done(uvrpc_promise_t* promise, void* user_data) {
     printf("All operations complete\n");
 }
 
 uvrpc_waitgroup_cleanup(&wg);
+uvrpc_promise_destroy(done);
 ```
+
+The promise is settled by `done()`, not by `get_promise()` -- an earlier
+version resolved it on the spot, so `on_all_done` fired with all ten operations
+still running. Once it has fired the wait group detaches it, so a later
+`add()`/`done()` cycle cannot settle it a second time. It belongs to the caller
+throughout: the wait group resolves it and never frees it.
 
 #### API Functions
 
@@ -522,9 +535,20 @@ See `include/uvrpc_primitives.h` for complete API documentation.
 
 ### Threading Model
 
-- Uses GCC/Clang atomic builtins (`__sync_*`)
-- Mutex-protected waiter queue for semaphore
-- Lock-free for barrier and waitgroup counters
+- Single-threaded by design: everything runs on the libuv loop thread, so
+  there are no atomics and no locks anywhere in this file -- not in the
+  semaphore's waiter queue and not in the waitgroup's counter, which is a
+  plain `int`.
+- The semaphore's waiters are a singly-linked list walked from the loop
+  thread only. Nothing else can be looking at it at the same time, which is
+  what makes a mutex unnecessary rather than an omission.
+- The waitgroup's `count` is likewise a plain counter: `add()` and `done()`
+  both run on the loop thread.
+
+An earlier version of this section described atomic builtins, a mutex-protected
+waiter queue and lock-free counters. None of that exists in the code, and the
+project's first constraint is the opposite: zero threads, zero locks, zero
+mutable globals.
 
 ### libuv Integration
 

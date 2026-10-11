@@ -801,6 +801,12 @@ int uvrpc_async_retry(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
     return retry_loop(ctx, client, method, params, params_size, result,
                       max_retries, retry_constant_delay, &retry_delay_ms);
 }
+
+/* Single-call timeout for one awaited call (Promise.timeout).
+ *
+ * The context has to be inside a running UVRPC_ASYNC block, the same
+ * requirement uvrpc_client_call_async() has -- this arms the block's deadline
+ * and then makes the call. */
 int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                          const char* method, const uint8_t* params,
                          size_t params_size, uvrpc_async_result_t** result,
@@ -808,7 +814,17 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
     if (!ctx || !client || !method || !result) {
         return UVRPC_ERROR_INVALID_PARAM;
     }
-    
+
+    /* The context has to be in a running block. uvrpc_client_call_async()
+     * rejects the call otherwise, and this function used to arm the deadline
+     * first and then fail with a bare UVRPC_ERROR -- so the caller got an
+     * unrelated error code and a timer running for a call that never happened.
+     * uvrpc_async_retry() checks this and says INVALID_STATE; matching it is
+     * what makes the two look like one API. */
+    if (!ctx->is_running) {
+        return UVRPC_ERROR_INVALID_STATE;
+    }
+
     /* Setup timeout. Same handle uvrpc_async_exec() arms: re-arm it rather than
      * uv_timer_init()ing it again, which would initialise live memory a second
      * time. */

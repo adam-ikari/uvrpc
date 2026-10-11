@@ -243,6 +243,12 @@ int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* clien
 
 /**
  * Execute async call with timeout (Promise.timeout)
+ *
+ * Requires the context to be inside a running block -- call
+ * uvrpc_async_exec() first, exactly as for uvrpc_client_call_async(). This
+ * arms that block's deadline and then makes the call. Outside a running block
+ * it returns UVRPC_ERROR_INVALID_STATE without arming anything.
+ *
  * @param ctx async context
  * @param client RPC client
  * @param method method name
@@ -250,7 +256,8 @@ int uvrpc_async_retry_with_backoff(uvrpc_async_ctx_t* ctx, uvrpc_client_t* clien
  * @param params_size parameter size
  * @param result output result pointer
  * @param timeout_ms timeout in milliseconds
- * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout
+ * @return UVRPC_OK on success, UVRPC_ERROR_TIMEOUT on timeout,
+ *         UVRPC_ERROR_INVALID_STATE outside a running block
  */
 int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
                          const char* method, const uint8_t* params,

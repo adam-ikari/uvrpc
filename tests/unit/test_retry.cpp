@@ -26,6 +26,7 @@
 #include <uvrpc_async.h>
 #include "uvrpc_primitives.h"
 
+#include <cstring>
 #include <unistd.h>
 
 /* tests/free_port.h -- a TCP port the kernel picks, so a failure that has
@@ -56,6 +57,10 @@ protected:
     int port = 0;
     int served = 0;
     int failures_to_send = 0;
+    /* When set the handler returns without answering at all. That is not the
+     * same as failures_to_send, which sends an error frame -- an error frame is
+     * a complete answer and ends the call, so it can never produce a timeout. */
+    bool silent = false;
 
     void SetUp() override {
         uv_loop_init(&loop);
@@ -80,6 +85,10 @@ protected:
     static void handler(uvrpc_request_t* req, void* ctx) {
         auto* self = static_cast<Endpoint*>(ctx);
         self->served++;
+        /* Nothing to send. uvrpc_request_free() is a no-op -- the request is a
+         * stack local in the dispatch function -- so returning here simply
+         * leaves the call unanswered. */
+        if (self->silent) return;
         if (self->served <= self->failures_to_send) {
             /* An error frame, not a successful result carrying a bad status:
              * uvrpc_request_send_response() ignores its status argument
@@ -288,5 +297,102 @@ TEST_F(Endpoint, AwaitEndsWhenTheLoopHasNothingLeft) {
     EXPECT_TRUE(status == UVRPC_OK || status == UVRPC_ERROR_TIMEOUT);
 
     if (result) uvrpc_async_result_free(result);
+    uvrpc_async_ctx_free(ctx);
+}
+
+/* ---------------------------------------------------- the timeout helper */
+
+/* uvrpc_async_timeout() armed the block's deadline and then called
+ * uvrpc_client_call_async(), which refuses to run outside a running block --
+ * and this function never checked, so it failed with a bare UVRPC_ERROR after
+ * arming a timer for a call that never happened. uvrpc_async_retry() checks
+ * the same precondition and says INVALID_STATE; the two looked like one API
+ * and behaved like two. */
+TEST_F(Endpoint, TimeoutOutsideABlockReportsTheStateNotAGenericError) {
+    BringUp();
+
+    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(&loop);
+    ASSERT_NE(ctx, nullptr);
+
+    uvrpc_async_result_t* result = nullptr;
+    EXPECT_EQ(uvrpc_async_timeout(ctx, client, "echo", (const uint8_t*)"x", 1,
+                                  &result, 2000),
+              UVRPC_ERROR_INVALID_STATE);
+    /* Nothing armed, nothing served: the deadline must not have been started
+     * for a call the context would then refuse. */
+    EXPECT_EQ(served, 0);
+    EXPECT_EQ(result, nullptr);
+
+    uvrpc_async_ctx_free(ctx);
+}
+
+TEST_F(Endpoint, TimeoutInsideABlockReturnsTheAnswer) {
+    BringUp();
+
+    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(&loop);
+    ASSERT_EQ(uvrpc_async_exec(ctx, 5000), UVRPC_OK);
+
+    uvrpc_async_result_t* result = nullptr;
+    EXPECT_EQ(uvrpc_async_timeout(ctx, client, "echo", (const uint8_t*)"ping", 4,
+                                  &result, 2000),
+              UVRPC_OK);
+    EXPECT_EQ(served, 1);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->status, UVRPC_OK);
+    EXPECT_EQ(result->result_size, 4u);
+    if (result->result && result->result_size == 4) {
+        EXPECT_EQ(memcmp(result->result, "pong", 4), 0);
+    }
+
+    uvrpc_async_result_free(result);
+    uvrpc_async_ctx_free(ctx);
+}
+
+/* A deadline tighter than the service can meet has to report a timeout, not
+ * hand back an answer. The handler is silent, so nothing will settle the call
+ * but the deadline.
+ *
+ * The obvious alternative does not work and is worth recording: making the
+ * handler send an error frame (failures_to_send) is not a timeout, it is an
+ * answer -- an error frame is a complete response and ends the call with
+ * UVRPC_OK and a rejected result. That is what the first draft of this test
+ * asserted, and it failed because the call succeeded. */
+TEST_F(Endpoint, TimeoutInsideABlockGivesUpOnTheDeadline) {
+    BringUp();
+    silent = true;  /* never answers */
+
+    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(&loop);
+    ASSERT_EQ(uvrpc_async_exec(ctx, 5000), UVRPC_OK);
+
+    uvrpc_async_result_t* result = nullptr;
+    EXPECT_EQ(uvrpc_async_timeout(ctx, client, "echo", (const uint8_t*)"x", 1,
+                                  &result, 100),
+              UVRPC_ERROR_TIMEOUT);
+    EXPECT_EQ(result, nullptr);
+    EXPECT_EQ(served, 1) << "the handler should have run, just not answered";
+
+    uvrpc_async_ctx_free(ctx);
+}
+
+TEST_F(Endpoint, TimeoutRejectsBadArguments) {
+    BringUp();
+
+    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(&loop);
+    ASSERT_EQ(uvrpc_async_exec(ctx, 5000), UVRPC_OK);
+
+    uvrpc_async_result_t* result = nullptr;
+    EXPECT_EQ(uvrpc_async_timeout(nullptr, client, "echo", (const uint8_t*)"x",
+                                  1, &result, 100),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_async_timeout(ctx, nullptr, "echo", (const uint8_t*)"x", 1,
+                                  &result, 100),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_async_timeout(ctx, client, nullptr, (const uint8_t*)"x", 1,
+                                  &result, 100),
+              UVRPC_ERROR_INVALID_PARAM);
+    EXPECT_EQ(uvrpc_async_timeout(ctx, client, "echo", (const uint8_t*)"x", 1,
+                                  nullptr, 100),
+              UVRPC_ERROR_INVALID_PARAM);
+
     uvrpc_async_ctx_free(ctx);
 }

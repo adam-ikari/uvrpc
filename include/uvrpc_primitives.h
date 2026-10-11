@@ -5,7 +5,7 @@
  * Provides async programming patterns for concurrent control in UVRPC:
  * - Promise/Future pattern for async operation results
  * - Semaphore for limiting concurrent operations
- * - Barrier for waiting on multiple async operations
+ * - WaitGroup for waiting on multiple async operations
  * 
  * Design Principles:
  * - Zero-allocation where possible (stack-allocated structures)
@@ -46,27 +46,35 @@
  * }
  * @endcode
  * 
- * @subsection barrier Barrier Example
+ * @subsection waitgroup WaitGroup Example
  * @code
  * // Wait for 5 RPC calls to complete
- * uvrpc_barrier_t barrier;
- * uvrpc_barrier_init(&barrier, loop, 5, on_all_done, user_data);
- * 
+ * uvrpc_waitgroup_t wg;
+ * uvrpc_waitgroup_init(&wg, loop);
+ * uvrpc_waitgroup_add(&wg, 5);
+ *
+ * // Taken while the calls are still outstanding, so it settles once
+ * uvrpc_promise_t* done = uvrpc_promise_create(loop);
+ * uvrpc_waitgroup_get_promise(&wg, done);
+ * uvrpc_promise_then(done, on_all_done, user_data);
+ *
  * for (int i = 0; i < 5; i++) {
- *     uvrpc_client_call(client, methods[i], params[i], sizes[i], on_barrier_callback, &barrier);
+ *     uvrpc_client_call(client, methods[i], params[i], sizes[i], on_one_done, &wg);
  * }
- * 
- * void on_barrier_callback(uvrpc_response_t* resp, void* ctx) {
- *     uvrpc_barrier_t* barrier = (uvrpc_barrier_t*)ctx;
+ *
+ * void on_one_done(uvrpc_response_t* resp, void* ctx) {
+ *     uvrpc_waitgroup_t* wg = (uvrpc_waitgroup_t*)ctx;
  *     // Process individual response
- *     uvrpc_barrier_wait(barrier, resp, NULL);
+ *     uvrpc_waitgroup_done(wg);   // the fifth one settles `done`
  * }
- * 
- * void on_all_done(uvrpc_barrier_t* barrier, void* user_data) {
+ *
+ * void on_all_done(uvrpc_promise_t* promise, void* user_data) {
  *     // All 5 calls completed
- *     int total_errors = uvrpc_barrier_get_error_count(barrier);
- *     // Process results
  * }
+ *
+ * // Afterwards:
+ * uvrpc_waitgroup_cleanup(&wg);
+ * uvrpc_promise_destroy(done);
  * @endcode
  * 
  * @subsection promise Promise Example
