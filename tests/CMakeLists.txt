@@ -583,6 +583,51 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
+# A server that never managed to listen still has to be freeable. tcp_listen()
+# and ipc_listen() queue a close on a handle inside their own struct and then
+# free that struct, on the error paths only -- realloc, bind, listen, accept and
+# read_start failures, none of which an ordinary test can reach. Two of them are
+# provable without fault injection (a port already held, a socket path in a
+# directory that does not exist), and this covers both. Plain entry documents
+# the contract; memcheck entry is the gate.
+add_executable(listen_failure
+    acceptance/listen_failure.c
+)
+
+target_link_libraries(listen_failure
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(listen_failure
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME listen_failure COMMAND listen_failure)
+set_tests_properties(listen_failure PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME listen_failure_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:listen_failure>
+    )
+    set_tests_properties(listen_failure_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

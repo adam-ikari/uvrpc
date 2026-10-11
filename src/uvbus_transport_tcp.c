@@ -309,8 +309,10 @@ static void on_server_connection(uv_stream_t* server, int status) {
                 sizeof(uvbus_tcp_client_t*) * new_capacity
             );
             if (!new_clients) {
-                uv_close((uv_handle_t*)&client->tcp_handle, NULL);
-                uvrpc_free(client);
+                /* The handle is inside this block, so the block goes with the
+                 * close. ref_init left ref_count at 1 and on_client_close is
+                 * what releases it. */
+                uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
                 return;
             }
             tcp_server->clients = new_clients;
@@ -327,12 +329,10 @@ static void on_server_connection(uv_stream_t* server, int status) {
         if (uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read) != 0) {
             /* Failed to start reading, remove from list and close */
             tcp_server->client_count--;
-            uv_close((uv_handle_t*)&client->tcp_handle, NULL);
-            uvrpc_free(client);
+            uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
         }
     } else {
-        uv_close((uv_handle_t*)&client->tcp_handle, NULL);
-        uvrpc_free(client);
+        uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
     }
 }
 
@@ -511,19 +511,23 @@ static int tcp_listen(void* impl_ptr, const char* address) {
     uv_ip4_addr(host, port, &addr);
     
     if (uv_tcp_bind(&server->listen_handle, (const struct sockaddr*)&addr, 0) != 0) {
-        uv_close((uv_handle_t*)&server->listen_handle, NULL);
-        uvrpc_free(server->host);
-        uvrpc_free(server->clients);
-        uvrpc_free(server);
+        /* The listen handle sits inside this block, and uv_close() only queues,
+         * so the block has to go with the callback rather than now. The repoint
+         * is the same one tcp_disconnect makes below and for the same reason:
+         * listen_handle.data is the transport so on_server_connection() can read
+         * it, but bind has failed, so nothing is listening and that callback can
+         * no longer fire -- while on_server_close() expects the server, and it
+         * frees host, clients and the block together. */
+        server->listen_handle.data = server;
+        uv_close((uv_handle_t*)&server->listen_handle, on_server_close);
         return UVBUS_ERROR_IO;
     }
     
     /* Listen */
     if (uv_listen((uv_stream_t*)&server->listen_handle, UVBUS_BACKLOG, on_server_connection) != 0) {
-        uv_close((uv_handle_t*)&server->listen_handle, NULL);
-        uvrpc_free(server->host);
-        uvrpc_free(server->clients);
-        uvrpc_free(server);
+        /* uv_listen() failed, so the connection callback was never armed. */
+        server->listen_handle.data = server;
+        uv_close((uv_handle_t*)&server->listen_handle, on_server_close);
         return UVBUS_ERROR_IO;
     }
     
