@@ -572,8 +572,15 @@ static int udp_connect(void* impl_ptr, const char* address) {
                 memcpy(reg_data, "UVRPC_REG", 9);
                 uv_buf_t reg_buf = uv_buf_init(reg_data, 9);
                 reg_req->data = reg_data;
-                uv_udp_send(reg_req, &client->udp_handle, &reg_buf, 1,
-                            (const struct sockaddr*)&client->server_addr, on_send);
+                /* on_send frees both, but libuv only calls it for a request it
+                 * queued -- so a synchronous failure here leaks them both,
+                 * silently, in a path whose whole purpose is best-effort. */
+                if (uv_udp_send(reg_req, &client->udp_handle, &reg_buf, 1,
+                                (const struct sockaddr*)&client->server_addr,
+                                on_send) != 0) {
+                    uvrpc_free(reg_data);
+                    uvrpc_free(reg_req);
+                }
             } else {
                 uvrpc_free(reg_req);
             }

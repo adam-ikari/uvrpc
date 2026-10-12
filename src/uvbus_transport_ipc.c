@@ -642,7 +642,13 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
             uv_buf_t buf = uv_buf_init((char*)data_copy, total_size);
             req->data = data_copy;
 
-            uv_write(req, (uv_stream_t*)&server->clients[i]->pipe_handle, &buf, 1, on_write);
+            /* Same as the TCP broadcast: a request libuv declines to queue
+             * never reaches on_write, so nothing would free these. */
+            if (uv_write(req, (uv_stream_t*)&server->clients[i]->pipe_handle,
+                         &buf, 1, on_write) != 0) {
+                uvrpc_free(data_copy);
+                uvrpc_free(req);
+            }
         }
     } else {
         uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)transport->impl.ipc_client;

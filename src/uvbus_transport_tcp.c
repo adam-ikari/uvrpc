@@ -787,7 +787,15 @@ static int tcp_send(void* impl_ptr, const uint8_t* data, size_t size) {
             uv_buf_t buf = uv_buf_init((char*)data_copy, total_size);
             req->data = data_copy;
 
-            uv_write(req, (uv_stream_t*)&server->clients[i]->tcp_handle, &buf, 1, on_write);
+            /* libuv only calls on_write for a request it actually queued, so
+             * a synchronous failure here would never free either allocation
+             * -- and this loop has no caller to report to. Release them and
+             * carry on with the rest of the peers. */
+            if (uv_write(req, (uv_stream_t*)&server->clients[i]->tcp_handle,
+                         &buf, 1, on_write) != 0) {
+                uvrpc_free(data_copy);
+                uvrpc_free(req);
+            }
         }
     } else {
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
