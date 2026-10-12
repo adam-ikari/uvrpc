@@ -11,6 +11,7 @@
  */
 
 #include "../include/uvbus.h"
+#include "uvbus_internal.h"
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 #include <stdlib.h>
@@ -95,6 +96,17 @@ void uvbus_config_set_error_callback(uvbus_config_t* config, uvbus_error_callbac
         config->error_cb = error_cb;
         config->callback_ctx = ctx;
     }
+}
+
+
+void uvbus_set_conn_close_handler(uvbus_t* bus,
+                                  void (*handler)(void* client_ctx, void* server_ctx),
+                                  void* server_ctx) {
+    if (!bus || !bus->transport) {
+        return;
+    }
+    bus->transport->conn_close_cb = handler;
+    bus->transport->conn_close_ctx = server_ctx;
 }
 
 

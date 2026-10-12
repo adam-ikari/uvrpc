@@ -12,6 +12,7 @@
 
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
+#include "uvbus_internal.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include "rpc_builder.h"
@@ -55,7 +56,41 @@ struct uvrpc_server {
     uint64_t total_responses;
     };
     
-    /* Server receive callback */
+/*
+ * One accepted connection went away. Take it out of the tracking table, so that
+ * the count is a count and not a high-water mark.
+ *
+ * Compacting rather than leaving a hole: every loop over client_ctxs[] assumes
+ * the first current_clients entries are live, and the scan below that decides
+ * whether a request comes from a client already tracked is one of them -- a
+ * hole would be read as an unknown pointer, and a client returning after a
+ * reconnect would look new.
+ *
+ * The pointer is only ever compared, never dereferenced: it belongs to the
+ * transport, which has already closed it or is about to free it.
+ */
+static void server_conn_closed(void* client_ctx, void* server_ctx) {
+    uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
+
+    if (!server || !client_ctx) {
+        return;
+    }
+
+    for (int i = 0; i < server->current_clients; i++) {
+        if (server->client_ctxs[i] != client_ctx) {
+            continue;
+        }
+
+        memmove(&server->client_ctxs[i],
+                &server->client_ctxs[i + 1],
+                (size_t)(server->current_clients - i - 1) * sizeof(void*));
+        server->current_clients--;
+        UVRPC_LOG("Client disconnected, total clients: %d", server->current_clients);
+        return;
+    }
+}
+
+/* Server receive callback */
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
 
@@ -299,6 +334,12 @@ uvrpc_server_t* uvrpc_server_create(uvrpc_config_t* config) {
         return NULL;
     }
     
+    /* Tell the transport to report the connections it loses. Without this the
+     * tracking table above only ever grows, and max_clients -- enforced against
+     * that same number -- ends up rejecting every client after the first one
+     * that has come and gone. */
+    uvbus_set_conn_close_handler(server->uvbus, server_conn_closed, server);
+
     uvbus_config_free(bus_config);
     
     return server;

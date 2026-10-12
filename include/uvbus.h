@@ -173,6 +173,15 @@ struct uvbus_transport {
     void* recv_ctx;       /**< Context for recv_cb */
     void* callback_ctx;   /**< Context for connect_cb, close_cb, error_cb */
 
+    /* Notified when an accepted connection goes away, carrying the
+     * connection's identity. Deliberately outside the public config:
+     * uvbus_close_callback_t takes a single void*, which cannot say *which*
+     * connection ended, and the layer above tracks clients by identity.
+     * Set through uvbus_set_conn_close_handler() in src/uvbus_internal.h, and
+     * fired before the connection's block is released. */
+    void (*conn_close_cb)(void* client_ctx, void* server_ctx);
+    void* conn_close_ctx;
+
     /* Flags */
     int is_server;
     int is_connected;

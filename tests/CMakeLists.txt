@@ -628,6 +628,52 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
+# A client that disconnects has to stop counting. uvrpc_server_get_client_count()
+# was a high-water mark, and the max_clients gate rides on the same number, so a
+# server started with max_clients = 1 took one client for the rest of its life --
+# every later client was refused with UVRPC_ERROR_MAX_CLIENTS while nothing else
+# was connected. Both socket transports read a closed connection, reported an
+# error, and did nothing else: no close, no removal from the client table, no
+# word to the layer above. Three rounds of connect/call/disconnect on TCP and
+# IPC; the first round passes either way, which is the point.
+add_executable(client_churn
+    acceptance/client_churn.c
+)
+
+target_link_libraries(client_churn
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(client_churn
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME client_churn COMMAND client_churn)
+set_tests_properties(client_churn PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME client_churn_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:client_churn>
+    )
+    set_tests_properties(client_churn_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

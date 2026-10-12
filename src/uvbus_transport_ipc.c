@@ -148,6 +148,45 @@ static int parse_ipc_address(const char* address, char** socket_path) {
     return 0;
 }
 
+/*
+ * An accepted IPC connection is going away: report it, then take it out of the
+ * server's table before its block is released.
+ *
+ * Same shape and same reasoning as tcp_forget_client. on_client_read holds the
+ * transport, so this is the only safe moment to reach the server through
+ * parent_transport -- by the time on_ipc_client_closed runs, ipc_free may have
+ * released it -- and the table has to be pruned before the block goes, or the
+ * next broadcast dereferences memory nobody owns. Compact rather than leaving a
+ * hole: the broadcast and shutdown loops index clients[] directly.
+ */
+static void ipc_forget_client(uvbus_transport_t* transport, uvbus_ipc_client_t* client) {
+    uvbus_ipc_server_t* server;
+
+    if (transport && transport->conn_close_cb) {
+        transport->conn_close_cb(client, transport->conn_close_ctx);
+    }
+
+    if (!transport || !transport->is_server) {
+        return;
+    }
+
+    server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
+    if (!server || !server->clients) {
+        return;
+    }
+
+    for (int i = 0; i < server->client_count; i++) {
+        if (server->clients[i] != client) {
+            continue;
+        }
+        memmove(&server->clients[i],
+                &server->clients[i + 1],
+                (size_t)(server->client_count - i - 1) * sizeof(uvbus_ipc_client_t*));
+        server->client_count--;
+        return;
+    }
+}
+
 /* Client read callback */
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
@@ -172,6 +211,18 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
             }
         }
         uvrpc_free(buf->base);
+
+        /* Server side only, and for the same reason as on the TCP transport:
+         * on_client_read also serves the client's own connection, whose block
+         * belongs to uvrpc_client and is closed and released by it. */
+        if (transport->is_server) {
+            /* The peer is gone. Reporting it was all this used to do -- no
+             * close, no removal from the table, no word to the layer above --
+             * so the connection stayed counted, and stayed counted for good. */
+            ipc_forget_client(transport, client);
+            client->parent_transport = NULL;
+            uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
+        }
         return;
     }
 

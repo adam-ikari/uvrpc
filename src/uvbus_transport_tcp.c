@@ -109,6 +109,54 @@ static int parse_tcp_address(const char* address, char** host, int* port) {
     return 0;
 }
 
+/*
+ * An accepted connection is going away: take it out of the server's table and
+ * say so, before its block is released.
+ *
+ * Both halves happen here rather than in on_client_close, and the order
+ * matters. This is the one moment at which the transport is provably alive --
+ * on_client_read is holding it -- so it is the only safe place to reach the
+ * server through parent_transport; by the time the close actually runs, tcp_free
+ * may already have released that. And the table has to be pruned before the
+ * block goes, or the next broadcast walks a pointer to memory nobody owns.
+ *
+ * Compact rather than leaving a hole: several loops over clients[] index it
+ * directly and the plain broadcast path dereferences clients[i] with no check
+ * at all, so keeping the first client_count entries dense keeps all of them
+ * correct without any of them having to change.
+ *
+ * The notification is kept separate from the table on purpose. What the layer
+ * above needs is not "somebody left" but *which* of the connections it recorded
+ * has ended, and it can only tell that by identity.
+ */
+static void tcp_forget_client(uvbus_transport_t* transport, uvbus_tcp_client_t* client) {
+    uvbus_tcp_server_t* server;
+
+    if (transport && transport->conn_close_cb) {
+        transport->conn_close_cb(client, transport->conn_close_ctx);
+    }
+
+    if (!transport || !transport->is_server) {
+        return;
+    }
+
+    server = (uvbus_tcp_server_t*)transport->impl.tcp_server;
+    if (!server || !server->clients) {
+        return;
+    }
+
+    for (int i = 0; i < server->client_count; i++) {
+        if (server->clients[i] != client) {
+            continue;
+        }
+        memmove(&server->clients[i],
+                &server->clients[i + 1],
+                (size_t)(server->client_count - i - 1) * sizeof(uvbus_tcp_client_t*));
+        server->client_count--;
+        return;
+    }
+}
+
 /* Client read callback */
 static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
     if (!stream) return;
@@ -144,6 +192,21 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
             }
         }
         uvrpc_free(buf->base);
+
+        /* Server side only. on_client_read also serves the client's own
+         * connection to a server, and there the block belongs to uvrpc_client,
+         * which will close it and free it itself -- closing it here would put
+         * that pointer in front of memory already given back. */
+        if (transport->is_server) {
+            /* The peer is gone. Reporting it was all this used to do -- no
+             * close, no removal, no word to the layer above -- which left the
+             * connection's block (256 KB; the read buffer lives inside it)
+             * sitting in the server's table until teardown, and left the
+             * server's client count permanently at least one too high. */
+            tcp_forget_client(transport, client);
+            client->parent_transport = NULL;
+            uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
+        }
         return;
     }
 
