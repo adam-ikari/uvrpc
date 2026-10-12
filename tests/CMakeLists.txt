@@ -703,6 +703,33 @@ set_tests_properties(udp_client_identity PROPERTIES
     TIMEOUT 60
 )
 
+# uvbus_send_to() passes its target straight down, so each transport owns the
+# check that it is usable. Four of the five made it; SAMELOOP dereferenced the
+# target instead. Pinned on all five at once, so a transport added later cannot
+# quietly drop it.
+add_executable(send_to_target_guard
+    acceptance/send_to_target_guard.c
+)
+
+target_link_libraries(send_to_target_guard
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(send_to_target_guard
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME send_to_target_guard COMMAND send_to_target_guard)
+set_tests_properties(send_to_target_guard PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

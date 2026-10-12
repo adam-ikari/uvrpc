@@ -345,11 +345,22 @@ __attribute__((hot)) int sameloop_send(void* impl_ptr, const uint8_t* data, size
 __attribute__((hot, always_inline)) static inline int sameloop_send_to_inline(void* impl_ptr, const uint8_t* data, size_t size, void* target) {
     (void)impl_ptr;  /* Client context (target) carries everything needed */
     sameloop_client_t* client = (sameloop_client_t*)target;
-    
+
+    /* Check the target before touching it. uvbus_send_to() hands its client
+     * argument down to the transport untouched, so it is this slot's job --
+     * and every other transport's send_to makes the same check (tcp, ipc and
+     * udp reject an empty target, inproc additionally rejects a client that
+     * has gone inactive). This one used to go straight to a prefetch of the
+     * target's fields, so a caller with nothing to send to dereferenced NULL
+     * instead of getting an error back. */
+    if (!client || !client->recv_cb) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     /* Prefetch callback pointers */
     __builtin_prefetch(&client->recv_cb);
     __builtin_prefetch(&client->callback_ctx);
-    
+
     /* Direct callback - minimize overhead */
     client->recv_cb(data, size, client->callback_ctx, client->callback_ctx);
 
