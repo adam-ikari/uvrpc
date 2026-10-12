@@ -449,21 +449,37 @@ static void on_client_connect(uv_connect_t* req, int status) {
     int last_ref = (ref_dec(&transport->ref_count) == 0);
 
     if (status == 0) {
-        transport->is_connected = 1;
-
-        /* Start reading */
+        /* Start reading before claiming the connection works. uv_read_start
+         * can fail -- running out of descriptors under load is one way -- and
+         * a connection that will never read is not a connection: the caller
+         * would be handed a client that reports itself connected and answers
+         * nothing, with no way to tell that apart from a slow server. Report
+         * it as a failed connect instead, and only mark the transport
+         * connected once reading has actually started.
+         *
+         * Not an early return: the last_ref release below still has to run. */
         uvbus_tcp_client_t* client = (uvbus_tcp_client_t*)transport->impl.tcp_client;
-        if (client) {
-            uv_read_start((uv_stream_t*)&client->tcp_handle, on_client_alloc, on_client_read);
-        }
+        int read_err = client
+            ? uv_read_start((uv_stream_t*)&client->tcp_handle,
+                            on_client_alloc, on_client_read)
+            : UV_ENOMEM;
 
-        /* Set bus is_active flag - this is critical for sending to work */
-        if (transport->parent_bus) {
-            transport->parent_bus->is_active = 1;
-        }
+        if (read_err != 0) {
+            UVBUS_LOG_ERROR("Failed to start reading: %s", uv_strerror(read_err));
+            if (transport->connect_cb) {
+                transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
+            }
+        } else {
+            transport->is_connected = 1;
 
-        if (transport->connect_cb) {
-            transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+            /* Set bus is_active flag - this is critical for sending to work */
+            if (transport->parent_bus) {
+                transport->parent_bus->is_active = 1;
+            }
+
+            if (transport->connect_cb) {
+                transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+            }
         }
     } else {
         UVBUS_LOG_ERROR("Connection failed: %s", uv_strerror(status));

@@ -327,22 +327,38 @@ static void on_client_connect(uv_connect_t* req, int status) {
     fflush(stderr);
 
     if (status == 0) {
-        transport->is_connected = 1;
-
-        /* Set bus as active */
-        if (transport->parent_bus) {
-            transport->parent_bus->is_active = 1;
-        }
-
-        /* Start reading */
+        /* Start reading before claiming the connection works -- and note that
+         * client used to be dereferenced with no NULL check, unlike TCP's
+         * equivalent. A failed uv_read_start leaves a connection that will
+         * never read: the caller would be handed a client reporting itself
+         * connected that answers nothing. Report it as a failed connect
+         * instead, and only mark the transport connected once reading has
+         * actually started. Not an early return: last_ref still has to run. */
         uvbus_ipc_client_t* client = (uvbus_ipc_client_t*)transport->impl.ipc_client;
-        uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
+        int read_err = client
+            ? uv_read_start((uv_stream_t*)&client->pipe_handle,
+                            on_client_alloc, on_client_read)
+            : UV_ENOMEM;
 
-        if (transport->connect_cb) {
-            UVBUS_LOG("Calling connect_cb with UVBUS_OK");
-            transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+        if (read_err != 0) {
+            UVBUS_LOG_ERROR("Failed to start reading: %s", uv_strerror(read_err));
+            if (transport->connect_cb) {
+                transport->connect_cb(UVBUS_ERROR_IO, transport->callback_ctx);
+            }
         } else {
-            UVBUS_LOG("ERROR: connect_cb is NULL!");
+            transport->is_connected = 1;
+
+            /* Set bus as active */
+            if (transport->parent_bus) {
+                transport->parent_bus->is_active = 1;
+            }
+
+            if (transport->connect_cb) {
+                UVBUS_LOG("Calling connect_cb with UVBUS_OK");
+                transport->connect_cb(UVBUS_OK, transport->callback_ctx);
+            } else {
+                UVBUS_LOG("ERROR: connect_cb is NULL!");
+            }
         }
     } else {
         UVBUS_LOG("ERROR: IPC connection failed with status=%d (%s)", status, uv_strerror(status));
@@ -399,7 +415,14 @@ static void on_server_connection(uv_stream_t* server, int status) {
         client->parent_transport = transport;
 
         /* Start reading */
-        uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read);
+        if (uv_read_start((uv_stream_t*)&client->pipe_handle, on_client_alloc, on_client_read) != 0) {
+            /* Failed to start reading, remove from list and close. The TCP
+             * transport already did this; IPC left the entry in the table with
+             * a handle that would never read, so the peer sat in the list
+             * counted and unreachable. */
+            ipc_server->client_count--;
+            uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
+        }
     } else {
         /* uv_close() only queues: this block goes with the callback. */
         uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
