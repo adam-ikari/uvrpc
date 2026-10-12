@@ -51,7 +51,10 @@ static void check(int ok, const char* what) {
  * transport-specific: a client handle on TCP/IPC/INPROC/SAMELOOP, a sockaddr*
  * on UDP. The framework's own path is self-consistent because each transport
  * hands back what its own send_to expects, but application code that reaches
- * for the field directly gets a differently-typed pointer per transport. This
+ * for the field directly gets a differently-typed pointer per transport. On
+ * UDP it is the server's own copy of the peer address (a sockaddr_storage in
+ * the transport's client table), not libuv's receive buffer -- see
+ * udp_client_identity.c for why that distinction is load-bearing. This
  * scenario therefore also documents the contract it relies on. */
 static void echo_handler(uvrpc_request_t* req, void* ctx) {
     (void)ctx;

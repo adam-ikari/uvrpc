@@ -107,20 +107,41 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
     }
 
     if (nread > 0) {
-        /* Record client address for broadcast (if not already recorded) */
+        /* Record client address for broadcast (if not already recorded), and
+         * keep the slot index. The layer above is handed a pointer that it
+         * stores in its client table, compares on every later datagram, and
+         * sends replies to -- so what it is handed has to be something that
+         * outlives this callback and is unique per peer.
+         *
+         * It cannot be addr. libuv builds the peer address in a struct
+         * sockaddr_storage local to uv__udp_recvmsg() (deps/libuv/src/unix/
+         * udp.c) and passes its address down, so that storage dies with the
+         * stack frame. A handler that replies synchronously still finds it
+         * intact, which is why a UDP server appears to work; but every peer
+         * from every datagram then resolves to the same slot, compares equal
+         * to the first one recorded, and the server counts one client no
+         * matter how many are talking. The table copy already made for
+         * broadcast is stable and per-peer, so use that. */
         uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
-        int found = 0;
+        int peer_idx = -1;
         for (int i = 0; i < server->num_clients; i++) {
             if (memcmp(&server->client_addrs[i], addr, sizeof(struct sockaddr_storage)) == 0) {
-                found = 1;
+                peer_idx = i;
                 break;
             }
         }
         
-        if (!found && server->num_clients < server->max_clients) {
+        if (peer_idx < 0 && server->num_clients < server->max_clients) {
+            peer_idx = server->num_clients;
             memcpy(&server->client_addrs[server->num_clients], addr, sizeof(struct sockaddr_storage));
             server->num_clients++;
         }
+        
+        /* Table full: this peer has no slot, so there is nothing stable to
+         * hand out. Passing addr instead would put a pointer to a dead frame
+         * into the layer above's table, so pass NULL and let the reply fail
+         * cleanly. */
+        void* client_ctx = (peer_idx >= 0) ? (void*)&server->client_addrs[peer_idx] : NULL;
         
         /* Skip registration messages (UVRPC_REG magic) */
         if (nread >= 9 && memcmp(buf->base, "UVRPC_REG", 9) == 0) {
@@ -154,12 +175,13 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         }
         
         if (transport->recv_cb) {
-            /* Pass frame data (skip 4-byte length prefix) and client address as the
-             * client_ctx (3rd arg). The server_ctx (4th arg) must be recv_ctx —
-             * which holds the uvrpc_server_t* — so the server recv callback can
-             * dispatch to the registered handler. (callback_ctx is for
-             * connect/error callbacks and is NULL for the server.) */
-            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, (void*)addr, transport->recv_ctx);
+            /* Pass frame data (skip 4-byte length prefix) and the peer's slot
+             * as the client_ctx (3rd arg) -- stable, per-peer, and owned by
+             * the server, unlike addr. The server_ctx (4th arg) must be
+             * recv_ctx — which holds the uvrpc_server_t* — so the server recv
+             * callback can dispatch to the registered handler. (callback_ctx
+             * is for connect/error callbacks and is NULL for the server.) */
+            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, client_ctx, transport->recv_ctx);
         }
     }
 

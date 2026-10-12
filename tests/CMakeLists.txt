@@ -674,6 +674,35 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
+# A UDP server has to tell its clients apart. uvbus's UDP transport hands the
+# RPC layer the address it just read the datagram from, which libuv builds in a
+# stack local to uv__udp_recvmsg() -- so the pointer dies with that frame, and
+# every peer from every datagram compares equal to the first one recorded. The
+# count is public API and max_clients is enforced against it. Two clients, both
+# served, have to be counted as two.
+add_executable(udp_client_identity
+    acceptance/udp_client_identity.c
+)
+
+target_link_libraries(udp_client_identity
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(udp_client_identity
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME udp_client_identity COMMAND udp_client_identity)
+set_tests_properties(udp_client_identity PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.
