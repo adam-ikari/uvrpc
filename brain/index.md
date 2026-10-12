@@ -1,9 +1,10 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-10-12T06:17:30.988Z._
+_Auto-generated. Last updated 2026-10-12T06:48:10.119Z._
 
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
 - [build-distribution-breakage](pages/build-distribution-breakage.md) — category: decision | tags: [build, ci, submodules] | ## 断点根因（2026-09-28 切片1）
+- [callback-must-not-lend-borrowed-storage](pages/callback-must-not-lend-borrowed-storage.md) — category: decision | tags: [libuv, transport, udp, lifetime, api-design, identity] | ## 约束
 - [embedded-handle-must-outlive-close](pages/embedded-handle-must-outlive-close.md) — category: decision | tags: [libuv, memory-safety, teardown, valgrind, transport] | ## 约束
 - [loop-data-registry-over-global-hash](pages/loop-data-registry-over-global-hash.md) — category: decision | tags: [registry, transport, inproc] | INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输：server 挂一个名字，client 用同一个名字连上去。
 - [minimal-rpcframe-schema](pages/minimal-rpcframe-schema.md) — category: decision | tags: [protocol, schema, flatbuffers] | UVRPC 的线格式刻意压到最小：`namespace uvrpc` 下**一个** `table RpcFrame`，四个字段，`root_type RpcFrame`。
