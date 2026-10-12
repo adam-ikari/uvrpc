@@ -913,6 +913,16 @@ static int tcp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
+    /* Reject a payload that is not there before building a frame out of it.
+     * The frame is built by copying `size` bytes out of data, and the client
+     * count is only consulted after that -- so with a peer connected this
+     * was a read from an address that does not exist. The other three
+     * transports already make this check; uvbus_broadcast() does not make it
+     * for them. */
+    if (!data || size == 0) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }

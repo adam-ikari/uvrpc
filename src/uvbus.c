@@ -285,6 +285,19 @@ void uvbus_stop(uvbus_t* bus) {
     bus->is_active = 0;
 }
 
+/* The payload is the one thing about a send that means the same thing on
+ * every transport: bytes to hand over, and how many. The target is a
+ * different matter -- a client handle on TCP/IPC/INPROC/SAMELOOP, an address
+ * on UDP -- so each transport checks that itself, and the ones that build a
+ * frame check the payload too. But a caller's arguments enter here, and
+ * three of the five slots built a frame straight out of them: memcpy'ing
+ * `size` bytes out of a payload that is not there, with no peer connected to
+ * stop it early. Checked once, at the door. */
+static int uvbus_payload_is_usable(const uint8_t* data, size_t size) {
+    return data != NULL && size > 0;
+}
+
+
 uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
     if (!bus || !bus->transport || !bus->transport->vtable) {
         return UVBUS_ERROR_INVALID_PARAM;
@@ -292,6 +305,10 @@ uvbus_error_t uvbus_send(uvbus_t* bus, const uint8_t* data, size_t size) {
 
     if (!bus->is_active) {
         return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
+    if (!uvbus_payload_is_usable(data, size)) {
+        return UVBUS_ERROR_INVALID_PARAM;
     }
 
     /* Fast path for SAMELOOP transport (bypasses vtable) */
@@ -316,6 +333,10 @@ uvbus_error_t uvbus_send_to(uvbus_t* bus, const uint8_t* data, size_t size, void
         return UVBUS_ERROR_NOT_CONNECTED;
     }
     
+    if (!uvbus_payload_is_usable(data, size)) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    
     if (bus->transport->vtable->send_to) {
         return bus->transport->vtable->send_to(bus->transport, data, size, client);
     }
@@ -330,6 +351,10 @@ uvbus_error_t uvbus_broadcast(uvbus_t* bus, const uint8_t* data, size_t size) {
 
     if (!bus->is_active) {
         return UVBUS_ERROR_NOT_CONNECTED;
+    }
+
+    if (!uvbus_payload_is_usable(data, size)) {
+        return UVBUS_ERROR_INVALID_PARAM;
     }
 
     if (bus->transport->vtable->broadcast) {

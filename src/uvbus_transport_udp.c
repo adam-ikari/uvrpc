@@ -752,6 +752,13 @@ static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
+    /* Reject a payload that is not there before building a frame out of it
+     * -- same as the TCP transport, and the check IPC, INPROC and SAMELOOP
+     * already made. uvbus_broadcast() hands the payload down untouched. */
+    if (!data || size == 0) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
     if (!transport->is_server) {
         return UVBUS_ERROR_INVALID_PARAM;
     }

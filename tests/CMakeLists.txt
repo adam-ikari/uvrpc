@@ -730,6 +730,34 @@ set_tests_properties(send_to_target_guard PROPERTIES
     TIMEOUT 60
 )
 
+# uvbus_send(), uvbus_send_to() and uvbus_broadcast() pass their payload
+# straight down, and the transports that build a frame out of it read `size`
+# bytes from it. IPC, INPROC and SAMELOOP rejected an empty payload; TCP and
+# UDP read from an address that does not exist. Guarded at the entry points,
+# and pinned on all five transports for all three slots.
+add_executable(payload_guard
+    acceptance/payload_guard.c
+)
+
+target_link_libraries(payload_guard
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(payload_guard
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME payload_guard COMMAND payload_guard)
+set_tests_properties(payload_guard PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.
