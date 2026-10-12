@@ -1,6 +1,6 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-10-12T07:25:21.912Z._
+_Auto-generated. Last updated 2026-10-12T07:41:34.205Z._
 
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
 - [build-distribution-breakage](pages/build-distribution-breakage.md) — category: decision | tags: [build, ci, submodules] | ## 断点根因（2026-09-28 切片1）
