@@ -360,7 +360,22 @@ static void inproc_disconnect(void* impl_ptr) {
         inproc_client_t* client = (inproc_client_t*)transport->impl.inproc_client;
         /* Remove from endpoint */
         if (client->server_endpoint) {
-            inproc_remove_client(client->server_endpoint, client);
+            inproc_endpoint_t* endpoint = client->server_endpoint;
+
+            /* Report the loss to the layer above by identity, before the
+             * entry goes -- the same report the socket transports make from
+             * their read callback. Reaching the server's transport through
+             * the endpoint is safe exactly while client->server_endpoint is
+             * non-NULL, which is the condition guarding this whole block:
+             * the server's own disconnect detaches every client before it
+             * frees the endpoint. */
+            uvbus_transport_t* server_transport =
+                (uvbus_transport_t*)endpoint->server_transport;
+            if (server_transport && server_transport->conn_close_cb) {
+                server_transport->conn_close_cb(client, server_transport->conn_close_ctx);
+            }
+
+            inproc_remove_client(endpoint, client);
         }
 
         client->is_active = 0;

@@ -34,6 +34,10 @@ typedef struct sameloop_server {
     void* callback_ctx;
     uv_loop_t* loop;
     struct sameloop_server* next;  /* Linked list within the per-loop registry */
+    void* server_transport;  /* The uvbus_transport_t that listens, so a
+                              * disconnecting client can report back to the
+                              * layer above by identity. Alive exactly while
+                              * this entry is. */
     void* clients[SAMELOOP_MAX_CLIENTS];  /* Connected client pointers for broadcast */
     int client_count;
 } sameloop_server_t;
@@ -136,6 +140,7 @@ static int sameloop_listen(void* impl_ptr, const char* address) {
     server->recv_cb = transport->recv_cb;
     server->callback_ctx = transport->recv_ctx;
     server->loop = transport->loop;
+    server->server_transport = transport;
     server->client_count = 0;
     server->next = NULL;
 
@@ -251,6 +256,18 @@ static void sameloop_disconnect(void* impl_ptr) {
         /* Unregister client from its server via the back-pointer (no registry scan). */
         sameloop_server_t* server = client->server;
         if (server) {
+            /* Report the loss to the layer above by identity, before the
+             * entry goes -- the same report the socket transports make from
+             * their read callback, and the same reachability argument as on
+             * INPROC: client->server is non-NULL exactly while this entry is
+             * alive, because the server's own disconnect nulls it on every
+             * client before it frees. */
+            uvbus_transport_t* server_transport =
+                (uvbus_transport_t*)server->server_transport;
+            if (server_transport && server_transport->conn_close_cb) {
+                server_transport->conn_close_cb(client, server_transport->conn_close_ctx);
+            }
+
             for (int i = 0; i < server->client_count; i++) {
                 if (server->clients[i] == client) {
                     /* Swap with last and shrink */

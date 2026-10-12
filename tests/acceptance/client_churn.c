@@ -11,8 +11,8 @@
  * server looked fine from the outside: it answered calls, it did not crash, it
  * simply never took another client again.
  *
- * That silence came from the transports. Both socket transports read a
- * disconnected client with
+ * That silence came from the transports, and it was not the same defect
+ * everywhere. TCP and IPC read a disconnected client with
  *
  *     if (nread < 0) { if (nread != UV_EOF) error_cb(...); return; }
  *
@@ -23,7 +23,12 @@
  * for the notification, uvbus_close_callback_t, which was stored and assigned
  * on every transport and had never once been invoked.
  *
- * What this pins, on both socket transports, across three rounds of connect ->
+ * INPROC and SAMELOOP have no socket and so no EOF. A client leaves them by
+ * way of its own disconnect, which did prune their tables -- but stopped
+ * there, so the layer above heard nothing either way. Same count, same gate,
+ * same permanent lockout, reached by a different route.
+ *
+ * What this pins, on all four transports, across three rounds of connect ->
  * call -> disconnect:
  *
  *   1. the server counts exactly one client while one is connected;
@@ -34,10 +39,6 @@
  * Steps 2 and 3 are the defect. Without them the first round passes and the
  * server has already become permanently unreachable -- which is why a test
  * that only ever used one client would have passed here too.
- *
- * Loopback is not covered, unlike span_invariance: INPROC and SAMELOOP have no
- * socket and therefore no EOF, and a client leaves them by way of its own
- * disconnect, which is a different event on a different path.
  *
  * Run: ctest -R client_churn
  */
@@ -205,6 +206,8 @@ int main(void) {
     uvbus_loop_registry_t* registry;
     char tcp_address[64];
     char ipc_address[128];
+    char inproc_address[64];
+    char sameloop_address[64];
 
     setvbuf(stdout, NULL, _IONBF, 0);
 
@@ -230,8 +233,15 @@ int main(void) {
     snprintf(ipc_address, sizeof(ipc_address), "ipc:///tmp/uvrpc_churn_%d.sock",
              (int)getpid());
 
+    snprintf(inproc_address, sizeof(inproc_address), "inproc://uvrpc_churn_%d",
+             (int)getpid());
+    snprintf(sameloop_address, sizeof(sameloop_address), "sameloop://uvrpc_churn_%d",
+             (int)getpid());
+
     run_churn(&loop, registry, UVBUS_TRANSPORT_TCP, "TCP", tcp_address);
     run_churn(&loop, registry, UVBUS_TRANSPORT_IPC, "IPC", ipc_address);
+    run_churn(&loop, registry, UVBUS_TRANSPORT_INPROC, "INPROC", inproc_address);
+    run_churn(&loop, registry, UVBUS_TRANSPORT_SAMELOOP, "SAMELOOP", sameloop_address);
 
     uvbus_loop_registry_free(registry);
     uv_close((uv_handle_t*)&watchdog, NULL);

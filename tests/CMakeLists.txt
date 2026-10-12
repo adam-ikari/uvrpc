@@ -632,10 +632,10 @@ endif()
 # was a high-water mark, and the max_clients gate rides on the same number, so a
 # server started with max_clients = 1 took one client for the rest of its life --
 # every later client was refused with UVRPC_ERROR_MAX_CLIENTS while nothing else
-# was connected. Both socket transports read a closed connection, reported an
-# error, and did nothing else: no close, no removal from the client table, no
-# word to the layer above. Three rounds of connect/call/disconnect on TCP and
-# IPC; the first round passes either way, which is the point.
+# was connected. No transport reported the loss: TCP and IPC read a closed
+# connection, reported an error, and did nothing else; INPROC and SAMELOOP pruned
+# their own table and stopped there. Four rounds of connect/call/disconnect, one
+# per transport; the first round passes either way, which is the point.
 add_executable(client_churn
     acceptance/client_churn.c
 )
