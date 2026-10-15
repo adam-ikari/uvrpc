@@ -162,6 +162,22 @@ static void sweep_expired_pending(uvrpc_client_t* client) {
 /* Transport connect callback */
 static void client_destroy(uvrpc_client_t* client);
 
+/*
+ * Drop the reference uvrpc_client_connect() took before it called
+ * uvbus_connect(). Exactly one of two things happens to that hold: the
+ * attempt reaches a callback, which drops it here, or the transport refuses
+ * on the spot and no callback ever runs, in which case the refusal path has
+ * to drop it instead. Which one runs is decided by uvbus_connect()'s return
+ * value, so the two can never both fire -- but if neither does the client is
+ * never destroyed, because uvrpc_client_free()'s own drop accounts only for
+ * the reference uvrpc_client_create() took.
+ */
+static void client_drop_connect_hold(uvrpc_client_t* client) {
+    if (--client->ref_count == 0) {
+        client_destroy(client);
+    }
+}
+
 static void client_connect_callback(int status, void* ctx) {
     uvrpc_client_t* client = (uvrpc_client_t*)ctx;
 
@@ -197,9 +213,7 @@ static void client_connect_callback(int status, void* ctx) {
     /* Drop the reference taken when the connect started. If the client was
      * freed while the attempt was in flight this is the last one, so the
      * teardown happens here rather than in uvrpc_client_free. */
-    if (--client->ref_count == 0) {
-        client_destroy(client);
-    }
+    client_drop_connect_hold(client);
 }
 
 /* Transport receive callback */
@@ -448,6 +462,10 @@ int uvrpc_client_connect(uvrpc_client_t* client) {
 
     uvbus_error_t err = uvbus_connect(client->uvbus);
     if (err != UVBUS_OK) {
+        /* The transport refused on the spot, so no callback is coming to drop
+         * the hold taken just above. Leaving it means uvrpc_client_free()
+         * stops one short of zero and the client is never destroyed. */
+        client_drop_connect_hold(client);
         return UVRPC_ERROR_TRANSPORT;
     }
     
@@ -489,6 +507,9 @@ int uvrpc_client_connect_with_callback(uvrpc_client_t* client,
     uvbus_error_t err = uvbus_connect(uvbus);
     if (err != UVBUS_OK) {
         UVRPC_LOG_ERROR("uvbus_connect failed: %d", err);
+        /* No callback is coming, so the hold taken just above has to be
+         * dropped here -- same reason as uvrpc_client_connect() above. */
+        client_drop_connect_hold(client);
         return UVRPC_ERROR_TRANSPORT;
     }
 

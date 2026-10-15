@@ -758,6 +758,51 @@ set_tests_properties(payload_guard PROPERTIES
     TIMEOUT 60
 )
 
+# A connect refused synchronously has to give back the reference it took for
+# its callback. SAMELOOP fills a fixed 64-entry table, so the 65th connect is
+# refused from inside uvbus_connect() and no callback ever runs to drop the
+# hold -- uvrpc_client_free() then stops one short and the client is never
+# destroyed, with its scheduler's handle left on the loop. Same shape in
+# uvrpc_client_connect_with_callback(). The plain entry catches that handle via
+# uv_loop_close(); the memcheck entry reports the block itself and is the gate.
+add_executable(connect_refund
+    acceptance/connect_refund.c
+)
+
+target_link_libraries(connect_refund
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(connect_refund
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME connect_refund COMMAND connect_refund)
+set_tests_properties(connect_refund PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME connect_refund_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:connect_refund>
+    )
+    set_tests_properties(connect_refund_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.
