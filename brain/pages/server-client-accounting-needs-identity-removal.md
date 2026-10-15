@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [server, transport, uvbus, api-design, resource-accounting]
 created: "2026-10-12T05:58:25"
-updated: "2026-10-12T06:17:30"
+updated: "2026-10-15T03:50:09"
 ---
 
 <!-- compiled_truth -->
@@ -80,4 +80,10 @@ updated: "2026-10-12T06:17:30"
   kind: decision
   summary: "22ed29d 把 in-process 两条接上：SAMELOOP 补 server_transport 反向指针，INPROC 复用已有的 server_transport；上报点在各自 disconnect 的删表之前。churn 门禁从 2 条扩到 4 条传输，拆掉 in-process 上报只让 INPROC/SAMELOOP 变红。"
   source: commit 22ed29d
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-10-15T03:50:09
+  kind: note
+  summary: "max_clients 有两套天花板，且配置那一套是开口的（未修缺口）：uvrpc_config_set_max_clients(N) 没有上界钳制（uvrpc_server.c:295 只把 0 归成 1024），而传输层的上限是编译期常量、五条各不相同——TCP 1024（UVBUS_MAX_CLIENTS）、UDP 1024（udp.c:442 硬编码）、SAMELOOP 64、IPC 与 INPROC 无上限（表自动扩容，配 5000 真的能用）。uvbus_listen(bus) 不带参数，没有通道把配置传下去。于是配到 1024 以上时 TCP/UDP 超售：TCP 的 on_server_connection 在 :332 触发 error_cb 后直接 return 而不 uv_accept，内核层面握手已完成，客户端的 connect_cb 报 OK，请求却永远没人读——静默挂死；UDP 则因 peer 表满而交 NULL 身份，server_recv_callback 会把 NULL 记进 client_ctxs[]，此后所有满表 peer 被并成同一个客户端（同一类身份塌陷，只是走的是 NULL 路径而非悬垂指针路径）。因此不能一刀切把配置钳到 1024——那会让今天确实能用的 IPC/INPROC 倒退；正确修法要按传输取天花板，属于设计变更，与本页已修的台账删除缺陷分开记。"
+  source: "connect_refund 与 5 驱动 vtable 对照审计（2026-10-15）"
   affects: [server-client-accounting-needs-identity-removal]
