@@ -803,6 +803,49 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
+# The server's own refusal -- the one it sends when it is full -- hand-built a
+# response frame instead of an error frame, so the client it turned away saw
+# UVRPC_OK. One table entry per transport: the client that cannot get in has to
+# come back with UVRPC_ERROR_MAX_CLIENTS, and the client that is already in has
+# to keep being served.
+add_executable(refusals
+    acceptance/refusals.c
+)
+
+target_link_libraries(refusals
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(refusals
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME refusals COMMAND refusals)
+set_tests_properties(refusals PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 120
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME refusals_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:refusals>
+    )
+    set_tests_properties(refusals_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 600)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

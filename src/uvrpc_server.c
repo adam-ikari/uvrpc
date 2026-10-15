@@ -111,7 +111,7 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
     
     /* Check max clients for new client */
     if (is_new_client && server->max_clients > 0 && server->current_clients >= server->max_clients) {
-        UVRPC_LOG("Rejecting new client: max clients reached (%d), current_clients=%d, client_ctx=%p", 
+        UVRPC_LOG("Rejecting new client: max clients reached (%d), current_clients=%d, client_ctx=%p",
                   server->max_clients, server->current_clients, client_ctx);
         
         /* Extract msgid from request using FlatBuffers */
@@ -123,35 +123,24 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         
         UVRPC_LOG("Sending error response: msgid=%u", msgid);
         
-        /* Send error response using FlatBuffers */
-        flatcc_builder_t builder;
-        flatcc_builder_init(&builder);
-        
-        /* Create error message */
+        /* Sent as an error frame, not a response frame. A response would put
+         * the code and message in the bytes the caller expects to be its
+         * result, and the client would hand that over as a successful answer
+         * -- which is what this branch did: a refused client saw UVRPC_OK and
+         * a result that was the raw [code, length, message] the refusal had
+         * built. uvrpc_encode_error() is the same encoder
+         * uvrpc_request_send_response() uses for its own failures. */
         char error_msg[64];
-        int error_len = snprintf(error_msg, sizeof(error_msg), "Maximum clients reached (%d)", server->max_clients);
-        
-        /* Create error data: [error_code, error_len, error_message] */
-        uint8_t error_data[128];
-        *(uint32_t*)(error_data) = UVRPC_ERROR_MAX_CLIENTS;
-        *(uint32_t*)(error_data + 4) = error_len;
-        memcpy(error_data + 8, error_msg, error_len);
-        
-        flatbuffers_uint8_vec_ref_t data_ref = flatbuffers_uint8_vec_create(&builder, error_data, 8 + error_len);
-        
-        uvrpc_RpcFrame_start_as_root(&builder);
-        uvrpc_RpcFrame_type_add(&builder, 1);  // Response (last)
-        uvrpc_RpcFrame_msgid_add(&builder, msgid);
-        uvrpc_RpcFrame_data_add(&builder, data_ref);
-        uvrpc_RpcFrame_end_as_root(&builder);
-        
-        size_t resp_size;
-        void* resp_buf = flatcc_builder_finalize_buffer(&builder, &resp_size);
-        if (resp_buf) {
+        snprintf(error_msg, sizeof(error_msg),
+                 "Maximum clients reached (%d)", server->max_clients);
+
+        uint8_t* resp_buf = NULL;
+        size_t resp_size = 0;
+        if (uvrpc_encode_error(msgid, UVRPC_ERROR_MAX_CLIENTS, error_msg,
+                               &resp_buf, &resp_size) == UVRPC_OK) {
             uvbus_send_to(server->uvbus, resp_buf, resp_size, client_ctx);
-            uvrpc_free_encoded((uint8_t*)resp_buf);
+            uvrpc_free_encoded(resp_buf);
         }
-        flatcc_builder_clear(&builder);
         return;
     }
     
