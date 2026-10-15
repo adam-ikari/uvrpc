@@ -400,13 +400,25 @@ static void on_server_connection(uv_stream_t* server, int status) {
 
     /* Accept connection */
     if (uv_accept(server, (uv_stream_t*)&client->pipe_handle) == 0) {
-        /* Add to client list */
+        /* Add to client list. Grow through a temporary and check it: the old
+         * table was assigned from realloc directly, so a failed grow leaked it
+         * and left NULL in its place, which the very next line stored through.
+         * Mirrors the TCP transport, which closes the fresh handle and returns
+         * instead. */
         if (ipc_server->client_count >= ipc_server->client_capacity) {
-            ipc_server->client_capacity *= 2;
-            ipc_server->clients = (uvbus_ipc_client_t**)uvrpc_realloc(
+            int new_capacity = ipc_server->client_capacity * 2;
+            uvbus_ipc_client_t** new_clients = (uvbus_ipc_client_t**)uvrpc_realloc(
                 ipc_server->clients,
-                sizeof(uvbus_ipc_client_t*) * ipc_server->client_capacity
+                sizeof(uvbus_ipc_client_t*) * new_capacity
             );
+            if (!new_clients) {
+                /* The handle is inside this block, so the block goes with the
+                 * close. */
+                uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
+                return;
+            }
+            ipc_server->clients = new_clients;
+            ipc_server->client_capacity = new_capacity;
         }
 
         ipc_server->clients[ipc_server->client_count++] = client;

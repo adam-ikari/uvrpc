@@ -101,16 +101,28 @@ static void inproc_remove_endpoint(uvbus_loop_registry_t* reg, inproc_endpoint_t
 }
 
 /* Add client to endpoint (no lock: single-threaded; the endpoint is owned by
- * this loop and the caller holds no recv_cb re-entrancy here). */
-static void inproc_add_client(inproc_endpoint_t* endpoint, void* client) {
+ * this loop and the caller holds no recv_cb re-entrancy here).
+ *
+ * The old table is kept on failure. It used to be assigned from realloc
+ * directly, so a failed grow both leaked the old table and left NULL in its
+ * place -- and the caller went straight on to store a client through it.
+ * Mirrors the TCP transport, which grew through a temporary and checked it.
+ * Returns 0 on success, -1 if the table could not be grown. */
+static int inproc_add_client(inproc_endpoint_t* endpoint, void* client) {
     if (endpoint->client_count >= endpoint->client_capacity) {
-        endpoint->client_capacity *= 2;
-        endpoint->clients = (void**)uvrpc_realloc(
+        int new_capacity = endpoint->client_capacity * 2;
+        void** new_clients = (void**)uvrpc_realloc(
             endpoint->clients,
-            sizeof(void*) * endpoint->client_capacity
+            sizeof(void*) * new_capacity
         );
+        if (!new_clients) {
+            return -1;
+        }
+        endpoint->clients = new_clients;
+        endpoint->client_capacity = new_capacity;
     }
     endpoint->clients[endpoint->client_count++] = client;
+    return 0;
 }
 
 /* Remove client from endpoint (no lock). */
@@ -301,7 +313,14 @@ static int inproc_connect(void* impl_ptr, const char* address) {
     client->callback_ctx = transport->recv_ctx;
 
     /* Add to endpoint */
-    inproc_add_client(endpoint, client);
+    if (inproc_add_client(endpoint, client) != 0) {
+        /* The table could not be grown, so there is nowhere to record this
+         * client. Give the block back and fail the connect -- leaving it half
+         * connected would report UVBUS_OK for a peer nothing tracks. */
+        uvrpc_free(client);
+        uvbus_loop_registry_release(transport->registry);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
 
     transport->impl.inproc_client = (void*)client;
     transport->is_connected = 1;
