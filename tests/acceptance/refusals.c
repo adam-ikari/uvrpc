@@ -11,18 +11,31 @@
  * that says "here is your result". So a client that was refused was told
  * UVRPC_OK, and what arrived as its result was the raw [code, length, message]
  * the refusal had assembled. A caller could not tell a refusal from an answer,
- * which is the only thing a refusal is for. The comment on the correct sibling
- * further down the same file explains the frame type; this branch predates it
- * and was never brought along.
+ * which is the only thing a refusal is for.
  *
- * This pins the client-visible half, on all five transports. With a server
- * configured for one client:
+ * Two things close the door, and this covers both on all five transports:
  *
- *   - the client that cannot get in must come back with
- *     UVRPC_ERROR_MAX_CLIENTS rather than UVRPC_OK;
+ *   - the server is full (max_clients reached); and
+ *   - the server has been stopped. uvrpc_server_stop() is documented as
+ *     "Stops accepting new connections but allows existing connections to
+ *     complete", and is_running, the flag it set, was read in exactly one
+ *     place: the early return at the top of uvrpc_server_start(), which exists
+ *     to make a second start a no-op. Nothing consulted it while serving, so a
+ *     stopped server kept listening and kept answering -- the flag's only
+ *     observable effect was to let the next start try to listen again.
+ *
+ * In both cases:
+ *
+ *   - the client that cannot get in must come back with the matching error
+ *     code -- UVRPC_ERROR_MAX_CLIENTS or UVRPC_ERROR_INVALID_STATE -- rather
+ *     than UVRPC_OK;
  *   - the client that is already in must keep being served, because a refusal
  *     that took the whole server down with it would be a worse bug than the
  *     one being fixed.
+ *
+ * A stopped server is still bound, so the port is not released: the documented
+ * promise is about admitting sessions, not about the socket.
+ * uvrpc_server_free() is still what closes the listener.
  *
  * Run: ctest -R refusals
  */
@@ -93,6 +106,11 @@ static int pump_until(uv_loop_t* loop, int want) {
     return responses;
 }
 
+typedef enum {
+    REFUSAL_FULL,     /* the door is closed by max_clients */
+    REFUSAL_STOPPED,  /* the door is closed by uvrpc_server_stop() */
+} refusal_kind;
+
 typedef struct {
     const char* name;
     uvbus_transport_type_t transport;
@@ -114,8 +132,12 @@ static uvrpc_config_t* make_config(uv_loop_t* loop,
 
 /* Returns 0 on success, with `reason` naming the first thing that went wrong. */
 static int run_case(uv_loop_t* loop, uvbus_loop_registry_t* registry,
-                    const transport_case* tc, const char** reason) {
+                    const transport_case* tc, refusal_kind kind,
+                    const char** reason) {
     static const char ping[] = "ping";
+    const int expect = (kind == REFUSAL_STOPPED) ? UVRPC_ERROR_INVALID_STATE
+                                                 : UVRPC_ERROR_MAX_CLIENTS;
+    const char* door = (kind == REFUSAL_STOPPED) ? "stopped" : "full";
     int got_in_first = 0;
     int refused_responses = 0;
     int refused_status = 0;
@@ -124,9 +146,11 @@ static int run_case(uv_loop_t* loop, uvbus_loop_registry_t* registry,
     uvrpc_client_t* inside = NULL;
     uvrpc_client_t* outside = NULL;
 
-    /* One client is all this server will take. */
     uvrpc_config_t* scfg = make_config(loop, registry, tc);
-    scfg = uvrpc_config_set_max_clients(scfg, 1);
+    if (kind == REFUSAL_FULL) {
+        /* One client is all this server will take. */
+        scfg = uvrpc_config_set_max_clients(scfg, 1);
+    }
     uvrpc_server_t* server = uvrpc_server_create(scfg);
     uvrpc_config_free(scfg);
     if (!server) {
@@ -174,7 +198,12 @@ static int run_case(uv_loop_t* loop, uvbus_loop_registry_t* registry,
     }
     got_in_first = last_status;
 
-    /* The gate is closed now: one of one. This client is the one out. */
+    /* Shut the door, by whichever means this case is about. */
+    if (kind == REFUSAL_STOPPED) {
+        uvrpc_server_stop(server);
+    }
+
+    /* A client that turns up now is out. */
     outside = uvrpc_client_create(ccfg);
     if (!outside) {
         *reason = "the second client could not be created";
@@ -221,12 +250,15 @@ static int run_case(uv_loop_t* loop, uvbus_loop_registry_t* registry,
         goto done;
     }
     if (refused_status == UVRPC_OK) {
-        *reason = "a full server answered the client it refused with UVRPC_OK";
+        *reason = (kind == REFUSAL_STOPPED)
+            ? "a stopped server answered the client it turned away with UVRPC_OK"
+            : "a full server answered the client it refused with UVRPC_OK";
         goto done;
     }
-    if (refused_status != UVRPC_ERROR_MAX_CLIENTS ||
-        refused_error_code != UVRPC_ERROR_MAX_CLIENTS) {
-        *reason = "the refusal did not arrive as UVRPC_ERROR_MAX_CLIENTS";
+    if (refused_status != expect || refused_error_code != expect) {
+        *reason = (kind == REFUSAL_STOPPED)
+            ? "the refusal did not arrive as UVRPC_ERROR_INVALID_STATE"
+            : "the refusal did not arrive as UVRPC_ERROR_MAX_CLIENTS";
         goto done;
     }
     if (got_in_second != UVRPC_OK) {
@@ -234,8 +266,8 @@ static int run_case(uv_loop_t* loop, uvbus_loop_registry_t* registry,
         goto done;
     }
 
-    printf("  %-9s in=%d out=%d/%d in-again=%d\n",
-           tc->name, got_in_first, refused_status, refused_error_code,
+    printf("  %-9s %-7s in=%d out=%d/%d in-again=%d\n",
+           tc->name, door, got_in_first, refused_status, refused_error_code,
            got_in_second);
 
 done:
@@ -283,14 +315,18 @@ int main(void) {
         {"IPC",      UVBUS_TRANSPORT_IPC,      ipc_addr},
     };
     const int case_count = (int)(sizeof(cases) / sizeof(cases[0]));
+    const refusal_kind kinds[] = {REFUSAL_FULL, REFUSAL_STOPPED};
 
-    printf("a server that is full, and what it tells the client it will not take\n");
+    printf("closing the door on a client, and what that client is told\n");
 
     for (int i = 0; i < case_count; i++) {
-        const char* reason = "";
-        if (!run_case(&loop, registry, &cases[i], &reason)) {
-            printf("FAIL: %s: %s\n", cases[i].name, reason);
-            failures++;
+        for (int k = 0; k < (int)(sizeof(kinds) / sizeof(kinds[0])); k++) {
+            const char* reason = "";
+            if (!run_case(&loop, registry, &cases[i], kinds[k], &reason)) {
+                printf("FAIL: %s/%s: %s\n", cases[i].name,
+                       kinds[k] == REFUSAL_STOPPED ? "stopped" : "full", reason);
+                failures++;
+            }
         }
     }
 

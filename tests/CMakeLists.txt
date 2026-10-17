@@ -803,11 +803,10 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 300)
 endif()
 
-# The server's own refusal -- the one it sends when it is full -- hand-built a
-# response frame instead of an error frame, so the client it turned away saw
-# UVRPC_OK. One table entry per transport: the client that cannot get in has to
-# come back with UVRPC_ERROR_MAX_CLIENTS, and the client that is already in has
-# to keep being served.
+# Closing the door on a client -- whether the server is full or has been stopped
+# -- has to reach that client as a refusal, and must not disturb the clients
+# already in. One table entry per transport per reason. The stopped case is
+# also where uvrpc_server_stop() stops being a flag nothing reads.
 add_executable(refusals
     acceptance/refusals.c
 )

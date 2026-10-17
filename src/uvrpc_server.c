@@ -109,10 +109,19 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
         }
     }
     
-    /* Check max clients for new client */
-    if (is_new_client && server->max_clients > 0 && server->current_clients >= server->max_clients) {
-        UVRPC_LOG("Rejecting new client: max clients reached (%d), current_clients=%d, client_ctx=%p",
-                  server->max_clients, server->current_clients, client_ctx);
+    /* A stopped server takes on no new clients. That and a full server are
+     * the same refusal, so they share this branch and differ only in the code
+     * and the words that go back. The clients already in the table are
+     * untouched either way -- is_new_client is false for them -- which is the
+     * other half of what uvrpc_server_stop() promises. */
+    int not_accepting = !server->is_running;
+    int at_capacity = server->max_clients > 0 &&
+                      server->current_clients >= server->max_clients;
+
+    if (is_new_client && (not_accepting || at_capacity)) {
+        UVRPC_LOG("Rejecting new client: %s, current_clients=%d, client_ctx=%p",
+                  not_accepting ? "server not accepting" : "max clients reached",
+                  server->current_clients, client_ctx);
         
         /* Extract msgid from request using FlatBuffers */
         uint32_t msgid = 0;
@@ -131,12 +140,20 @@ static void server_recv_callback(const uint8_t* data, size_t size, void* client_
          * built. uvrpc_encode_error() is the same encoder
          * uvrpc_request_send_response() uses for its own failures. */
         char error_msg[64];
-        snprintf(error_msg, sizeof(error_msg),
-                 "Maximum clients reached (%d)", server->max_clients);
+        if (not_accepting) {
+            snprintf(error_msg, sizeof(error_msg),
+                     "Server is not accepting new connections");
+        } else {
+            snprintf(error_msg, sizeof(error_msg),
+                     "Maximum clients reached (%d)", server->max_clients);
+        }
+
+        int32_t error_code = not_accepting ? UVRPC_ERROR_INVALID_STATE
+                                           : UVRPC_ERROR_MAX_CLIENTS;
 
         uint8_t* resp_buf = NULL;
         size_t resp_size = 0;
-        if (uvrpc_encode_error(msgid, UVRPC_ERROR_MAX_CLIENTS, error_msg,
+        if (uvrpc_encode_error(msgid, error_code, error_msg,
                                &resp_buf, &resp_size) == UVRPC_OK) {
             uvbus_send_to(server->uvbus, resp_buf, resp_size, client_ctx);
             uvrpc_free_encoded(resp_buf);
