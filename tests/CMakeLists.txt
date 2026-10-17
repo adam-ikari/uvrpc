@@ -845,6 +845,49 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 600)
 endif()
 
+# The TCP transport refuses a connection past UVBUS_MAX_CLIENTS by returning
+# from its connection callback without accepting it -- which leaves the peer
+# connected to nothing. Heavy: filling the table means UVBUS_MAX_CLIENTS (1024)
+# live accepted connections, ~256 MB of server-side client blocks, so it carries
+# its own label and the sanitizer rounds leave it out.
+add_executable(tcp_capacity
+    acceptance/tcp_capacity.c
+)
+
+target_link_libraries(tcp_capacity
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(tcp_capacity
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME tcp_capacity COMMAND tcp_capacity)
+set_tests_properties(tcp_capacity PROPERTIES
+    LABELS "acceptance;heavy"
+    TIMEOUT 300
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME tcp_capacity_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:tcp_capacity>
+    )
+    set_tests_properties(tcp_capacity_memcheck PROPERTIES
+        LABELS "memcheck;heavy"
+        TIMEOUT 900)
+endif()
+
 # The stream transports read the client's own connection through on_client_read,
 # and its EOF branch was gated to the server side -- so the report inside
 # tcp_forget_client()/ipc_forget_client() never reached a client either, and

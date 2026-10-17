@@ -337,6 +337,37 @@ static void on_server_connection(uv_stream_t* server, int status) {
     
     /* Check client limit */
     if (tcp_server->client_count >= UVBUS_MAX_CLIENTS) {
+        /* At capacity -- but the handshake is already done. The kernel
+         * answered the peer's SYN before this callback ran, so the peer is
+         * connected as of now, and returning here would leave it connected to
+         * nothing: nothing reads it, nothing writes it, and nothing ever ends
+         * it. A peer that has not written yet -- a health probe, a pool
+         * member opening its socket early, an RPC client before its first
+         * request -- sees a healthy, silent connection and waits out its own
+         * deadline for a server that will never answer.
+         *
+         * Accept it only in order to close it, so the peer gets the FIN that
+         * is the one thing a refused connection can be told. The block goes
+         * with the close: ref_init leaves ref_count at 1 and on_client_close
+         * releases it, the same arrangement the realloc-failure path below
+         * relies on. This one is never added to the table and never reads, so
+         * there is nothing else to undo. */
+        if (transport->loop) {
+            uvbus_tcp_client_t* refused =
+                (uvbus_tcp_client_t*)uvrpc_alloc(sizeof(uvbus_tcp_client_t));
+            if (refused) {
+                memset(refused, 0, sizeof(uvbus_tcp_client_t));
+                ref_init(&refused->ref_count);
+                uv_tcp_init(transport->loop, &refused->tcp_handle);
+                refused->tcp_handle.data = refused;
+
+                /* Closed either way: on success to end the connection, on
+                 * failure to release the handle. */
+                (void)uv_accept(server, (uv_stream_t*)&refused->tcp_handle);
+                uv_close((uv_handle_t*)&refused->tcp_handle, on_client_close);
+            }
+        }
+
         if (transport->error_cb) {
             transport->error_cb(UVBUS_ERROR_MAX_CLIENTS, "Maximum clients reached (1024)", transport->callback_ctx);
         }
