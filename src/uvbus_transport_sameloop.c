@@ -50,6 +50,9 @@ typedef struct sameloop_client {
     uvbus_recv_callback_t recv_cb;
     void* callback_ctx;
     sameloop_server_t* server;  /* Back-pointer: avoids scanning the registry on disconnect */
+    void* client_transport;     /* This client's own transport. The same stored-at-connect
+                                 * back-pointer INPROC keeps, so that a server going away can
+                                 * reach the transport it has to tell. */
 } sameloop_client_t;
 
 /* Forward declarations */
@@ -191,6 +194,7 @@ static int sameloop_connect(void* impl_ptr, const char* address) {
     client->server_recv_cb = server->recv_cb;
     client->server_callback_ctx = server->callback_ctx;
     client->server = server;  /* back-pointer for O(1) unregister on disconnect */
+    client->client_transport = transport;  /* so the server can tell us it is gone */
 
     client->recv_cb = transport->recv_cb;
     client->callback_ctx = transport->recv_ctx;
@@ -240,6 +244,17 @@ static void sameloop_disconnect(void* impl_ptr) {
         for (int i = 0; i < server->client_count; i++) {
             sameloop_client_t* client = (sameloop_client_t*)server->clients[i];
             if (client) {
+                /* Tell the *client's* transport. The mirror report -- a client
+                 * leaving, told to the server -- has always been made from the
+                 * client's own disconnect below; nothing made this one, so a
+                 * client whose server was freed kept is_connected set and every
+                 * later call was handed to sameloop_send() with nowhere to go. */
+                uvbus_transport_t* client_transport =
+                    (uvbus_transport_t*)client->client_transport;
+                if (client_transport && client_transport->conn_close_cb) {
+                    client_transport->conn_close_cb(client,
+                                                    client_transport->conn_close_ctx);
+                }
                 client->server = NULL;
             }
             server->clients[i] = NULL;

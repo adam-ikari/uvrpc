@@ -193,17 +193,24 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         }
         uvrpc_free(buf->base);
 
-        /* Server side only. on_client_read also serves the client's own
-         * connection to a server, and there the block belongs to uvrpc_client,
-         * which will close it and free it itself -- closing it here would put
-         * that pointer in front of memory already given back. */
+        /* Report on both sides. tcp_forget_client() fires the notification
+         * before its own is_server guard, so it is safe to call here too, and
+         * the client's bus needs it: without a word, uvrpc_client keeps
+         * is_connected set after its server is gone and every later call is
+         * accepted, written and left to time out. */
+        tcp_forget_client(transport, client);
+
+        /* What stays server-only is the teardown. on_client_read also serves
+         * the client's own connection to a server, and there the block belongs
+         * to uvrpc_client, which will close it and free it itself -- closing
+         * it here would put that pointer in front of memory already given
+         * back. */
         if (transport->is_server) {
             /* The peer is gone. Reporting it was all this used to do -- no
              * close, no removal, no word to the layer above -- which left the
              * connection's block (256 KB; the read buffer lives inside it)
              * sitting in the server's table until teardown, and left the
              * server's client count permanently at least one too high. */
-            tcp_forget_client(transport, client);
             client->parent_transport = NULL;
             uv_close((uv_handle_t*)&client->tcp_handle, on_client_close);
         }

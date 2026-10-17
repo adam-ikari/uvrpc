@@ -845,6 +845,49 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 600)
 endif()
 
+# The stream transports read the client's own connection through on_client_read,
+# and its EOF branch was gated to the server side -- so the report inside
+# tcp_forget_client()/ipc_forget_client() never reached a client either, and
+# uvrpc_client kept is_connected set after its server was gone. TCP and IPC: the
+# two that own a socket to close.
+add_executable(client_sees_close
+    acceptance/client_sees_close.c
+)
+
+target_link_libraries(client_sees_close
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(client_sees_close
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME client_sees_close COMMAND client_sees_close)
+set_tests_properties(client_sees_close PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 120
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME client_sees_close_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:client_sees_close>
+    )
+    set_tests_properties(client_sees_close_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 300)
+endif()
+
 # Registry contract: INPROC and SAMELOOP share a registry the caller creates and
 # hands to every config that has to see the others. It is an internal header, so
 # the test includes it directly.

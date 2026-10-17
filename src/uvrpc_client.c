@@ -216,6 +216,32 @@ static void client_connect_callback(int status, void* ctx) {
     client_drop_connect_hold(client);
 }
 
+/* The connection this client is holding has gone away.
+ *
+ * Nothing used to reach a client with this news. On the stream transports the
+ * read callback's EOF branch reported only on the server side, behind an
+ * is_server guard that is right about the teardown but swallowed the report
+ * along with it; on the in-process two, a server's departure detached its
+ * clients in silence, the only report there ever having gone the other way --
+ * from a client leaving to its server. And uvrpc_client never subscribed to a
+ * transport error callback either. So the cached is_connected outlived the
+ * server, and a call made afterwards was accepted, written (the first write
+ * after the peer's FIN succeeds) or handed to a transport with nowhere to
+ * deliver, and left to time out -- for a server that was not there.
+ *
+ * The transport reports this from inside its own read callback or teardown,
+ * where the client is provably alive: it owns the bus the transport belongs to,
+ * and it is released only after uvbus_free() has released that transport. */
+static void client_conn_closed(void* client_ctx, void* server_ctx) {
+    (void)client_ctx;  /* the transport's own block; not what we key on */
+    uvrpc_client_t* client = (uvrpc_client_t*)server_ctx;
+
+    if (!client) return;
+
+    UVRPC_LOG("client_conn_closed: client=%p", (void*)client);
+    client->is_connected = 0;
+}
+
 /* Transport receive callback */
 static void client_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     (void)client_ctx;  /* Not used for client mode */
@@ -428,6 +454,12 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     }
     
     uvbus_config_free(bus_config);
+
+    /* Told when the connection the transport is holding goes away. Without
+     * this the client cannot tell a live server from one that has closed the
+     * connection, and every call after that point is accepted and left to time
+     * out. Same channel the server uses for its own connection accounting. */
+    uvbus_set_conn_close_handler(client->uvbus, client_conn_closed, client);
 
     /* Initialize uvasync scheduler for concurrency control */
     if (client->max_concurrent > 0) {

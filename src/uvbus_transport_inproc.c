@@ -362,6 +362,23 @@ static void inproc_disconnect(void* impl_ptr) {
         for (int i = 0; i < endpoint->client_count; i++) {
             inproc_client_t* client = (inproc_client_t*)endpoint->clients[i];
             if (client) {
+                /* Tell the *client's* transport, not the server's. The mirror
+                 * report -- a client leaving, told to the server -- has always
+                 * been made from the client's own disconnect below. Nothing
+                 * made this one, so a client whose server was freed kept
+                 * is_connected set, and every later call was handed to
+                 * inproc_send(), which with no endpoint to deliver to drops it
+                 * and returns UVBUS_OK.
+                 *
+                 * client_transport is the client's own transport. It is stored
+                 * at connect for exactly this reach and, until now, was never
+                 * read. */
+                uvbus_transport_t* client_transport =
+                    (uvbus_transport_t*)client->client_transport;
+                if (client_transport && client_transport->conn_close_cb) {
+                    client_transport->conn_close_cb(client,
+                                                    client_transport->conn_close_ctx);
+                }
                 client->is_active = 0;
                 client->server_endpoint = NULL;  /* detach; endpoint is going away */
             }

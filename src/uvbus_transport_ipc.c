@@ -212,14 +212,18 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
         }
         uvrpc_free(buf->base);
 
-        /* Server side only, and for the same reason as on the TCP transport:
-         * on_client_read also serves the client's own connection, whose block
-         * belongs to uvrpc_client and is closed and released by it. */
+        /* Report on both sides, for the same reason as on the TCP transport:
+         * ipc_forget_client() fires the notification before its own is_server
+         * guard, and the client's bus needs to hear that its server is gone. */
+        ipc_forget_client(transport, client);
+
+        /* The teardown stays server-side: on_client_read also serves the
+         * client's own connection, whose block belongs to uvrpc_client and is
+         * closed and released by it. */
         if (transport->is_server) {
             /* The peer is gone. Reporting it was all this used to do -- no
              * close, no removal from the table, no word to the layer above --
              * so the connection stayed counted, and stayed counted for good. */
-            ipc_forget_client(transport, client);
             client->parent_transport = NULL;
             uv_close((uv_handle_t*)&client->pipe_handle, on_ipc_client_closed);
         }
