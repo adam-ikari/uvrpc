@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-10-09T01:11:41"
+updated: "2026-10-17T18:24:15"
 ---
 
 <!-- compiled_truth -->
@@ -130,3 +130,9 @@ CI 的 `Benchmark` 工作流就是这串命令，每种传输跑一次并把结�
   summary: "库里发现的反模式不止 benchmark：src/uvrpc_async.c 与 src/uvrpc_primitives.c 曾用 UV_RUN_DEFAULT 做等待，在任何持有 socket 句柄的传输上永不返回。已全部改为 UV_RUN_ONCE，并加 tests/acceptance/await_span.c 守住"
   source: "src/uvrpc_async.c, src/uvrpc_primitives.c, 2026-10-09"
   affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-10-17T18:24:15
+  kind: note
+  summary: "同一族语义的测试侧推论：在测试里等一个事件（FIN、EOF、回调）到达，不要用固定轮数的 UV_RUN_NOWAIT——它无论有没有事发都会立刻返回，N 轮可能在事件到达前就跑完（实测 400 轮 NOWAIT 会在 loopback 的 FIN 之前耗尽，于是\"对端没被告知\"变成假红）。要么用墙钟预算轮询（while (now_s() < end) uv_run(NOWAIT)），要么用会阻塞的 UV_RUN_ONCE。墙钟预算的额外好处：修前烧满预算、修后立刻返回，耗时本身就是判据（tcp_capacity 5.1s vs 2.6s）。"
+  source: "2026-10-17 tests/acceptance/tcp_capacity.c + client_sees_close.c"
+  affects: [uv-run-once-benchmark-methodology]

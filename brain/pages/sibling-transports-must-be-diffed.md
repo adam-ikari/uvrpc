@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, uvbus, maintenance, review-process]
 created: "2026-10-12T07:25:21"
-updated: "2026-10-12T07:56:33"
+updated: "2026-10-17T18:24:03"
 ---
 
 <!-- compiled_truth -->
@@ -108,4 +108,16 @@ updated: "2026-10-12T07:56:33"
   kind: decision
   summary: "306ce80：第六次漂移，也是分层结论成型的一次。目标校验属传输、payload 校验属入口层——同构的两个缺陷，正确的修法层不同。"
   source: commit 306ce80
+  affects: [sibling-transports-must-be-diffed]
+
+- time: 2026-10-17T18:24:03
+  kind: evidence
+  summary: "第七次：TCP 在容量上限（UVBUS_MAX_CLIENTS=1024）时从连接回调直接 return，连接落在 accept 队列里\"连着一个空\"；改为 accept-and-close 给 FIN（d200429）。diff 其余四条的结论是它们都不需要同样的修法——UDP 没有 accept 队列、SAMELOOP 的 connect 是同步拒绝的、IPC/INPROC 的表不设上限。这是第一次\"diff 的结果是其余四条确实不该跟\"。"
+  source: "commit d200429 + tests/acceptance/tcp_capacity.c"
+  affects: [a-client-must-be-told-its-connection-died]
+
+- time: 2026-10-17T18:24:03
+  kind: note
+  summary: "diff 产出的是候选，不是判决：每个差异还要单独做可达性论证。反例——先前列过「IPC 的 ipc_disconnect 缺 TCP 那样的 uv_is_closing() 守卫」。实测（teardown_orders + 拔掉 impl 置空的探针）表明 ipc_disconnect 的 impl 指针置空已经让第二遍不可达，加守卫是死代码，于是决定不加。同一位置还剩一处真实非对称：TCP 的 client 分支还会清 client->parent_transport，IPC 不清——但没有红测试够得着，留作已记录差异，不凭猜测改。"
+  source: "tests/acceptance/teardown_orders.c + IPC impl 置空探针"
   affects: [sibling-transports-must-be-diffed]

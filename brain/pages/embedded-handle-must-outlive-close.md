@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, memory-safety, teardown, valgrind, transport]
 created: "2026-10-11T05:24:18"
-updated: "2026-10-11T05:37:11"
+updated: "2026-10-17T18:24:03"
 ---
 
 <!-- compiled_truth -->
@@ -73,4 +73,10 @@ UVASYNC_FREE(scheduler);
   kind: decision
   summary: "堆结构体嵌 uv_*_t 时不能在 uv_close() 后立刻 free；释放要挂到 close 回调。owner 用 offsetof 恢复，除非能证明读 data 的回调已不可能触发。"
   source: "tests/acceptance/client_teardown.c, tests/acceptance/listen_failure.c, src/uvasync.c, src/uvbus_transport_ipc.c, src/uvbus_transport_tcp.c"
+  affects: [embedded-handle-must-outlive-close]
+
+- time: 2026-10-17T18:24:03
+  kind: evidence
+  summary: "vtable 的 disconnect 从两个方向可达：总线 disconnect 一次、vtable free 出栈时再一次——uvrpc_client_free() 的常规路径两条都会走到（client_destroy 先 uvrpc_client_disconnect 再 uvbus_free）。所以第二遍必须按构造是 no-op。五个驱动都靠\"置空 impl 指针\"实现；TCP 的 client 分支还额外用 uv_is_closing() 兜一层，并有一个 else 分支就地释放。置空是承重的：拔掉 IPC 的置空，新门禁 teardown_orders 在第一行 IPC 就死（libuv 里同一个 pipe 二次 close）。"
+  source: "2026-10-17 tests/acceptance/teardown_orders.c（20 行 = 5 传输 × 4 释放顺序）"
   affects: [embedded-handle-must-outlive-close]

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [server, transport, uvbus, api-design, resource-accounting]
 created: "2026-10-12T05:58:25"
-updated: "2026-10-17T17:17:48"
+updated: "2026-10-17T18:25:11"
 ---
 
 <!-- compiled_truth -->
@@ -24,6 +24,8 @@ updated: "2026-10-17T17:17:48"
 
 **结论：当一个既有回调的签名装不下上层所需的信息时，加一条内部通道，不要去改那个公开签名。** 本仓库的做法是 `src/uvbus_internal.h` 提供 `uvbus_set_conn_close_handler()`，`struct uvbus_transport` 加两个私有字段（`conn_close_cb` / `conn_close_ctx`，紧挨 `callback_ctx` 这个既有锚点放）。公开头文件只做加法，`uvbus_close_callback_t` 原样不动——它仍被 `tests/uvbus_test.c:219` 和 `docs/architecture/index.md` 引用。
 
+**这条通道有两个订阅者。** 本页讲的是"客户端走了 → 告诉服务端"；反方向"服务端走了 → 告诉客户端"同样挂在它上面，见 [[a-client-must-be-told-its-connection-died]]。当时只建了通道和一路订阅，另一半是 2026-10-17 补的（commit b1e0ca9）。
+
 ## 上报点：socket 走 read 回调，in-process 走 disconnect
 
 **上报必须发生在 owner 被证明还活着的那一刻。** 四条传输分成两组，各有一个这样的时刻：
@@ -38,7 +40,29 @@ updated: "2026-10-17T17:17:48"
 ## 两个必须的守卫
 
 - **`transport->is_server`**：`on_client_read` 同时服务客户端自己连出去的那条连接（TCP `uvbus_transport_tcp.c:451`、IPC `on_client_read`）。客户端侧那个块归 `uvrpc_client` 所有、由它关闭释放，在这里 `uv_close()` 等于把指针递到已经交还的内存前面。TCP 和 IPC 两处都要判。in-process 两条天然不会触发（`disconnect` 的 client 分支里另走一条路）。
+
+  2026-10-17 补正：这个守卫**只该罩住 teardown，不该罩住上报**。`tcp_forget_client()` / `ipc_forget_client()` 的通知触发在各自守卫**之前**，本来就是两侧都能安全调用的；原先客户端侧整段被守卫挡住，于是"服务端走了"这一半从没上报过。修法是**把上报移出守卫**（teardown 仍留在里面），而不是在守卫外再抄一份上报。
 - **压缩而非留洞**：`clients[]` 的 broadcast / shutdown 循环按下标直接索引，TCP 的 plain broadcast 路径更是**无任何守卫**地解引用 `clients[i]`。留洞 = 下一次广播就踩空。`client_ctxs[]` 同理，且它的 `is_new_client` 扫描把洞读成"陌生指针"，会让重连的老客户端看起来是新客户端。
+
+## 两个数字：传输的连接上限 ≠ max_clients
+
+本页的 `current_clients` **只数说过话的客户端**：`is_new_client` 扫描在**读到一条请求**时才建条目，没发过任何字节的连接不进这个数。
+
+每个传输**另有**一层连接上限，独立、固定，`uvrpc_config_set_max_clients()` 改不动它：
+
+| 传输 | 连接上限 | 到顶时的行为 |
+|---|---|---|
+| TCP | `UVBUS_MAX_CLIENTS` = 1024 | 新连接 **accept 后立刻 close**（给对端 FIN），见 d200429 |
+| UDP | 1024（硬编码） | 新 peer 无槽位，回复无处可去 |
+| SAMELOOP | `SAMELOOP_MAX_CLIENTS` = 64 | `connect` 同步失败 |
+| IPC / INPROC | 无（表按需倍增） | — |
+
+于是**两个数字会分开**：可以有一千条连接挂在 TCP 上、而 `uvrpc_server_get_client_count()` 报 0。两条后果都容易踩：
+
+1. **`max_clients` 代替不了传输上限。** 调小不会让传输少收连接（连接在读到请求之前不算客户端），调大也不会让传输多收（1024 就是 1024）。两道门在不同层次，谁也夹不住谁。
+2. **传输层的拒绝必须给对端一个信号**，否则连接落在 accept 队列里"连着一个空"，`max_clients` 那层根本轮不到。对 RPC 客户端而言这个信号还要有人接 —— 见 [[a-client-must-be-told-its-connection-died]]。
+
+已落在 `include/uvrpc.h`：`max_clients` 字段与 `uvrpc_config_set_max_clients()` 的文档写明两层关系与各传输上限，并顺带修正了 `uvrpc_server_get_client_count()` 的措辞（它数的是"说过话的客户端"，不是 socket）。
 
 ## 证据（2026-10-12）
 
@@ -51,9 +75,12 @@ updated: "2026-10-17T17:17:48"
 
 验证：186/186 ctest（184 + `client_churn` + `client_churn_memcheck`）、ASan 182/182、UBSan 182/182、valgrind 于 `client_churn`（四条传输全过）/ `client_teardown` / `listen_failure` 全 0。ASan 与 UBSan 在修前修后**都全绿**——这类缺陷（计数语义错误）与内存安全无关，只有针对性的断言测试能抓。
 
+传输层的一半另有门禁：`tests/acceptance/tcp_capacity.c`（→ `tcp_capacity` + `tcp_capacity_memcheck`）。它用 `UVBUS_MAX_CLIENTS` 条**只连不说话**的原始连接把 TCP 表填满 —— 传输数得到、RPC 层完全看不见，正是"两个数字分开"的现场 —— 然后转掉一个裸 TCP 对端和一个 uvrpc 客户端，要求两者都被告知。修前两条检查全红、耗时 5.1s（两个预算都烧完），修后 2.6s。
+
 ## 遗留
 
-（无。曾记在此处的 `uvrpc_server_stop()` 只翻 flag 一项已于 2026-10-17 解决：stop 关的是会话准入，不是监听器，见 [[server-stop-is-admission-not-unbind]]。注意原先那句「不主动断开任何连接」把方向写反了 —— 契约要求已有连接**照常完成**，缺的是「不接受新连接」。）
+- **传输连接上限与 `max_clients` 不合并、不夹紧。** 曾考虑把 5 个 per-transport 上限收成一个共享内部常量、并在 `uvrpc_server_create` 里做 `max_clients = min(请求值, 上限)`。**只做文档、不做代码**：夹紧改的是另一道门（见上面「两个数字」），既替代不了传输层的 accept-and-close，也表达不了 UDP 与 SAMELOOP 各自不同的"到顶行为"。
+- `uvrpc_server_stop()` 只翻 flag 一项已于 2026-10-17 解决：stop 关的是会话准入，不是监听器，见 [[server-stop-is-admission-not-unbind]]。注意原先那句「不主动断开任何连接」把方向写反了 —— 契约要求已有连接**照常完成**，缺的是「不接受新连接」。
 
 
 ## Timeline
@@ -92,4 +119,22 @@ updated: "2026-10-17T17:17:48"
   kind: decision
   summary: "stop 的遗留清空：准入层已生效，指向新页 server-stop-is-admission-not-unbind"
   source: commit 73fd203
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-10-17T18:23:39
+  kind: decision
+  summary: "补上「两个数字」一节：current_clients 只数说过话的客户端，每个传输另有一层固定连接上限，两者是不同层次的门，max_clients 既改不动也替代不了传输层。遗留改为显式记下「不合并/不夹紧」的决定。"
+  source: "2026-10-17 commit d200429 + tests/acceptance/tcp_capacity.c"
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-10-17T18:23:39
+  kind: evidence
+  summary: "两个订阅者：客户端侧的「服务端走了→告诉客户端」是同一通道的另一半（b1e0ca9）。TCP 传输层 1024 上限到顶改为 accept-and-close（d200429），门禁 tcp_capacity 用 1024 条只连不说话的连接演示两个数字分开。结论：max_clients 与传输上限不合并、不夹紧，只写文档。"
+  source: "commit b1e0ca9 + d200429, tests/acceptance/client_sees_close.c + tcp_capacity.c"
+  affects: [a-client-must-be-told-its-connection-died, one-dist-dir-many-configs]
+
+- time: 2026-10-17T18:25:11
+  kind: note
+  summary: "UDP 的同类隐患，换个外形：UDP 的 client 身份是 server->client_addrs[] 里的一个稳定槽位地址。若给 UDP 加空闲槽回收/LRU（\"满了就顶掉最久不说话的\"），新 peer 会继承那个槽位地址，而 is_new_client 的指针扫描会把它读成同一个客户端——不是漏掉一个客户端，而是把两个不同 peer 认成一个，回复发错人。所以 UDP 加回收前必须先给身份加上\"这一代\"的区分（或换非地址身份）。本轮只记录，不实现。"
+  source: "2026-10-17 讨论：UDP 无连接，槽位复用会伪造身份"
   affects: [server-client-accounting-needs-identity-removal]
