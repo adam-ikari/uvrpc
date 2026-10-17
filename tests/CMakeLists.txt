@@ -845,6 +845,49 @@ if(UVRPC_VALGRIND_EXECUTABLE)
         TIMEOUT 600)
 endif()
 
+# Teardown arrives from more than one direction -- a bus disconnect and the
+# transport's own free both reach it -- and a handle uv_close()d twice takes the
+# process down inside libuv. Every transport, released server-first,
+# client-first, disconnected twice, and stopped before it is freed; the loop
+# must still close cleanly afterwards.
+add_executable(teardown_orders
+    acceptance/teardown_orders.c
+)
+
+target_link_libraries(teardown_orders
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(teardown_orders
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME teardown_orders COMMAND teardown_orders)
+set_tests_properties(teardown_orders PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 180
+)
+
+if(UVRPC_VALGRIND_EXECUTABLE)
+    add_test(NAME teardown_orders_memcheck
+        COMMAND ${UVRPC_VALGRIND_EXECUTABLE}
+            --quiet
+            --error-exitcode=9
+            --leak-check=full
+            --show-leak-kinds=definite
+            --errors-for-leak-kinds=definite
+            $<TARGET_FILE:teardown_orders>
+    )
+    set_tests_properties(teardown_orders_memcheck PROPERTIES
+        LABELS "memcheck"
+        TIMEOUT 600)
+endif()
+
 # The TCP transport refuses a connection past UVBUS_MAX_CLIENTS by returning
 # from its connection callback without accepting it -- which leaves the peer
 # connected to nothing. Heavy: filling the table means UVBUS_MAX_CLIENTS (1024)

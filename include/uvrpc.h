@@ -239,7 +239,7 @@ struct uvrpc_config {
     int timeout_ms;                      /**< @brief Deadline for a request whose response never arrives, in ms (default: UVRPC_DEFAULT_TIMEOUT_MS; 0 disables it) */
     int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
-    int max_clients;                     /**< @brief Maximum server clients (0 or less falls back to 1024; it does not mean unlimited) */
+    int max_clients;                     /**< @brief Ceiling on clients that have spoken, not on sockets (0 or less falls back to 1024; it does not mean unlimited). Every transport also caps connections by itself, at a number this does not set: see uvrpc_config_set_max_clients() */
 };
 
 /**
@@ -416,11 +416,25 @@ uvrpc_config_t* uvrpc_config_set_timeout(uvrpc_config_t* config, int timeout_ms)
 uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t msgid_offset);
 
 /**
- * @brief Set maximum server clients
- * 
+ * @brief Set the ceiling on clients that have spoken
+ *
+ * A client is counted once a request from it has been read, and refused from
+ * then on with UVRPC_ERROR_MAX_CLIENTS in an error frame. A connection that has
+ * not sent anything yet is not counted, so this limits clients rather than
+ * sockets, and cannot be used as a socket limit.
+ *
+ * Every transport also caps connections on its own, separately and at a
+ * different number. TCP accepts UVBUS_MAX_CLIENTS (1024) connections and closes
+ * each one past that as it arrives, so it never reaches this layer to be
+ * counted. UDP records at most 1024 peers; a peer past that is handled but has
+ * no slot for its reply. SAMELOOP accepts 64 connections and refuses the
+ * connect itself. IPC and INPROC cap nothing and grow as needed. Where a
+ * transport's own cap is the smaller of the two it is the one that takes
+ * effect, so a max_clients above it is simply never reached on that transport.
+ *
  * @param config Configuration object
- * @param max_clients Maximum clients; 0 or less selects the 1024 default and
- *                    does not mean unlimited
+ * @param max_clients Ceiling on clients that have spoken; 0 or less selects
+ *                    the 1024 default and does not mean unlimited
  * @return Configuration object for chaining
  * @note Only applicable to server configuration
  */
@@ -510,10 +524,14 @@ uint64_t uvrpc_server_get_total_requests(uvrpc_server_t* server);
 uint64_t uvrpc_server_get_total_responses(uvrpc_server_t* server);
 
 /**
- * @brief Get current connected clients count
- * 
+ * @brief Get the current count of clients that have spoken
+ *
+ * This counts clients, not sockets: a connection that has not sent a request is
+ * not in it, and each transport may be holding many more connections than this
+ * reports. See uvrpc_config_set_max_clients() for the per-transport ceilings.
+ *
  * @param server Server instance
- * @return Current number of connected clients
+ * @return Current number of clients that have sent a request
  */
 int uvrpc_server_get_client_count(uvrpc_server_t* server);
 
