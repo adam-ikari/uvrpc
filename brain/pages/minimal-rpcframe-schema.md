@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [protocol, schema, flatbuffers]
 created: "2026-09-28T17:09:45"
-updated: "2026-10-01T11:29:08"
+updated: "2026-10-17T17:16:51"
 ---
 
 <!-- compiled_truth -->
@@ -13,7 +13,7 @@ UVRPC 的线格式刻意压到最小：`namespace uvrpc` 下**一个** `table Rp
 
 ```
 msgid:  uint32     // 路由键，环形缓冲数组用它取模（见 [[ring-buffer-over-uthash]]）
-type:   uint8      // 0=Request, 1=Response(最后一帧), 2=ResponseMore(流式，后续还有)
+type:   uint8      // 0=Request, 1=Response(最后一帧), 2=ResponseMore(流式，后续还有), 3=ResponseError
 method: string     // 仅 Request 使用
 data:   [ubyte]    // Request 的入参 / Response 的结果
 ```
@@ -23,7 +23,7 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
 1. **一帧通吃**：普通 RPC、Oneway、Stream（多响应）、Broadcast 全部复用同一结构，靠 `type` 与 `method` 区分。没有 error frame 专用结构体，也没有 Unknown 类型（`d2cf72c` 删掉的）。
 2. **`data` 是不透明的 `[ubyte]`**：业务 payload 由 FlatCC 单独序列化后塞进 `data`。因此 handler 拿到的是原始字节指针，可以直接零拷贝读 —— 框架层不理解 payload，这正是换掉 msgpack 想要的语义（见 [[uvrpc-tech-stack-lineage]]）。代价：`method`/`data` 指针**只在 handler 回调期间有效**（`include/uvrpc.h:248` 明示），要跨回调使用必须自己拷贝。
 3. **`type=1` vs `type=2` 就是 Stream 的全部协议**：服务端对同一 msgid 连发多帧 `ResponseMore`，最后一帧用 `Response`。客户端不需要 session 状态机。
-4. **错误不用独立帧类型**：状态码用 `-1` 表达（`8babf1a`）。
+4. **错误有自己的帧类型，而且必须用它**：`type=3`（`UVRPC_FRAME_TYPE_RESPONSE_ERROR`），payload 是 `int32` 状态码后跟消息字节（没有长度字）。`uvrpc_encode_error()` 是唯一的生产者，`uvrpc_request_send_response()` 的每条失败路径都走它。**不能**把错误码与消息当作 `type=1` 的 `data` 发出去：客户端按 `type` 解读，`resp->status` 就成了 `UVRPC_OK`，调用方拿到一段它以为是 payload 的 `[code, message]` —— 拒绝与应答从此不可区分，而可区分正是拒绝存在的唯一理由。服务端的 max_clients 拒绝分支曾正是这么写的（`5920642` 修，门禁 `tests/acceptance/refusals.c`）；同一文件里正确的那条兄弟路径早就用对了编码器：**同一文件内的 producer 漂移**，不是线格式变更。
 5. **Oneway 不是线格式概念，是客户端本地决定**（实测 `src/uvrpc_client.c:634-673`）：`uvrpc_client_call_oneway` 编码出与 regular 调用**完全相同**的 `type=0` Request 帧，唯一区别是不占用环形缓冲的回调槽位。**含义**：服务端与抓包都无法区分 oneway 与 regular；服务端若对 oneway 请求回了响应，该帧会因找不到槽位而被丢弃，而不是协议错误。设计新语义时不要指望线上能表达"不要回"。
 
 第六个决策点（2026-09-29 补）：**帧缓冲区的分配器归属属于 flatcc，不属于 uvrpc**。`uvrpc_encode_*()` 返回的字节来自 `flatcc_builder_finalize_buffer()`，而 flatcc 的 builder 用的是自己的分配器（`flatcc_builder_default_alloc`，默认即 malloc），没有接入 `uvrpc_alloc` 钩子。契约因此是：**任何 encode 输出只能用 `free()` 释放，绝不能交给 `uvrpc_free()`**。库内部统一走 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h` 里包一层的 `free()`，17 处调用点全走它）。这不是洁癖：system 分配器构建下两者同源、看不出差别，mimalloc 与 custom 构建下就是跨堆释放（实测 custom 下每轮往返 8 次）。
@@ -81,4 +81,10 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
   kind: evidence
   summary: "**架构文档的行号引用大面积漂移 —— 已修**（2026-09-30）。写脚本扫 docs/ 下所有 `src/*.c:N` / `include/*.h:N` 引用，逐条核对是否指向真实代码，**16 条可疑、14 条确认漂移**。最严重的一类是指向无关内容：`include/uvrpc.h:182` 实际是注释结束符（被引用为 `uvrpc_handler_t` 的 typedef 位置，真实在 :200）；`include/uvrpc.h:465` 实际是 `@param server`（被引用为 `uvrpc_response_send`，真实在 :528）；`include/uvrpc.h:505` 实际是注释（被引用为 `UVRPC_ERROR_NOT_CONNECTED`，真实在 :54）；`src/uvrpc_client.c:146` 实际是空行（被引用为 msgid 取模，真实在 :250）。**我改客户端错误帧处理时新增了约 145 行，把大批引用顶走了**。修正后剩余 2 条经人工确认是有意引用注释开头。**判据**：行号引用是架构文档的证据链，指向空行或注释结束符时等于没有证据 —— 这与「文档承诺不存在的东西」是同一类问题，值得定期用脚本核对而非逐个人读。另修 `docs/api/generated-api.md` 两处过时示例：`create_server` 少了 registry 参数、`create_client` 少一个参数（真实 5 个：loop/address/registry/callback/ctx）。**注意区分**：`flatcc_builder_finalize_buffer` 配 `flatcc_builder_free` 与配 `flatcc_builder_aligned_free` **两种都对**（后者是 stable free），代码库 86/63 混用，模板用后者，文档用前者 —— 不是 bug，未改"
   source: "脚本核对 docs/ 全部行号引用 + 逐条语义比对（2026-09-30）"
+  affects: [minimal-rpcframe-schema]
+
+- time: 2026-10-17T17:16:51
+  kind: decision
+  summary: "错误有独立帧类型 type=3，且必须用它：把错误塞进 type=1 会让拒绝看起来像成功"
+  source: "src/uvrpc_flatbuffers.c(uvrpc_encode_error) + src/uvrpc_server.c(拒绝分支) + tests/acceptance/refusals.c, commit 5920642"
   affects: [minimal-rpcframe-schema]

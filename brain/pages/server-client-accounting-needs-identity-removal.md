@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [server, transport, uvbus, api-design, resource-accounting]
 created: "2026-10-12T05:58:25"
-updated: "2026-10-15T03:50:09"
+updated: "2026-10-17T17:17:48"
 ---
 
 <!-- compiled_truth -->
@@ -53,7 +53,7 @@ updated: "2026-10-15T03:50:09"
 
 ## 遗留
 
-`uvrpc_server_stop()` 只翻一个 flag，不主动断开任何连接。
+（无。曾记在此处的 `uvrpc_server_stop()` 只翻 flag 一项已于 2026-10-17 解决：stop 关的是会话准入，不是监听器，见 [[server-stop-is-admission-not-unbind]]。注意原先那句「不主动断开任何连接」把方向写反了 —— 契约要求已有连接**照常完成**，缺的是「不接受新连接」。）
 
 
 ## Timeline
@@ -86,4 +86,10 @@ updated: "2026-10-15T03:50:09"
   kind: note
   summary: "max_clients 有两套天花板，且配置那一套是开口的（未修缺口）：uvrpc_config_set_max_clients(N) 没有上界钳制（uvrpc_server.c:295 只把 0 归成 1024），而传输层的上限是编译期常量、五条各不相同——TCP 1024（UVBUS_MAX_CLIENTS）、UDP 1024（udp.c:442 硬编码）、SAMELOOP 64、IPC 与 INPROC 无上限（表自动扩容，配 5000 真的能用）。uvbus_listen(bus) 不带参数，没有通道把配置传下去。于是配到 1024 以上时 TCP/UDP 超售：TCP 的 on_server_connection 在 :332 触发 error_cb 后直接 return 而不 uv_accept，内核层面握手已完成，客户端的 connect_cb 报 OK，请求却永远没人读——静默挂死；UDP 则因 peer 表满而交 NULL 身份，server_recv_callback 会把 NULL 记进 client_ctxs[]，此后所有满表 peer 被并成同一个客户端（同一类身份塌陷，只是走的是 NULL 路径而非悬垂指针路径）。因此不能一刀切把配置钳到 1024——那会让今天确实能用的 IPC/INPROC 倒退；正确修法要按传输取天花板，属于设计变更，与本页已修的台账删除缺陷分开记。"
   source: "connect_refund 与 5 驱动 vtable 对照审计（2026-10-15）"
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-10-17T17:17:48
+  kind: decision
+  summary: "stop 的遗留清空：准入层已生效，指向新页 server-stop-is-admission-not-unbind"
+  source: commit 73fd203
   affects: [server-client-accounting-needs-identity-removal]
