@@ -52,9 +52,12 @@ if [ -f deps/flatcc/bin/flatcc ]; then
     echo "flatcc already built"
 else
     echo -e "${YELLOW}Building flatcc (install to deps/flatcc)...${NC}"
+    # flatcc v0.6.1 declares cmake_minimum_required(VERSION 2.8); CMake >= 4.0
+    # treats that as a hard error, so raise the policy floor instead of the pin.
     cmake -S deps/flatcc -B deps/flatcc/build \
         -DCMAKE_BUILD_TYPE=Release -DBUILD_FLATCC_TESTS=OFF \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     cmake --build deps/flatcc/build -j"$NPROC"
     cmake --install deps/flatcc/build --prefix deps/flatcc
 fi
