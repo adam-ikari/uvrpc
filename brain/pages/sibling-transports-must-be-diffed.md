@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, uvbus, maintenance, review-process]
 created: "2026-10-12T07:25:21"
-updated: "2026-10-17T18:24:03"
+updated: "2026-10-28T14:05:26"
 ---
 
 <!-- compiled_truth -->
@@ -121,3 +121,9 @@ updated: "2026-10-17T18:24:03"
   summary: "diff 产出的是候选，不是判决：每个差异还要单独做可达性论证。反例——先前列过「IPC 的 ipc_disconnect 缺 TCP 那样的 uv_is_closing() 守卫」。实测（teardown_orders + 拔掉 impl 置空的探针）表明 ipc_disconnect 的 impl 指针置空已经让第二遍不可达，加守卫是死代码，于是决定不加。同一位置还剩一处真实非对称：TCP 的 client 分支还会清 client->parent_transport，IPC 不清——但没有红测试够得着，留作已记录差异，不凭猜测改。"
   source: "tests/acceptance/teardown_orders.c + IPC impl 置空探针"
   affects: [sibling-transports-must-be-diffed]
+
+- time: 2026-10-28T14:05:26
+  kind: note
+  summary: "第八个漂移案例，且不在传输之间：uvrpc_client.c 调 uvbus_set_conn_close_handler() 没带 #include \"uvbus_internal.h\"，而 uvrpc_server.c 为同一个调用一直带着；tests/acceptance/connect_refund.c 用 _exit() 没带 <unistd.h>，同批的 client_sees_close.c 带着。信号不止三种——「同一个调用/同一个函数形状，一侧多一个 include」是第四个信号，而且它只在编译器版本变化后才变成硬错误（GCC 15 把 -Wimplicit-function-declaration 升级为 error）。diff 的范围应当包括 server↔client 与测试↔测试，不只是 5 个传输之间。"
+  source: "2026-10-28 gh run 40641013547 + commits 1976080 与 connect_refund include 修复"
+  affects: [sibling-transports-must-be-diffed, build-distribution-breakage]

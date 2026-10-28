@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-28T13:47:56"
+updated: "2026-10-28T14:05:12"
 ---
 
 <!-- compiled_truth -->
@@ -51,6 +51,30 @@ GitHub runner 镜像升到 CMake ≥ 4.0，删掉了对 `cmake_minimum_required(
 
 - `setup_deps.sh` 传的 `-DBUILD_FLATCC_TESTS=OFF` 在 flatcc v0.6.1 里没有这个选项（真名是 `FLATCC_TEST`，默认 ON），所以 flatcc 自己的测试一直在被编译。
 - `FLATCC_INSTALL` 默认 OFF，使 `cmake --install ... --prefix deps/flatcc` 实际只复制头文件。真正的 `deps/flatcc/bin/flatcc` 与 `deps/flatcc/lib/libflatcc{,rt}.a` 是 flatcc 把 `dist_dir` 设成 `PROJECT_SOURCE_DIR`（`deps/flatcc/CMakeLists.txt:162`）、**编译期直接写进源码树**的。所以看到 `--install` 输出为空不代表构建坏了。
+
+## 同一条链上的三层（2026-10-28 实测，一轮一层）
+
+runner 更新不是破坏一处，而是三层，且**每层只有把上一层修好才现形** —— 这三轮 CI 每轮只暴露下一个：
+
+| 层 | 症状 | 破坏者 | 修法 |
+|---|---|---|---|
+| 1 | flatcc configure 硬失败 | CMake ≥ 4.0 删掉 < 3.5 兼容（flatcc v0.6.1 声明 2.8） | `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` |
+| 2 | `libflatccrt` 编译失败 | GCC ≥ 12 的 `-Wunterminated-string-initialization`，撞上 flatcc 的 `-Werror`（它只对"相信干净的编译器版本"加，清单停在 11） | `-DFLATCC_ALLOW_WERROR=OFF` —— flatcc 自己的开关。`-Wno-error=...` **无效**：flatcc 把 `-Werror` 拼在传进去的 `CMAKE_C_FLAGS` 之后，后置覆盖前置 |
+| 3 | `uvrpc_client.c` / `tests/acceptance/connect_refund.c` 编译失败 | GCC ≥ 15 把 `-Wimplicit-function-declaration` 从警告升级为错误 | 补 include（见下） |
+
+第 3 层**不是工具链问题，是我们自己的缺陷**：`b1e0ca9` 给客户端加了 `uvbus_set_conn_close_handler()` 却没加 `#include "uvbus_internal.h"`（`uvrpc_server.c` 为同一个调用早就有），`connect_refund.c` 用 `_exit()` 却没 `<unistd.h>`（同批的 `client_sees_close.c` 有）。编译器升级只是把一直存在的形状变成硬错误 —— 隐式声明假设返回 `int`、参数未知，这里恰好能跑。
+
+**规则：一次扫全仓，不要修一个推一个。** `gcc -fsyntax-only -Werror=implicit-function-declaration -I<项目 include 路径>` 跑遍 `src/ tests/ examples/ fuzz/` 每个 `.c`，几秒钟就能把同类缺陷一次问完。
+
+## 警告闸门为什么放过了它（durable 缺陷，本轮未修）
+
+`.github/workflows/ci.yml` 的 "Check warnings (warning-clean build)" 是 `make | tee build.log` 然后 `grep -iE "warning:|error:" build.log`。三个洞，第一个本轮实际发生：
+
+1. **它 grep 的是编译器的措辞，不是代码的事实。** 同一段代码 GCC 11 叫 `warning:`、GCC 15 叫 `error:`；闸门检查的是"这台机器的编译器把它归为哪类"，于是它跟着工具链版本漂移。前一步 `Build` 已经把警告打出来了，但闸门不看那个日志。
+2. **增量 make 输出为空。** `Build` 刚编译完，闸门再 make 一次时一切都是最新的，`build.log` 里不会有任何诊断 → grep 无命中 → 绿灯。
+3. `grep ... | grep -qvE` 让管道丢掉 `make` 的退出码（workflow 没开 `pipefail`），构建失败本身也不会被这一步捕获。
+
+正确形状是 configure 时给库目标加 `-Werror`（或按类升级，如 `-Werror=implicit-function-declaration`），闸门改看**上一步构建的日志**或做一次独立全量构建，并 `set -o pipefail`。本轮只修破坏、不动 CI 契约。
 
 
 ## Timeline
@@ -149,4 +173,10 @@ GitHub runner 镜像升到 CMake ≥ 4.0，删掉了对 `cmake_minimum_required(
   kind: decision
   summary: "补一节「工具链天花板会在 vendored 依赖下面移动」：runner 升到 CMake 4 后 flatcc 的 2.8 下限硬失败并带走所有 job，本地 3.31 只警告；规则是抬策略下限不动 gitlink、逐个读 cmake_minimum_required 定范围、修复要在真版本上先复现；并记下 CI 覆盖 origin 而非 HEAD（当时积压 33 个未推 commit）。"
   source: "2026-10-28 commit b5d77aa + gh run 40176598575 日志 + 本地 CMake 4.4.4 复现"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-28T14:05:12
+  kind: decision
+  summary: "补两节：runner 更新是三层链（CMake floor → flatcc -Werror × GCC 15 警告升级 → 我们自己两处缺 include），每层只在上一层修好后现形，规则是一次 -fsyntax-only -Werror=implicit-function-declaration 扫全仓；并记下警告闸门的三个洞 —— 它 grep 编译器的措辞而不是代码的事实，增量 make 输出为空，管道丢掉 make 退出码（本轮未修）。"
+  source: "2026-10-28 commits 2c3e439 / 1976080 + gh run 40640382388、40641013547 日志"
   affects: [build-distribution-breakage]

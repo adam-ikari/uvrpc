@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [client, transport, uvbus, lifecycle, error-reporting]
 created: "2026-10-17T18:22:59"
-updated: "2026-10-17T18:22:59"
+updated: "2026-10-28T14:05:26"
 ---
 
 <!-- compiled_truth -->
@@ -68,4 +68,10 @@ INPROC 的 `inproc_client_t.client_transport` **本来就有、赋值了却从�
   kind: decision
   summary: "uvrpc_client 缓存的 is_connected 是三个发送入口的闸门，不能比连接活得久。服务端消失（free/崩溃/重启/断线）后客户端必须被告知，否则下一次调用被接受、写出去（对端 FIN 后首写会成功）、无人应答，调用方等满整个 deadline。上报复用服务端记账那条内部通道，四条传输都要覆盖。"
   source: "2026-10-17 commit b1e0ca9 + tests/acceptance/client_sees_close.c"
+  affects: [a-client-must-be-told-its-connection-died]
+
+- time: 2026-10-28T14:05:26
+  kind: note
+  summary: "本轮修复自身带出一个缺陷：b1e0ca9 加了 uvbus_set_conn_close_handler() 调用却没有包含 src/uvbus_internal.h，于是那是个隐式声明。GCC 11 只警告、22.04 job 照过，GCC 15 升级为错误才暴露 —— 说明「本机 195/195 绿」证明不了可移植性，只有 origin 上的 CI 能。已补 include（1976080）。"
+  source: "2026-10-28 gh run 40640382388 日志（uvrpc_client.c:462）"
   affects: [a-client-must-be-told-its-connection-died]
