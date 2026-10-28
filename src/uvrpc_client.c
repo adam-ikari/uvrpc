@@ -13,6 +13,7 @@
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_allocator.h"
 #include "../include/uvasync.h"
+#include "uvbus_internal.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
 #include <stdlib.h>
