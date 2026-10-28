@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-06T00:03:27"
+updated: "2026-10-28T13:47:56"
 ---
 
 <!-- compiled_truth -->
@@ -35,6 +35,22 @@ updated: "2026-10-06T00:03:27"
 同批删除的还有 `docs/doxygen/`（579 个提交进仓库的生成 HTML，还在描述切片 1 前就删掉的死层）。`docs/Doxyfile` 保留，按需本地生成，`.gitignore` 加了 `docs/doxygen/`。
 
 **教训（适用于整个仓库）**：`.gitignore` 的 `dist/` 同时命中 C++ 侧产物目录与 npm 包载荷目录。凡是"入库路径里含 dist/ 的内容"都要怀疑被静默截断过；验证分发必须从干净克隆重跑，不能用工作区既有产物。
+
+## 工具链天花板会在 vendored 依赖下面移动（2026-10-28）
+
+GitHub runner 镜像升到 CMake ≥ 4.0，删掉了对 `cmake_minimum_required(VERSION < 3.5)` 的兼容。flatcc v0.6.1 声明的是 2.8（`deps/flatcc/CMakeLists.txt:5`），于是 `scripts/setup_deps.sh` 的 flatcc 配置步骤硬失败，而**每一个 CI job 都调这个脚本**，整条流水线一起红 —— 10-25 那次 scheduled benchmark 只是最先撞上的。本地 cmake 3.31.10 对同一个下限**只警告不报错**，所以「家里绿、runner 红」是这一类的固定特征。
+
+规则：
+
+- **依赖的构建工具下限属于环境，不属于 pin。** 出问题时抬策略下限，不动 gitlink：在 flatcc 的配置里加 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5`。换 flatcc 提交是 gitlink 变更，等于重新打开上面第 2 条那扇门（gitlink 指向从未 push 过的幽灵提交）。
+- **范围要逐个读出来，不能猜。** 五个 vendored 依赖里只有 flatcc 越界：libuv 3.9、mimalloc 3.18、gtest 3.16，项目自身 `CMakeLists.txt` 3.15。判据是对每个 `deps/*/CMakeLists.txt` 读 `cmake_minimum_required`。
+- **修复要在真版本上验。** 本地没有 CMake 4 就装一个临时副本（`pip install "cmake==4.*"` 到 venv），先复现原报错、再验修复；只靠 CI 复现等于把一次修复换成一轮红。
+- **CI 覆盖的是 origin，不是 HEAD。** 这次一起暴露的还有：main 领先 origin/main 33 个 commit（10-12 ~ 10-18 那一整批生命周期修复），最后一次 CI 运行停在 10-06。积压在本地的那些修复只有本机一份证据；推上去之前，别把它们当成"已验证"。
+
+顺带查清、**未修**的两个小事实（都在同一段配置里，读到会误判）：
+
+- `setup_deps.sh` 传的 `-DBUILD_FLATCC_TESTS=OFF` 在 flatcc v0.6.1 里没有这个选项（真名是 `FLATCC_TEST`，默认 ON），所以 flatcc 自己的测试一直在被编译。
+- `FLATCC_INSTALL` 默认 OFF，使 `cmake --install ... --prefix deps/flatcc` 实际只复制头文件。真正的 `deps/flatcc/bin/flatcc` 与 `deps/flatcc/lib/libflatcc{,rt}.a` 是 flatcc 把 `dist_dir` 设成 `PROJECT_SOURCE_DIR`（`deps/flatcc/CMakeLists.txt:162`）、**编译期直接写进源码树**的。所以看到 `--install` 输出为空不代表构建坏了。
 
 
 ## Timeline
@@ -127,4 +143,10 @@ updated: "2026-10-06T00:03:27"
   kind: evidence
   summary: "**frame decoder fuzzer 已接入 CI 并跑 4500 万次**（2026-10-06）。攻击面是网络库的解码路径，fuzz job 用 clang + libFuzzer 直接编译（不走 CMake，因 libFuzzer 自带 main 会让 CMake 编译器测试失败），本地 160 万次/9 秒无崩溃，CI 上 4500 万次/61 秒无崩溃无 UB。**两个坑**：(1) `rpc_reader.h` 是 flatcc 构建产物**不入库**，fuzz job 绕过 CMake 时必须在编译前手动跑 `flatcc -c -v -w -o generated schema/rpc.fbs`（镜像 generate_flatcc）。(2) **YAML 重复键**：把生成步骤插进前一个 step 的 name 和 run 之间会产生重复 `run:` 键；Python 的 `yaml.safe_load` **默认保留最后一个重复键、不报错**，本地看起来有效但 GitHub 直接拒绝整个 workflow（run 在启动前即失败，报 workflow file issue）。修后必须用会抛异常的自定义 loader 检测重复键，不能信默认解析。判据：CI 的构建错误要区分『workflow 语法层』与『任务执行层』——前者任何 job 都不会跑"
   source: ".github/workflows/ci.yml fuzz job；CI 日志 Done 45029162 runs（2026-10-05）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-28T13:47:56
+  kind: decision
+  summary: "补一节「工具链天花板会在 vendored 依赖下面移动」：runner 升到 CMake 4 后 flatcc 的 2.8 下限硬失败并带走所有 job，本地 3.31 只警告；规则是抬策略下限不动 gitlink、逐个读 cmake_minimum_required 定范围、修复要在真版本上先复现；并记下 CI 覆盖 origin 而非 HEAD（当时积压 33 个未推 commit）。"
+  source: "2026-10-28 commit b5d77aa + gh run 40176598575 日志 + 本地 CMake 4.4.4 复现"
   affects: [build-distribution-breakage]
