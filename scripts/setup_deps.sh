@@ -54,10 +54,14 @@ else
     echo -e "${YELLOW}Building flatcc (install to deps/flatcc)...${NC}"
     # flatcc v0.6.1 declares cmake_minimum_required(VERSION 2.8); CMake >= 4.0
     # treats that as a hard error, so raise the policy floor instead of the pin.
+    # GCC >= 12 warns that grisu3_print.h:186 truncates the NUL of a 17-char
+    # literal into char[16], and flatcc pins -Werror for compiler versions it
+    # believed clean. FLATCC_ALLOW_WERROR=OFF is flatcc's own escape hatch.
     cmake -S deps/flatcc -B deps/flatcc/build \
         -DCMAKE_BUILD_TYPE=Release -DBUILD_FLATCC_TESTS=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -DFLATCC_ALLOW_WERROR=OFF
     cmake --build deps/flatcc/build -j"$NPROC"
     cmake --install deps/flatcc/build --prefix deps/flatcc
 fi
