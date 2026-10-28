@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-28T14:05:12"
+updated: "2026-10-28T14:10:43"
 ---
 
 <!-- compiled_truth -->
@@ -179,4 +179,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: decision
   summary: "补两节：runner 更新是三层链（CMake floor → flatcc -Werror × GCC 15 警告升级 → 我们自己两处缺 include），每层只在上一层修好后现形，规则是一次 -fsyntax-only -Werror=implicit-function-declaration 扫全仓；并记下警告闸门的三个洞 —— 它 grep 编译器的措辞而不是代码的事实，增量 make 输出为空，管道丢掉 make 退出码（本轮未修）。"
   source: "2026-10-28 commits 2c3e439 / 1976080 + gh run 40640382388、40641013547 日志"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-28T14:10:43
+  kind: note
+  summary: "三层链闭合：run 40641803471 全部 13 个 job 通过（含 ubuntu-latest 的 GCC 15、ASan、UBSan、cppcheck、fuzz），100% ctest 190/190 ×2 job。顺带查出一个覆盖洞：ci.yml 里没有任何 custom 分配器的 job，而 allocator_ownership 这道门禁注册在 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL \"custom\") 里（tests/CMakeLists.txt:1007），即切片 8 那道「跨堆释放」门禁今天从来没在 CI 上跑过 —— 本页时间线里「CI 新增 custom-allocator job」那句已不成立。本地/CI 测试数 195 与 190 的差额正是这类按配置注册的用例。"
+  source: "2026-10-28 gh run 40641803471（13 job 全绿）+ tests/CMakeLists.txt:1007 与 ci.yml 对照"
   affects: [build-distribution-breakage]

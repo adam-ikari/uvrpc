@@ -1,6 +1,6 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-10-28T06:05:26.484Z._
+_Auto-generated. Last updated 2026-10-28T06:10:43.843Z._
 
 - [a-client-must-be-told-its-connection-died](pages/a-client-must-be-told-its-connection-died.md) — category: decision | tags: [client, transport, uvbus, lifecycle, error-reporting] | ## 约束
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
