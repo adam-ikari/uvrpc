@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-29T20:25:22"
+updated: "2026-10-29T20:35:08"
 ---
 
 <!-- compiled_truth -->
@@ -66,15 +66,19 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
 
 **规则：一次扫全仓，不要修一个推一个。** `gcc -fsyntax-only -Werror=implicit-function-declaration -I<项目 include 路径>` 跑遍 `src/ tests/ examples/ fuzz/` 每个 `.c`，几秒钟就能把同类缺陷一次问完。
 
-## 警告闸门为什么放过了它（durable 缺陷，本轮未修）
+## 警告闸门：grep 措辞已换成 configure 期 -Werror（2026-10-29）
 
-`.github/workflows/ci.yml` 的 "Check warnings (warning-clean build)" 是 `make | tee build.log` 然后 `grep -iE "warning:|error:" build.log`。三个洞，第一个本轮实际发生：
+旧闸门是 `make -C build 2>&1 | tee build.log` 再 `grep -iE "warning:|error:"`。三个洞，第一个本轮实际发生：
 
 1. **它 grep 的是编译器的措辞，不是代码的事实。** 同一段代码 GCC 11 叫 `warning:`、GCC 15 叫 `error:`；闸门检查的是"这台机器的编译器把它归为哪类"，于是它跟着工具链版本漂移。前一步 `Build` 已经把警告打出来了，但闸门不看那个日志。
-2. **增量 make 输出为空。** `Build` 刚编译完，闸门再 make 一次时一切都是最新的，`build.log` 里不会有任何诊断 → grep 无命中 → 绿灯。
+2. **增量 make 输出为空。** `Build` 刚编译完，闸门再 make 一次时一切都是最新的，`build.log` 里不会有任何诊断 → grep 无命中 → 绿灯。这一条使它结构性地不可能报警，不是"偶尔漏"。
 3. `grep ... | grep -qvE` 让管道丢掉 `make` 的退出码（workflow 没开 `pipefail`），构建失败本身也不会被这一步捕获。
 
-正确形状是 configure 时给库目标加 `-Werror`（或按类升级，如 `-Werror=implicit-function-declaration`），闸门改看**上一步构建的日志**或做一次独立全量构建，并 `set -o pipefail`。本轮只修破坏、不动 CI 契约。
+现在是 `option(UVRPC_WERROR)`（默认 ON）给 `uvrpc` 与 `uvrpc_shared` 加 `-Werror`，CI 的两个 "Check warnings" 步骤删除，闸门就是编译本身。范围只有库目标 —— `-Wall -Wextra -Wpedantic` 本来也只在这两个目标上，tests/examples 不在门禁内。一处降级：`-Wno-error=misleading-indentation`，因为 `generated/flatbuffers_common_builder.h` 里 flatcc 自己的宏拼写触发 192 处，而该文件每次构建都由 flatcc 重写、无法就地修。链接期 glibc NSS 提示（`getpwuid_r`…）不是编译诊断，-Werror 不影响它 —— 旧闸门为此专门写了白名单，正是它在匹配措辞的证据。
+
+负控制（项目铁律：检查约束的测试必须先证明破坏时会失败）：在 `src/uvrpc_strerror.c` 注入一个未使用变量，同一棵树 `-DUVRPC_WERROR=ON` 构建 exit 2 并报 `[-Werror=unused-variable]`，改 OFF 构建 exit 0 并报同一处 `[-Wunused-variable]`。A/B 之后探针已撤回。
+
+**本轮又踩到的测量纪律**：我用一份手拼的 `cc -fsyntax-only -Wall -Wextra -Wpedantic …` 扫全 `src/`，报"0 警告"，据此判断 -Werror 可以无脑打开；真实构建里同一批文件有 192 条。**重建编译命令行来测量，等于用另一份可能不同于构建契约的配置在测量** —— 缺的可能是 `-I` 顺序、某个 `-D`，或者优化级别。测量要用构建本身（`make` 后看日志，或读 `build/CMakeFiles/<tgt>.dir/flags.make` 原样取 FLAGS），别手写。这和 grep 闸门是同一个错误的两个版本：检查的东西不是被约束的那个对象。
 
 
 ## Timeline
@@ -191,4 +195,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: reversal
   summary: "更正上一条的「覆盖洞」定性：CI 从来没有丢过 custom-allocator job，它是 2026-10-01 被有意撤掉的。时间线是 b139f82（2026-09-29）加上测试与 job → 687418f（2026-10-01）以零可变全局为由删除可插拔分配器 → cb7a60b 撤掉 job 并在提交信息与 docs/architecture/integration.md 里如实写明这是覆盖下降。撤得干净的是 CI；留下的是 tests/allocator_ownership_test.c 和它 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL \"custom\") 的注册块，而 CMakeLists.txt:49 对 custom 直接 FATAL_ERROR，所以那道门禁不可能失败也不可能在任何构建里注册 —— 2026-10-28 一并删除。结论改写为：跨堆释放的覆盖不是「本轮才发现丢了」，而是 10-01 就声明丢了、无法在当前任何构建里恢复（mimalloc 下 mi_free(malloc(64)) 实测静默返回），契约只由 uvrpc_free_encoded() 结构性守住。上一条里「本地/CI 测试数 195 与 190 的差额正是这类按配置注册的用例」同时作废：该用例在任何构建里都不注册，那 5 个差额原因未查。可迁移的教训仍是 cb7a60b 提交里那句：删能力时要找「谁依赖它」，不是「谁调用它的符号」——构建配置、CI job、文档示例、以及别人写的回归测试，符号搜索一个也看不见；本轮补一条：更正一条结论时，先查 git 里那道门禁是被忽略还是被撤销，「不在了」有三种不同的原因，修法各不相同。"
   source: "git log -S'custom-allocator' -- .github/workflows/ci.yml（b139f82 加、cb7a60b 删）+ 687418f + tests/CMakeLists.txt 与 CMakeLists.txt:49 对照"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-29T20:35:08
+  kind: decision
+  summary: "把「警告闸门（本轮未修）」改写为已修：UVRPC_WERROR/-Werror 的形状与范围、flatcc 头文件那一处降级、负控制 A/B 结果，并记下用重建命令行测量导致的假绿灯"
+  source: brain update-truth
   affects: [build-distribution-breakage]

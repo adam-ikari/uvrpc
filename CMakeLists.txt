@@ -34,6 +34,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 option(UVRPC_STATIC_LINKING "Use static linking" ON)
 option(UVRPC_BUILD_TESTS "Build tests" OFF)
 option(UVRPC_BUILD_EXAMPLES "Build examples" ON)
+# Warnings in the library are errors. ON by default: a gate that has to be
+# remembered is the grep-the-compiler-output gate this replaced, which CI ran
+# on an always-empty log. Scope is the two library targets, where -Wall -Wextra
+# -Wpedantic already live -- tests and examples are not gated.
+option(UVRPC_WERROR "Treat compiler warnings as errors in the library" ON)
 
 # Memory allocator option (default: mimalloc)
 set(UVRPC_ALLOCATOR_DEFAULT "mimalloc" CACHE STRING "Memory allocator: system or mimalloc")
@@ -125,7 +130,12 @@ set(UVRPC_HEADERS
 
 # Static library
 add_library(uvrpc STATIC ${UVRPC_SOURCES})
-target_compile_options(uvrpc PRIVATE -Wall -Wextra -Wpedantic)
+# -Werror, with one exclusion: generated/flatbuffers_common_builder.h trips
+# -Wmisleading-indentation in 192 places of flatcc's own macro spelling. That
+# header is rewritten by the flatcc command below, so it cannot be fixed in
+# place; the class stays a warning and everything else is fatal.
+target_compile_options(uvrpc PRIVATE -Wall -Wextra -Wpedantic
+    $<$<BOOL:${UVRPC_WERROR}>:-Werror -Wno-error=misleading-indentation>)
 target_link_libraries(uvrpc PUBLIC Threads::Threads m rt)
 target_include_directories(uvrpc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -135,7 +145,8 @@ target_include_directories(uvrpc PUBLIC
 
 # Shared library with all dependencies linked
 add_library(uvrpc_shared SHARED ${UVRPC_SOURCES})
-target_compile_options(uvrpc_shared PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(uvrpc_shared PRIVATE -Wall -Wextra -Wpedantic
+    $<$<BOOL:${UVRPC_WERROR}>:-Werror -Wno-error=misleading-indentation>)
 set_target_properties(uvrpc_shared PROPERTIES OUTPUT_NAME "uvrpc" VERSION ${PROJECT_VERSION} SOVERSION 0)
 target_link_libraries(uvrpc_shared PUBLIC Threads::Threads m rt dl)
 target_include_directories(uvrpc_shared PUBLIC

@@ -37,24 +37,20 @@ jobs:
             -DUVRPC_BUILD_EXAMPLES=ON \
             -DUVRPC_ALLOCATOR_DEFAULT=system \
             -DUVRPC_DEBUG_LOGGING=OFF \
+            -DUVRPC_WERROR=ON \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
-      - name: Build
+      # The warning gate is the compile itself. It used to be a second make
+      # piped into tee and a grep over build.log, which could not have caught
+      # anything: the first make had already built every target, so this log was
+      # always empty; the pipeline had no pipefail, so make's exit status was
+      # replaced by grep's; and matching the text "warning:" gates on the
+      # compiler's wording, not on whether the compiler produced a diagnostic.
+      # -Werror (UVRPC_WERROR, ON by default here) makes a warning a build
+      # failure. Link-time glibc NSS notices from libuv's core.c are not compiler
+      # diagnostics and do not fail the build.
+      - name: Build (warning-clean: library compiled with -Werror)
         run: make -C build -j$(nproc)
-
-      # Warning gate: the library compiles warning-clean under -Wall -Wextra
-      # -Wpedantic. Treat warnings as errors so regressions fail CI. Excluded:
-      # the known glibc static-link NSS warnings from libuv's core.c, and
-      # generated/ -- flatcc emits code with -Wmisleading-indentation that we
-      # do not own and cannot fix without a generator patch.
-      - name: Check warnings (warning-clean build)
-        run: |
-          make -C build -j$(nproc) 2>&1 | tee build.log
-          if grep -iE "warning:|error:" build.log \
-             | grep -qvE "getpwuid_r|getgrgid_r|statically linked|generated/"; then
-            echo "::error::Build produced warnings/errors (see log above)"
-            exit 1
-          fi
 
       - name: Run ctest
         run: |
@@ -250,19 +246,13 @@ jobs:
       - name: Configure & build (default flags)
         run: |
           cmake -S . -B build -DUVRPC_BUILD_TESTS=ON -DUVRPC_BUILD_EXAMPLES=ON \
-                -DCMAKE_BUILD_TYPE=Release
+                -DUVRPC_WERROR=ON -DCMAKE_BUILD_TYPE=Release
           make -C build -j$(nproc)
-      # The mimalloc path has its own gate: allocator wrappers are the only code
-      # that touches mi_* directly, so a -Wpedantic regression there is invisible
-      # to the system-allocator matrix above.
-      - name: Check warnings (mimalloc build)
-        run: |
-          make -C build -j$(nproc) 2>&1 | tee build.log
-          if grep -iE "warning:|error:" build.log \
-             | grep -qvE "getpwuid_r|getgrgid_r|statically linked|generated/"; then
-            echo "::error::Build produced warnings/errors (see log above)"
-            exit 1
-          fi
+      # The mimalloc path needs its own compile, not only the system-allocator
+      # matrix above: the allocator wrappers are the only code that touches mi_*
+      # directly, so a -Wpedantic regression there is invisible to a build that
+      # selects -DUVRPC_ALLOCATOR_DEFAULT=system. -Werror is what makes it a
+      # failure; grepping a second make's (empty) log never was.
       - name: Verify merged archive keeps every dependency object
         run: |
           # uvrpc_merged folds libuv + mimalloc, which both ship src/random.c.

@@ -158,6 +158,7 @@ sudo make install
 | UVRPC_BUILD_TESTS | OFF | 是否构建测试 |
 | UVRPC_BUILD_EXAMPLES | ON | 是否构建示例 |
 | UVRPC_DEBUG_LOGGING | OFF | 是否启用调试日志 |
+| UVRPC_WERROR | ON | 库目标把警告当错误（`-Wall -Wextra -Wpedantic -Werror`）；新编译器版本让构建失败时用 `-DUVRPC_WERROR=OFF` 放行 |
 | CMAKE_INSTALL_PREFIX | /usr/local | 安装前缀 |
 
 ## 构建产物
