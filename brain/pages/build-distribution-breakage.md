@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-28T14:10:43"
+updated: "2026-10-29T20:25:22"
 ---
 
 <!-- compiled_truth -->
@@ -185,4 +185,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: note
   summary: "三层链闭合：run 40641803471 全部 13 个 job 通过（含 ubuntu-latest 的 GCC 15、ASan、UBSan、cppcheck、fuzz），100% ctest 190/190 ×2 job。顺带查出一个覆盖洞：ci.yml 里没有任何 custom 分配器的 job，而 allocator_ownership 这道门禁注册在 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL \"custom\") 里（tests/CMakeLists.txt:1007），即切片 8 那道「跨堆释放」门禁今天从来没在 CI 上跑过 —— 本页时间线里「CI 新增 custom-allocator job」那句已不成立。本地/CI 测试数 195 与 190 的差额正是这类按配置注册的用例。"
   source: "2026-10-28 gh run 40641803471（13 job 全绿）+ tests/CMakeLists.txt:1007 与 ci.yml 对照"
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-29T20:25:22
+  kind: reversal
+  summary: "更正上一条的「覆盖洞」定性：CI 从来没有丢过 custom-allocator job，它是 2026-10-01 被有意撤掉的。时间线是 b139f82（2026-09-29）加上测试与 job → 687418f（2026-10-01）以零可变全局为由删除可插拔分配器 → cb7a60b 撤掉 job 并在提交信息与 docs/architecture/integration.md 里如实写明这是覆盖下降。撤得干净的是 CI；留下的是 tests/allocator_ownership_test.c 和它 if(UVRPC_ALLOCATOR_DEFAULT STREQUAL \"custom\") 的注册块，而 CMakeLists.txt:49 对 custom 直接 FATAL_ERROR，所以那道门禁不可能失败也不可能在任何构建里注册 —— 2026-10-28 一并删除。结论改写为：跨堆释放的覆盖不是「本轮才发现丢了」，而是 10-01 就声明丢了、无法在当前任何构建里恢复（mimalloc 下 mi_free(malloc(64)) 实测静默返回），契约只由 uvrpc_free_encoded() 结构性守住。上一条里「本地/CI 测试数 195 与 190 的差额正是这类按配置注册的用例」同时作废：该用例在任何构建里都不注册，那 5 个差额原因未查。可迁移的教训仍是 cb7a60b 提交里那句：删能力时要找「谁依赖它」，不是「谁调用它的符号」——构建配置、CI job、文档示例、以及别人写的回归测试，符号搜索一个也看不见；本轮补一条：更正一条结论时，先查 git 里那道门禁是被忽略还是被撤销，「不在了」有三种不同的原因，修法各不相同。"
+  source: "git log -S'custom-allocator' -- .github/workflows/ci.yml（b139f82 加、cb7a60b 删）+ 687418f + tests/CMakeLists.txt 与 CMakeLists.txt:49 对照"
   affects: [build-distribution-breakage]

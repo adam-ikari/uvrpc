@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [constraint, concurrency, architecture]
 created: "2026-09-28T17:08:01"
-updated: "2026-10-09T01:11:41"
+updated: "2026-10-29T20:18:43"
 ---
 
 <!-- compiled_truth -->
@@ -26,11 +26,32 @@ updated: "2026-10-09T01:11:41"
   （PIE 构建里 const 带函数指针也会归入 `.data.rel.ro`，`nm` 因此标成 `d`，**这不代表可变**）。
   故真·可变 file-scope 全局 **= 0**。
 
-## 唯一被允许的可变全局：custom 分配器
+## 无例外：曾经的那个例外已连根删除（2026-10-01，`687418f`）
 
-`src/uvrpc_allocator.c` 的 `g_custom_allocator` 是全库唯一的可变 file-scope 变量，受
-`#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM` 隔离——system/mimalloc 构建里它不存在。
-custom 构建中亦仅由 `uvrpc_allocator_init()` 写一次、之后只读。**属文档化的分层例外，不算违反。**
+`src/uvrpc_allocator.c` 的 `g_custom_allocator`（可插拔分配器的函数指针表）一度是全库
+唯一的可变 file-scope 变量，靠 `#if UVRPC_DEFAULT_ALLOCATOR == UVRPC_ALLOCATOR_CUSTOM`
+隔离，当时记为"文档化的分层例外"。**该例外已不存在**：整条 CUSTOM 路径连同
+`UVRPC_ALLOCATOR_CUSTOM`、`uvrpc_custom_allocator_t` 一起删除，而不是用条件编译藏起来。
+理由不是"它有害"，而是"零可变全局"要严格遵守时，一个只服务单一未使用能力的例外不成立 ——
+运行期可插拔分配器必然要一张全局函数指针表（否则得把 context 穿过每一次分配调用），
+两者只能选一个，选了删能力。分配器因此只有编译期 `system` / `mimalloc` 两个取值，
+运行期零分配器状态。
+
+同一提交还删了 `done.0`（`ignore_sigpipe_once()` 里的一次性守卫）：`signal()` 幂等，
+单线程下守卫没有正确性价值。
+
+守护从"读源码"改成"读编译产物"：`tests/acceptance/no_globals.c` 用 `objdump -t` 判定
+符号是否落在 `.data`/`.bss`（`.rodata` 与 `.data.rel.ro*` 算只读，5 个传输 vtable 就在
+后者），所以宏、`#ifdef`、或一个从未变成存储体的声明都骗不过它。**判据（该测试自己踩出来的）：
+任何检查约束的测试，都必须先证明它在约束被破坏时会失败** —— 它最初对违规代码报 PASS，
+因为 `$<TARGET_OBJECTS:uvrpc>` 展开成分号连接的单个参数被当成一个路径，而 objdump 对不存在的
+文件静默返回空，"无符号"也被判通过。负控制：把 `static int done` 加回 `uvbus.c`，测试正确失败。
+
+同一条判据也适用于本页曾引用的那个门禁：`tests/allocator_ownership_test.c` 注册在
+`if(UVRPC_ALLOCATOR_DEFAULT STREQUAL "custom")` 下，CUSTOM 删除后该条件永不可达（顶层
+`CMakeLists.txt:49` 对 `custom` 直接 FATAL_ERROR），文件里的 `pool_alloc/pool_free` 从未
+被任何入口注册、`uvrpc_allocator_init()` 按收窄后的契约也无法装上分配器 —— 一个不可能
+失败的检查。2026-10-29 随其不可达注册一起删除。
 
 ## 其余原则的同批实测
 
@@ -100,3 +121,9 @@ custom 构建中亦仅由 `uvrpc_allocator_init()` 写一次、之后只读。**
   summary: "阻塞式 await 改为内联跑 loop + uv_stop，移除 setjmp/longjmp：longjmp 曾绕过传输层的 uvrpc_free(buf->base)，每次 socket await 泄漏 64 KB 读缓冲。零可变全局约束未受影响（未引入 file-scope 可变变量）"
   source: "src/uvrpc_async.c, 2026-10-09"
   affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-10-29T20:18:43
+  kind: decision
+  summary: "compiled_truth 还停留在「零可变全局有一个已文档化的例外（g_custom_allocator）」，而它自己的 timeline 记录该例外于 2026-10-01 连根删除 —— 真相与时间线矛盾了两个多月，读页面的人会以为还能实现 uvrpc_custom_allocator_t。改写为「无例外」：删除理由（运行期可插拔必然要一张全局表）、no_globals.c 的编译产物判据与「检查约束的测试必须先证明破坏时会失败」，并记下 allocator_ownership_test.c 作为同一条判据下的残骸已于 2026-10-29 删除。"
+  source: "2026-10-29 校对：CMakeLists.txt:49 拒绝 custom、687418f、tests/CMakeLists.txt 不可达分支"
+  affects: [zero-threads-locks-globals]

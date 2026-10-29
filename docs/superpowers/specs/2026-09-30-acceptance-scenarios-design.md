@@ -135,6 +135,9 @@
 - **任何用例不得挂死**，看门狗超时即失败
 - `ctest -L acceptance` 一条命令出总判
 - CI 现有的 default-allocator 与 custom-allocator 两个 job 自动覆盖
+  （**更正，2026-10-28**：custom-allocator job 已在本设计落地前一天随可插拔分配器一起撤除（`cb7a60b`），
+  覆盖面因此比这里写的窄；套件今天由 build-and-test 矩阵、memory-check、undefined-check、
+  default-allocator 四个 job 的整量 `ctest` 覆盖。）
 
 ## 明确不做
 

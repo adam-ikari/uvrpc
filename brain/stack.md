@@ -2,52 +2,7 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
-updated: "2026-10-09T01:12:13"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-09-30T09:17:43"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-09-29T08:41:20"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-09-29T06:42:00"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-09-29T06:41:51"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-09-29T04:55:16"
+updated: "2026-10-29T20:23:02"
 ---
 
 # Tech stack
@@ -63,7 +18,7 @@ updated: "2026-09-29T04:55:16"
 | 客户端回调路由 | uthash → **环形缓冲数组** | **环形缓冲区**，`idx = msgid & (N-1)` | msgid 顺序生成使其成立：定长指针数组（每槽 8B）+ 24B 条目、位与代替取模、无哈希桶。~~24B vs 80B/条目、省 83%~~ 曾是错的（条目一度是 208B），2026-09-29 裁掉死字段后回到 24B，见 [[ring-buffer-over-uthash]] |
 | 并发控制 | 全局锁 / 原子计数 → **fail-fast 三层拒绝** | **背压式无锁限流** | 配额（`max_concurrent`，单次与批次都检查）、槽位（`CALLBACK_LIMIT`）、传输（`BUFFER_FULL`）三层解耦；满即返回错误，调用方退避。见 [[pending-buffer-as-concurrency-control]] |
 | 可调参数面 | 曾有 performance_mode / pool_size / timeout_ms / pump_interval / batching_* | **只留真实生效的四个**：max_concurrent、max_pending_callbacks、max_clients、msgid_offset | 2026-09-29 把只写不读的开关连同 setter 全删：一个不生效的旋钮比没有旋钮更糟，它让用户以为自己在调优 |
-| 内存分配器 | system / mimalloc / custom | **mimalloc 默认**（`-DUVRPC_ALLOCATOR_DEFAULT=system` 可切） | 分发走**编译期 `#if UVRPC_DEFAULT_ALLOCATOR`**，不占运行期全局变量。注意 flatcc 缓冲区仍走 flatcc 自己的分配器（见 Open items #8） |
+| 内存分配器 | system / mimalloc | **mimalloc 默认**（`-DUVRPC_ALLOCATOR_DEFAULT=system` 可切） | 分发走**编译期 `#if UVRPC_DEFAULT_ALLOCATOR`**，不占运行期全局变量。第三个选项 `custom` 连同运行期插拔能力已于 `687418f` 删除：运行期插拔需要一张文件级函数表，而"零可变全局"在这里是规则不是偏好。注意 flatcc 缓冲区仍走 flatcc 自己的分配器（见 Open items #8） |
 | 构建系统 | Makefile → **CMake** | **CMake ≥ 3.15，`CMAKE_C_STANDARD 99`** | 统一目标、schema→flatcc 自定义命令、输出固定到 `dist/bin` `dist/lib`；`uvrpc_merged` 把 libuv/flatcc/mimalloc 打成单一静态库 |
 | 单元测试 | 自写 assert → **GTest (C++)** | **GTest** + 独立 C 集成/e2e 测试 | 库本体保持 C99，测试可以用 C++ 拿到参数化与断言能力 |
 | 代码生成 | 手写 stub → **Python + Jinja2 + 内置 FlatCC** | **`tools/uvrpcc.py`（`uvrpcc`）** | DSL = FlatBuffers table + `rpc_service Name { M(Req):Res; }`；每服务产出 api.h / server_stub.c / client.c / rpc_common.{h,c}，句柄仍是通用 `uvrpc_server_t`/`uvrpc_client_t`，不做不透明包装 |
@@ -117,7 +72,7 @@ graph LR
 5. **无 git tag**（未处理，属发布工程切片）—— README 标注 `v1.0.0a`，但仓库 `git tag` 仍为空。
 6. ~~根目录残留 5 个已提交二进制~~ —— **已删**（`scenario_1..5_*`，并加 gitignore 规则）。
 7. ~~**文档与代码在 `loop->data` 上互相矛盾**~~ —— **已修（2026-09-29 切片 2）**：设计哲学、架构、单线程模型、构建安装、快速开始、生成式 API 六组页面按 [[loop-data-registry-over-global-hash]] 的现状改写。
-8. ~~codec 缓冲区与分配器不一致~~ —— **已修（2026-09-29）**：契约定为"flatcc 拥有 `uvrpc_encode_*()` 的输出，只能 `free()` 释放"，新增 `uvrpc_free_encoded()` 统一 17 处释放点；`tests/allocator_ownership_test.c` + CI `custom-allocator` job 守住这条边界。理由见 [[minimal-rpcframe-schema]]。
+8. ~~codec 缓冲区与分配器不一致~~ —— **契约仍在，门禁没了（2026-10-28 核实）**：契约定为"flatcc 拥有 `uvrpc_encode_*()` 的输出，只能 `free()` 释放"，`uvrpc_free_encoded()` 统一 17 处释放点。守住它的 `tests/allocator_ownership_test.c` 与 CI `custom-allocator` job 是 2026-09-29（`b139f82`）真实加上的，两天后 `687418f` 以"零可变全局"为由删掉可插拔分配器、`cb7a60b` 随之撤掉那个 job 并在提交信息与 `docs/architecture/integration.md` 里写明这是覆盖下降 —— 只有"只释放自己发出去的指针的池"能暴露跨堆释放，mimalloc 不是替代品。测试文件与它不可达的注册块（`CMakeLists.txt` 对 `-DUVRPC_ALLOCATOR_DEFAULT=custom` 直接 `FATAL_ERROR`）留到了今天，已于 2026-10-28 删除：那是一个不可能失败的测试。此契约现在**只由结构守住**（内部释放点一律走 `uvrpc_free_encoded()`），运行期观测不可行 —— mimalloc 下 `mi_free(malloc(64))` 实测静默返回，不崩也不报告。理由见 [[minimal-rpcframe-schema]]。
 9. ~~**文档站点无法从干净克隆构建**~~ —— **已修（2026-09-29）**：`docs/node_modules` 从版本控制移除（其 `dist/` 载荷从未被提交），`.gitignore` 既有规则随之生效；`docs/doxygen/`（579 个陈旧 HTML）一并删除并 ignore，`docs/Doxyfile` 保留供按需生成。
 10. ~~examples/README.md 索引不存在的示例~~ —— **已修（2026-09-29）**：按真实构建产物重写为分类清单，22 个无构建目标的源文件单列并注明原因。
 11. ~~**性能基线取自开发机而非 CI**~~ —— **已修（2026-09-29）**： 旧表记的 ~4.9 µs / ~205,000 req/s 比同一构建的真实值差约一倍，且扩散到 9 个文件。现全部改用 `Benchmark` 工作流在 CI runner 上的实测值，测量前提见 [[uv-run-once-benchmark-methodology]]。

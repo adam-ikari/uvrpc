@@ -418,7 +418,7 @@ UVRPC 的运行期依赖只有 3 个库：
 
 1. **libuv**：事件循环（必需）
 2. **FlatCC**：FlatBuffers 编解码（必需，且需要源码构建 —— 发行版没有现成包）
-3. **mimalloc**：默认分配器（可切 `-DUVRPC_ALLOCATOR_DEFAULT=system|custom`）
+3. **mimalloc**：默认分配器（可切 `-DUVRPC_ALLOCATOR_DEFAULT=system`）
 
 **uthash** 是编译期头文件依赖，用在两处：服务端 `method name → handler` 表
 （`src/uvrpc_server.c`）与网关 ID 映射（`src/uvrpc_idmap.c`）。它不是"项目回避哈希表"
@@ -779,11 +779,16 @@ uv_run(&loop, UV_RUN_DEFAULT);
 
 ### 分配器支持
 
-UVRPC 支持三种内存分配器：
+UVRPC 支持两种内存分配器，都在编译期选定：
 
 1. **mimalloc** (默认)：高性能内存分配器
 2. **system**：标准 malloc/free
-3. **custom**：用户自定义分配器
+
+没有第三种。曾经的可插拔自定义分配器需要一张文件作用域函数指针表，与"零可变
+全局"这条第一约束冲突；除一处自引用外没有任何代码调用它，于是整条 `custom` 路径
+连表一起删除（`687418f`）。删除时漏了账：符号搜索看不见 CI 的 `custom-allocator`
+job 和那道跨堆释放回归测试，它们是这条能力的真实依赖者。
+运行期换分配器还需要把 context 穿过每一次分配调用，本仓库不做这个取舍。
 
 ### 内存分配策略
 
@@ -887,11 +892,9 @@ uvrpc_config_set_max_pending_callbacks(config, 1 << 20);  // 高并发，上限 
 
 通过修改 `uvrpc_flatbuffers.c` 可以支持其他序列化格式。
 
-### 自定义分配器
+分配器不是扩展点：它只有 `system` / `mimalloc` 两个编译期取值，没有供实现的接口。
 
-通过实现 `uvrpc_custom_allocator_t` 接口可以使用自定义分配器。
-
-> **注意**：自定义传输、序列化和分配器是扩展功能，仅建议高级用户在必要时使用。大多数应用场景下，UVRPC 提供的默认实现（TCP/UDP/IPC/INPROC 传输、FlatBuffers 序列化、mimalloc 分配器）已经足够。
+> **注意**：自定义传输与序列化是扩展功能，仅建议高级用户在必要时使用。大多数应用场景下，UVRPC 提供的默认实现（TCP/UDP/IPC/INPROC 传输、FlatBuffers 序列化、mimalloc 分配器）已经足够。
 
 ## 最佳实践
 

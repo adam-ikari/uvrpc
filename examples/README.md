@@ -89,9 +89,14 @@ Promise 组合子另有独立测试目标：`test_promise_basic`、`test_promise
 
 `allocator_demo.c` 演示 `uvrpc_alloc()` / `uvrpc_free()`。
 
-三个编译期分配器（`system` / `mimalloc`（默认） / `custom`）里，只有 `custom` 能暴露
-跨堆释放：`uvrpc_free()` 变成一个只认自己发出去的指针的池。`tests/allocator_ownership_test.c`
-在 `custom` 构建下用它守住"flatcc 的帧缓冲区只能用 `free()` 释放"这条边界。
+分配器只有编译期两个选项：`system` 与 `mimalloc`（默认）。曾经存在的第三个 `custom`
+连同它的可插拔函数指针表已在 2026-10-01 删除（`687418f`）—— 那张表曾是本仓库"零可变全局"
+约束下唯一被容忍的例外，删除时除一处自引用外没有任何代码调用它。
+
+因此"flatcc 的帧缓冲区只能用 `free()` 释放"这条边界**没有任何测试守着**，只能靠结构：
+跨堆释放在这里是静默的 —— 实测 mimalloc 构建下 `mi_free()` 作用在 `malloc()` 返回的指针上
+不报错、退出码 0，没有哪个构建配置能把它观测出来。库内部的释放点统一走
+`uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`，包一层 `free()`），改调用点时看它。
 
 ## UVBus（独立于 RPC 层）
 

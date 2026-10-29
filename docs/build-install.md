@@ -117,9 +117,6 @@ cmake --build deps/gtest/build -j
 
 # 使用系统分配器
 ./build.sh release system
-
-# 使用自定义分配器（需要实现）
-./build.sh release custom
 ```
 
 ### 使用 CMake
@@ -157,7 +154,7 @@ sudo make install
 | 选项 | 默认值 | 说明 |
 |-----|-------|------|
 | CMAKE_BUILD_TYPE | Release | 构建类型 (Debug/Release/RelWithDebInfo) |
-| UVRPC_ALLOCATOR_DEFAULT | mimalloc | 内存分配器 (system/mimalloc/custom) |
+| UVRPC_ALLOCATOR_DEFAULT | mimalloc | 内存分配器 (system/mimalloc) |
 | UVRPC_BUILD_TESTS | OFF | 是否构建测试 |
 | UVRPC_BUILD_EXAMPLES | ON | 是否构建示例 |
 | UVRPC_DEBUG_LOGGING | OFF | 是否启用调试日志 |

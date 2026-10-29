@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [protocol, schema, flatbuffers]
 created: "2026-09-28T17:09:45"
-updated: "2026-10-17T17:16:51"
+updated: "2026-10-29T20:18:43"
 ---
 
 <!-- compiled_truth -->
@@ -26,9 +26,18 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
 4. **错误有自己的帧类型，而且必须用它**：`type=3`（`UVRPC_FRAME_TYPE_RESPONSE_ERROR`），payload 是 `int32` 状态码后跟消息字节（没有长度字）。`uvrpc_encode_error()` 是唯一的生产者，`uvrpc_request_send_response()` 的每条失败路径都走它。**不能**把错误码与消息当作 `type=1` 的 `data` 发出去：客户端按 `type` 解读，`resp->status` 就成了 `UVRPC_OK`，调用方拿到一段它以为是 payload 的 `[code, message]` —— 拒绝与应答从此不可区分，而可区分正是拒绝存在的唯一理由。服务端的 max_clients 拒绝分支曾正是这么写的（`5920642` 修，门禁 `tests/acceptance/refusals.c`）；同一文件里正确的那条兄弟路径早就用对了编码器：**同一文件内的 producer 漂移**，不是线格式变更。
 5. **Oneway 不是线格式概念，是客户端本地决定**（实测 `src/uvrpc_client.c:634-673`）：`uvrpc_client_call_oneway` 编码出与 regular 调用**完全相同**的 `type=0` Request 帧，唯一区别是不占用环形缓冲的回调槽位。**含义**：服务端与抓包都无法区分 oneway 与 regular；服务端若对 oneway 请求回了响应，该帧会因找不到槽位而被丢弃，而不是协议错误。设计新语义时不要指望线上能表达"不要回"。
 
-第六个决策点（2026-09-29 补）：**帧缓冲区的分配器归属属于 flatcc，不属于 uvrpc**。`uvrpc_encode_*()` 返回的字节来自 `flatcc_builder_finalize_buffer()`，而 flatcc 的 builder 用的是自己的分配器（`flatcc_builder_default_alloc`，默认即 malloc），没有接入 `uvrpc_alloc` 钩子。契约因此是：**任何 encode 输出只能用 `free()` 释放，绝不能交给 `uvrpc_free()`**。库内部统一走 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h` 里包一层的 `free()`，17 处调用点全走它）。这不是洁癖：system 分配器构建下两者同源、看不出差别，mimalloc 与 custom 构建下就是跨堆释放（实测 custom 下每轮往返 8 次）。
+第六个决策点（2026-09-29 补）：**帧缓冲区的分配器归属属于 flatcc，不属于 uvrpc**。`uvrpc_encode_*()` 返回的字节来自 `flatcc_builder_finalize_buffer()`，而 flatcc 的 builder 用的是自己的分配器（`flatcc_builder_default_alloc`，默认即 malloc），没有接入 `uvrpc_alloc` 钩子。契约因此是：**任何 encode 输出只能用 `free()` 释放，绝不能交给 `uvrpc_free()`**。库内部统一走 `uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h` 里包一层的 `free()`，17 处调用点全走它）。这不是洁癖：system 分配器构建下两者同源、看不出差别，mimalloc 构建下就是跨堆释放（当时的 custom 构建实测每轮往返 8 次）。
 
-**为什么不让 flatcc 走 `uvrpc_alloc`**：flatcc 以静态库 `deps/flatcc/lib/libflatcc.a` 的形式预先编译（`scripts/setup_deps.sh`），改它的分配器只能 (a) 在 `setup_deps.sh` 里给整个 builder.c 加 `-DFLATCC_REALLOC=uvrpc_realloc`，那会让 libflatcc.a 反向依赖 libuvrpc.a，而 `uvrpc_merged` 又把两者 `ar x` 折叠进同一个 `libuvrpc_full.a` —— GNU ld 对单个归档内的循环引用不保证收敛；或 (b) 在 `src/uvrpc_flatbuffers.c` 里照抄一份 `flatcc_builder_default_alloc` 改用 `uvrpc_realloc`，40 行会随 flatcc 上游演进而失同步。两者都比"用 `free()`"贵，且会让已生成的 client.c 与仓库例子（它们都写 `free()`）集体变成错的。**含义**：自定义分配器的用户不必担心 —— 框架自己的内存走池，帧缓冲走 libc，两条路径各自闭合。
+**这条边界现在没有测试守着，而且加不出来**（2026-10-29 查证）。原本守它的
+`tests/allocator_ownership_test.c` 注册在 custom 构建下，而 CUSTOM 分配器路径已于 `687418f`
+整条删除，该条件永不可达，测试里那套 `pool_alloc/pool_free` 也从没有任何入口能装上 ——
+它是个不可能失败的检查，已删。现存两个配置都观测不到违规：system 构建下 `uvrpc_free()`
+本就是 `free()`（跨堆不存在）；mimalloc 构建下 **静默** —— 实测 `mi_free()` 作用在
+`malloc()` 返回的指针上不报错、退出码 0。所以这条契约靠结构维持：改释放点时认
+`uvrpc_free_encoded()`，别认 `uvrpc_free()`；`uvrpc_encode_*()` 不是公开 API（在 `src/`
+而非 `include/`），风险封闭在仓库内部。
+
+**为什么不让 flatcc 走 `uvrpc_alloc`**：flatcc 以静态库 `deps/flatcc/lib/libflatcc.a` 的形式预先编译（`scripts/setup_deps.sh`），改它的分配器只能 (a) 在 `setup_deps.sh` 里给整个 builder.c 加 `-DFLATCC_REALLOC=uvrpc_realloc`，那会让 libflatcc.a 反向依赖 libuvrpc.a，而 `uvrpc_merged` 又把两者 `ar x` 折叠进同一个 `libuvrpc_full.a` —— GNU ld 对单个归档内的循环引用不保证收敛；或 (b) 在 `src/uvrpc_flatbuffers.c` 里照抄一份 `flatcc_builder_default_alloc` 改用 `uvrpc_realloc`，40 行会随 flatcc 上游演进而失同步。两者都比"用 `free()`"贵，且会让已生成的 client.c 与仓库例子（它们都写 `free()`）集体变成错的。**含义**：切换分配器（`system` / `mimalloc`）的用户不必担心 —— 框架自己的内存走所选分配器，帧缓冲走 libc，两条路径各自闭合。
 
 字段命名曾踩坑：`params` → `data`（`f77d728`），改的是 schema 字段名，生成的 reader/builder 符号跟着变，DSL 与手写代码要同步。
 
@@ -87,4 +96,10 @@ data:   [ubyte]    // Request 的入参 / Response 的结果
   kind: decision
   summary: "错误有独立帧类型 type=3，且必须用它：把错误塞进 type=1 会让拒绝看起来像成功"
   source: "src/uvrpc_flatbuffers.c(uvrpc_encode_error) + src/uvrpc_server.c(拒绝分支) + tests/acceptance/refusals.c, commit 5920642"
+  affects: [minimal-rpcframe-schema]
+
+- time: 2026-10-29T20:18:43
+  kind: decision
+  summary: "第六个决策点仍在讲「mimalloc 与 custom 构建下就是跨堆释放」并把 allocator_ownership_test 当现存守护，还留着一句「自定义分配器的用户不必担心」。更正为当前事实：CUSTOM 路径已随 687418f 删除，该测试不可能失败已删；跨堆释放在两个现存配置下都观测不到（system 下不存在跨堆，mimalloc 下 mi_free() 对 malloc 指针静默、退出码 0，实测），契约靠 uvrpc_free_encoded() 的结构维持，且 uvrpc_encode_*() 不是公开 API。"
+  source: "2026-10-29 mi_free(malloc()) 实测 + 删除失效门禁"
   affects: [minimal-rpcframe-schema]

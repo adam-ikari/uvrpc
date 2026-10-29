@@ -548,10 +548,12 @@ void {Service}_client_free({Service}_client_t* client) {{
 
 ::: tip 库内部也遵守同一条规则（2026-09-29 修复）
 `uvrpc_encode_request()` 等编解码函数返回的正是 flatcc 分配的缓冲区。库内部原先用
-`uvrpc_free()` 释放它们 —— system 分配器构建下两者同源、看不出问题，mimalloc 与自定义
-分配器构建下则是跨堆释放。现在 `src/uvrpc_client.c` 与 `src/uvrpc_server.c` 统一调用
-`uvrpc_free_encoded()`（`src/uvrpc_flatbuffers.h`，内部头文件，包一层 `free()`），
-`tests/allocator_ownership_test.c` 在自定义分配器构建下守住这条边界。
+`uvrpc_free()` 释放它们 —— system 分配器构建下两者同源、看不出问题，mimalloc 构建下
+是跨堆释放（而且**静默**：实测 `mi_free()` 作用在 `malloc()` 指针上不报错、退出码 0）。
+现在 `src/uvrpc_client.c` 与 `src/uvrpc_server.c` 统一调用 `uvrpc_free_encoded()`
+（`src/uvrpc_flatbuffers.h`，内部头文件，包一层 `free()`）。这条边界没有测试守护 ——
+没有任何现存构建配置能观测到违规，它靠结构维持：改释放点时认 `uvrpc_free_encoded()`，
+别认 `uvrpc_free()`。
 :::
 
 ## 总结
