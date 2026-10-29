@@ -2,7 +2,7 @@
 slug: roadmap
 title: Roadmap
 role: milestones
-updated: "2026-10-29T20:24:35"
+updated: "2026-10-29T20:46:15"
 ---
 
 # Roadmap
@@ -49,7 +49,7 @@ gantt
 
 ## 切片状态
 
-按"当前最挡路 → 最不挡路"排序，来源是 root page `stack` 的 Open items 与代码/文档矛盾。**1–3 与 5–10 已完成，4 半完成，11 进行中（2026-10-29）**。切片 8 的措辞已于 2026-10-28 更正：它当时新增的两道门禁在两天后就随可插拔分配器一起消失了（`687418f` 删能力、`cb7a60b` 撤 job），页面却仍写着它们在跑。
+按"当前最挡路 → 最不挡路"排序，来源是 root page `stack` 的 Open items 与代码/文档矛盾。**1–3 与 5–11 已完成，4 半完成**。切片 8 的措辞已于 2026-10-28 更正：它当时新增的两道门禁在两天后就随可插拔分配器一起消失了（`687418f` 删能力、`cb7a60b` 撤 job），页面却仍写着它们在跑。
 
 1. ~~**修复构建/分发断点**~~ **✅ 完成并端到端验证（2026-09-28/29）**：范围比原估计更大 —— 另发现 `cmake/Dependencies.cmake` 从未入库、libuv/flatcc gitlink 指向幽灵提交两个隐藏断点。真·新克隆（干净 clone + setup_deps.sh + build.sh）在默认(mimalloc)与 system 两条路径都能构建通过。评审又翻出并修了三处：切片1自报的"零警告"被陈旧 generated/ 掩盖、README/docs 的构建链漏 `setup_deps.sh`、`uvrpc_merged` 的 `ar x` 按 basename 压平丢了 `uv_random`。随后的设计哲学评审删除了一整层 pre-uvbus 死代码（`uv_transport*.c` / `uv_frame.c` / `uvrpc_khash.h`）。记录于 [[build-distribution-breakage]]。
 2. ~~**文档与代码对齐**~~ **✅ 完成（2026-09-29）**：`docs/guide/design-philosophy.md`、`docs/architecture/{index,integration}.md`、`docs/guide/benchmark.md`（整页重写）、`docs/guide/single-thread-model.md`、`docs/build-install.md`、`docs/development/{coding-standards,doxygen-examples}.md`、`docs/api/{index,generated-api}.md`、`docs/quick-start.md` 与 `docs/zh/guide/quick-start.md` 全部按代码现状改写；README 与站点/SEO 元数据的性能数字当时统一为 ~4.9 µs / ~205,000 req/s（该基线已在第 11 项被 CI 实测值取代）。`docs/api/generated-api.md` 的两段示例经**真实编译并跑通**（`Add result: 30`），顺带纠正了"把 flatcc 根指针直接当 table 用"这个会读错字段的示例错误。**结构性事实**：`docs/zh/guide/{design-philosophy,api-guide,single-thread-model}.md`、`docs/zh/build-install.md`、`docs/zh/development/{coding-standards,doxygen-examples}.md` 是指向根目录同名文件的符号链接，所以"英文"页面正文本就是中文；要真正分语言，得先把符号链接换成独立文件。
@@ -66,6 +66,6 @@ gantt
 9. ~~**examples/README.md 索引不存在的示例**~~ **✅ 完成（2026-09-29）**：801 行的 README 里有 20+ 处指向不存在的文件或二进制（`complete_example.c`、`tcp_rpc_demo.c`、`broadcast_publisher/subscriber.c`、`broadcast_service_demo.c`、`test_retry.c`…），编号还重复了两轮（20-32 出现两次），并宣称"所有示例都已在主构建系统里"——实际 `CMakeLists.txt` 只注册了 25 个 example target。重写为按真实构建产物编排的分类清单（每个 `./dist/bin/X` 都已用 `ls dist/bin` 校验存在），单列"有源码但无构建目标"的 22 个文件并给出原因（`CMakeLists.txt:297,330-332`：需要额外 schema 生成），广播一节改为指向真实存在的 `uvbus_broadcast()`。顺带修正 `LOG_SERVICE_README.md` 把 `log_logservice_rpc_common.c` 写成 `.c`（生成器实际产出 `.h`）。**新发现的未决项**：`tools/uvrpcc.py` 跑 `schema/log_service.fbs` 会崩（jinja `UndefinedError: 'rpc_data'`，`tools/templates/rpc_common.c.j2:61`），即日志服务示例那条手动编译路径今天走不通 —— 见 [[uvrpc-tech-stack-lineage]] 的 timeline。
 10. ~~**benchmark 的 UDP 语义**~~ **✅ 完成（2026-09-29）**：选了"如实标注"而不是加重传机制 —— 重传会让被测的东西不再是"一次往返"，也等于给测量工具塞了一套重试策略。`perf_benchmark` 在跑 udp 前往 stderr 打印：丢包表现为运行以 `measure stalled` 中止，不是吞吐下降；参考表 7 处 UDP 行统一标注"仅本机 loopback"，中英文两份 benchmark 指南各加一段解释。理由详见 [[uv-run-once-benchmark-methodology]]。
 
-11. **CI 警告闸门只匹配编译器的措辞**（进行中，2026-10-29）：`build-and-test`（`ci.yml:50-57`）与 `default-allocator`（`ci.yml:258-265`）两道闸门都是 `make -C build 2>&1 | tee build.log` 再 `grep -iE "warning:|error:"`。三个洞叠在一起使它几乎不可能报警：判定步的 make 是**第二次** make，前一步已把全部目标编译完，增量构建无事可做，于是 `build.log` 本来就没有诊断；管道没有 `pipefail`，make 的退出码被 grep 覆盖；匹配的是编译器**措辞**而不是"编译产生了诊断"这一事实。2026-10 那三周的 CI 断（flatcc 撞上 CMake ≥ 4 与 GCC 15 的 `-Werror`、`src/uvrpc_client.c` 缺 `uvbus_internal.h`、`tests/acceptance/connect_refund.c` 缺 `<unistd.h>` 的隐式声明）全部从这道闸门下面走过。改法：configure 期 `-DUVRPC_WERROR=ON` 把警告变成编译失败（闸门不再是文本匹配），`generated/` 标 SYSTEM 以保留既有的 flatcc 生成代码豁免，CI 侧加 `set -o pipefail` 并检查真实构建日志。可迁移的教训同 [[build-distribution-breakage]]：**检查约束的测试，必须先证明它在约束被破坏时会失败** —— 这道闸门从未通过任何负控制。
+11. ~~**CI 警告闸门只匹配编译器的措辞**~~ **✅ 完成（2026-10-29）**：`build-and-test`（旧 `ci.yml:50-57`）与 `default-allocator`（旧 `ci.yml:258-265`）两道闸门都是 `make -C build 2>&1 | tee build.log` 再 `grep -iE "warning:|error:"`。三个洞叠在一起使它几乎不可能报警：判定步的 make 是**第二次** make，前一步已把全部目标编译完，增量构建无事可做，于是 `build.log` 本来就没有诊断；管道没有 `pipefail`，make 的退出码被 grep 覆盖；匹配的是编译器**措辞**而不是"编译产生了诊断"这一事实。2026-10 那三周的 CI 断（flatcc 撞上 CMake ≥ 4 与 GCC 15 的 `-Werror`、`src/uvrpc_client.c` 缺 `uvbus_internal.h`、`tests/acceptance/connect_refund.c` 缺 `<unistd.h>` 的隐式声明）全部从这道闸门下面走过。落地形状：`option(UVRPC_WERROR … ON)` 给 `uvrpc`/`uvrpc_shared` 加 `-Werror`（即已带 `-Wall -Wextra -Wpedantic` 的那两个目标，tests/examples 不在门禁内），两个 grep 步骤删除，闸门就是编译本身。原计划的两处按实际约束改掉了：**`generated/` 没能标成 SYSTEM include** —— `target_include_directories(… SYSTEM …)` 要 CMake ≥ 3.25，而本仓库下限是 3.15，于是改为按类降级 `-Wno-error=misleading-indentation`（flatcc 的 `flatbuffers_common_builder.h` 宏拼写触发 192 处，且该头文件每次构建都被 flatcc 重写，无法就地修）；**`set -o pipefail` 不再需要** —— 带管道的步骤整个消失了。负控制（本轮的教训本体）：注入未使用变量后同一棵树 `ON` 构建 exit 2、`OFF` 构建 exit 0，两处诊断相同。上线第一轮即抓到 `src/uvrpc_server.c:97` 的 `server=%p` 传 `uvrpc_server_t*`，它只在 `UVRPC_DEBUG_LOGGING=ON` 的那个 job 里可见（宏关闭时 fprintf 整句不参与编译），修复后 run 40875460558 全部 13 job 绿。
 
 **明确不做**（依据 root page `background` 的 Non-goals）：多线程并发模型、跨语言绑定、大 payload 传输通道。

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-29T20:35:08"
+updated: "2026-10-29T20:45:50"
 ---
 
 <!-- compiled_truth -->
@@ -201,4 +201,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: decision
   summary: "把「警告闸门（本轮未修）」改写为已修：UVRPC_WERROR/-Werror 的形状与范围、flatcc 头文件那一处降级、负控制 A/B 结果，并记下用重建命令行测量导致的假绿灯"
   source: brain update-truth
+  affects: [build-distribution-breakage]
+
+- time: 2026-10-29T20:45:50
+  kind: evidence
+  summary: "新闸门第一轮就抓到缺陷并自证有效：run 40874671816 只有 debug-logging-build 红，报 include/uvrpc.h:32 展开处「format ‘%p’ expects argument of type ‘void *’, but argument 4 has type ‘uvrpc_server_t *’」，落点 src/uvrpc_server.c:97。旧闸门三轮都放过了它，原因各不相同且互相独立：它 grep 的日志本来为空、它匹配措辞、而这句 fprintf 只在 UVRPC_DEBUG_LOGGING=ON 时才参与编译（宏关闭时展开为 ((void)0)，格式检查随之消失）—— 也就是说这个缺陷只在 CI 里唯一那个开日志的 job 里可见。同配置本地复现 → 补 (void*)  cast（树里其余 %p 站点早就这么写）→ run 40875460558 全部 13 job 绿，含 ubuntu-latest 的 GCC 15 与 system/mimalloc 两条分配器路径。结论：generated/ 那一类降级在 GCC 15 下够用，没有新的类需要放行。"
+  source: "gh run 40875460558（13 job 全绿）与其前一轮 40874671816 的 debug-logging-build 失败日志 + 本地 -DUVRPC_DEBUG_LOGGING=ON 复现"
   affects: [build-distribution-breakage]
