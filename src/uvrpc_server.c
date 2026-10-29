@@ -94,7 +94,7 @@ static void server_conn_closed(void* client_ctx, void* server_ctx) {
 static void server_recv_callback(const uint8_t* data, size_t size, void* client_ctx, void* server_ctx) {
     uvrpc_server_t* server = (uvrpc_server_t*)server_ctx;
 
-    UVRPC_LOG("Received %zu bytes, server=%p", size, server);
+    UVRPC_LOG("Received %zu bytes, server=%p", size, (void*)server);
 
     if (!server) {
         return;
