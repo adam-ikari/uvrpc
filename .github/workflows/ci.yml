@@ -49,7 +49,7 @@ jobs:
       # -Werror (UVRPC_WERROR, ON by default here) makes a warning a build
       # failure. Link-time glibc NSS notices from libuv's core.c are not compiler
       # diagnostics and do not fail the build.
-      - name: Build (warning-clean: library compiled with -Werror)
+      - name: Build (warning-clean, library compiled with -Werror)
         run: make -C build -j$(nproc)
 
       - name: Run ctest
