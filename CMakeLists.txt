@@ -603,9 +603,6 @@ add_subdirectory(benchmark)
     create_example_target(msgid_demo)
     create_example_target(gateway_demo)
     
-    # Note: multi_service_loop_reuse, generated_client_example, 
-    # stream_dsl_usage_example, and stream_benchmark_dsl 
-    # require additional schema generation, skipped for now
 endif()
 
 # Print configuration summary
