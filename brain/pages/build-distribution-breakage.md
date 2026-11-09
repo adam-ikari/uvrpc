@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-10-29T20:45:50"
+updated: "2026-11-09T16:56:11"
 ---
 
 <!-- compiled_truth -->
@@ -207,4 +207,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: evidence
   summary: "新闸门第一轮就抓到缺陷并自证有效：run 40874671816 只有 debug-logging-build 红，报 include/uvrpc.h:32 展开处「format ‘%p’ expects argument of type ‘void *’, but argument 4 has type ‘uvrpc_server_t *’」，落点 src/uvrpc_server.c:97。旧闸门三轮都放过了它，原因各不相同且互相独立：它 grep 的日志本来为空、它匹配措辞、而这句 fprintf 只在 UVRPC_DEBUG_LOGGING=ON 时才参与编译（宏关闭时展开为 ((void)0)，格式检查随之消失）—— 也就是说这个缺陷只在 CI 里唯一那个开日志的 job 里可见。同配置本地复现 → 补 (void*)  cast（树里其余 %p 站点早就这么写）→ run 40875460558 全部 13 job 绿，含 ubuntu-latest 的 GCC 15 与 system/mimalloc 两条分配器路径。结论：generated/ 那一类降级在 GCC 15 下够用，没有新的类需要放行。"
   source: "gh run 40875460558（13 job 全绿）与其前一轮 40874671816 的 debug-logging-build 失败日志 + 本地 -DUVRPC_DEBUG_LOGGING=ON 复现"
+  affects: [build-distribution-breakage]
+
+- time: 2026-11-09T16:56:11
+  kind: evidence
+  summary: "**发布重切与 DSL 门禁的隐性依赖（2026-11-09）**。v0.1.0 从 2026-10-06 的 db6d59a 前移到 9b5fe96（+45 commits）：干净 mimalloc release 构建重新打包，199/199 ctest 通过，资产下载 sha256 与本地一致（1dda7267…）；资产布局不变。同时核实 Open items 第 13 项（uvrpcc 生成产物）已随 69251a3/dbeb9ab 收口：dist/bin/log_service_demo 实测跑通、退出 0。但发现 CI 里的 DSL 门禁建立在一个未声明的依赖上——codegen 目标只在解释器能 import jinja2 时存在，缺失时 CMake 只打印一行 status 就静默跳过 log_service 两个 demo 与 dsl_codegen 测试；runner 镜像恰好自带（22.04 的 /usr/bin/python3.10、latest 的 python3.14，configure 日志可查），所以门禁只是碰巧成立。现 CI 的 build-and-test 显式安装 jinja2，镜像变更不会再把它退化成跳过行。另：main 上两个非发布提交的提交信息曾被 force-push 修正——首个版本把根因写成\"runner 没有 jinja2\"，与日志事实相反，已改为\"未声明依赖\"。"
+  source: "2026-11-09 tag v0.1.0 重切 + ci.yml configure 日志（python3.10/python3.14 均可 import jinja2）"
   affects: [build-distribution-breakage]

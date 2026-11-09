@@ -2,6 +2,15 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-11-09T16:12:17"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-11-09T15:56:26"
 ---
 
@@ -86,7 +95,7 @@ graph LR
 10. ~~examples/README.md 索引不存在的示例~~ —— **已修（2026-09-29）**：按真实构建产物重写为分类清单，22 个无构建目标的源文件单列并注明原因。
 11. ~~**性能基线取自开发机而非 CI**~~ —— **已修（2026-09-29）**： 旧表记的 ~4.9 µs / ~205,000 req/s 比同一构建的真实值差约一倍，且扩散到 9 个文件。现全部改用 `Benchmark` 工作流在 CI runner 上的实测值，测量前提见 [[uv-run-once-benchmark-methodology]]。
 12. ~~benchmark 的 UDP 语义~~ —— **已修（2026-09-29）**：不加重传，改为如实标注：跑 udp 时往 stderr 打印丢包会中止运行而非降低吞吐，参考表 7 处 UDP 行标注"仅本机 loopback"。
-13. **`tools/uvrpcc.py` 的生成产物**（部分修复，2026-09-29）—— 生成器不再崩、类型名按 flatcc 0.6 的命名空间规则正确生成，`log_service.fbs` 三个源文件编译 0 error；但 `examples/log_service_demo.c` 自身落后于库 API（`uvrpc_request_send_response` 现返回 void），该示例仍编译不过。
+13. ~~**`tools/uvrpcc.py` 的生成产物**~~ **✅ 完成（2026-09-30，2026-11-09 核实）**：生成器不再崩、类型名按 flatcc 0.6 命名空间规则生成；`log_service.fbs` 的 DSL 产物由 `CMakeLists.txt:331` 的 `uvrpc_dsl_generate` 生成，两个 demo 通过 `CMakeLists.txt:435-460` 注册进主构建。`examples/log_service_demo.c` 已随 `69251a3`（改用 flatcc reader 解码并投递）与 `dbeb9ab` 对齐库 API，当前默认构建产出 `dist/bin/log_service_demo`，实测运行到 `=== Demo Complete ===`、退出码 0。与切片 9 中"22 个无构建目标源文件"一并收口。
 14. ~~**`loop->data` 作为注册表挂载点**~~ —— **已解决（2026-09-30）**：注册表改由调用方创建并传入，框架不再触碰用户的 loop。起因是 magic 守卫必须解引用用户指针，而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段，`uv_loop_t loop;`（官方文档写法）实测约 **20%** 会在读取时段错误。新契约见 `uvbus_loop_registry_new()` + `uvrpc_config_set_loop_registry()`，详见 [[loop-data-registry-over-global-hash]]。
 
 15. ~~**验收场景套件**~~ **✅ 已实现（2026-09-30 设计 → 2026-10-09 全部落地）**：`tests/acceptance/` 下 7 个场景，全部注册进 ctest 并带 `acceptance` 标签 —— `span_invariance`（五传输跨度不变性）、`protocol_robustness`（畸形帧远程攻击面）、`backpressure`（三层无锁拒绝 + 槽位归还）、`inflight_lifetime`（在途释放）、`payload_bounds`（负载边界按传输钉住）、`failure_modes`（未知方法不得伪装成成功）、`await_span`（阻塞 await 的跨传输语义，2026-10-09 新增）。`ctest -L acceptance` 一条命令出总判。设计稿：`docs/superpowers/specs/2026-09-30-acceptance-scenarios-design.md`；其中提出的共享 `acceptance/harness.h` **未采纳** —— 改为每个场景自带 check 与看门狗，"每场景一个文件、可单独运行调试"优先于去重。
