@@ -132,7 +132,12 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     {%- endif %}
     , uint64_t timeout_ms);
 
+/* Free the string/array fields uvrpc_{{ service_name_lower }}_{{ method.name }}_sync()
+ * copied into *response. The callback's response buffer is gone by the time
+ * _sync() returns, so those fields are the only remaining owners. */
+void uvrpc_{{ service_name_lower }}_{{ method.name }}_response_free({{ namespace }}_{{ method.response }}_t* response);
 {% endif -%}
+
 {% endfor -%}
 
 #ifdef __cplusplus

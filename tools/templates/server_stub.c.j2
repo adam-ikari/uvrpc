@@ -16,15 +16,18 @@ static void uvrpc_{{ service_name_lower }}_handler(uvrpc_request_t* req, void* c
     }
     
     if (!request) {
-        uvrpc_request_send_response(req, UVRPC_ERROR_INVALID_PARAM, NULL, 0);
+        /* uvrpc_request_send_response() carries no status: its frame type says
+         * "success". A refusal has to be sent as an error frame or the client
+         * is handed an empty result with status UVRPC_OK. */
+        uvrpc_response_send_error(req, UVRPC_ERROR_INVALID_PARAM, "missing request payload");
         return;
     }
-    
+
     /* Call user-implemented handler */
     uvrpc_error_t result = uvrpc_{{ service_name_lower }}_handle_request(method_name, request, req);
-    
+
     if (result != UVRPC_OK) {
-        uvrpc_request_send_response(req, result, NULL, 0);
+        uvrpc_response_send_error(req, result, NULL);
     }
 }
 

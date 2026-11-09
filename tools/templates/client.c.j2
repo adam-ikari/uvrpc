@@ -4,6 +4,7 @@
 #include "{{ namespace|lower }}_{{ service_name_lower }}_api.h"
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_async.h"
+#include "../include/uvrpc_allocator.h"
 
 /* Client connection helper function */
 /**
@@ -441,7 +442,14 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 
+{% if struct_field.original_type == 'string' %}
+                        {
+                            const char* _item_source = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+                            sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = _item_source ? uvrpc_strdup(_item_source) : NULL;
+                        }
+{% else %}
                         sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+{% endif %}
 
 {%- endfor -%}
 
@@ -484,7 +492,17 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
 {% else -%}
 
+{% if field.original_type == 'string' -%}
+        {
+            /* The response buffer belongs to the callback invocation and is
+             * freed as soon as it returns, so a pointer into it would dangle
+             * the moment *_sync() hands the struct back. Copy the bytes. */
+            const char* _source = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            sync_ctx->response.{{ field.name }} = _source ? uvrpc_strdup(_source) : NULL;
+        }
+{% else -%}
         sync_ctx->response.{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+{% endif -%}
 
 {% endif -%}
 
@@ -537,6 +555,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     uvrpc_async_ctx_t* async_ctx = uvrpc_async_ctx_new(loop);
     if (!async_ctx) {
         return UVRPC_ERROR_NO_MEMORY;
+    }
+
+    /* uvrpc_async_timeout() rejects a context outside a running block, and
+     * nothing here used to enter one -- every generated *_sync() call returned
+     * UVRPC_ERROR_INVALID_STATE. Enter the block first; the deadline it arms is
+     * re-armed per call by uvrpc_async_timeout(). */
+    int exec_ret = uvrpc_async_exec(async_ctx, timeout_ms);
+    if (exec_ret != UVRPC_OK) {
+        uvrpc_async_ctx_free(async_ctx);
+        return exec_ret;
     }
 
     /* Create sync context */
@@ -655,6 +683,38 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
     if (async_result) uvrpc_async_result_free(async_result);
 
     return sync_ctx.status;
+}
+
+/* Free the buffers *_sync() allocated for a response. The struct itself is
+ * the caller's; only the strings and arrays this file copied are released. */
+void uvrpc_{{ service_name_lower }}_{{ method.name }}_response_free({{ namespace }}_{{ method.response }}_t* response) {
+    if (!response) {
+        return;
+    }
+{% for field in method.response_fields -%}
+{% if field.original_type == 'string' -%}
+    uvrpc_free((void*)response->{{ field.name }});
+    response->{{ field.name }} = NULL;
+{% elif field.is_array and field.is_struct_array -%}
+    if (response->{{ field.name }}) {
+        for (size_t i = 0; i < response->{{ field.name }}_size; i++) {
+{%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+{% if struct_field.original_type == 'string' -%}
+            uvrpc_free((void*)response->{{ field.name }}[i].{{ struct_field['name'] }});
+            response->{{ field.name }}[i].{{ struct_field['name'] }} = NULL;
+{% endif -%}
+{% endfor -%}
+        }
+        free(response->{{ field.name }});
+        response->{{ field.name }} = NULL;
+        response->{{ field.name }}_size = 0;
+    }
+{% elif field.is_array -%}
+    free(response->{{ field.name }});
+    response->{{ field.name }} = NULL;
+    response->{{ field.name }}_size = 0;
+{% endif -%}
+{% endfor -%}
 }
 {% endif -%}
 
