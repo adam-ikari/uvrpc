@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-11-09T16:56:11"
+updated: "2026-11-09T21:09:59"
 ---
 
 <!-- compiled_truth -->
@@ -213,4 +213,10 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: evidence
   summary: "**发布重切与 DSL 门禁的隐性依赖（2026-11-09）**。v0.1.0 从 2026-10-06 的 db6d59a 前移到 9b5fe96（+45 commits）：干净 mimalloc release 构建重新打包，199/199 ctest 通过，资产下载 sha256 与本地一致（1dda7267…）；资产布局不变。同时核实 Open items 第 13 项（uvrpcc 生成产物）已随 69251a3/dbeb9ab 收口：dist/bin/log_service_demo 实测跑通、退出 0。但发现 CI 里的 DSL 门禁建立在一个未声明的依赖上——codegen 目标只在解释器能 import jinja2 时存在，缺失时 CMake 只打印一行 status 就静默跳过 log_service 两个 demo 与 dsl_codegen 测试；runner 镜像恰好自带（22.04 的 /usr/bin/python3.10、latest 的 python3.14，configure 日志可查），所以门禁只是碰巧成立。现 CI 的 build-and-test 显式安装 jinja2，镜像变更不会再把它退化成跳过行。另：main 上两个非发布提交的提交信息曾被 force-push 修正——首个版本把根因写成\"runner 没有 jinja2\"，与日志事实相反，已改为\"未声明依赖\"。"
   source: "2026-11-09 tag v0.1.0 重切 + ci.yml configure 日志（python3.10/python3.14 均可 import jinja2）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-11-09T21:09:59
+  kind: evidence
+  summary: "**DSL 生成的三处静默缺陷，是\"用真实服务跑一遍\"发现的（2026-11-09）**。1) *_sync() 建了 async ctx 却从不进入 running block，uvrpc_async_timeout() 因此一律返回 INVALID_STATE——生成的所有同步调用从未成功过一次；2) server stub 用 uvrpc_request_send_response() 上报 handler 的非 OK 返回，而该函数忽略 status 且帧类型是 success，拒绝被客户端收成 UVRPC_OK + 空 payload；改用 uvrpc_response_send_error()；3) sync 字符串字段指向已释放缓冲（见 [[callback-must-not-lend-borrowed-storage]]）。三者都没被测到，因为 dsl_codegen_test 只覆盖编解码、没有连接与同步调用。修法：模板修三处 + 新增 tests/generated_api_test.c（SAMELOOP 单进程，覆盖 sync、字符串所有权、拒绝帧），ctest 200/200。**遗留**：rpc_common.c.j2 的 Promise.all/any/race 仍是别名赋值，需补复制与释放。"
+  source: "schema/kv.fbs + examples/kv_{server,client}.c 实测；ctest 200/200（2026-11-09）"
   affects: [build-distribution-breakage]

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-10-12T06:48:10"
+updated: "2026-11-09T21:09:59"
 ---
 
 <!-- compiled_truth -->
@@ -81,3 +81,9 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   summary: "UDP 侧改用 client_addrs 槽位下标作为 client_ctx；槽满交 NULL 而非退回 addr。udp_client_identity 门禁两对端计为二。"
   source: commit 07c71b0
   affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-09T21:09:59
+  kind: evidence
+  summary: "**生成的 *_sync() 交出的字符串是副本，不再是借用（2026-11-09）**。DSL 模板的 sync 回调把 string 字段直接赋成指向 resp->result 的指针，而同步路径在返回前就 free 了响应缓冲；valgrind 实测 Get 返回后读取该指针是 \"Address ... inside a block of size 36 free'd\"（释放点在 client_recv_callback）。修法：sync 回调用 uvrpc_strdup() 复制顶层 string 与 struct array 元素内的 string，并生成 uvrpc_<svc>_<Method>_response_free() 释放它们（api.h.j2 声明、client.c.j2 定义）。**未修的同族缺陷**：rpc_common.c.j2 里 Promise.all/any/race 仍按指针别名赋值，且无调用者，需要在同一轮里补复制与数组释放函数——记在 [[build-distribution-breakage]] 时间线。"
+  source: "tests/generated_api_test.c + valgrind on dist/bin/generated_api_test（2026-11-09）"
+  affects: [build-distribution-breakage]
