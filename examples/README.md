@@ -30,6 +30,30 @@ cmake --build build -j$(nproc)
 ./dist/bin/simple_client
 ```
 
+## 一个完整的应用：KV 服务
+
+`schema/kv.fbs` 定义 `Put` / `Get` / `Delete` 三个方法，`kv_server.c` 实现处理器，
+`kv_client.c` 是调用方。这是按真实项目的方式组织的：自己的 schema、生成绑定、服务端与
+客户端分别编译，而不是把一次调用塞进一个 demo。
+
+```bash
+# 终端 1
+./dist/bin/kv_server                       # 默认 tcp://127.0.0.1:5555
+# 终端 2
+./dist/bin/kv_client
+```
+
+客户端会依次验证写入、读回、缺失键、删除、重复删除和被拒调用，**任一条不符就以非零退出**，
+所以它既是示例也是冒烟测试（`ctest -R generated_api` 跑的是同一套绑定，走 SAMELOOP 单进程）。
+
+两个要点值得照抄：
+
+- 生成绑定的 `create_client()` **只发起连接、不等待完成**；连接结果来自回调，同步调用在连接
+  未完成时会返回 `NOT_CONNECTED`。示例里显式泵循环等回调，而不是假设连上了。
+- `*_sync()` 返回的字符串字段是**副本**，调用方负责用生成的
+  `uvrpc_kvservice_<Method>_response_free()` 释放；直接调用 `uvrpc_client_call()` 时，回调
+  收到的数据只在回调期间有效，要留存必须自己复制。
+
 ## 传输协议
 
 每个示例把地址换成 `tcp://` / `udp://` / `ipc://` / `inproc://` / `sameloop://` 即可切换传输。

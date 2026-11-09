@@ -43,6 +43,15 @@ You should see a request/response round-trip. Congratulations — that's UVRPC.
 
 ## Core concepts
 
+That example talks to the wire format by hand. For the path a real project
+takes — your own schema, generated bindings, a server and a client — see
+`schema/kv.fbs`, `examples/kv_server.c` and `examples/kv_client.c`:
+
+```bash
+./dist/bin/kv_server &
+./dist/bin/kv_client          # exits non-zero if any check fails
+```
+
 ### Transports
 
 UVRPC supports five transports, selected by address prefix, with an identical

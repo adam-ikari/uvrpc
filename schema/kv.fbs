@@ -1,0 +1,42 @@
+namespace kv;
+
+/* A key-value service small enough to read in one sitting and real enough to
+ * show the whole path: schema -> generated bindings -> handlers -> client.
+ *
+ * Strings are FlatBuffers strings, so both key and value are length-prefixed
+ * and safe to carry arbitrary bytes. The example server caps them so the store
+ * needs no allocation; the schema itself does not. */
+
+table PutRequest {
+    key: string;
+    value: string;
+}
+
+table PutResponse {
+    ok: bool;
+}
+
+table GetRequest {
+    key: string;
+}
+
+table GetResponse {
+    /* found is the business answer, not an RPC error: asking for a key that
+     * is not there is a successful call that returns "no". */
+    found: bool;
+    value: string;
+}
+
+table DeleteRequest {
+    key: string;
+}
+
+table DeleteResponse {
+    deleted: bool;
+}
+
+rpc_service KVService {
+    Put(PutRequest):PutResponse;
+    Get(GetRequest):GetResponse;
+    Delete(DeleteRequest):DeleteResponse;
+}

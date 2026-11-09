@@ -335,12 +335,15 @@ if(UVRPC_DSL_AVAILABLE)
     set(UVRPC_DSL_BENCH_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/benchmark)
     uvrpc_dsl_generate(BENCH ${SCHEMA_DIR}/benchmark.fbs ${UVRPC_DSL_BENCH_GEN_DIR}
                        benchmark_benchmarkservice)
+    set(UVRPC_KV_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/kv)
+    uvrpc_dsl_generate(KV ${SCHEMA_DIR}/kv.fbs ${UVRPC_KV_GEN_DIR}
+                       kv_kvservice)
 
     # add_executable resolves its sources at generate time, so sources that a
     # custom command has not produced yet have to be declared GENERATED or
     # configuration fails outright on a clean checkout.
     set(UVRPC_DSL_SOURCES ${LOG_SERVICE_SOURCES} ${RPC_API_SOURCES})
-    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS})
+    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS} ${KV_APIS})
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
     message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")
@@ -454,6 +457,31 @@ add_subdirectory(benchmark)
             )
             add_dependencies(${_demo} generate_dsl)
             add_dependencies(${_demo} uvrpc_merged)
+        endforeach()
+
+        # A complete application rather than a demo of one call: schema ->
+        # generated bindings -> handlers -> client. The server links the stub
+        # and the combinators; the client links the generated client. They are
+        # separate executables because that is how the framework is used.
+        add_executable(kv_server
+            examples/kv_server.c
+            ${UVRPC_KV_GEN_DIR}/kv_kvservice_server_stub.c
+            ${UVRPC_KV_GEN_DIR}/kv_kvservice_rpc_common.c
+        )
+        add_executable(kv_client
+            examples/kv_client.c
+            ${KV_CLIENT_SOURCES}
+        )
+        foreach(_kv_demo kv_server kv_client)
+            target_link_libraries(${_kv_demo} uvrpc Threads::Threads m rt dl)
+            target_include_directories(${_kv_demo}
+                PRIVATE
+                ${UVRPC_KV_GEN_DIR}
+                ${CMAKE_CURRENT_SOURCE_DIR}/generated
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv/include
+                ${CMAKE_CURRENT_SOURCE_DIR}/deps/flatcc/include
+            )
+            add_dependencies(${_kv_demo} generate_dsl)
         endforeach()
         # Same story for the demos built on schema/rpc_api.fbs: the generator
         # could already produce these bindings, but the build only ever asked it
