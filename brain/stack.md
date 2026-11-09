@@ -2,6 +2,15 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
+updated: "2026-11-09T15:56:26"
+---
+
+# Tech stack
+
+---
+slug: stack
+title: Tech stack
+role: tech-stack choices
 updated: "2026-10-29T20:23:02"
 ---
 
@@ -69,7 +78,7 @@ graph LR
 2. ~~子模块未初始化 / `deps/mimalloc` 缺失~~ —— **已修**：mimalloc gitlink 恢复至 `8ff03b63`；libuv/flatcc 的旧 gitlink 指向上游不存在的幽灵提交，已重新 pin 到 v1.47.0 / v0.6.1。
 3. ~~文档引用的脚本不存在~~ —— **已恢复**：`scripts/setup_deps.sh`（重写，vendored 产物统一 -fPIC）、`build.sh`、`tools/GENERATOR_QUICK.md`、`LICENSE`（MIT，署名沿用 pyproject，待维护者确认）。
 4. ~~CI 与默认构建配置不一致~~ —— **已修**：CI 全 job 先跑 setup_deps.sh，并新增 default-allocator(mimalloc) 构建 job。`cmake/Dependencies.cmake` 此前从未入库（.gitignore 裸 `*.cmake` 规则），已补例外并提交。
-5. **无 git tag**（未处理，属发布工程切片）—— README 标注 `v1.0.0a`，但仓库 `git tag` 仍为空。
+5. ~~**无 git tag**~~ **已处理（2026-10-06 初切，2026-11-09 重切）**：`v0.1.0` tag + GitHub release 已存在，README 徽章指向 `releases/tag/v0.1.0`。2026-11-09 把 tag 从 `db6d59a` 前移到 `9b5fe96`，资产由 HEAD 干净 mimalloc 构建重新打包。详见 root page `roadmap` 第 4 项与 [[build-distribution-breakage]]。
 6. ~~根目录残留 5 个已提交二进制~~ —— **已删**（`scenario_1..5_*`，并加 gitignore 规则）。
 7. ~~**文档与代码在 `loop->data` 上互相矛盾**~~ —— **已修（2026-09-29 切片 2）**：设计哲学、架构、单线程模型、构建安装、快速开始、生成式 API 六组页面按 [[loop-data-registry-over-global-hash]] 的现状改写。
 8. ~~codec 缓冲区与分配器不一致~~ —— **契约仍在，门禁没了（2026-10-28 核实）**：契约定为"flatcc 拥有 `uvrpc_encode_*()` 的输出，只能 `free()` 释放"，`uvrpc_free_encoded()` 统一 17 处释放点。守住它的 `tests/allocator_ownership_test.c` 与 CI `custom-allocator` job 是 2026-09-29（`b139f82`）真实加上的，两天后 `687418f` 以"零可变全局"为由删掉可插拔分配器、`cb7a60b` 随之撤掉那个 job 并在提交信息与 `docs/architecture/integration.md` 里写明这是覆盖下降 —— 只有"只释放自己发出去的指针的池"能暴露跨堆释放，mimalloc 不是替代品。测试文件与它不可达的注册块（`CMakeLists.txt` 对 `-DUVRPC_ALLOCATOR_DEFAULT=custom` 直接 `FATAL_ERROR`）留到了今天，已于 2026-10-28 删除：那是一个不可能失败的测试。此契约现在**只由结构守住**（内部释放点一律走 `uvrpc_free_encoded()`），运行期观测不可行 —— mimalloc 下 `mi_free(malloc(64))` 实测静默返回，不崩也不报告。理由见 [[minimal-rpcframe-schema]]。

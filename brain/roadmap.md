@@ -2,12 +2,21 @@
 slug: roadmap
 title: Roadmap
 role: milestones
+updated: "2026-11-09T15:56:26"
+---
+
+# Roadmap
+
+---
+slug: roadmap
+title: Roadmap
+role: milestones
 updated: "2026-10-29T20:46:15"
 ---
 
 # Roadmap
 
-> ⚠️ **本页可信度说明**：仓库里**没有任何计划文档、milestone、issue 或 git tag**可以证明未来计划。下面"已完成阶段"是从 `git log`（231 commits，2026-02-09 → 2026-07-13）**反推的历史**，有证据；"待定切片"是从 root page `stack` 的 Open items 与代码/文档矛盾处**推导的候选工作**，**不是已确认的计划**，请维护者确认后再当作 roadmap 用。
+> ⚠️ **本页可信度说明**：仓库里**没有计划文档、milestone 或 issue**可以证明未来计划（`v0.1.0` tag/release 只标记已发布状态，不构成计划）。下面"已完成阶段"是从 `git log`（231 commits，2026-02-09 → 2026-07-13）**反推的历史**，有证据；"待定切片"是从 root page `stack` 的 Open items 与代码/文档矛盾处**推导的候选工作**，**不是已确认的计划**，请维护者确认后再当作 roadmap 用。
 
 ## 已完成阶段（有 git 证据）
 
@@ -54,7 +63,7 @@ gantt
 1. ~~**修复构建/分发断点**~~ **✅ 完成并端到端验证（2026-09-28/29）**：范围比原估计更大 —— 另发现 `cmake/Dependencies.cmake` 从未入库、libuv/flatcc gitlink 指向幽灵提交两个隐藏断点。真·新克隆（干净 clone + setup_deps.sh + build.sh）在默认(mimalloc)与 system 两条路径都能构建通过。评审又翻出并修了三处：切片1自报的"零警告"被陈旧 generated/ 掩盖、README/docs 的构建链漏 `setup_deps.sh`、`uvrpc_merged` 的 `ar x` 按 basename 压平丢了 `uv_random`。随后的设计哲学评审删除了一整层 pre-uvbus 死代码（`uv_transport*.c` / `uv_frame.c` / `uvrpc_khash.h`）。记录于 [[build-distribution-breakage]]。
 2. ~~**文档与代码对齐**~~ **✅ 完成（2026-09-29）**：`docs/guide/design-philosophy.md`、`docs/architecture/{index,integration}.md`、`docs/guide/benchmark.md`（整页重写）、`docs/guide/single-thread-model.md`、`docs/build-install.md`、`docs/development/{coding-standards,doxygen-examples}.md`、`docs/api/{index,generated-api}.md`、`docs/quick-start.md` 与 `docs/zh/guide/quick-start.md` 全部按代码现状改写；README 与站点/SEO 元数据的性能数字当时统一为 ~4.9 µs / ~205,000 req/s（该基线已在第 11 项被 CI 实测值取代）。`docs/api/generated-api.md` 的两段示例经**真实编译并跑通**（`Add result: 30`），顺带纠正了"把 flatcc 根指针直接当 table 用"这个会读错字段的示例错误。**结构性事实**：`docs/zh/guide/{design-philosophy,api-guide,single-thread-model}.md`、`docs/zh/build-install.md`、`docs/zh/development/{coding-standards,doxygen-examples}.md` 是指向根目录同名文件的符号链接，所以"英文"页面正文本就是中文；要真正分语言，得先把符号链接换成独立文件。
 3. ~~**补齐 mimalloc 构建的 CI 覆盖**~~ **✅ 完成（2026-09-28）**：随切片 1 解决 —— CI 新增 `default-allocator` job，所有 job 先跑 `setup_deps.sh`。
-4. **发布工程**（剩余部分）：`LICENSE` 已补、`libuvrpc_full.a` 丢符号缺陷已修；`Version` 徽章指向的 `v1.0.0a` release 仍不存在 —— 需打 tag 并在 GitHub 建 release，徽章才名副其实。
+4. ~~**发布工程**~~ **✅ 完成（2026-10-06 初切，2026-11-09 重切到 HEAD）**：`LICENSE` 已补、`libuvrpc_full.a` 丢符号缺陷已修；`v0.1.0` tag 与 GitHub release `UVRPC 0.1.0` 均已存在，`Version` 徽章指向 `releases/tag/v0.1.0`。2026-11-09 重切：tag 从 `db6d59a` 前移到 `9b5fe96`（+45 commits），tarball 用 HEAD 的干净 `./build.sh clean && ./build.sh release mimalloc` 重新打包，199 个 ctest 全过，下载与本地 sha256 一致（`1dda7267…`）。资产布局不变：`include/` + `libuvrpc.a` + `libuvrpc_full.a` + `libuvrpc.so.0.1.0`。
 5. ~~**未决的架构问题：`loop->data` 挂载点**~~ **✅ 已解决（2026-09-30）**：这个"框架抢用户字段"的妥协已经取消 —— 评审后决定采用当时列出的第二种方案，**注册表改由调用方创建并显式传入**，框架不再碰 loop。
    起因是实测数据：magic 守卫必须解引用用户的 `loop->data`，而 libuv 1.47 的 `uv_loop_init()` 刻意保留该字段，`uv_loop_t loop;`（官方文档写法）实测约 **20%** 会在读取时段错误；廉价合理性检查只能拦住 1/8 的崩溃样本，不值得。
    新契约：`uvbus_loop_registry_new()` / `uvrpc_config_set_loop_registry()` / `uvbus_loop_registry_free()`，两个 transport 从 config 取并 retain；缺注册表时创建 transport 直接报错，且没有任何隐藏的 per-loop 或进程级状态可以退回。
