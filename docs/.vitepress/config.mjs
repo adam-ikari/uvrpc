@@ -55,6 +55,7 @@ export default defineConfig({
               items: [
                 { text: 'Introduction', link: '/' },
                 { text: 'Quick Start', link: '/quick-start' },
+                { text: 'KV Service Example', link: '/guide/kv-example' },
                 { text: 'Build & Install', link: '/build-install' }
               ]
             },
@@ -116,6 +117,7 @@ export default defineConfig({
               items: [
                 { text: '介绍', link: '/zh/' },
                 { text: '快速开始', link: '/zh/guide/quick-start' },
+                { text: 'KV 服务示例', link: '/zh/guide/kv-example' },
                 { text: '构建安装', link: '/zh/build-install' }
               ]
             },

@@ -41,16 +41,16 @@ To use the system allocator instead: `cmake -S . -B build -DUVRPC_ALLOCATOR_DEFA
 
 You should see a request/response round-trip. Congratulations — that's UVRPC.
 
-## Core concepts
-
 That example talks to the wire format by hand. For the path a real project
-takes — your own schema, generated bindings, a server and a client — see
-`schema/kv.fbs`, `examples/kv_server.c` and `examples/kv_client.c`:
+takes — your own schema, generated bindings, a server and a client that are
+separate programs — see [A Complete Application: KV Service](/guide/kv-example):
 
 ```bash
 ./dist/bin/kv_server &
 ./dist/bin/kv_client          # exits non-zero if any check fails
 ```
+
+## Core concepts
 
 ### Transports
 

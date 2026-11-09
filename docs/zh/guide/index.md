@@ -6,6 +6,7 @@ UVRPC 是一个极简、高性能的 C99 RPC 框架，基于 libuv 和 FlatBuffe
 
 - [快速开始](/zh/guide/quick-start) — 5 分钟构建并运行你的第一个 RPC。
 - [构建安装](/zh/build-install) — 依赖、CMake 选项与安装。
+- [一个完整的应用：KV 服务](/zh/guide/kv-example) — 自带 schema、生成绑定、服务端与客户端分别编译。
 - [API 指南](/zh/guide/api-guide) — 服务端/客户端 API、传输层与 RPC 模式。
 - [性能测试](/zh/guide/benchmark) — 性能方法论与实测数据。
 - [设计哲学](/zh/guide/design-philosophy) — 零线程、零锁、零可变全局。

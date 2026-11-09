@@ -7,6 +7,7 @@ FlatBuffers. This guide walks through using it end-to-end.
 
 - [Quick Start](/quick-start) — build UVRPC and run your first RPC in 5 minutes.
 - [Build & Install](/build-install) — dependencies, CMake options, and installation.
+- [A Complete Application: KV Service](/guide/kv-example) — own schema, generated bindings, separate server and client.
 - [API Guide](/guide/api-guide) — the server/client API, transports, and RPC modes.
 - [Benchmark](/guide/benchmark) — performance methodology and measured numbers.
 - [Design Philosophy](/guide/design-philosophy) — zero threads, zero locks, zero globals.

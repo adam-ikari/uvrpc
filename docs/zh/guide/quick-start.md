@@ -41,6 +41,14 @@ flatcc 仍然来自 `setup_deps.sh`。
 
 看到一次请求/响应往返，就说明 UVRPC 已经跑起来了。
 
+这个示例是手写帧格式的。真实项目的路径——自带 schema、构建时生成绑定、服务端与客户端
+分别编译——见 [一个完整的应用：KV 服务](/zh/guide/kv-example)：
+
+```bash
+./dist/bin/kv_server &
+./dist/bin/kv_client          # 任一检查失败即非零退出
+```
+
 ## 核心概念
 
 ### 传输
