@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-11-09T21:09:59"
+updated: "2026-11-10T00:01:32"
 ---
 
 <!-- compiled_truth -->
@@ -87,3 +87,15 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   summary: "**生成的 *_sync() 交出的字符串是副本，不再是借用（2026-11-09）**。DSL 模板的 sync 回调把 string 字段直接赋成指向 resp->result 的指针，而同步路径在返回前就 free 了响应缓冲；valgrind 实测 Get 返回后读取该指针是 \"Address ... inside a block of size 36 free'd\"（释放点在 client_recv_callback）。修法：sync 回调用 uvrpc_strdup() 复制顶层 string 与 struct array 元素内的 string，并生成 uvrpc_<svc>_<Method>_response_free() 释放它们（api.h.j2 声明、client.c.j2 定义）。**未修的同族缺陷**：rpc_common.c.j2 里 Promise.all/any/race 仍按指针别名赋值，且无调用者，需要在同一轮里补复制与数组释放函数——记在 [[build-distribution-breakage]] 时间线。"
   source: "tests/generated_api_test.c + valgrind on dist/bin/generated_api_test（2026-11-09）"
   affects: [build-distribution-breakage]
+
+- time: 2026-11-09T23:57:43
+  kind: evidence
+  summary: "**组合器同样适用：/ 的返回值现在拥有字符串副本（2026-11-09）**。 返回 calloc 的 struct 数组 + 每个元素内  的字符串， 逐元素调用  再 ； 只写调用方提供的 struct， 不释放结构体本身。 仅在返回 OK 时写入，调用前须零初始化。校验手段：测试里在 helper 返回后读字符串（此前即悬垂读），valgrind 0 errors。"
+  source: "tests/generated_api_test.c get_all/get_any 用例"
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-10T00:01:32
+  kind: evidence
+  summary: "**更正上一条 evidence 的文字损坏（2026-11-09）**：反引号标识符被 shell 展开吞掉，完整语义如下。组合器同样适用\"回调不得交出借用存储\"：`_all()` 返回 calloc 的 struct 数组，每个元素内是 `uvrpc_strdup()` 的字符串副本，`uvrpc_<svc>_<M>_results_free()` 逐元素调用 `..._result_free()` 再 `free(数组)`；`_any()` 只写调用方提供的 struct，`..._result_free()` 不释放结构体本身。`_any()` 仅在返回 OK 时写入，调用前须零初始化。校验：测试在 helper 返回后读字符串（修复前即悬垂读），valgrind 0 errors，ctest 200/200。"
+  source: "tests/generated_api_test.c get_all/get_any（2026-11-09）"
+  affects: [callback-must-not-lend-borrowed-storage]

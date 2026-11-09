@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [build, ci, submodules]
 created: "2026-09-28T16:50:36"
-updated: "2026-11-09T21:09:59"
+updated: "2026-11-10T00:00:15"
 ---
 
 <!-- compiled_truth -->
@@ -219,4 +219,16 @@ runner 更新不是破坏一处，而是三层，且**每层只有把上一层�
   kind: evidence
   summary: "**DSL 生成的三处静默缺陷，是\"用真实服务跑一遍\"发现的（2026-11-09）**。1) *_sync() 建了 async ctx 却从不进入 running block，uvrpc_async_timeout() 因此一律返回 INVALID_STATE——生成的所有同步调用从未成功过一次；2) server stub 用 uvrpc_request_send_response() 上报 handler 的非 OK 返回，而该函数忽略 status 且帧类型是 success，拒绝被客户端收成 UVRPC_OK + 空 payload；改用 uvrpc_response_send_error()；3) sync 字符串字段指向已释放缓冲（见 [[callback-must-not-lend-borrowed-storage]]）。三者都没被测到，因为 dsl_codegen_test 只覆盖编解码、没有连接与同步调用。修法：模板修三处 + 新增 tests/generated_api_test.c（SAMELOOP 单进程，覆盖 sync、字符串所有权、拒绝帧），ctest 200/200。**遗留**：rpc_common.c.j2 的 Promise.all/any/race 仍是别名赋值，需补复制与释放。"
   source: "schema/kv.fbs + examples/kv_{server,client}.c 实测；ctest 200/200（2026-11-09）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-11-09T23:57:43
+  kind: reversal
+  summary: "**组合调用的字符串所有权已修，之前的\"遗留\"项关闭（2026-11-09）**。更正上一轮的表述： 只生成  与 ，**没有 race**。两者都把响应里的 string 按指针别名返回，而  在函数返回前就释放了来源缓冲——第一个调用者就会拿到悬垂指针。修法：顶层 string 与 struct array 元素内 string 一律 ，并生成 （仅内容， 的结构体归调用方）与 （内容 +  分配的数组）；字符串用  释放、calloc 数组用  释放。另： 向量模板不支持（会按指针 memcpy），现在在  解析阶段直接报错退出，而不是生成静默损坏的代码。"
+  source: "tools/templates/rpc_common.{c,h}.j2 + tests/generated_api_test.c（get_all/get_any，valgrind 0 errors，ctest 200/200）"
+  affects: [build-distribution-breakage]
+
+- time: 2026-11-10T00:00:15
+  kind: reversal
+  summary: "**更正上一条 reversal 的文字损坏（2026-11-09）**：上一条摘要里的反引号标识符被 shell 展开吞掉，完整语义如下。`rpc_common.c.j2` 只生成 `_all` 与 `_any`（**没有 race**，更正此前表述）。两者原先都把响应里的 string 按指针别名返回，而 `uvrpc_async_result_free()` 在函数返回前释放了来源缓冲，第一个调用者即拿到悬垂指针。修法：顶层 string 与 struct array 元素内 string 一律 `uvrpc_strdup()`；生成 `uvrpc_<svc>_<M>_result_free(struct*)`（只释放内容，`_any` 的结构体归调用方）与 `..._results_free(struct*, int)`（内容 + `_all` 分配的数组）；字符串用 `uvrpc_free()`、calloc 数组用 `free()`。另：`[string]` 向量模板不支持（会按指针 memcpy），现在由 `uvrpcc.py` 解析阶段报错退出。"
+  source: "tools/templates/rpc_common.{c,h}.j2 + tools/uvrpcc.py（2026-11-09）"
   affects: [build-distribution-breakage]
