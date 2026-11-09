@@ -30,6 +30,15 @@ jobs:
       - name: Build vendored dependencies
         run: ./scripts/setup_deps.sh
 
+      # Without jinja2 the DSL codegen target does not exist and the log_service
+      # demos plus the dsl_codegen test are skipped with a status line. On a
+      # runner that never had it, those sources were never compiled here at all
+      # -- which is how log_service_demo.c rotted against the library API
+      # unnoticed. Installing it makes "the generated code builds and passes"
+      # a gate instead of a claim about someone's workstation.
+      - name: Install codegen dependencies
+        run: python3 -m pip install --quiet --disable-pip-version-check jinja2
+
       - name: Configure
         run: |
           cmake -S . -B build \
