@@ -82,6 +82,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
             }
             {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builders[i]);
         }
+{% elif field.is_string_array -%}
+        /* String vector field: {{ field.name }} */
+        if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builders[i]);
+            for (size_t j = 0; j < requests[i].{{ field.name }}_size; j++) {
+                const char* _element = requests[i].{{ field.name }}[j];
+                {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builders[i],
+                    _element ? _element : "", _element ? strlen(_element) : 0);
+            }
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builders[i]);
+        }
 {% else -%}
         /* Scalar array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
@@ -173,6 +184,21 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                                 results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
 {% endif %}
 {%- endfor -%}
+                            }
+                        }
+                    }
+                }
+{% elif field.is_string_array -%}
+                if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+                    flatbuffers_string_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+                    size_t {{ field.name }}_len = flatbuffers_string_vec_len({{ field.name }}_vec);
+                    if ({{ field.name }}_len > 0) {
+                        results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof(*results_array[i].{{ field.name }}));
+                        if (results_array[i].{{ field.name }}) {
+                            results_array[i].{{ field.name }}_size = {{ field.name }}_len;
+                            for (size_t j = 0; j < {{ field.name }}_len; j++) {
+                                const char* _element = flatbuffers_string_vec_at({{ field.name }}_vec, j);
+                                results_array[i].{{ field.name }}[j] = _element ? uvrpc_strdup(_element) : NULL;
                             }
                         }
                     }
@@ -295,6 +321,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
             }
             {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builders[i]);
         }
+{% elif field.is_string_array -%}
+        /* String vector field: {{ field.name }} */
+        if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builders[i]);
+            for (size_t j = 0; j < requests[i].{{ field.name }}_size; j++) {
+                const char* _element = requests[i].{{ field.name }}[j];
+                {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builders[i],
+                    _element ? _element : "", _element ? strlen(_element) : 0);
+            }
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builders[i]);
+        }
 {% else -%}
         /* Scalar array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
@@ -367,6 +404,21 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
                 }
             }
         }
+{% elif field.is_string_array -%}
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+            flatbuffers_string_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            size_t {{ field.name }}_len = flatbuffers_string_vec_len({{ field.name }}_vec);
+            if ({{ field.name }}_len > 0) {
+                result->{{ field.name }} = calloc({{ field.name }}_len, sizeof(*result->{{ field.name }}));
+                if (result->{{ field.name }}) {
+                    result->{{ field.name }}_size = {{ field.name }}_len;
+                    for (size_t j = 0; j < {{ field.name }}_len; j++) {
+                        const char* _element = flatbuffers_string_vec_at({{ field.name }}_vec, j);
+                        result->{{ field.name }}[j] = _element ? uvrpc_strdup(_element) : NULL;
+                    }
+                }
+            }
+        }
 {% else -%}
         if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
             flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
@@ -423,6 +475,15 @@ void uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_result_free({{ names
 {% if field.original_type == 'string' -%}
     uvrpc_free((void*)result->{{ field.name }});
     result->{{ field.name }} = NULL;
+{% elif field.is_string_array -%}
+    if (result->{{ field.name }}) {
+        for (size_t i = 0; i < result->{{ field.name }}_size; i++) {
+            uvrpc_free((void*)result->{{ field.name }}[i]);
+        }
+        free(result->{{ field.name }});
+        result->{{ field.name }} = NULL;
+        result->{{ field.name }}_size = 0;
+    }
 {% elif field.is_array and field.is_struct_array -%}
     if (result->{{ field.name }}) {
         for (size_t i = 0; i < result->{{ field.name }}_size; i++) {

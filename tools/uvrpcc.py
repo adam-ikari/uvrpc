@@ -114,14 +114,18 @@ class RPCParser:
     def _parse_fields(self, fields_str):
         """Parse table fields"""
         fields = []
-        for line in fields_str.split('\n'):
-            line = line.strip()
+        # A field ends at a semicolon, not at a newline: a table written as
+        # `table T { a: int; b: string; }` used to lose every field after the
+        # first, silently generating a struct the rest of the schema disagreed
+        # with.
+        for chunk in re.split(r'[;\n]', fields_str):
+            line = chunk.strip()
             if not line or line.startswith('//'):
                 continue
             # Remove inline comments (both C /* */ and C++ //)
             line = re.sub(r'/\*.*?\*/', '', line).strip()  # Remove /* ... */
             line = re.sub(r'//.*$', '', line).strip()       # Remove // ...
-            if not line or not line.endswith(';'):
+            if not line:
                 continue
             # Simple field parsing
             parts = line.split(':')
@@ -143,22 +147,20 @@ class RPCParser:
                     'byte': 'int8_t',
                 }
 
-                # Handle array types like [ubyte] or [LogEntry]
+                # Handle array types like [ubyte], [LogEntry] or [string]
                 is_array = False
                 is_struct_array = False
+                is_string_array = False
                 base = field_type
                 if field_type.startswith('[') and field_type.endswith(']'):
                     is_array = True
                     base = field_type[1:-1]
                     is_struct_array = base in self.table_names
-                    # Generated code copies scalar arrays by value and
-                    # duplicates strings one at a time. A vector of strings is
-                    # neither: it would end up holding borrowed pointers into a
-                    # response buffer that is freed before the call returns.
-                    if base == 'string':
-                        raise ValueError(
-                            "field '{}': arrays of strings are not supported yet"
-                            .format(field_name))
+                    # A vector of strings cannot be copied by value like a
+                    # scalar vector: every element points into the response
+                    # buffer, which is freed before the wrapper returns. The
+                    # templates duplicate each element and free it individually.
+                    is_string_array = base == 'string'
 
                 # Resolve the schema name to the C spellings flatcc 0.6 emits.
                 # Every name declared in the schema carries the namespace, and
@@ -187,7 +189,8 @@ class RPCParser:
                     'schema_type': base,
                     'original_type': field_type,
                     'is_array': is_array,
-                    'is_struct_array': is_struct_array
+                    'is_struct_array': is_struct_array,
+                    'is_string_array': is_string_array
                 })
         return fields
     

@@ -140,6 +140,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
         }
         {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
+{% elif field.is_string_array -%}
+    /* String vector field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            const char* _element = request->{{ field.name }}[i];
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder,
+                _element ? _element : "", _element ? strlen(_element) : 0);
+        }
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
+    }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
@@ -239,6 +250,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
         }
         {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
+{% elif field.is_string_array -%}
+    /* String vector field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            const char* _element = request->{{ field.name }}[i];
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder,
+                _element ? _element : "", _element ? strlen(_element) : 0);
+        }
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
+    }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
@@ -335,6 +357,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
                 {%- for struct_field in rpc_data['tables'][field.schema_type] %}
 {% if struct_field['type'] == "const char*" %}, i_{{ struct_field['name'] }}_ref{% else %}, request->{{ field.name }}[i].{{ struct_field['name'] }}{% endif %}
                 {%- endfor -%});
+        }
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
+    }
+{% elif field.is_string_array -%}
+    /* String vector field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            const char* _element = request->{{ field.name }}[i];
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder,
+                _element ? _element : "", _element ? strlen(_element) : 0);
         }
         {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
@@ -452,6 +485,40 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 {% endif %}
 
 {%- endfor -%}
+
+                    }
+
+                }
+
+            }
+
+        }
+
+{% elif field.is_string_array -%}
+
+        /* String vector field: {{ field.name }} */
+
+        if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
+
+            flatbuffers_string_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            size_t {{ field.name }}_len = flatbuffers_string_vec_len({{ field.name }}_vec);
+
+            if ({{ field.name }}_len > 0) {
+
+                /* One allocation for the pointer array, one copy per string:
+                 * every element points into the response buffer, which is
+                 * freed before *_sync() returns. */
+                sync_ctx->response.{{ field.name }} = calloc({{ field.name }}_len, sizeof(*sync_ctx->response.{{ field.name }}));
+
+                if (sync_ctx->response.{{ field.name }}) {
+
+                    sync_ctx->response.{{ field.name }}_size = {{ field.name }}_len;
+
+                    for (size_t i = 0; i < {{ field.name }}_len; i++) {
+
+                        const char* _element = flatbuffers_string_vec_at({{ field.name }}_vec, i);
+
+                        sync_ctx->response.{{ field.name }}[i] = _element ? uvrpc_strdup(_element) : NULL;
 
                     }
 
@@ -611,6 +678,17 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
         }
         {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
     }
+{% elif field.is_string_array -%}
+    /* String vector field: {{ field.name }} */
+    if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_start(&builder);
+        for (size_t i = 0; i < request->{{ field.name }}_size; i++) {
+            const char* _element = request->{{ field.name }}[i];
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_push_create(&builder,
+                _element ? _element : "", _element ? strlen(_element) : 0);
+        }
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_end(&builder);
+    }
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
@@ -695,6 +773,15 @@ void uvrpc_{{ service_name_lower }}_{{ method.name }}_response_free({{ namespace
 {% if field.original_type == 'string' -%}
     uvrpc_free((void*)response->{{ field.name }});
     response->{{ field.name }} = NULL;
+{% elif field.is_string_array -%}
+    if (response->{{ field.name }}) {
+        for (size_t i = 0; i < response->{{ field.name }}_size; i++) {
+            uvrpc_free((void*)response->{{ field.name }}[i]);
+        }
+        free(response->{{ field.name }});
+        response->{{ field.name }} = NULL;
+        response->{{ field.name }}_size = 0;
+    }
 {% elif field.is_array and field.is_struct_array -%}
     if (response->{{ field.name }}) {
         for (size_t i = 0; i < response->{{ field.name }}_size; i++) {

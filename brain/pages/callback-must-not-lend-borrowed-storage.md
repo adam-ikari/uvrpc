@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-11-10T00:01:32"
+updated: "2026-11-10T03:08:03"
 ---
 
 <!-- compiled_truth -->
@@ -98,4 +98,10 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   kind: evidence
   summary: "**更正上一条 evidence 的文字损坏（2026-11-09）**：反引号标识符被 shell 展开吞掉，完整语义如下。组合器同样适用\"回调不得交出借用存储\"：`_all()` 返回 calloc 的 struct 数组，每个元素内是 `uvrpc_strdup()` 的字符串副本，`uvrpc_<svc>_<M>_results_free()` 逐元素调用 `..._result_free()` 再 `free(数组)`；`_any()` 只写调用方提供的 struct，`..._result_free()` 不释放结构体本身。`_any()` 仅在返回 OK 时写入，调用前须零初始化。校验：测试在 helper 返回后读字符串（修复前即悬垂读），valgrind 0 errors，ctest 200/200。"
   source: "tests/generated_api_test.c get_all/get_any（2026-11-09）"
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-10T03:08:03
+  kind: evidence
+  summary: "`[string]` 向量现已支持，契约与单字符串一致但按元素执行：响应侧生成代码为指针数组 `calloc()`、每个元素 `uvrpc_strdup()`，`response_free` / `result_free` / `results_free` 逐元素 `uvrpc_free()` 后 `free()` 数组；空向量为 NULL/0；请求侧 NULL 元素编码为空字符串。回归测试 `tests/generated_strings_test.c`（SAMELOOP，19 项断言，valgrind 干净，ctest 201/201）。此前生成器显式拒绝该形状，模板若按标量数组 memcpy 会交出悬垂指针。同轮发现并修复解析器缺陷：字段以换行而非分号切分，`table T { a: int; b: string; }` 会静默丢掉除首字段外的全部字段。"
+  source: "tools/templates/client.c.j2, tools/templates/rpc_common.c.j2, tools/uvrpcc.py"
   affects: [callback-must-not-lend-borrowed-storage]

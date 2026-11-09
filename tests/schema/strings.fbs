@@ -1,0 +1,21 @@
+namespace strings;
+
+/* Covers the one field shape kv.fbs has no use for: vectors of strings, on
+ * both the request and the response side. Every element is a FlatBuffers
+ * string, so the generated bindings must duplicate each one -- the response
+ * buffer is gone before the wrapper returns. */
+
+table EchoRequest {
+    tags: [string];
+    note: string;
+}
+
+table EchoResponse {
+    tags: [string];
+    note: string;
+    count: int32;
+}
+
+rpc_service StringService {
+    Echo(EchoRequest):EchoResponse;
+}

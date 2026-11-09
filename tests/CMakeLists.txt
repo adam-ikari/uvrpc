@@ -1065,6 +1065,32 @@ if(UVRPC_DSL_AVAILABLE)
     )
     add_test(NAME generated_api COMMAND generated_api_test)
     set_tests_properties(generated_api PROPERTIES TIMEOUT 120)
+
+    # [string] fields: the one array shape whose elements are individually
+    # owned copies. Same SAMELOOP harness, separate schema because kv.fbs has
+    # no string vector to exercise.
+    set_source_files_properties(${STRINGS_SOURCES} PROPERTIES GENERATED TRUE)
+    add_executable(generated_strings_test
+        generated_strings_test.c
+        ${STRINGS_SOURCES}
+    )
+    add_dependencies(generated_strings_test generate_dsl)
+    target_link_libraries(generated_strings_test
+        uvrpc
+        pthread
+        m
+        rt
+    )
+    target_include_directories(generated_strings_test
+        PRIVATE
+        ${UVRPC_STRINGS_GEN_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+    )
+    add_test(NAME generated_strings COMMAND generated_strings_test)
+    set_tests_properties(generated_strings PROPERTIES TIMEOUT 120)
 else()
     message(STATUS "Skipping dsl_codegen test: python3 with jinja2 not available")
 endif()

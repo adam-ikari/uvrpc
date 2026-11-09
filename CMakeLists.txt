@@ -339,11 +339,17 @@ if(UVRPC_DSL_AVAILABLE)
     uvrpc_dsl_generate(KV ${SCHEMA_DIR}/kv.fbs ${UVRPC_KV_GEN_DIR}
                        kv_kvservice)
 
+    # A schema whose only purpose is the one field shape kv.fbs does not use:
+    # vectors of strings, in both directions. Built by generated_strings_test.
+    set(UVRPC_STRINGS_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/strings)
+    uvrpc_dsl_generate(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/tests/schema/strings.fbs
+                       ${UVRPC_STRINGS_GEN_DIR} strings_stringservice)
+
     # add_executable resolves its sources at generate time, so sources that a
     # custom command has not produced yet have to be declared GENERATED or
     # configuration fails outright on a clean checkout.
     set(UVRPC_DSL_SOURCES ${LOG_SERVICE_SOURCES} ${RPC_API_SOURCES})
-    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS} ${KV_APIS})
+    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS} ${KV_APIS} ${STRINGS_APIS})
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
     message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")
