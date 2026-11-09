@@ -21,6 +21,7 @@
 
 #include <uv.h>
 #include "kv_kvservice_api.h"
+#include "uvrpc_async.h"
 #include "kv_reader.h"
 
 #define KEY_MAX 63
@@ -200,6 +201,43 @@ int main(void) {
     check("handler refusal arrives as INVALID_PARAM",
           ret == UVRPC_ERROR_INVALID_PARAM);
 
+
+    /* Combinators: the structs they hand back own copies of the strings, and
+     * the generated free helpers release those copies plus the arrays.
+     * Before this, both helpers aliased the async response buffer, which they
+     * free before returning. */
+    uvrpc_async_ctx_t* actx = uvrpc_async_ctx_new(&loop);
+    check("async context created", actx != NULL);
+    if (actx) {
+        uvrpc_client_t* clients[2] = { client, client };
+        kv_GetRequest_t gets[2] = { { .key = "k" }, { .key = "absent" } };
+
+        kv_GetResponse_t* all = NULL;
+        ret = uvrpc_kvservice_get_all(actx, clients, gets, &all, 2, CALL_TIMEOUT_MS);
+        check("get_all returns UVRPC_OK", ret == UVRPC_OK);
+        check("get_all copied the string",
+              all && all[0].found && all[0].value &&
+              strcmp(all[0].value, "a value longer than a word") == 0);
+        check("get_all keeps per-call results apart", all && !all[1].found);
+        uvrpc_kvservice_get_results_free(all, 2);
+
+        kv_GetResponse_t single = {0};
+        int index = -1;
+        ret = uvrpc_kvservice_get_any(actx, clients, gets, &single, &index, 2,
+                                      CALL_TIMEOUT_MS);
+        check("get_any returns UVRPC_OK with a valid index",
+              ret == UVRPC_OK && (index == 0 || index == 1));
+        if (index == 0) {
+            check("get_any copied the string",
+                  single.found && single.value &&
+                  strcmp(single.value, "a value longer than a word") == 0);
+        } else if (index == 1) {
+            check("get_any reports the missing key", !single.found);
+        }
+        uvrpc_kvservice_get_result_free(&single);
+
+        uvrpc_async_ctx_free(actx);
+    }
     uvrpc_kvservice_free_client(client);
     uv_run(&loop, UV_RUN_DEFAULT);
     uvrpc_kvservice_stop_server(server);
