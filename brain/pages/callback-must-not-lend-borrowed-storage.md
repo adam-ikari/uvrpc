@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-11-10T03:08:03"
+updated: "2026-11-10T03:16:37"
 ---
 
 <!-- compiled_truth -->
@@ -104,4 +104,10 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   kind: evidence
   summary: "`[string]` 向量现已支持，契约与单字符串一致但按元素执行：响应侧生成代码为指针数组 `calloc()`、每个元素 `uvrpc_strdup()`，`response_free` / `result_free` / `results_free` 逐元素 `uvrpc_free()` 后 `free()` 数组；空向量为 NULL/0；请求侧 NULL 元素编码为空字符串。回归测试 `tests/generated_strings_test.c`（SAMELOOP，19 项断言，valgrind 干净，ctest 201/201）。此前生成器显式拒绝该形状，模板若按标量数组 memcpy 会交出悬垂指针。同轮发现并修复解析器缺陷：字段以换行而非分号切分，`table T { a: int; b: string; }` 会静默丢掉除首字段外的全部字段。"
   source: "tools/templates/client.c.j2, tools/templates/rpc_common.c.j2, tools/uvrpcc.py"
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-10T03:16:37
+  kind: evidence
+  summary: "补充拒绝规则：表被当作 struct 数组元素使用时（`items: [Item]`），其内部字段若也是数组，生成器现在直接报错（`field 'items[].tags': arrays inside a struct-array element are not supported`，退出码 1）。原因是元素逐字段生成，只有标量与单个字符串有复制路径；此前该形状会编译通过（带指针类型警告）并向调用方交出指向已释放响应缓冲的指针。同理，顶层 `[string]` 的支持只覆盖\"元素即字符串\"这一层，嵌套层仍然显式拒绝——不要为了让某个 schema 通过而放宽这条检查。"
+  source: tools/uvrpcc.py
   affects: [callback-must-not-lend-borrowed-storage]
