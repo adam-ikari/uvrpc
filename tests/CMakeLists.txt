@@ -1039,6 +1039,32 @@ if(UVRPC_DSL_AVAILABLE)
 
     add_test(NAME dsl_codegen COMMAND dsl_codegen_test)
     set_tests_properties(dsl_codegen PROPERTIES TIMEOUT 120)
+
+    # The same generated bindings the examples use, exercised over SAMELOOP so
+    # the test needs no port and no second process. Covers what the sync
+    # wrapper and the stub's error path get wrong silently otherwise.
+    set_source_files_properties(${KV_SOURCES} PROPERTIES GENERATED TRUE)
+    add_executable(generated_api_test
+        generated_api_test.c
+        ${KV_SOURCES}
+    )
+    add_dependencies(generated_api_test generate_dsl)
+    target_link_libraries(generated_api_test
+        uvrpc
+        pthread
+        m
+        rt
+    )
+    target_include_directories(generated_api_test
+        PRIVATE
+        ${UVRPC_KV_GEN_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+    )
+    add_test(NAME generated_api COMMAND generated_api_test)
+    set_tests_properties(generated_api PROPERTIES TIMEOUT 120)
 else()
     message(STATUS "Skipping dsl_codegen test: python3 with jinja2 not available")
 endif()
