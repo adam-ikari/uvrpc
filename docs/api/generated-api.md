@@ -546,10 +546,11 @@ void {Service}_client_free({Service}_client_t* client) {{
 
 ### 字符串向量（`[string]`）
 
-生成的绑定支持四种数组形状：标量数组（`[ubyte]`、`[int32]` 等）、表数组（`[LogEntry]`）、
-普通字符串（`string`）、字符串向量（`[string]`）。最后一种是唯一不能按值 memcpy 的形状：
-每个元素都指向响应缓冲区内部的字符串，而该缓冲区在 `_sync()` 返回前就已释放。因此生成的
-代码**逐元素复制**：指针数组用 `calloc()`，每个元素用 `uvrpc_strdup()`，
+生成的绑定支持三种数组形状：标量数组（`[ubyte]`、`[int32]` 等）、表数组（`[LogEntry]`）、
+字符串向量（`[string]`），外加普通的单个 `string` 字段。`[string]` 是唯一不能按值
+memcpy 的数组：每个元素都指向响应缓冲区内部的字符串，而该缓冲区在 `_sync()` 返回前
+就已释放。因此生成的代码**逐元素复制**：指针数组用 `calloc()`，每个元素用
+`uvrpc_strdup()`，
 `uvrpc_<svc>_<Method>_response_free()` / `..._result_free()` / `..._results_free()`
 逐个 `uvrpc_free()` 后再 `free()` 数组本身。
 
@@ -559,6 +560,10 @@ void {Service}_client_free({Service}_client_t* client) {{
 
 `tests/generated_strings_test.c`（`ctest -R generated_strings`）覆盖了往返、空向量、
 组合调用与释放，是这条契约的回归网。
+
+嵌套数组（表数组元素内部再有数组，如 `items: [Item]` 中 `Item.tags` 为 `[string]`）
+不受支持，生成器直接报错退出：元素是逐字段生成的，该形状会编译通过却交出指向已释放
+缓冲区的指针。需要这种结构时，把它拆成独立的一层请求。
 
 ### 缓冲区归属
 
