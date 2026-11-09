@@ -92,6 +92,20 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
     int count,
     uint64_t timeout_ms);
 
+/**
+ * Free the strings and arrays _any() copied into a response struct.
+ * The struct itself belongs to the caller; only its contents are released.
+ * _any() writes the struct only on UVRPC_OK, so zero-initialise it first.
+ */
+void uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_result_free({{ namespace }}_{{ method.response }}_t* result);
+
+/**
+ * Free every response _all() returned, then the array it allocated.
+ * @param results the array returned through _all()
+ * @param count the same count that was passed to _all()
+ */
+void uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_results_free({{ namespace }}_{{ method.response }}_t* results, int count);
+
 {% endfor -%}
 
 #ifdef __cplusplus

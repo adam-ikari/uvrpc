@@ -151,6 +151,14 @@ class RPCParser:
                     is_array = True
                     base = field_type[1:-1]
                     is_struct_array = base in self.table_names
+                    # Generated code copies scalar arrays by value and
+                    # duplicates strings one at a time. A vector of strings is
+                    # neither: it would end up holding borrowed pointers into a
+                    # response buffer that is freed before the call returns.
+                    if base == 'string':
+                        raise ValueError(
+                            "field '{}': arrays of strings are not supported yet"
+                            .format(field_name))
 
                 # Resolve the schema name to the C spellings flatcc 0.6 emits.
                 # Every name declared in the schema carries the namespace, and
@@ -421,7 +429,11 @@ def main():
     # Parse schema
     print("Parsing schema: {}".format(args.schema))
     rpc_parser = RPCParser(args.schema)
-    rpc_data = rpc_parser.parse()
+    try:
+        rpc_data = rpc_parser.parse()
+    except ValueError as exc:
+        print("Error: {}".format(exc))
+        return 1
     
     print("Found {} services:".format(len(rpc_data['services'])))
     for service in rpc_data['services']:

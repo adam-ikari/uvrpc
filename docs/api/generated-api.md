@@ -251,6 +251,11 @@ uvrpc_error_t uvrpc_mathservice_Add_sync(uvrpc_client_t* client,
 `rpc_common` 里另有组合调用：`uvrpc_mathservice_add_all(...)` 并发发出同一方法的多组
 请求并等齐，`..._any(...)` 取最先完成者，两者也都接受 `timeout_ms`。
 
+两个组合调用返回的结构体**拥有**字符串副本（`uvrpc_strdup`），调用方用配套的
+`uvrpc_<svc>_<Method>_result_free()` / `..._results_free()` 释放；`_results_free`
+同时释放 `_all()` 分配的数组本身。`_any()` 只在返回 `UVRPC_OK` 时写入结构体，
+调用前先零初始化。
+
 ## 命名约定
 
 ### 前缀规则

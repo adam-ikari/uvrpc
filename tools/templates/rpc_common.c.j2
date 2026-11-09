@@ -4,6 +4,7 @@
 #include "{{ schema_basename|lower }}_reader.h"
 #include "../include/uvrpc.h"
 #include "../include/uvrpc_async.h"
+#include "../include/uvrpc_allocator.h"
 
 /* Async utility implementations */
 
@@ -163,7 +164,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                             for (size_t j = 0; j < {{ field.name }}_len; j++) {
                                 {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, j);
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+{% if struct_field.original_type == 'string' %}
+                                {
+                                    const char* _item_source = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+                                    results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = _item_source ? uvrpc_strdup(_item_source) : NULL;
+                                }
+{% else %}
                                 results_array[i].{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+{% endif %}
 {%- endfor -%}
                             }
                         }
@@ -184,7 +192,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                 }
 {% endif -%}
 {% else -%}
+{% if field.original_type == 'string' -%}
+                results_array[i].{{ field.name }} = uvrpc_strdup({{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response));
+{% else -%}
                 results_array[i].{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+{% endif -%}
 {% endif -%}
 {% endfor -%}
             }
@@ -342,7 +354,14 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
                     for (size_t j = 0; j < {{ field.name }}_len; j++) {
                         {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, j);
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+{% if struct_field.original_type == 'string' %}
+                        {
+                            const char* _item_source = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+                            result->{{ field.name }}[j].{{ struct_field['name'] }} = _item_source ? uvrpc_strdup(_item_source) : NULL;
+                        }
+{% else %}
                         result->{{ field.name }}[j].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+{% endif %}
 {%- endfor -%}
                     }
                 }
@@ -363,7 +382,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
         }
 {% endif -%}
 {% else -%}
+{% if field.original_type == 'string' -%}
+        result->{{ field.name }} = uvrpc_strdup({{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response));
+{% else -%}
         result->{{ field.name }} = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+{% endif -%}
 {% endif -%}
 {% endfor -%}
     }
@@ -387,4 +410,49 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
     return ret;
 }
 
+/* Release the buffers the two helpers above copied out of async responses.
+ * Those responses are freed before the helpers return, so a struct handed back
+ * by _all()/_any() owns its strings only because they were duplicated here.
+ * Arrays of plain scalars are calloc'd, strings are uvrpc_strdup'd -- release
+ * each with the matching allocator. */
+void uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_result_free({{ namespace }}_{{ method.response }}_t* result) {
+    if (!result) {
+        return;
+    }
+{% for field in method.response_fields -%}
+{% if field.original_type == 'string' -%}
+    uvrpc_free((void*)result->{{ field.name }});
+    result->{{ field.name }} = NULL;
+{% elif field.is_array and field.is_struct_array -%}
+    if (result->{{ field.name }}) {
+        for (size_t i = 0; i < result->{{ field.name }}_size; i++) {
+{%- for struct_field in rpc_data['tables'][field.schema_type] -%}
+{% if struct_field.original_type == 'string' -%}
+            uvrpc_free((void*)result->{{ field.name }}[i].{{ struct_field['name'] }});
+            result->{{ field.name }}[i].{{ struct_field['name'] }} = NULL;
+{% endif -%}
+{% endfor -%}
+        }
+        free(result->{{ field.name }});
+        result->{{ field.name }} = NULL;
+        result->{{ field.name }}_size = 0;
+    }
+{% elif field.is_array -%}
+    free(result->{{ field.name }});
+    result->{{ field.name }} = NULL;
+    result->{{ field.name }}_size = 0;
+{% endif -%}
+{% endfor -%}
+}
+
+/* Release what _all() allocated: every element, then the array itself. */
+void uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_results_free({{ namespace }}_{{ method.response }}_t* results, int count) {
+    if (!results) {
+        return;
+    }
+    for (int i = 0; i < count; i++) {
+        uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_result_free(&results[i]);
+    }
+    free(results);
+}
 {% endfor %}
