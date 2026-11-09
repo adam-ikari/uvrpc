@@ -103,6 +103,22 @@ class RPCParser:
                 'name': service_name,
                 'methods': methods
             })
+
+        # A struct-array element is generated field by field, and only scalar
+        # and string elements have a copy path: an array inside one would be
+        # emitted as a single value, so the generated code would compile with
+        # warnings and alias the response buffer. Refuse it here instead.
+        for service in self.services:
+            for method in service['methods']:
+                for field in method['request_fields'] + method['response_fields']:
+                    if not field['is_struct_array']:
+                        continue
+                    for element in self.tables.get(field['schema_type'], []):
+                        if element['is_array']:
+                            raise ValueError(
+                                "field '{}[].{}': arrays inside a struct-array "
+                                "element are not supported"
+                                .format(field['name'], element['name']))
         
         return {
             'namespace': self.namespace,
