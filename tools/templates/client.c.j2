@@ -154,8 +154,11 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        /* _create() takes the element type, so the vector is written with the
+         * right element width and endianness. flatbuffers_uint8_vec_create()
+         * copied only the first N bytes of an int32[] and produced garbage. */
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builder,
+            (const void*)request->{{ field.name }}, request->{{ field.name }}_size);
     }
 {% endif -%}
 {% else -%}
@@ -264,8 +267,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builder,
+            (const void*)request->{{ field.name }}, request->{{ field.name }}_size);
     }
 {% endif -%}
 {% else -%}
@@ -374,8 +377,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}(uvrpc_client_t* c
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-            flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
-            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builder,
+                (const void*)request->{{ field.name }}, request->{{ field.name }}_size);
         }
     {% endif -%}
     {% else -%}
@@ -534,7 +537,11 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
         if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
 
-            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+
+            /* Read through the element-typed accessor: it applies the
+             * vector's endianness and width, where casting the raw pointer
+             * to {{ field.type }}* only worked on little-endian hosts. */
+            {{ field.flatcc_vec_type }}_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
             size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
 
             if ({{ field.name }}_len > 0) {
@@ -545,9 +552,10 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
                     sync_ctx->response.{{ field.name }}_size = {{ field.name }}_len;
 
-                    const {{ field.type }}* arr = {{ field.name }}_vec;
-
-                    memcpy(sync_ctx->response.{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
+                    for (size_t i = 0; i < {{ field.name }}_len; i++) {
+                        sync_ctx->response.{{ field.name }}[i] =
+                            ({{ field.type }}){{ field.flatcc_vec_type }}_vec_at({{ field.name }}_vec, i);
+                    }
 
                 }
 
@@ -692,8 +700,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name }}_sync(uvrpc_client
 {% else -%}
     /* Scalar array field: {{ field.name }} */
     if (request->{{ field.name }} && request->{{ field.name }}_size > 0) {
-        flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builder, request->{{ field.name }}, request->{{ field.name }}_size);
-        {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builder, {{ field.name }}_ref);
+        {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builder,
+            (const void*)request->{{ field.name }}, request->{{ field.name }}_size);
     }
 {% endif -%}
 {% else -%}

@@ -1,3 +1,7 @@
+/* flatcc rejects undeclared attributes; the generator reads (oneway) off the
+ * method declaration, so it has to be declared here. */
+attribute "oneway";
+
 namespace log;
 
 /* ============================================================
@@ -44,11 +48,11 @@ table QuickLogRequest {
 
 rpc_service LogService {
     /* Log a single entry - oneway */
-    Log(LogEntry):EmptyResponse;
+    Log(LogEntry):EmptyResponse (oneway);
 
     /* Log multiple entries - oneway */
-    LogBatch(LogBatchRequest):EmptyResponse;
+    LogBatch(LogBatchRequest):EmptyResponse (oneway);
 
     /* Quick log with just level and message - oneway */
-    QuickLog(QuickLogRequest):EmptyResponse;
+    QuickLog(QuickLogRequest):EmptyResponse (oneway);
 }

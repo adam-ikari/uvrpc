@@ -96,8 +96,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
 {% else -%}
         /* Scalar array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
-            flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builders[i], requests[i].{{ field.name }}, requests[i].{{ field.name }}_size);
-            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builders[i],
+                (const void*)requests[i].{{ field.name }}, requests[i].{{ field.name }}_size);
         }
 {% endif -%}
 {% else -%}
@@ -205,14 +205,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_all(
                 }
 {% else -%}
                 if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
-                    flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+                    {{ field.flatcc_vec_type }}_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
                     size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
                     if ({{ field.name }}_len > 0) {
                         results_array[i].{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                         if (results_array[i].{{ field.name }}) {
                             results_array[i].{{ field.name }}_size = {{ field.name }}_len;
-                            const {{ field.type }}* arr = {{ field.name }}_vec;
-                            memcpy(results_array[i].{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
+                            for (size_t j = 0; j < {{ field.name }}_len; j++) {
+                                results_array[i].{{ field.name }}[j] =
+                                    ({{ field.type }}){{ field.flatcc_vec_type }}_vec_at({{ field.name }}_vec, j);
+                            }
                         }
                     }
                 }
@@ -335,8 +337,8 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
 {% else -%}
         /* Scalar array field: {{ field.name }} */
         if (requests[i].{{ field.name }} && requests[i].{{ field.name }}_size > 0) {
-            flatbuffers_vec_ref_t {{ field.name }}_ref = flatbuffers_uint8_vec_create(&builders[i], requests[i].{{ field.name }}, requests[i].{{ field.name }}_size);
-            {{ namespace }}_{{ method.request }}_{{ field.name }}_add(&builders[i], {{ field.name }}_ref);
+            {{ namespace }}_{{ method.request }}_{{ field.name }}_create(&builders[i],
+                (const void*)requests[i].{{ field.name }}, requests[i].{{ field.name }}_size);
         }
 {% endif -%}
 {% else -%}
@@ -421,14 +423,16 @@ uvrpc_error_t uvrpc_{{ service_name_lower }}_{{ method.name|lower }}_any(
         }
 {% else -%}
         if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
-            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
-                    size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
+            {{ field.flatcc_vec_type }}_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
             if ({{ field.name }}_len > 0) {
                 result->{{ field.name }} = calloc({{ field.name }}_len, sizeof({{ field.type }}));
                 if (result->{{ field.name }}) {
                     result->{{ field.name }}_size = {{ field.name }}_len;
-                    const {{ field.type }}* arr = {{ field.name }}_vec;
-                    memcpy(result->{{ field.name }}, arr, {{ field.name }}_len * sizeof({{ field.type }}));
+                    for (size_t j = 0; j < {{ field.name }}_len; j++) {
+                        result->{{ field.name }}[j] =
+                            ({{ field.type }}){{ field.flatcc_vec_type }}_vec_at({{ field.name }}_vec, j);
+                    }
                 }
             }
         }

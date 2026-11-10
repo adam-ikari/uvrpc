@@ -1,3 +1,7 @@
+/* flatcc rejects undeclared attributes; the generator reads (oneway) off the
+ * method declaration, so it has to be declared here. */
+attribute "oneway";
+
 namespace benchmark;
 
 /* ============================================================
@@ -48,5 +52,5 @@ table EmptyResponse {}
 rpc_service BenchmarkService {
     Add(AddRequest):AddResponse;
     Echo(EchoRequest):EchoResponse;
-    Log(LogRequest):EmptyResponse;  /* oneway method - use uvrpc_client_call_oneway() */
+    Log(LogRequest):EmptyResponse (oneway);  /* fire-and-forget */
 }

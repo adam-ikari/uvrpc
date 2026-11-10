@@ -1,16 +1,18 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-11-10T01:02:35.162Z._
+_Auto-generated. Last updated 2026-11-10T03:26:08.230Z._
 
 - [a-client-must-be-told-its-connection-died](pages/a-client-must-be-told-its-connection-died.md) — category: decision | tags: [client, transport, uvbus, lifecycle, error-reporting] | ## 约束
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
 - [build-distribution-breakage](pages/build-distribution-breakage.md) — category: decision | tags: [build, ci, submodules] | ## 断点根因（2026-09-28 切片1）
 - [callback-hold-refunded-on-synchronous-refusal](pages/callback-hold-refunded-on-synchronous-refusal.md) — category: decision | tags: [lifetime, refcount, async, client, uvbus] | ## 约束
 - [callback-must-not-lend-borrowed-storage](pages/callback-must-not-lend-borrowed-storage.md) — category: decision | tags: [libuv, transport, udp, lifetime, api-design, identity] | ## 约束
+- [codegen-shape-matrix](pages/codegen-shape-matrix.md) — category: decision | tags: [codegen, dsl, flatcc, testing] | 生成模板是按形状分支展开的（标量数组 / 字符串向量 / 表数组 × 请求 / 响应 × _sync / _all / _any / 批量），任何一支没有 schema 实例化，它就只是"写出来但从未编译过"的文本。
 - [embedded-handle-must-outlive-close](pages/embedded-handle-must-outlive-close.md) — category: decision | tags: [libuv, memory-safety, teardown, valgrind, transport] | ## 约束
 - [loop-data-registry-over-global-hash](pages/loop-data-registry-over-global-hash.md) — category: decision | tags: [registry, transport, inproc] | INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输：server 挂一个名字，client 用同一个名字连上去。
 - [minimal-rpcframe-schema](pages/minimal-rpcframe-schema.md) — category: decision | tags: [protocol, schema, flatbuffers] | UVRPC 的线格式刻意压到最小：`namespace uvrpc` 下**一个** `table RpcFrame`，四个字段，`root_type RpcFrame`。
 - [one-dist-dir-many-configs](pages/one-dist-dir-many-configs.md) — category: decision | tags: [build, ci, sanitizer, allocator] | ## 约束
+- [oneway-is-declared-not-inferred](pages/oneway-is-declared-not-inferred.md) — category: decision | tags: [codegen, dsl, oneway, api] | oneway 的判据从"响应表名叫 EmptyResponse"改成方法声明上的 `(oneway)` 属性。
 - [pending-buffer-as-concurrency-control](pages/pending-buffer-as-concurrency-control.md) — category: decision | tags: [concurrency, backpressure, client] | 限流全部是**同步返回值**，不是等待队列。
 - [promise-handle-lifetime](pages/promise-handle-lifetime.md) — category: concept | tags: [libuv, promise, memory-safety, valgrind, testing] | ## 约束
 - [ring-buffer-over-uthash](pages/ring-buffer-over-uthash.md) — category: decision | tags: [performance, data-structure, client] | 客户端在途请求的回调路由用**数组直接寻址**，不用哈希表：`idx = msgid & (max_pending_callbacks - 1)`。

@@ -1117,6 +1117,31 @@ if(UVRPC_DSL_AVAILABLE)
     )
     add_test(NAME generated_table_array COMMAND generated_table_array_test)
     set_tests_properties(generated_table_array PROPERTIES TIMEOUT 120)
+
+    # Every vector shape in one table: primitive vectors wider than a byte, a
+    # bool vector, string and table vectors, all copied by _sync/_all/_any.
+    set_source_files_properties(${SHAPES_SOURCES} PROPERTIES GENERATED TRUE)
+    add_executable(generated_shapes_test
+        generated_shapes_test.c
+        ${SHAPES_SOURCES}
+    )
+    add_dependencies(generated_shapes_test generate_dsl)
+    target_link_libraries(generated_shapes_test
+        uvrpc
+        pthread
+        m
+        rt
+    )
+    target_include_directories(generated_shapes_test
+        PRIVATE
+        ${UVRPC_SHAPES_GEN_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+    )
+    add_test(NAME generated_shapes COMMAND generated_shapes_test)
+    set_tests_properties(generated_shapes PROPERTIES TIMEOUT 120)
 else()
     message(STATUS "Skipping dsl_codegen test: python3 with jinja2 not available")
 endif()

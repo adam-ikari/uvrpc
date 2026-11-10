@@ -195,12 +195,40 @@ class RPCParser:
                     struct_type = type_mapping.get(base, base)
                     flatcc_type = struct_type
 
+                # flatcc spells the vector type after its element: primitives
+                # reuse a flatbuffers_<T>_vec_t typedef from the common reader,
+                # a table gets {ns}_{T}_vec_t. Templates must use this name for
+                # _vec_create/_vec_at; assuming uint8 silently truncated every
+                # non-byte scalar vector (FT-1).
+                scalar_vec_names = {
+                    'byte': 'flatbuffers_int8',
+                    'ubyte': 'flatbuffers_uint8',
+                    'short': 'flatbuffers_int16',
+                    'ushort': 'flatbuffers_uint16',
+                    'int': 'flatbuffers_int32',
+                    'uint': 'flatbuffers_uint32',
+                    'long': 'flatbuffers_int64',
+                    'ulong': 'flatbuffers_uint64',
+                    'float': 'flatbuffers_float',
+                    'double': 'flatbuffers_double',
+                    'bool': 'flatbuffers_uint8',
+                }
+                if not is_array:
+                    flatcc_vec_type = None
+                elif is_struct_array:
+                    flatcc_vec_type = '{}_{}'.format(ns, base)
+                elif is_string_array:
+                    flatcc_vec_type = 'flatbuffers_string'
+                else:
+                    flatcc_vec_type = scalar_vec_names.get(base, 'flatbuffers_' + base)
+
                 fields.append({
                     'name': field_name,
                     # C type as it appears in the user-facing struct.
                     'type': struct_type,
                     # Name the .c templates pass to flatcc ({ns}_{T}_create).
                     'flatcc_type': flatcc_type,
+                    'flatcc_vec_type': flatcc_vec_type,
                     # Bare schema name, for looking a table's fields up.
                     'schema_type': base,
                     'original_type': field_type,
@@ -220,8 +248,11 @@ class RPCParser:
             if not line or line.startswith('//'):
                 continue
             
-            # Check for stream attribute in FlatBuffers attribute syntax (stream)
+            # Method attributes in FlatBuffers syntax: (oneway), (stream).
+            # Read them before the next line strips them, so the declaration --
+            # not the name of the response table -- decides the shape.
             is_stream = '(stream)' in line
+            is_oneway = '(oneway)' in line
 
             # Remove FlatBuffers attributes like (stream), (oneway), etc.
             line = re.sub(r'\s*\([^)]*\)\s*;', ';', line).strip()
@@ -243,8 +274,9 @@ class RPCParser:
                 # Get response fields from tables
                 response_fields = self.tables.get(return_type, [])
 
-                # Check if this is a oneway method (EmptyResponse indicates oneway)
-                is_oneway = (return_type == 'EmptyResponse')
+                # A oneway method has no response frame, so its wrapper takes
+                # no callback. This used to be inferred from the response type
+                # name, which made renaming a table change the wire contract.
 
                 methods.append({
                     'name': method_name,

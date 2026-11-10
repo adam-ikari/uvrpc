@@ -1,3 +1,7 @@
+/* flatcc rejects undeclared attributes, and the generator reads (oneway) off
+ * the method declaration, so the attribute has to be declared here. */
+attribute "oneway";
+
 namespace shop;
 
 /* A two-service system, one schema, two processes.
@@ -65,9 +69,10 @@ table HistoryResponse {
     items: [HistoryItem];
 }
 
-/* The generator treats a method whose response type is named EmptyResponse as
- * oneway: the client sends it without arming a callback, and the server stub
- * sends nothing back. */
+/* A method declared (oneway) sends no response: the client arms no callback
+ * and the server stub writes nothing back. The empty table is a convention,
+ * not a trigger -- any response type works as long as the method says
+ * (oneway). */
 table EmptyResponse {}
 
 rpc_service InventoryService {
@@ -76,6 +81,6 @@ rpc_service InventoryService {
 }
 
 rpc_service ShopAuditService {
-    Record(AuditRequest):EmptyResponse;   /* oneway */
+    Record(AuditRequest):EmptyResponse (oneway);
     History(HistoryRequest):HistoryResponse;
 }

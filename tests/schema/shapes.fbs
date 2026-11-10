@@ -1,0 +1,40 @@
+namespace sh;
+
+/* Every vector shape the generator emits, in one table, both directions.
+ *
+ * kv.fbs has no vectors, strings.fbs has [string], table_arrays.fbs has
+ * [Table] -- none of them has a primitive vector wider than a byte, which is
+ * why two defects lived through a green test suite: the request was written
+ * with flatbuffers_uint8_vec_create() (copies N bytes, not N elements) and the
+ * response was read by casting the raw vector to <type>* (only correct on a
+ * little-endian host, with a -Wincompatible-pointer-types warning). Both are
+ * shape-dependent, so this schema exercises int32, double and bool vectors
+ * next to the string and table vectors.
+ *
+ * Built by generated_shapes_test.
+ */
+
+table Item {
+    label: string;
+    qty: uint32;
+}
+
+table ShapesRequest {
+    values: [int32];
+    scores: [double];
+    flags: [bool];
+    tags: [string];
+    items: [Item];
+}
+
+table ShapesResponse {
+    values: [int32];
+    scores: [double];
+    flags: [bool];
+    tags: [string];
+    items: [Item];
+}
+
+rpc_service ShapeService {
+    Echo(ShapesRequest):ShapesResponse;
+}

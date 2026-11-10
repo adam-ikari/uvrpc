@@ -358,11 +358,18 @@ if(UVRPC_DSL_AVAILABLE)
                        ${CMAKE_CURRENT_SOURCE_DIR}/tests/schema/table_arrays.fbs
                        ${UVRPC_TABLE_ARRAYS_GEN_DIR} ta_tableservice)
 
+    # The whole vector shape matrix in one table: primitive vectors wider than
+    # a byte, a bool vector, plus the string and table vectors. Built by
+    # generated_shapes_test.
+    set(UVRPC_SHAPES_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/shapes)
+    uvrpc_dsl_generate(SHAPES ${CMAKE_CURRENT_SOURCE_DIR}/tests/schema/shapes.fbs
+                       ${UVRPC_SHAPES_GEN_DIR} sh_shapeservice)
+
     # add_executable resolves its sources at generate time, so sources that a
     # custom command has not produced yet have to be declared GENERATED or
     # configuration fails outright on a clean checkout.
     set(UVRPC_DSL_SOURCES ${LOG_SERVICE_SOURCES} ${RPC_API_SOURCES})
-    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS} ${KV_APIS} ${STRINGS_APIS} ${SHOP_APIS} ${TABLE_ARRAYS_APIS})
+    add_custom_target(generate_dsl DEPENDS ${LOG_SERVICE_APIS} ${RPC_API_APIS} ${BENCH_APIS} ${KV_APIS} ${STRINGS_APIS} ${SHOP_APIS} ${TABLE_ARRAYS_APIS} ${SHAPES_APIS})
     message(STATUS "RPC DSL codegen: ${UVRPC_DSL_PYTHON}")
 else()
     message(STATUS "RPC DSL codegen unavailable (no python3 with jinja2); DSL test and log_service demos are skipped")

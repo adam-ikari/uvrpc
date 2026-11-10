@@ -42,6 +42,25 @@ rpc_service MathService {
 因为生成物靠 flatcc 读写这些表；没有对应 table 的标量参数会在解析阶段被拒。
 :::
 
+#### 方法属性：`(oneway)`
+
+在方法声明后加 `(oneway)`，客户端发完即返回，不为响应准备回调；服务端也不写回任何帧：
+
+```fbs
+attribute "oneway";          // flatcc 要求先声明自定义属性
+
+rpc_service AuditService {
+    Record(AuditRequest):EmptyResponse (oneway);
+    History(HistoryRequest):HistoryResponse;
+}
+```
+
+生成物据此产出**没有 callback 参数**的包装函数（`uvrpc_auditservice_Record(client, request)`），
+`_sync` / `_all` / `_any` 也都不生成。曾经是靠"响应表叫 `EmptyResponse`"来推断的，那条捷径
+已删除：改一个表名就会改变线格式，代价太高。响应表叫什么都可以，语义只看这个属性。
+
+`(stream)` 同理由方法声明决定（多响应流）。
+
 ### 2. 生成代码
 
 ```bash
@@ -544,11 +563,12 @@ void {Service}_client_free({Service}_client_t* client) {{
 `uvrpc_client_set_max_retries()` 设置过值时做同步重投（同一进程内立即重试，不泵循环）。
 需要带退避的重试用 `uvrpc_async_retry_with_backoff()`。
 
-### 字符串向量（`[string]`）
+### 数组字段：`[string]`、`[Table]`、标量数组
 
 生成的绑定支持三种数组形状：标量数组（`[ubyte]`、`[int32]` 等）、表数组（`[LogEntry]`）、
-字符串向量（`[string]`），外加普通的单个 `string` 字段。`[string]` 是唯一不能按值
-memcpy 的数组：每个元素都指向响应缓冲区内部的字符串，而该缓冲区在 `_sync()` 返回前
+字符串向量（`[string]`），外加普通的单个 `string` 字段。`[string]` 与 `[Table]` 都不能
+按值整块 memcpy：前者的每个元素指向响应缓冲区内部的字符串，后者的每个元素本身就是一张
+内嵌表，而缓冲区在 `_sync()` 返回前
 就已释放。因此生成的代码**逐元素复制**：指针数组用 `calloc()`，每个元素用
 `uvrpc_strdup()`，
 `uvrpc_<svc>_<Method>_response_free()` / `..._result_free()` / `..._results_free()`
@@ -560,6 +580,17 @@ memcpy 的数组：每个元素都指向响应缓冲区内部的字符串，而�
 
 `tests/generated_strings_test.c`（`ctest -R generated_strings`）覆盖了往返、空向量、
 组合调用与释放，是这条契约的回归网。
+
+标量数组（`[int32]`、`[double]`、`[bool]`、`[ubyte]` …）按元素宽度读写，不是按字节：
+请求方向用 flatcc 为该字段生成的 `<Table>_<field>_create()`，响应方向用
+`flatbuffers_<T>_vec_at()` 逐元素取值。两者都由 schema 的元素类型决定，所以
+`[int32]` 不会退化成"前 N 个字节"，也不依赖主机字节序。
+
+`tests/schema/shapes.fbs` + `tests/generated_shapes_test.c`
+（`ctest -R generated_shapes`）把这条形状矩阵固定下来：int32 / double / bool 标量向量、
+字符串向量、表数组同时出现在一张表里，`_sync` / `_all` / `_any` 与两个释放函数全覆盖，
+外加空向量。没有这张表时，"响应里的非 `ubyte` 标量向量"和"`[Table]` 响应"两处生成代码
+都从未被编译过。
 
 嵌套数组（表数组元素内部再有数组，如 `items: [Item]` 中 `Item.tags` 为 `[string]`）
 不受支持，生成器直接报错退出：元素是逐字段生成的，该形状会编译通过却交出指向已释放

@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [async, event-loop, libuv, memory-safety, transport-invariance]
 created: "2026-10-09T01:11:21"
-updated: "2026-11-10T09:02:34"
+updated: "2026-11-10T11:26:08"
 ---
 
 <!-- compiled_truth -->
@@ -133,4 +133,18 @@ updated: "2026-11-10T09:02:34"
   kind: evidence
   summary: "服务端处理器不能\"等另一个服务再答复\"：`uvrpc_request_t` 是 `src/uvrpc_server.c` 里分发函数栈上的局部变量，`method`/`params` 也只在处理期间有效，处理器返回后既不能补发响应也没有可挂起的地方。而阻塞式 await 会内联再跑一次 loop（见 blocking-await-runs-the-loop-inline），在处理器里调用它等于在回调中嵌套 uv_run。因此跨服务编排只能放在调用方（客户端或独立的网关进程）在其自己的循环里依次发起：新示例 examples/shop_client.c 就是这样组合 inventory 与 audit 两个进程的，schema/shop.fbs 里也写明了这一点。谁要收紧这条限制，必须先改掉请求对象的栈生命周期。"
   source: "src/uvrpc_server.c, examples/shop_client.c, schema/shop.fbs"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-11-10T11:25:55
+  kind: evidence
+  summary: "oneway 的判据从\"响应表名叫 EmptyResponse\"改成方法声明上的 `(oneway)` 属性。旧规则把协议语义挂在表名上：改名即改线格式，而且生成器第 227 行本来就会剥掉方法上的 `(xxx)` 属性、却只用了 (stream)，(oneway) 被扔掉后再靠名字反推。
+
+实现要点：uvrpcc.py 在剥离属性之前读 `is_oneway = '(oneway)' in line`（与 is_stream 同一处）；flatcc 不接受未声明的自定义属性，所以用到它的 schema 必须写 `attribute \"oneway\";`（否则 flatcc 报 unknown attribute not declared）。仓库内所有原本靠名字被判成 oneway 的方法（log_service 的 Log/LogBatch/QuickLog、benchmark_server 的 Log、shop 的 Record）都已在 schema 中显式声明；benchmark.fbs 的 Echo(EmptyRequest):EmptyResponse 本来就没有调用方、注释说它是 latency 测试，因此按普通请求-响应处理，没有加属性。"
+  source: "tools/uvrpcc.py, schema/*.fbs"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-11-10T11:26:08
+  kind: note
+  summary: "上一条 oneway 属性的记录应属 oneway-is-declared-not-inferred 页，与本页（阻塞 await 内联跑 loop）无关，勿据此页引用。"
+  source: brain hygiene
   affects: [blocking-await-runs-the-loop-inline]
