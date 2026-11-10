@@ -1,0 +1,81 @@
+namespace shop;
+
+/* A two-service system, one schema, two processes.
+ *
+ * InventoryService owns the stock; ShopAuditService records what happened and
+ * can be asked what it saw. They are deployed separately, on separate ports,
+ * and share only this file -- which is the point: the schema describes the
+ * system, not the process that happens to host it.
+ *
+ * The example also covers the two things a first microservice gets wrong:
+ *
+ *  - A business refusal (not enough stock) is a *successful* call that answers
+ *    "no" (`ok: bool`), not an RPC error. Reserve an unknown SKU and you get
+ *    `ok=false` with the stock that is actually there.
+ *  - A query answer can be a vector of tables (`HistoryResponse.items`). The
+ *    generated client copies it element by element, strings included, so the
+ *    answer outlives the response buffer.
+ *
+ * What it deliberately does not do: call one service from inside the other's
+ * handler. A handler runs on the server loop and its request object lives on
+ * the dispatch stack, so a service-to-service call has to be made by an
+ * orchestrator (this example's client) rather than awaited in the handler.
+ */
+
+table StockRequest {
+    sku: string;
+}
+
+table StockResponse {
+    /* found separates "no such SKU" from "none left": without it, an unknown
+     * SKU and a sold-out one look the same. */
+    found: bool;
+    available: uint32;
+}
+
+table ReserveRequest {
+    sku: string;
+    qty: uint32;
+}
+
+table ReserveResponse {
+    ok: bool;
+    available: uint32;   /* stock left after the reservation, or unchanged on refusal */
+}
+
+table AuditRequest {
+    actor: string;
+    action: string;
+    sku: string;
+    qty: uint32;
+}
+
+table HistoryRequest {
+    limit: uint32;       /* 0 means "everything retained" */
+}
+
+table HistoryItem {
+    actor: string;
+    action: string;
+    sku: string;
+    qty: uint32;
+}
+
+table HistoryResponse {
+    items: [HistoryItem];
+}
+
+/* The generator treats a method whose response type is named EmptyResponse as
+ * oneway: the client sends it without arming a callback, and the server stub
+ * sends nothing back. */
+table EmptyResponse {}
+
+rpc_service InventoryService {
+    Stock(StockRequest):StockResponse;
+    Reserve(ReserveRequest):ReserveResponse;
+}
+
+rpc_service ShopAuditService {
+    Record(AuditRequest):EmptyResponse;   /* oneway */
+    History(HistoryRequest):HistoryResponse;
+}

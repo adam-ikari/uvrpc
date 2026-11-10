@@ -1,7 +1,7 @@
 # UVRPC 示例程序
 
 本目录是 UVRPC 的示例源码。**只有被 CMake 注册的示例才会出现在 `dist/bin/`** ——
-下面每一节列出的都是当前真正能构建、能运行的；58 个源文件里唯一的例外是
+下面每一节列出的都是当前真正能构建、能运行的；63 个源文件里唯一的例外是
 `rpc_user_impl.c`（故意没有 `main`，见下方"唯一没有二进制的示例"一节），其余全部有构建目标。
 
 ## 构建与运行
@@ -53,6 +53,35 @@ cmake --build build -j$(nproc)
 - `*_sync()` 返回的字符串字段是**副本**，调用方负责用生成的
   `uvrpc_kvservice_<Method>_response_free()` 释放；直接调用 `uvrpc_client_call()` 时，回调
   收到的数据只在回调期间有效，要留存必须自己复制。
+
+## 两个服务、两个进程：库存 + 审计
+
+`schema/shop.fbs` 把 `InventoryService` 与 `ShopAuditService` 写在同一份 schema 里，构建却
+产出两个独立进程：`shop_inventory_server` 与 `shop_audit_server`，各自监听自己的端口，彼此
+不共享代码，只共享这份 schema。
+
+```bash
+./dist/bin/shop_inventory_server tcp://127.0.0.1:7101 &
+./dist/bin/shop_audit_server    tcp://127.0.0.1:7102 &
+./dist/bin/shop_client
+```
+
+`shop_client` 依次验证：查询库存、预留成功并扣减、预留被拒、售罄 SKU、两次"预留 + 审计写入"，
+以及审计查询返回的表数组与 `limit` 语义。**任一条不符即以非零退出**，所以它同时是端到端冒烟测试。
+
+三个要点：
+
+- **业务拒绝不是 RPC 错误**：库存不足时 `Reserve` 返回 `UVRPC_OK` 且 `ok=false`，剩余数量不变。
+  把"没库存"编码成传输层错误，调用方就分不清"服务不可达"和"业务说不"。
+- **编排放在调用方**：处理器运行在服务端自己的事件循环上，请求对象还活在分发栈里，处理器既不能
+  挂起等另一个服务、也无法在返回后补发响应。需要跨服务组合时，由调用方在自己的循环里先后调用
+  两个服务（`shop_client` 就是这么做的）。
+- **查询结果是表数组**：`HistoryResponse.items` 是 `[HistoryItem]`，`*_sync()` 逐元素复制、
+  连元素里的字符串一起复制，返回后仍可读，释放用
+  `uvrpc_shopauditservice_History_response_free()`。
+
+绑定层面由 `ctest -R generated_table_array` 守护：SAMELOOP 单进程，覆盖 `_sync` / `_all` /
+`_any` 三条复制路径与各自的释放函数。
 
 ## 传输协议
 
@@ -176,7 +205,7 @@ cc -I build/generated/rpc_api -I include my_main.c \
 `multi_service_loop_reuse.c` 与 `rpc_dsl_usage_example.c` 就是活例子：它们各自实现了
 `uvrpc_<service>_handle_request`，然后链接生成的 stub。
 
-除此之外，`examples/` 下 58 个源文件全部产出 `dist/bin/` 二进制。
+除此之外，`examples/` 下 63 个源文件全部产出 `dist/bin/` 二进制。
 
 ## 已修复的同类问题
 

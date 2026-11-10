@@ -458,7 +458,7 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
         if ({{ namespace }}_{{ method.response }}_{{ field.name }}_is_present(fb_response)) {
 
-            flatbuffers_uint8_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
+            {{ field.flatcc_type }}_vec_t {{ field.name }}_vec = {{ namespace }}_{{ method.response }}_{{ field.name }}(fb_response);
             size_t {{ field.name }}_len = flatbuffers_vec_len({{ field.name }}_vec);
 
             if ({{ field.name }}_len > 0) {
@@ -471,17 +471,17 @@ static void sync_{{ service_name_lower }}_{{ method.name }}_callback(uvrpc_respo
 
                     for (size_t i = 0; i < {{ field.name }}_len; i++) {
 
-                        {{ field.flatcc_type }}_table_t item = {{ namespace }}_{{ method.response }}_{{ field.name }}_at(fb_response, i);
+                        {{ field.flatcc_type }}_table_t item = {{ field.flatcc_type }}_vec_at({{ field.name }}_vec, i);
 
 {%- for struct_field in rpc_data['tables'][field.schema_type] -%}
 
 {% if struct_field.original_type == 'string' %}
                         {
-                            const char* _item_source = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+                            const char* _item_source = {{ field.flatcc_type }}_{{ struct_field['name'] }}(item);
                             sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = _item_source ? uvrpc_strdup(_item_source) : NULL;
                         }
 {% else %}
-                        sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(&item);
+                        sync_ctx->response.{{ field.name }}[i].{{ struct_field['name'] }} = {{ field.flatcc_type }}_{{ struct_field['name'] }}(item);
 {% endif %}
 
 {%- endfor -%}

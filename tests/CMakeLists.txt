@@ -1091,6 +1091,32 @@ if(UVRPC_DSL_AVAILABLE)
     )
     add_test(NAME generated_strings COMMAND generated_strings_test)
     set_tests_properties(generated_strings PROPERTIES TIMEOUT 120)
+
+    # [Table] fields, in both directions. This path used to be emitted without
+    # ever being compiled; the schema exists so a change to it fails the build
+    # or this test rather than a user's project.
+    set_source_files_properties(${TABLE_ARRAYS_SOURCES} PROPERTIES GENERATED TRUE)
+    add_executable(generated_table_array_test
+        generated_table_array_test.c
+        ${TABLE_ARRAYS_SOURCES}
+    )
+    add_dependencies(generated_table_array_test generate_dsl)
+    target_link_libraries(generated_table_array_test
+        uvrpc
+        pthread
+        m
+        rt
+    )
+    target_include_directories(generated_table_array_test
+        PRIVATE
+        ${UVRPC_TABLE_ARRAYS_GEN_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../deps/flatcc/include
+    )
+    add_test(NAME generated_table_array COMMAND generated_table_array_test)
+    set_tests_properties(generated_table_array PROPERTIES TIMEOUT 120)
 else()
     message(STATUS "Skipping dsl_codegen test: python3 with jinja2 not available")
 endif()

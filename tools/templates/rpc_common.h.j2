@@ -19,6 +19,31 @@ extern "C" {
    They will be serialized to/from FlatBuffers internally.
    ============================================================ */
 
+{#- Element tables of a vector field need a struct of their own, and they have
+    to come before the message struct that points at them: C wants the element
+    type defined first. Tables that are also a request or response type are
+    emitted by the loop below, so they are skipped here. -#}
+{% set msg_types = [] -%}
+{% for method in service.methods -%}
+{%- if method.request not in msg_types -%}{%- set _ = msg_types.append(method.request) -%}{%- endif -%}
+{%- if method.response not in msg_types -%}{%- set _ = msg_types.append(method.response) -%}{%- endif -%}
+{%- endfor -%}
+{% set element_types = [] -%}
+{% for method in service.methods -%}
+{%- for field in method.request_fields + method.response_fields -%}
+{%- if field.is_struct_array and field.schema_type not in element_types -%}
+{%- set _ = element_types.append(field.schema_type) -%}
+{%- endif -%}
+{%- endfor -%}
+{%- endfor -%}
+{% for table_name in element_types if table_name not in msg_types -%}
+typedef struct {
+{%- for element in rpc_data['tables'][table_name] -%}
+    {{ element.type }} {{ element.name }};
+{%- endfor -%}
+} {{ namespace }}_{{ table_name }}_t;
+
+{% endfor -%}
 {% set all_types = [] -%}
 {% for method in service.methods -%}
 {%- if method.request not in all_types -%}

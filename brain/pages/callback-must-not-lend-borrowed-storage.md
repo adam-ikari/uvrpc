@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-11-10T03:16:37"
+updated: "2026-11-10T09:02:35"
 ---
 
 <!-- compiled_truth -->
@@ -110,4 +110,10 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   kind: evidence
   summary: "补充拒绝规则：表被当作 struct 数组元素使用时（`items: [Item]`），其内部字段若也是数组，生成器现在直接报错（`field 'items[].tags': arrays inside a struct-array element are not supported`，退出码 1）。原因是元素逐字段生成，只有标量与单个字符串有复制路径；此前该形状会编译通过（带指针类型警告）并向调用方交出指向已释放响应缓冲的指针。同理，顶层 `[string]` 的支持只覆盖\"元素即字符串\"这一层，嵌套层仍然显式拒绝——不要为了让某个 schema 通过而放宽这条检查。"
   source: tools/uvrpcc.py
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-10T09:02:35
+  kind: evidence
+  summary: "`[Table]` 向量（而非 `[string]`）的响应侧此前是\"模板写了、从没编译过\"：rpc_common.h 只发射方法请求/响应类型，元素表结构体缺失（`shop_HistoryItem_t` 未声明）；client.c 与 rpc_common.c 用 `flatbuffers_uint8_vec_t` 接表向量并且调用不存在的 `<Parent>_<field>_at(fb_response, i)`；元素访问器传的是 `&item`（表指针的地址）而不是 `item`。现在三处都改为 `<Element>_vec_t` + `<Element>_vec_at(vec, i)` + `(item)`，并且 rpc_common.h 先发射元素表结构体（跳过同时也是方法的表）。回归测试 tests/generated_table_array_test.c 覆盖 _sync/_all/_any 与 response_free/result_free，valgrind 干净；examples/shop_* 是它的真实用户。"
+  source: "tools/templates/rpc_common.h.j2, tools/templates/client.c.j2, tools/templates/rpc_common.c.j2"
   affects: [callback-must-not-lend-borrowed-storage]

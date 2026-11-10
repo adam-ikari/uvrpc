@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [async, event-loop, libuv, memory-safety, transport-invariance]
 created: "2026-10-09T01:11:21"
-updated: "2026-10-10T11:29:51"
+updated: "2026-11-10T09:02:34"
 ---
 
 <!-- compiled_truth -->
@@ -127,4 +127,10 @@ updated: "2026-10-10T11:29:51"
   kind: reversal
   summary: "推翻上一条 timeline 里保留并加警告的结论：维护者决定不留。uvrpc_async_get_pending_count() 已从公开头文件与实现中删除（它数的东西按构造恒为空，只能返回 0；两个断言 0==0 的测试一起删掉——那是在给一个不可能报出别的东西的函数钉死行为）。ctx->call_count（只被写 0，从不自增）与 concurrent_indices[]（声明后从未使用）一并删除。cancel_all 里对 pending_results 的清扫保留，理由是它与 ctx_free 中同一字段上的同一循环对称，且注释已写明它在等待语义下不可达"
   source: "维护者决定 2026-10-10; src/uvrpc_async.c, include/uvrpc_async.h, tests/unit/test_async.cpp"
+  affects: [blocking-await-runs-the-loop-inline]
+
+- time: 2026-11-10T09:02:34
+  kind: evidence
+  summary: "服务端处理器不能\"等另一个服务再答复\"：`uvrpc_request_t` 是 `src/uvrpc_server.c` 里分发函数栈上的局部变量，`method`/`params` 也只在处理期间有效，处理器返回后既不能补发响应也没有可挂起的地方。而阻塞式 await 会内联再跑一次 loop（见 blocking-await-runs-the-loop-inline），在处理器里调用它等于在回调中嵌套 uv_run。因此跨服务编排只能放在调用方（客户端或独立的网关进程）在其自己的循环里依次发起：新示例 examples/shop_client.c 就是这样组合 inventory 与 audit 两个进程的，schema/shop.fbs 里也写明了这一点。谁要收紧这条限制，必须先改掉请求对象的栈生命周期。"
+  source: "src/uvrpc_server.c, examples/shop_client.c, schema/shop.fbs"
   affects: [blocking-await-runs-the-loop-inline]

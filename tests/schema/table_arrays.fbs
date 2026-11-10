@@ -1,0 +1,24 @@
+namespace ta;
+
+/* Vector-of-tables in both directions. Until this schema existed the generated
+ * client had no such shape to compile against, and it did not: the element
+ * struct was never emitted, the vector was read through a uint8_t typedef, and
+ * the per-element accessor was passed the element's address instead of the
+ * element. Built by generated_table_array_test. */
+
+table Item {
+    name: string;
+    qty: uint32;
+}
+
+table EchoRequest {
+    items: [Item];
+}
+
+table EchoResponse {
+    items: [Item];
+}
+
+rpc_service TableService {
+    Echo(EchoRequest):EchoResponse;
+}
