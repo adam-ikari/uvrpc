@@ -13,6 +13,25 @@ struct uvrpc_server;
 #include "../include/uvrpc_allocator.h"
 #include <string.h>
 
+/* The payload is itself a complete FlatBuffers buffer, carried inside a
+ * [ubyte] vector of the frame. A uint8 vector only guarantees 1-byte
+ * alignment, so the payload landed at an arbitrary offset and every int64 or
+ * double it contains was read through a misaligned pointer -- undefined
+ * behaviour that x86 tolerates and UBSan flags. FlatBuffers alignment is
+ * relative to the buffer start, so aligning this vector's data to 8 makes the
+ * nested buffer's own 8-byte fields aligned too. Costs at most 7 bytes of
+ * vector padding and up to 4 additional bytes of buffer-header padding versus
+ * the old byte-aligned vector. */
+#define UVRPC_PAYLOAD_ALIGNMENT 8
+
+static flatbuffers_uint8_vec_ref_t create_payload_vec(flatcc_builder_t* builder,
+                                                      const uint8_t* data,
+                                                      size_t size) {
+    return flatcc_builder_create_vector(builder, data, size, 1,
+                                        UVRPC_PAYLOAD_ALIGNMENT,
+                                        FLATBUFFERS_COUNT_MAX(1));
+}
+
 /* Encode request frame */
 int uvrpc_encode_request(uint32_t msgid, const char* method,
                          const uint8_t* params, size_t params_size,
@@ -24,7 +43,7 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 
     flatbuffers_uint8_vec_ref_t data_ref = 0;
     if (params && params_size > 0) {
-        data_ref = flatbuffers_uint8_vec_create(&builder, params, params_size);
+        data_ref = create_payload_vec(&builder, params, params_size);
     }
 
     /* type: 0 = Request, 1 = Response */
@@ -59,7 +78,7 @@ static int encode_response_typed(uint32_t msgid, const uint8_t* result,
 
     flatbuffers_uint8_vec_ref_t data_ref = 0;
     if (result && result_size > 0) {
-        data_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
+        data_ref = create_payload_vec(&builder, result, result_size);
     }
 
     uvrpc_RpcFrame_start_as_root(&builder);
@@ -116,7 +135,7 @@ int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t res
 
     flatbuffers_uint8_vec_ref_t data_ref = 0;
     if (result && result_size > 0) {
-        data_ref = flatbuffers_uint8_vec_create(&builder, result, result_size);
+        data_ref = create_payload_vec(&builder, result, result_size);
     }
 
     /* type: 2 = ResponseMore (more to come) */

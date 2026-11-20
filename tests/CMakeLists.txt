@@ -703,6 +703,33 @@ set_tests_properties(udp_client_identity PROPERTIES
     TIMEOUT 60
 )
 
+# The encoder 8-byte-aligns nested payload vectors to the frame start, but a
+# raw libuv UDP receive buffer becomes only 4-byte aligned after its length
+# prefix. The transport must copy the frame into an aligned buffer before the
+# RPC layer hands req->params to a handler that reads 64-bit fields.
+add_executable(udp_payload_alignment
+    acceptance/udp_payload_alignment.c
+)
+
+target_link_libraries(udp_payload_alignment
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(udp_payload_alignment
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME udp_payload_alignment COMMAND udp_payload_alignment)
+set_tests_properties(udp_payload_alignment PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # uvbus_send_to() passes its target straight down, so each transport owns the
 # check that it is usable. Four of the five made it; SAMELOOP dereferenced the
 # target instead. Pinned on all five at once, so a transport added later cannot

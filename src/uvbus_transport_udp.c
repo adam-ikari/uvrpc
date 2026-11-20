@@ -175,13 +175,28 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
         }
         
         if (transport->recv_cb) {
-            /* Pass frame data (skip 4-byte length prefix) and the peer's slot
-             * as the client_ctx (3rd arg) -- stable, per-peer, and owned by
-             * the server, unlike addr. The server_ctx (4th arg) must be
-             * recv_ctx — which holds the uvrpc_server_t* — so the server recv
-             * callback can dispatch to the registered handler. (callback_ctx
-             * is for connect/error callbacks and is NULL for the server.) */
-            transport->recv_cb((const uint8_t*)buf->base + 4, frame_size, client_ctx, transport->recv_ctx);
+            /* Pass the peer's slot as client_ctx (3rd arg) -- stable, per-peer,
+             * and owned by the server, unlike addr. The server_ctx (4th arg)
+             * must be recv_ctx — which holds the uvrpc_server_t* — so the
+             * callback can dispatch to the registered handler.
+             *
+             * buf->base + 4 is only 4-byte aligned. Nested FlatBuffers
+             * payloads are 8-byte aligned relative to the frame start, so a
+             * misaligned frame start puts their int64/double fields back into
+             * undefined territory. Hand the callback an aligned copy, as the
+             * client receive path does. */
+            uint8_t* frame_copy = (uint8_t*)uvrpc_alloc(frame_size);
+            if (!frame_copy) {
+                UVBUS_LOG_ERROR("Failed to allocate %u bytes for frame", frame_size);
+                if (transport->error_cb) {
+                    transport->error_cb(UVBUS_ERROR_NO_MEMORY, "Frame allocation failed", transport->callback_ctx);
+                }
+                uvrpc_free(buf->base);
+                return;
+            }
+            memcpy(frame_copy, (const uint8_t*)buf->base + 4, frame_size);
+            transport->recv_cb(frame_copy, frame_size, client_ctx, transport->recv_ctx);
+            uvrpc_free(frame_copy);
         }
     }
 
