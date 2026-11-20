@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, uvbus, maintenance, review-process]
 created: "2026-10-12T07:25:21"
-updated: "2026-10-28T14:05:26"
+updated: "2026-11-20T23:50:37"
 ---
 
 <!-- compiled_truth -->
@@ -127,3 +127,9 @@ updated: "2026-10-28T14:05:26"
   summary: "第八个漂移案例，且不在传输之间：uvrpc_client.c 调 uvbus_set_conn_close_handler() 没带 #include \"uvbus_internal.h\"，而 uvrpc_server.c 为同一个调用一直带着；tests/acceptance/connect_refund.c 用 _exit() 没带 <unistd.h>，同批的 client_sees_close.c 带着。信号不止三种——「同一个调用/同一个函数形状，一侧多一个 include」是第四个信号，而且它只在编译器版本变化后才变成硬错误（GCC 15 把 -Wimplicit-function-declaration 升级为 error）。diff 的范围应当包括 server↔client 与测试↔测试，不只是 5 个传输之间。"
   source: "2026-10-28 gh run 40641013547 + commits 1976080 与 connect_refund include 修复"
   affects: [sibling-transports-must-be-diffed, build-distribution-breakage]
+
+- time: 2026-11-20T23:50:37
+  kind: evidence
+  summary: "第九个漂移案例（跨层）：payload 向量对齐到 8 后，UDP server 仍把 buf->base+4 的 4-mod-8 帧起点交给 RPC 层，64 位 payload 字段依旧未对齐；复制帧到对齐缓冲后修复，tests/acceptance/udp_payload_alignment.c 守住"
+  source: "commit 502413a + src/uvbus_transport_udp.c + tests/acceptance/udp_payload_alignment.c"
+  affects: [nested-payload-needs-aligned-frame-start, sibling-transports-must-be-diffed]
