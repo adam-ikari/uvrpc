@@ -5,64 +5,42 @@ category: decision
 status: active
 tags: [registry, transport, inproc]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-30T09:51:11"
+updated: "2026-11-21T08:28:26"
 ---
 
 <!-- compiled_truth -->
-INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输：server 挂一个名字，client 用同一个名字连上去。这份 name→endpoint 状态**放在 `uv_loop_t` 上（`loop->data`），不是进程全局**。这是"零可变全局"这条第一约束（[[zero-threads-locks-globals]]）在实现上最难的一处落点，也是 `4fe8b67`（2026-02-26）以来反复演进的决定。
+INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输。name→endpoint 状态现在放在**调用方创建并显式传入的 `uvbus_loop_registry_t`** 里（`uvbus_loop_registry_new()` / `uvbus_config_set_loop_registry()` / `uvrpc_config_set_loop_registry()`），框架不读写 `uv_loop_t::data`。这份对象是 server 与 client 两份独立 config 唯一需要共享的东西，因此不需要进程全局表，也不需要锁，仍满足 [[zero-threads-locks-globals]]。
 
-## 为什么挂在 loop 上
+## 当前契约
 
-`src/uvbus_loop_registry.h:8-14` 的推理：server transport 与 client transport 由**两份互相独立的 config** 创建，它们唯一共享的值就是那个 `uv_loop_t*`。把 registry 挂到 `loop->data`，两边就能见面 —— **零文件作用域可变全局、零锁**，因为 loop 按设计契约只跑单线程。反过来，如果用进程全局表，多 loop（线程各自跑 loop，例如 [[uv-run-once-benchmark-methodology]] 里的 benchmark 进程外的用法、或库使用者自己起多个 loop）就需要 rwlock，那会直接违反零锁。
+调用方建一份 registry，传给所有需要互相发现的 server/client config，并在 transport 全部释放后调用 `uvbus_loop_registry_free()`。未传 registry 时，INPROC / SAMELOOP 的 `listen()` 直接报错并指名创建方法；没有隐藏的 per-loop 或进程级回退。TCP / UDP / IPC 不需要 registry。
 
-**注意：文档里"UVRPC 不占用 `loop->data`"这句话是错的**（`docs/guide/design-philosophy.md` 144-157 / 639-651 区间）。实现**就是**占用 `loop->data`，并用 magic 守卫处理冲突。
+## 为什么不再挂 loop->data
 
-## 结构与 magic 守卫
+早期版本把 registry 挂在 `loop->data`（libuv 唯一的 per-loop 用户字段），用 magic tag 区分自己的对象与用户数据。问题是判断 magic **必须解引用这个用户指针**：libuv 1.47 的 `uv_loop_init()` 会保存并写回 `loop->data`（`deps/libuv/src/unix/loop.c:30-38`），所以按 libuv 文档写的 `uv_loop_t loop; uv_loop_init(&loop);` 会把栈残留留在该字段；实测约五次里有一次在读 magic 时段错误，而不是干净地返回错误。2026-09-29 反转：`tests/loop_data_contract_test.c` 被 `tests/loop_registry_test.c` 取代，14 个示例、benchmark 与 5 个测试全部迁移。详见时间线里的 reversal 条目；`docs/guide/design-philosophy.md` 与 `docs/architecture/index.md` 已是当前契约。
+
+## 结构与生命周期
 
 ```c
-#define UVBUS_LOOP_REGISTRY_MAGIC 0x55524300u   /* 'URC\0' —— src/uvbus_loop_registry.h:38 */
+#define UVBUS_LOOP_REGISTRY_MAGIC 0x55524300u  /* 'URC\0' —— src/uvbus_loop_registry.h */
 
-typedef struct uvbus_loop_registry {   /* :42-49 */
+struct uvbus_loop_registry {
     uint32_t magic;
     int      refcount;
-    void*    inproc_endpoints;    /* inproc_endpoint_t** 桶数组 */
-    void*    sameloop_servers;    /* inproc/sameloop 传输共用的 server 链表头 */
-} uvbus_loop_registry_t;
+    void*    inproc_endpoints;   /* inproc_endpoint_t* 链表头 */
+    void*    sameloop_servers;   /* sameloop_server_t* 链表头 */
+};
 ```
 
-`loop->data` 是 libuv 的**公开字段**，任何人都可能已经用了它。框架的处置是**拒绝而非覆盖**（`:16-19`）：`uvbus_loop_registry_retain()`（`:56-82`）读 `loop->data`，NULL 就建 registry；非 NULL 且 magic 不符就 **返回 NULL 并记日志**，transport 随即报错退出。宁可让 inproc/sameloop 在别人的 loop 上不可用，也不破坏用户状态。
+magic 放在首字段，是为了让 `uvbus_loop_registry_is_valid()` 在**调用方已经拥有的指针**上做校验，不再解引用野地址。transport 在 `listen()` / `connect()` 各 retain 一次，`free()` 时 release；refcount 归零时释放 inproc 桶数组并释放 registry 本身。sameloop 链表由 transport 自己在 disconnect/free 时摘掉条目，registry 只存链表头。`release()` 对无效指针直接返回。
 
-## 陷阱：loop 必须零初始化（2026-09-29 实测）
+## 两种容器
 
-`uv_loop_t loop; uv_loop_init(&loop);` —— libuv 官方文档的标准写法 —— **在 INPROC/SAMELOOP 上必然失败**。原因在 vendored 的 libuv 1.47 `deps/libuv/src/unix/loop.c:30-38`：
+- **INPROC**：256 桶哈希 + 每桶链表（`UVBUS_INPROC_HASH_SIZE = 256`），djb2 `hash_string`，桶数组惰性分配。查找/增删都接收 `reg` 参数，无全局操作。
+- **SAMELOOP**：一条单链表，头插、查找 O(服务器数)。同 loop 内服务数量通常很小，未做规模化。
+- `endpoint->ref_count` 与 `inproc_client_t` 的连接数组属于**端点级**引用与容量管理，和 registry 的 transport 级 refcount 是两套东西，不要混。
 
-```c
-int uv_loop_init(uv_loop_t* loop) {
-  void* saved_data;
-  saved_data = loop->data;      /* 保留：data 是用户的字段，libuv 不碰 */
-  memset(loop, 0, sizeof(*loop));
-  loop->data = saved_data;      /* 原样写回，未初始化时就是栈上的垃圾 */
-```
-
-`data` 是 `uv_loop_t` 的**第 0 个字段**（偏移 0），libuv 从不初始化它。于是未零初始化的 loop 会把栈垃圾当作用户 `loop->data`，magic 守卫判为"别人的指针"→ `uvrpc_server_start()` 返回 `UVRPC_ERROR`（-2），日志是 `loop->data is set to a non-uvrpc pointer`。**结论：使用 INPROC/SAMELOOP 前必须 `uv_loop_t loop = {0};`**，这也是仓库里能跑通的示例（`examples/sameloop_rpc_demo.c`）都这么写、而 `examples/scenario_1*.c`（用 TCP，不走 registry）随手写也不炸的原因。这个坑静默地绑死在 libuv 版本上：若 libuv 哪天改成初始化 `data`，行为会反过来。
-
-## 生命周期：retain / release
-
-`listen()` 与 `connect()` 各 retain 一次，transport `free()` 时 release（`:19-20`）。`release`（`:82-96`）把 refcount 减到 0 时：释放 inproc 桶数组 → **`loop->data = NULL`** → 释放 registry。语义上 registry 的存在期 = "该 loop 上还有至少一个 inproc/sameloop transport"。
-
-两个细节：
-- sameloop 链在 release 里**不需要单独释放**，因为每个 transport 在 disconnect/free 时已经摘掉自己的条目（`:88-90` 注释）。也就是说 registry 只持有**列表头**，条目所有权属于 transport。
-- `release` 对 `loop->data` 不是自己 magic 的情况直接 return（`:87`），所以误用不会踩到用户指针。
-
-## 两种容器的不对称
-
-- **INPROC：256 桶哈希 + 每桶单链表**。`UVBUS_INPROC_HASH_SIZE = UVBUS_HASH_TABLE_SIZE = 256`（`src/uvbus_transport_inproc.c:41`、`include/uvbus_config.h:43`），djb2 `hash_string`（`:42-49`），桶数组惰性分配（`inproc_buckets_ensure`，`:59-64`）。`inproc_find_endpoint(reg, name)`（`:68-79`）、`inproc_add_endpoint`、`inproc_remove_endpoint`（`:81-99`）**都接收 reg 参数**，没有一个是全局操作。
-- **SAMELOOP：一条单链表**，`reg->sameloop_servers` 直接头插（`src/uvbus_transport_sameloop.c:64,76-77,82`）。查找是 **O(服务器数)**，无哈希。这在"同 loop 内几十个服务"的场景无所谓，但它是两者中未做规模化的一条。
-- 另有 `endpoint->ref_count`（`src/uvbus_transport_inproc.c:32`）与 `inproc_client_t` 的连接数组（`:103+`，容量翻倍扩容）—— 这些是**端点级**引用计数，与 registry 的 loop 级 refcount 是两套东西，别混。
-
-## 与并发控制的接缝
-
-registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[pending-buffer-as-concurrency-control]]。
+registry 让"找对端"无锁；发送队列满时的拒绝在 RPC 层，见 [[pending-buffer-as-concurrency-control]]。
 
 
 ## Timeline
@@ -125,4 +103,10 @@ registry 让"找对端"无锁；`send` 队列满时的拒绝在 RPC 层，见 [[
   kind: evidence
   summary: "[已移至 uvbus-transport-abstraction 页：TCP handle->data 类型混淆] 缺陷（已修，src/uvbus_transport_tcp.c:629）：**TCP 传输的 handle->data 被两种类型读** —— on_server_connection:251 当 uvbus_transport_t* 读（正在监听），on_server_close:357 当 uvbus_tcp_server_t* 读（关闭后）。一个指针满足不了两处。后果：tcp_free 先释放 transport，随后的关闭回调把已释放内存当 server 用 —— heap-use-after-free。修法照抄 UDP（452/461/583 本来就是关闭前把 data 改指 server）。关键教训：**UDP 做对了、TCP 做错了，而差异只能靠读源码发现，没有测试能抓到** —— 这正是跨度不变性要覆盖的东西。IPC 同样的写法（listen_pipe.data = transport）目前无害，因为 uv_close 一律传 NULL 回调"
   source: "ASan + custom 分配器下 span_invariance 段错误；gdb/ASan 栈定位（2026-09-30）"
+  affects: [loop-data-registry-over-global-hash]
+
+- time: 2026-11-21T08:28:26
+  kind: decision
+  summary: "反转后事实：注册表由调用方创建并传入 config，框架不读写 loop->data；保留反转理由、结构与生命周期"
+  source: "src/uvbus_loop_registry.h + include/uvbus.h + commit 9e6d8a6"
   affects: [loop-data-registry-over-global-hash]

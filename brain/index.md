@@ -1,6 +1,6 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-11-20T15:50:37.364Z._
+_Auto-generated. Last updated 2026-11-21T00:28:26.792Z._
 
 - [a-client-must-be-told-its-connection-died](pages/a-client-must-be-told-its-connection-died.md) — category: decision | tags: [client, transport, uvbus, lifecycle, error-reporting] | ## 约束
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
@@ -9,7 +9,7 @@ _Auto-generated. Last updated 2026-11-20T15:50:37.364Z._
 - [callback-must-not-lend-borrowed-storage](pages/callback-must-not-lend-borrowed-storage.md) — category: decision | tags: [libuv, transport, udp, lifetime, api-design, identity] | ## 约束
 - [codegen-shape-matrix](pages/codegen-shape-matrix.md) — category: decision | tags: [codegen, dsl, flatcc, testing] | 生成模板是按形状分支展开的（标量数组 / 字符串向量 / 表数组 × 请求 / 响应 × _sync / _all / _any / 批量），任何一支没有 schema 实例化，它就只是"写出来但从未编译过"的文本。
 - [embedded-handle-must-outlive-close](pages/embedded-handle-must-outlive-close.md) — category: decision | tags: [libuv, memory-safety, teardown, valgrind, transport] | ## 约束
-- [loop-data-registry-over-global-hash](pages/loop-data-registry-over-global-hash.md) — category: decision | tags: [registry, transport, inproc] | INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输：server 挂一个名字，client 用同一个名字连上去。
+- [loop-data-registry-over-global-hash](pages/loop-data-registry-over-global-hash.md) — category: decision | tags: [registry, transport, inproc] | INPROC 与 SAMELOOP 是"同进程内按名字找对端"的传输。
 - [minimal-rpcframe-schema](pages/minimal-rpcframe-schema.md) — category: decision | tags: [protocol, schema, flatbuffers] | UVRPC 的线格式刻意压到最小：`namespace uvrpc` 下**一个** `table RpcFrame`，四个字段，`root_type RpcFrame`。
 - [nested-payload-needs-aligned-frame-start](pages/nested-payload-needs-aligned-frame-start.md) — category: decision | tags: [protocol, transport, alignment, flatbuffers] | ## 约束
 - [one-dist-dir-many-configs](pages/one-dist-dir-many-configs.md) — category: decision | tags: [build, ci, sanitizer, allocator] | ## 约束

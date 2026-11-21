@@ -2,25 +2,7 @@
 slug: stack
 title: Tech stack
 role: tech-stack choices
-updated: "2026-11-09T16:12:17"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-11-09T15:56:26"
----
-
-# Tech stack
-
----
-slug: stack
-title: Tech stack
-role: tech-stack choices
-updated: "2026-10-29T20:23:02"
+updated: "2026-11-21T08:25:39"
 ---
 
 # Tech stack

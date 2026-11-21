@@ -2,7 +2,7 @@
 slug: architecture
 title: System architecture
 role: system architecture
-updated: "2026-09-29T00:12:47"
+updated: "2026-11-21T08:26:30"
 ---
 
 # System architecture
@@ -51,7 +51,7 @@ graph TD
     T3[ipc]
     T4[inproc]
     T5[sameloop]
-    REG["uvbus_loop_registry<br/>挂 loop->data"]
+    REG["uvbus_loop_registry<br/>调用方创建并传入"]
   end
 
   subgraph DEPS["底座 deps/"]
@@ -91,10 +91,10 @@ graph TD
 硬约束，改动前必须先过这几条：
 
 1. **Loop 注入**：库**从不**调用 `uv_run` / `uv_stop` / `uv_loop_close`，只接受 `uvrpc_config_set_loop()` 注入的 `uv_loop_t*`。
-2. **`loop->data` 被 INPROC / SAMELOOP 占用**：per-loop 端点注册表挂在 `loop->data` 上，带 magic tag + 引用计数（`src/uvbus_loop_registry.h`）。用户若自己塞了非框架指针，注册表不可用并打日志，框架不会覆盖。因此使用这两种传输时，栈上 loop 必须 `uv_loop_t loop = {0};` 零初始化再 `uv_loop_init` —— libuv 会跨 `uv_loop_init` 保留 `loop->data`。这条是对早期"框架不占用 loop->data"承诺的**反转**，详见 [[loop-data-registry-over-global-hash]]。TCP/UDP/IPC 路径则承诺绝不触碰 `loop->data`。
+2. **调用方创建注册表**：INPROC / SAMELOOP 的端点表由调用方通过 `uvbus_loop_registry_new()` 创建，并传给需要互相发现的每个 config；框架不读写 `uv_loop_t::data`。transport 在 `listen()` / `connect()` 各 retain 一次、`free()` 时 release，调用方在 transport 释放后再 `uvbus_loop_registry_free()`。旧版挂 `loop->data` 的方案因 magic 守卫必须解引用用户指针、libuv 1.47 又保留该字段，实测未零初始化的 loop 约 20% 段错误；已反转，详见 [[loop-data-registry-over-global-hash]]。TCP/UDP/IPC 不需要注册表。
 3. **C99 only**：`CMAKE_C_STANDARD 99`，源码里不得出现 `_Static_assert` / `_Generic` / `_Atomic` / `<stdatomic.h>`（测试可用 C++/GTest）。
 4. **零 file-scope 可变全局**：system/mimalloc 构建下 `src/` 必须 0 个（唯一例外 `g_custom_allocator` 被 `#if` 编译掉）。分配器分发走**编译期** `#if UVRPC_DEFAULT_ALLOCATOR`，不是运行期开关。
 5. **零锁零 atomics**：单线程模型下不得引入 `pthread_mutex` / rwlock / 自旋锁 / `UVRPC_ATOMIC_*`（这些宏已在 `ecff4de` 删除，改回普通 `++/--`）。
 6. **Warning-gate**：`src/` 在 `-Wall -Wextra -Wpedantic` 下零警告，CI 直接把警告当失败。
 7. **环形缓冲区大小必须是 2 的幂**；错误码统一经 `uvrpc_error_t` 返回并可用 `uvrpc_strerror()` 转文字，不许静默吞掉。
-8. **INPROC / SAMELOOP 是 same-loop 专属**：服务端与客户端必须共享同一个 `uv_loop_t*`，靠 per-loop 注册表按名字互相发现。
+8. **INPROC / SAMELOOP 是 same-loop 专属**：服务端与客户端必须共享同一个 `uv_loop_t*`，靠调用方创建并传入的注册表按名字互相发现。

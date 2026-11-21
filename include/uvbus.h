@@ -74,7 +74,7 @@ typedef enum {
     UVBUS_TRANSPORT_TCP = 0,         /**< @brief TCP transport */
     UVBUS_TRANSPORT_UDP = 1,         /**< @brief UDP transport */
     UVBUS_TRANSPORT_IPC = 2,         /**< @brief Unix domain socket (IPC) */
-    UVBUS_TRANSPORT_INPROC = 3,      /**< @brief In-process transport (endpoints live in a per-loop registry on loop->data; not thread-safe, not cross-loop) */
+    UVBUS_TRANSPORT_INPROC = 3,      /**< @brief In-process transport (endpoints live in a caller-created registry passed via config; not thread-safe, not cross-loop) */
     UVBUS_TRANSPORT_SAMELOOP = 4   /**< @brief Same-loop transport (zero-lock, zero-copy, requires same uv_loop_t instance) */
 } uvbus_transport_type_t;
 
