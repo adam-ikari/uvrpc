@@ -730,6 +730,31 @@ set_tests_properties(udp_payload_alignment PROPERTIES
     TIMEOUT 60
 )
 
+# Same alignment contract, exercised on all five transports. A table row is
+# all a new transport needs to join the matrix.
+add_executable(transport_payload_alignment
+    acceptance/transport_payload_alignment.c
+)
+
+target_link_libraries(transport_payload_alignment
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(transport_payload_alignment
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME transport_payload_alignment COMMAND transport_payload_alignment)
+set_tests_properties(transport_payload_alignment PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # uvbus_send_to() passes its target straight down, so each transport owns the
 # check that it is usable. Four of the five made it; SAMELOOP dereferenced the
 # target instead. Pinned on all five at once, so a transport added later cannot
