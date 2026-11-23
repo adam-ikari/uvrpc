@@ -1,6 +1,6 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-11-21T00:28:26.792Z._
+_Auto-generated. Last updated 2026-11-23T13:37:51.095Z._
 
 - [a-client-must-be-told-its-connection-died](pages/a-client-must-be-told-its-connection-died.md) — category: decision | tags: [client, transport, uvbus, lifecycle, error-reporting] | ## 约束
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
@@ -20,6 +20,7 @@ _Auto-generated. Last updated 2026-11-21T00:28:26.792Z._
 - [server-client-accounting-needs-identity-removal](pages/server-client-accounting-needs-identity-removal.md) — category: decision | tags: [server, transport, uvbus, api-design, resource-accounting] | ## 约束
 - [server-stop-is-admission-not-unbind](pages/server-stop-is-admission-not-unbind.md) — category: decision | tags: [server, transport, api-design, protocol] | ## 约束
 - [sibling-transports-must-be-diffed](pages/sibling-transports-must-be-diffed.md) — category: decision | tags: [transport, uvbus, maintenance, review-process] | ## 约束
+- [tls-auth-deferred](pages/tls-auth-deferred.md) — category: decision | tags: [security, scope, roadmap] | 当前阶段**不考虑 TLS、认证、加密或重放防护**，这些不列入生产级差距清单。
 - [uv-run-once-benchmark-methodology](pages/uv-run-once-benchmark-methodology.md) — category: concept | tags: [benchmark, measurement, methodology] | ## 这些数字是什么量
 - [uvbus-transport-abstraction](pages/uvbus-transport-abstraction.md) — category: decision | tags: [transport, architecture, uvbus] | UVBus 是 uvrpc 的传输层：一个 `uvbus_t` 总线对象 + **一份 7 槽 vtable**，5 个传输驱动平级实现它（tcp / udp / ipc / inproc / sameloop）。
 - [uvrpc-tech-stack-lineage](pages/uvrpc-tech-stack-lineage.md) — category: decision | tags: [serialization, event-loop, lineage] | ## 谱系（每步都有 commit 证据，非回忆）
