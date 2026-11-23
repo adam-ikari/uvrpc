@@ -730,6 +730,32 @@ set_tests_properties(udp_payload_alignment PROPERTIES
     TIMEOUT 60
 )
 
+# A UDP server must drop peers that went quiet, and hand the same stable
+# client_ctx slot to a later peer. Without expiry, one idle client pins the
+# RPC-layer count forever and max_clients rejects every later client.
+add_executable(udp_peer_expiry
+    acceptance/udp_peer_expiry.c
+)
+
+target_link_libraries(udp_peer_expiry
+    uvrpc
+    pthread
+    m
+    rt
+)
+
+target_include_directories(udp_peer_expiry
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../deps/libuv/include
+)
+
+add_test(NAME udp_peer_expiry COMMAND udp_peer_expiry)
+set_tests_properties(udp_peer_expiry PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 60
+)
+
 # Same alignment contract, exercised on all five transports. A table row is
 # all a new transport needs to join the matrix.
 add_executable(transport_payload_alignment
