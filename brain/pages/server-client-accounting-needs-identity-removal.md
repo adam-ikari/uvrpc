@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [server, transport, uvbus, api-design, resource-accounting]
 created: "2026-10-12T05:58:25"
-updated: "2026-10-17T18:25:11"
+updated: "2026-11-23T22:42:36"
 ---
 
 <!-- compiled_truth -->
@@ -53,7 +53,7 @@ updated: "2026-10-17T18:25:11"
 | 传输 | 连接上限 | 到顶时的行为 |
 |---|---|---|
 | TCP | `UVBUS_MAX_CLIENTS` = 1024 | 新连接 **accept 后立刻 close**（给对端 FIN），见 d200429 |
-| UDP | 1024（硬编码） | 新 peer 无槽位，回复无处可去 |
+| UDP | 1024（硬编码） | 空闲 peer 过期后复用槽位；全活跃时才拒绝新 peer |
 | SAMELOOP | `SAMELOOP_MAX_CLIENTS` = 64 | `connect` 同步失败 |
 | IPC / INPROC | 无（表按需倍增） | — |
 
@@ -63,6 +63,8 @@ updated: "2026-10-17T18:25:11"
 2. **传输层的拒绝必须给对端一个信号**，否则连接落在 accept 队列里"连着一个空"，`max_clients` 那层根本轮不到。对 RPC 客户端而言这个信号还要有人接 —— 见 [[a-client-must-be-told-its-connection-died]]。
 
 已落在 `include/uvrpc.h`：`max_clients` 字段与 `uvrpc_config_set_max_clients()` 的文档写明两层关系与各传输上限，并顺带修正了 `uvrpc_server_get_client_count()` 的措辞（它数的是"说过话的客户端"，不是 socket）。
+
+UDP 的一半于 2026-11-23 补上：`uvbus_transport_udp.c` 的空闲过期在标记槽位空闲之前调用 `conn_close_cb(&client_addrs[i], ...)`，让 [[server-client-accounting-needs-identity-removal]] 的 `server_conn_closed()` 按身份删掉上层条目；槽位本身不压缩，因为 `client_ctx` 就是它的地址。门禁 `tests/acceptance/udp_peer_expiry.c` 用 `max_clients=1` 让一个静默客户端过期，再让第二个客户端复用槽位：修正前第二个被拒，修正后计数归零再回到 1。
 
 ## 证据（2026-10-12）
 
@@ -137,4 +139,16 @@ updated: "2026-10-17T18:25:11"
   kind: note
   summary: "UDP 的同类隐患，换个外形：UDP 的 client 身份是 server->client_addrs[] 里的一个稳定槽位地址。若给 UDP 加空闲槽回收/LRU（\"满了就顶掉最久不说话的\"），新 peer 会继承那个槽位地址，而 is_new_client 的指针扫描会把它读成同一个客户端——不是漏掉一个客户端，而是把两个不同 peer 认成一个，回复发错人。所以 UDP 加回收前必须先给身份加上\"这一代\"的区分（或换非地址身份）。本轮只记录，不实现。"
   source: "2026-10-17 讨论：UDP 无连接，槽位复用会伪造身份"
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-11-23T22:42:36
+  kind: decision
+  summary: UDP identity removal now goes through conn_close_cb when an idle peer slot expires
+  source: "2026-11-23 src/uvbus_transport_udp.c + tests/acceptance/udp_peer_expiry.c"
+  affects: [server-client-accounting-needs-identity-removal]
+
+- time: 2026-11-23T22:42:36
+  kind: evidence
+  summary: "UDP now reports idle peer expiry through conn_close_cb before reusing the stable client_ctx slot; no array compaction"
+  source: "2026-11-23 src/uvbus_transport_udp.c, tests/acceptance/udp_peer_expiry.c"
   affects: [server-client-accounting-needs-identity-removal]

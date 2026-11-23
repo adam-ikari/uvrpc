@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [libuv, transport, udp, lifetime, api-design, identity]
 created: "2026-10-12T06:46:53"
-updated: "2026-11-10T09:02:35"
+updated: "2026-11-23T22:42:36"
 ---
 
 <!-- compiled_truth -->
@@ -55,11 +55,11 @@ UDP 服务端的典型链路是同步的：
 
 验证：187/187 ctest、ASan 183/183、UBSan 183/183、valgrind 于 `udp_client_identity` / `client_churn` / `client_teardown` 全 0。
 
-## 遗留
+## 空闲过期（2026-11-23）
 
-UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连接的传输没有"离开"信号，服务端无从得知某个源地址不再来了。长时间运行、且对端经 NAT 端口轮换时，1024 个槽会逐渐被陈旧地址占满，之后新对端拿不到槽（本改动下表现为拿不到 `client_ctx`，回包失败）。要做对需要**空闲过期**，那是设计变更而非修补。
+UDP 的 `client_addrs` 不再只增不减。`uvbus_transport_udp.c` 用 `client_active[]` / `client_last_seen[]` 标记槽位与最后活跃时间，`uv_timer_t` 周期性过期；超时先经 `conn_close_cb` 通知上层删除 `client_ctx` 身份，再把槽位标为空闲。槽位地址本身从不移动或 realloc —— `&client_addrs[i]` 是上层存下的身份，压缩数组会静默改绑。`udp_send_to()` 现在拒绝不在活跃槽内的 target，`udp_broadcast()` 只发给活跃 peer。默认 60s，`UVRPC_UDP_PEER_IDLE_MS` 只为测试提供确定性。
 
-`tests/acceptance/span_invariance.c` 里关于 `client_ctx` 每条传输类型不同的注释已同步更新。
+门禁 `tests/acceptance/udp_peer_expiry.c`：`max_clients=1`，一个客户端发完便静默；过期后 `uvrpc_server_get_client_count()` 降到 0，第二个客户端拿到复用槽并成功回包。修正前计数永远停在 1，第二个客户端被 `max_clients` 拒绝。全量 206/206。
 
 
 ## Timeline
@@ -116,4 +116,16 @@ UDP 的 `client_addrs` **只增不减**（`num_clients` 从不回退）：无连
   kind: evidence
   summary: "`[Table]` 向量（而非 `[string]`）的响应侧此前是\"模板写了、从没编译过\"：rpc_common.h 只发射方法请求/响应类型，元素表结构体缺失（`shop_HistoryItem_t` 未声明）；client.c 与 rpc_common.c 用 `flatbuffers_uint8_vec_t` 接表向量并且调用不存在的 `<Parent>_<field>_at(fb_response, i)`；元素访问器传的是 `&item`（表指针的地址）而不是 `item`。现在三处都改为 `<Element>_vec_t` + `<Element>_vec_at(vec, i)` + `(item)`，并且 rpc_common.h 先发射元素表结构体（跳过同时也是方法的表）。回归测试 tests/generated_table_array_test.c 覆盖 _sync/_all/_any 与 response_free/result_free，valgrind 干净；examples/shop_* 是它的真实用户。"
   source: "tools/templates/rpc_common.h.j2, tools/templates/client.c.j2, tools/templates/rpc_common.c.j2"
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-23T22:42:36
+  kind: decision
+  summary: UDP client_addrs now expires idle peers without moving stable client_ctx slots
+  source: "2026-11-23 src/uvbus_transport_udp.c + tests/acceptance/udp_peer_expiry.c"
+  affects: [callback-must-not-lend-borrowed-storage]
+
+- time: 2026-11-23T22:42:36
+  kind: evidence
+  summary: "UDP idle expiry implemented with stable slots and conn_close_cb identity removal; udp_peer_expiry pins count 1 -> 0 -> 1 under max_clients=1"
+  source: "2026-11-23 tests/acceptance/udp_peer_expiry.c, 206/206 ctest"
   affects: [callback-must-not-lend-borrowed-storage]
