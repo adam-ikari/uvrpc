@@ -33,20 +33,31 @@ struct uvbus_udp_client {
     uint8_t read_buffer[UVBUS_MAX_BUFFER_SIZE];  /* 1MB read buffer */
 };
 
+/* Idle UDP peers are expired so a long-running server does not pin 1024 NAT
+ * slots forever. The timer interval is one timeout; the env override exists
+ * only to keep the expiry test deterministic. */
+#define UVBUS_UDP_PEER_IDLE_MS 60000u
+
 /* UDP server structure - optimized for cache locality */
 struct uvbus_udp_server {
     /* Frequently accessed fields - grouped together */
     int is_listening;
     int port;
     int num_clients;
+    int active_clients;
     
     /* Pointer fields */
     char* host;
     void* parent_transport;
     
-    /* Client address list for send_to */
+    /* Client address list for send_to. Slot addresses are stable client_ctx
+     * values handed upward; expiry marks a slot unused, never compacts it. */
     struct sockaddr_storage* client_addrs;
+    uint8_t* client_active;
+    uint64_t* client_last_seen;
     int max_clients;
+    uint64_t idle_timeout_ms;
+    uv_timer_t* idle_timer;
     
     /* LibUV handle - kept at end */
     uv_udp_t udp_handle;
@@ -83,6 +94,51 @@ static int parse_udp_address(const char* address, char** host, int* port) {
     *port = atoi(colon + 1);
     
     return 0;
+}
+
+static uint64_t udp_peer_idle_ms(void) {
+    const char* value = getenv("UVRPC_UDP_PEER_IDLE_MS");
+    if (!value || !*value) {
+        return UVBUS_UDP_PEER_IDLE_MS;
+    }
+    char* end = NULL;
+    unsigned long parsed = strtoul(value, &end, 10);
+    if (*end != '\0' || parsed == 0) {
+        return UVBUS_UDP_PEER_IDLE_MS;
+    }
+    return (uint64_t)parsed;
+}
+
+/* Expire idle peers without moving slots: client_addrs[i] is the client_ctx
+ * handed upward, so compacting would silently retarget a live context. The
+ * close channel tells the RPC layer to drop that identity before the slot can
+ * be reused by a different peer. */
+static void expire_idle_peers(uvbus_udp_server_t* server, uint64_t now) {
+    if (!server) {
+        return;
+    }
+    uvbus_transport_t* transport = (uvbus_transport_t*)server->parent_transport;
+    for (int i = 0; i < server->num_clients; i++) {
+        if (!server->client_active[i]) {
+            continue;
+        }
+        if (now < server->client_last_seen[i] ||
+            now - server->client_last_seen[i] < server->idle_timeout_ms) {
+            continue;
+        }
+        if (transport && transport->conn_close_cb) {
+            transport->conn_close_cb(&server->client_addrs[i],
+                                     transport->conn_close_ctx);
+        }
+        server->client_active[i] = 0;
+        server->active_clients--;
+    }
+}
+
+static void on_peer_idle_timer(uv_timer_t* timer) {
+    uvbus_udp_server_t* server = (uvbus_udp_server_t*)timer->data;
+    uv_update_time(timer->loop);
+    expire_idle_peers(server, uv_now(timer->loop));
 }
 
 /* Server receive callback */
@@ -123,20 +179,46 @@ static void on_server_recv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
          * matter how many are talking. The table copy already made for
          * broadcast is stable and per-peer, so use that. */
         uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
+        uv_update_time(handle->loop);
+        uint64_t now = uv_now(handle->loop);
+
         int peer_idx = -1;
         for (int i = 0; i < server->num_clients; i++) {
-            if (memcmp(&server->client_addrs[i], addr, sizeof(struct sockaddr_storage)) == 0) {
+            if (server->client_active[i] &&
+                memcmp(&server->client_addrs[i], addr, sizeof(struct sockaddr_storage)) == 0) {
                 peer_idx = i;
                 break;
             }
         }
-        
-        if (peer_idx < 0 && server->num_clients < server->max_clients) {
-            peer_idx = server->num_clients;
-            memcpy(&server->client_addrs[server->num_clients], addr, sizeof(struct sockaddr_storage));
-            server->num_clients++;
+
+        if (peer_idx < 0) {
+            /* A full table is not necessarily a busy table: NAT ports go stale
+             * long before they go away. Expire first, then reuse a free slot;
+             * never move the addresses, because their addresses are client_ctx
+             * identities already stored above. */
+            if (server->active_clients >= server->max_clients) {
+                expire_idle_peers(server, now);
+            }
+            for (int i = 0; i < server->num_clients; i++) {
+                if (!server->client_active[i]) {
+                    peer_idx = i;
+                    break;
+                }
+            }
+            if (peer_idx < 0 && server->num_clients < server->max_clients) {
+                peer_idx = server->num_clients++;
+            }
+            if (peer_idx >= 0) {
+                memcpy(&server->client_addrs[peer_idx], addr, sizeof(struct sockaddr_storage));
+                server->client_active[peer_idx] = 1;
+                server->active_clients++;
+            }
         }
-        
+
+        if (peer_idx >= 0) {
+            server->client_last_seen[peer_idx] = now;
+        }
+
         /* Table full: this peer has no slot, so there is nothing stable to
          * hand out. Passing addr instead would put a pointer to a dead frame
          * into the layer above's table, so pass NULL and let the reply fail
@@ -379,8 +461,16 @@ static void on_udp_server_close(uv_handle_t* handle) {
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)handle->data;
     if (!server) return;
     uvrpc_free(server->client_addrs);
+    uvrpc_free(server->client_active);
+    uvrpc_free(server->client_last_seen);
     uvrpc_free(server->host);
     uvrpc_free(server);
+}
+
+/* The timer is a separate allocation, so it can be reaped without touching
+ * the server struct that may already have been freed by its own close. */
+static void on_idle_timer_close(uv_handle_t* handle) {
+    uvrpc_free(handle);
 }
 
 /* Shared broadcast buffer with refcount (single-threaded: all send completions
@@ -456,11 +546,17 @@ static int udp_listen(void* impl_ptr, const char* address) {
     /* Initialize client address list */
     server->max_clients = 1024;  /* Increased from 256 to 1024 */
     server->client_addrs = (struct sockaddr_storage*)uvrpc_calloc(server->max_clients, sizeof(struct sockaddr_storage));
-    if (!server->client_addrs) {
+    server->client_active = (uint8_t*)uvrpc_calloc(server->max_clients, sizeof(uint8_t));
+    server->client_last_seen = (uint64_t*)uvrpc_calloc(server->max_clients, sizeof(uint64_t));
+    if (!server->client_addrs || !server->client_active || !server->client_last_seen) {
+        uvrpc_free(server->client_addrs);
+        uvrpc_free(server->client_active);
+        uvrpc_free(server->client_last_seen);
         uvrpc_free(server->host);
         uvrpc_free(server);
         return UVBUS_ERROR_NO_MEMORY;
     }
+    server->idle_timeout_ms = udp_peer_idle_ms();
     
     /* Initialize UDP handle */
     uv_udp_init(transport->loop, &server->udp_handle);
@@ -500,6 +596,23 @@ static int udp_listen(void* impl_ptr, const char* address) {
         return UVBUS_ERROR_IO;
     }
     
+    server->idle_timer = (uv_timer_t*)uvrpc_alloc(sizeof(uv_timer_t));
+    if (!server->idle_timer) {
+        server->udp_handle.data = server;
+        uv_close((uv_handle_t*)&server->udp_handle, on_udp_server_close);
+        return UVBUS_ERROR_NO_MEMORY;
+    }
+    uv_timer_init(transport->loop, server->idle_timer);
+    server->idle_timer->data = server;
+    int timer_err = uv_timer_start(server->idle_timer, on_peer_idle_timer,
+                                   server->idle_timeout_ms, server->idle_timeout_ms);
+    if (timer_err != 0) {
+        uv_close((uv_handle_t*)server->idle_timer, on_idle_timer_close);
+        server->udp_handle.data = server;
+        uv_close((uv_handle_t*)&server->udp_handle, on_udp_server_close);
+        return UVBUS_ERROR_IO;
+    }
+
     server->is_listening = 1;
     transport->is_connected = 1;
     transport->parent_bus->is_active = 1;
@@ -618,6 +731,10 @@ static void udp_disconnect(void* impl_ptr) {
     
     if (transport->is_server && transport->impl.udp_server) {
         uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
+        if (server->idle_timer && !uv_is_closing((uv_handle_t*)server->idle_timer)) {
+            uv_timer_stop(server->idle_timer);
+            uv_close((uv_handle_t*)server->idle_timer, on_idle_timer_close);
+        }
         /* Clear parent reference to prevent access during cleanup */
         server->parent_transport = NULL;
         /* Close UDP handle. The udp_handle is embedded in the server struct, so
@@ -714,7 +831,20 @@ static int udp_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
     }
 
     uvbus_udp_server_t* server = (uvbus_udp_server_t*)transport->impl.udp_server;
-    if (!target) {
+    if (!server || !target) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+
+    /* A stale client_ctx must never turn back into a send target after its
+     * slot has expired. The recv callback only ever hands out addresses from
+     * this array, so reject anything outside it or in an unused slot. */
+    uintptr_t offset = (uintptr_t)target - (uintptr_t)server->client_addrs;
+    if ((uintptr_t)target < (uintptr_t)server->client_addrs ||
+        offset % sizeof(struct sockaddr_storage) != 0) {
+        return UVBUS_ERROR_INVALID_PARAM;
+    }
+    size_t target_idx = offset / sizeof(struct sockaddr_storage);
+    if (target_idx >= (size_t)server->num_clients || !server->client_active[target_idx]) {
         return UVBUS_ERROR_INVALID_PARAM;
     }
 
@@ -788,7 +918,7 @@ static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
     }
 
     /* No clients - nothing to do */
-    if (server->num_clients == 0) {
+    if (server->active_clients == 0) {
         return UVBUS_OK;
     }
 
@@ -814,10 +944,13 @@ static int udp_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
 
     shared->data = frame_data;
     shared->size = total_size;
-    shared->ref_count = server->num_clients;
+    shared->ref_count = server->active_clients;
 
     /* Send to each known client address */
     for (int i = 0; i < server->num_clients; i++) {
+        if (!server->client_active[i]) {
+            continue;
+        }
         uv_udp_send_t* req = (uv_udp_send_t*)uvrpc_alloc(sizeof(uv_udp_send_t));
         if (!req) {
             /* Alloc failed - decrement refcount for this skipped client */
