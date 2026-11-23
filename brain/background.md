@@ -2,7 +2,7 @@
 slug: background
 title: Project background
 role: project background
-updated: "2026-09-23T04:35:08"
+updated: "2026-11-24T07:46:25"
 ---
 
 # Project background
@@ -32,6 +32,7 @@ C 生态里缺少一个**与 libuv 单线程事件循环天然契合**的 RPC �
 - **不做多线程并发模型。** 不引入线程池、工作线程、后台 worker；扩展并发的手段是多实例 / 多进程，不是多线程。
 - **不做跨语言运行时。** 当前只面向 C99 调用方，没有其他语言绑定。
 - **不管理 `uv_loop_t` 生命周期。** Loop 注入：创建、`uv_run`、`uv_stop`、`uv_loop_close` 全部由用户负责，库只接受注入进来的 loop 指针。
+- **不做网关层能力。** TLS、认证、加密、重放防护、服务发现等由外部网关或 Sidecar 负责；uvrpc 是低层 RPC + 传输库，不是开箱即用的服务框架。见 [[tls-auth-deferred]]。
 
 ## Target user
 
@@ -39,4 +40,4 @@ C 生态里缺少一个**与 libuv 单线程事件循环天然契合**的 RPC �
 - 需要**多服务共享同一 event loop** 的进程内模块化架构（生成代码按服务独立前缀，天然支持 loop 复用）。
 - 对性能数字和内存安全有硬要求的团队 —— CI 里跑 ASan + cppcheck + warning-gate + 性能回归。
 
-> **低置信度 / 待确认**：Goals 里的量化成功标准与 Target user 是从 README、`docs/guide/*` 和 `git log` 反推的，未经用户确认；Non-goals 中"不做跨语言"也是推断（`pyproject.toml` 存在，但只打包 Python 侧的 codegen 工具）。请确认或修正。
+> **低置信度 / 待确认**：Goals 里的量化成功标准与 Target user 是从 README、`docs/guide/*` 和 `git log` 反推的，未经用户确认；Non-goals 中"不做跨语言"也是推断（`pyproject.toml` 存在，但只打包 Python 侧的 codegen 工具）。网关层 Non-goal 已由用户明确确认，见 [[tls-auth-deferred]]。
