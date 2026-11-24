@@ -84,7 +84,10 @@ if(UVRPC_GRPC_BENCHMARK)
     find_program(GRPC_CPP_PLUGIN NAMES grpc_cpp_plugin REQUIRED)
     pkg_check_modules(GRPCXX REQUIRED IMPORTED_TARGET grpc++)
 
-    set(CMAKE_CXX_STANDARD 14)
+    # Ubuntu's packaged protobuf/gRPC headers use absl::string_view, which is
+    # std::string_view in C++17 and a different type in C++14. Mixing the two
+    # makes grpc_ping_pong fail to compile on CI, so require C++17 here.
+    set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
     set(GRPC_PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/grpc_proto)
