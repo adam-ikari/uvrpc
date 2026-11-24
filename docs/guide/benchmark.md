@@ -161,7 +161,10 @@ must stay within 2.0x, each transport's latency relative to SAMELOOP may not
 move more than 50% from the baseline, and SAMELOOP itself may not exceed three
 times the baseline. Ratios cancel runner-wide drift; absolute latency
 does not. Update the baseline only when a code change is meant to shift the
-relative cost of a transport.
+relative cost of a transport. The deadline-sweep fix was such a change: the
+baseline was re-recorded from run `45359431694` (EPYC 7763), where SAMELOOP fell
+from 15.84 to 0.92 µs and IPC/UDP/TCP moved from roughly 1.5–2x to 12–22x that
+reference. A few percent of cross-run drift alone is never a reason to update.
 
 **The UDP row is a loopback figure and nothing more.** The benchmark is
 sequential ping-pong with exactly one request in flight, and the library does

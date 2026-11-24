@@ -1,17 +1,17 @@
 {
-  "source_run": "44849793228",
-  "head_sha": "0d46b13",
+  "source_run": "45359431694",
+  "head_sha": "4bba568",
   "host": "runnervm0hi8g",
-  "source_cpu": "AMD EPYC 9V45 96-Core Processor",
+  "source_cpu": "AMD EPYC 7763 64-Core Processor",
   "reference_transport": "sameloop",
   "relative_tolerance": 0.5,
   "absolute_tolerance": 2.0,
   "max_spread": 2.0,
   "median_us": {
-    "sameloop": 15.84,
-    "inproc": 15.63,
-    "ipc": 24.23,
-    "udp": 31.13,
-    "tcp": 30.74
+    "sameloop": 0.92,
+    "inproc": 0.91,
+    "ipc": 11.42,
+    "udp": 20.55,
+    "tcp": 20.08
   }
 }

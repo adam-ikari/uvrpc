@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-24T13:44:07"
+updated: "2026-11-24T16:54:03"
 ---
 
 <!-- compiled_truth -->
@@ -195,4 +195,16 @@ CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark
   kind: evidence
   summary: "Second real CI run on Intel Xeon drifted 34% in UDP/TCP ratios; ratio tolerance widened to 50% while 84% single-transport regression still fails"
   source: 2026-11-24 gh run 45334503316
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-24T16:54:03
+  kind: decision
+  summary: "按'sweep 索引改变相对成本'规则重录 baseline：run 45359431694，SAMELOOP 15.84→0.92 us，IPC/TCP/UDP 相对 SAMELOOP 比值升到 12/22/22"
+  source: "2026-11-24 benchmark/baseline.json + Benchmark workflow run 45359431694"
+  affects: [deadline-sweep-index]
+
+- time: 2026-11-24T16:54:03
+  kind: evidence
+  summary: "新 CI runner EPYC 7763（旧 baseline 为 EPYC 9V45）：sameloop 0.92 / inproc 0.91 / ipc 11.42 / udp 20.55 / tcp 20.08 us，spread 均 ≤1.1x；用新 baseline 复跑 check_baseline.py 全绿"
+  source: "2026-11-24 gh run view 45359431694 + 本地 check_baseline.py"
   affects: [uv-run-once-benchmark-methodology]
