@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-24T09:18:03"
+updated: "2026-11-24T13:33:50"
 ---
 
 <!-- compiled_truth -->
@@ -65,7 +65,9 @@ cmake --build build -j$(nproc) --target perf_benchmark
 CI 的 `Benchmark` 工作流对每种传输采样 5 次（每次 100000 requests），取中位数，并把结果与全部样本写进 job 日志与 step summary
 （两个地方都写，所以 `gh run view --log` 能取到，不必去抓渲染后的运行页）。同一 runner、同一 commit 的两次 run 仍可整体漂移：2026-11-23 在 `runnervm0hi8g` 上，`b263be3` 的 run `45202631217` 报 SAMELOOP 16.57 us、UDP 33.12 us，run `45204459868` 报 15.25 us / 30.19 us，五条传输同向移动。跨 run 几个百分点不能单独归因于代码；先看所有传输是否同向，再复跑。
 
-CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark/baseline.json`，要求五条传输都有结果、样本 spread ≤ 2.0x、每条传输相对 SAMELOOP 的比值偏离基线 ≤ 20%，并给 SAMELOOP 绝对延迟留 50% 的灾难上界。比值抵消同一 runner 的整体漂移，绝对上界只抓全局崩塌。2026-11-23 两次同代码 run 的比值偏移都在 2.1% 内；注入 UDP 60 us、全局 2 倍、缺 TCP、spread 2.5x 分别被对应门禁拒绝。
+CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark/baseline.json`，要求五条传输都有结果、样本 spread ≤ 2.0x、每条传输相对 SAMELOOP 的比值偏离基线 ≤ 25%，并给 SAMELOOP 绝对延迟留 3 倍基线的灾难上界。比值抵消同一 runner 的整体漂移，绝对上界只抓全局崩塌。2026-11-23 两次同代码 run 的比值偏移都在 2.1% 内；注入 UDP 60 us、全局 4 倍、缺 TCP、spread 2.5x 分别被对应门禁拒绝；全局 2 倍因 3 倍绝对上界放行，这是有意容忍整机变化。
+
+首次真实 CI 门禁 run `45308573879` 被绝对上界拒绝：同一 runner 名 `runnervm0hi8g` 的 CPU 从 9V45 变成 9V74，SAMELOOP 从 15.84 us 升到 27.71 us（1.75 倍），四条比值偏移最高 15.2%。因此阈值放宽到比值 25%、绝对 3 倍；门禁只抓量级异常和单传输相对回归，不宣称抓取 5% 级变化。
 
 **没跑过 IPC/SAMELOOP 的 loop 零初始化陷阱**：libuv 1.47 的 `uv_loop_init()` 保留 `loop->data`，
 未零初始化的 `uv_loop_t` 会让这两条传输启动失败 —— 见 [[loop-data-registry-over-global-hash]]。
@@ -161,4 +163,22 @@ CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark
   kind: evidence
   summary: "Added CI benchmark gate: 5 transports present, spread <=2.0x, per-transport/SAMELOOP ratio within 20% of baseline, SAMELOOP absolute <=1.5x baseline"
   source: "2026-11-24 benchmark/check_baseline.py, baseline.json, docs/guide/benchmark.md"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-24T13:31:56
+  kind: decision
+  summary: Widen benchmark thresholds after real CI run exposed host CPU drift
+  source: 2026-11-24 gh run 45308573879
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-24T13:31:56
+  kind: evidence
+  summary: "Real CI gate failed on host CPU drift: same runner name, different CPU, 1.75x absolute latency while ratios stayed within 15.2%; widened thresholds to 25% ratio and 3x absolute"
+  source: 2026-11-24 gh run 45308573879
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-24T13:33:50
+  kind: decision
+  summary: Correct regression examples for widened threshold
+  source: 2026-11-24 benchmark/check_baseline.py recheck
   affects: [uv-run-once-benchmark-methodology]
