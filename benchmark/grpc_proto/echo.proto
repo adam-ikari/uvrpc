@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// Payload contract for the UVRPC-vs-gRPC comparison benchmark.
+// The 8-byte echo payload is carried in a bytes field so the logical message
+// is the same size as perf_benchmark.c's uint8_t payload[8]. Protobuf and
+// gRPC/HTTP2 framing sit on top of it; that overhead is part of what gRPC
+// costs and is deliberately not hidden.
+package uvrpc.benchmark;
+
+service Echo {
+  rpc Echo(EchoRequest) returns (EchoResponse) {}
+}
+
+message EchoRequest {
+  bytes payload = 1;
+}
+
+message EchoResponse {
+  bytes payload = 1;
+}

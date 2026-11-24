@@ -866,8 +866,9 @@ UVRPC_PERF_HIGH_THROUGHPUT)`。它的值一路被存进 config、复制进客户
 - **O(1) 查找**：位与代替取模，直接数组访问，无哈希计算
 - **可配置**：运行时 `uvrpc_config_set_max_pending_callbacks(config, n)`。`n` 必须是
   2 的幂、且落在 `[64, UVRPC_MAX_PENDING_CALLBACKS]`（`1<<22`）内；不满足时**静默回落**
-  到 `UVRPC_DEFAULT_PENDING_CALLBACKS`（`1<<16`），不报错（`src/uvrpc_config.c:90-101`）
-- **内存开销**：数组本身每槽一个指针，默认 65,536 槽约 512 KB；每个在途请求另分配一个
+  到 `UVRPC_DEFAULT_PENDING_CALLBACKS`（`1<<10`，1,024 槽），不报错（`src/uvrpc_config.c:90-101`）
+- **内存开销**：数组本身每槽一个指针，默认 1,024 槽约 8 KB（旧默认 65,536 槽约 512 KB；
+  同机实测峰值 RSS 3,184 → 2,676 KiB，延迟无差异）；每个在途请求另分配一个
   `pending_callback_t`，本机实测 `sizeof` 为 24 字节（`msgid` + 回调 + ctx，
   `src/uvrpc_client.c:29-34`）。条目里曾经带着一个 152 字节的 `uv_timer_t` 和
   `generation` / `method` / `is_polling` 等从未读取的字段，2026-09-29 一并删除
@@ -878,7 +879,7 @@ UVRPC_PERF_HIGH_THROUGHPUT)`。它的值一路被存进 config、复制进客户
 
 ```c
 // 正确用法：必须是 2 的幂
-uvrpc_config_set_max_pending_callbacks(config, 1 << 16);  // 默认，65,536 槽
+uvrpc_config_set_max_pending_callbacks(config, 1 << 10);  // 默认，1,024 槽
 uvrpc_config_set_max_pending_callbacks(config, 1 << 20);  // 高并发，上限 1 << 22
 ```
 

@@ -133,7 +133,9 @@ uvrpc_config_t* uvrpc_config_set_msgid_offset(uvrpc_config_t* config, uint32_t o
   Default `UVRPC_MAX_CONCURRENT_REQUESTS` (100).
 - `max_pending_callbacks` — size of the callback routing table. Must be a power of
   two in `[64, UVRPC_MAX_PENDING_CALLBACKS]`; anything else silently falls back to
-  `UVRPC_DEFAULT_PENDING_CALLBACKS` (`1 << 16`).
+  `UVRPC_DEFAULT_PENDING_CALLBACKS` (`1 << 10`, 1,024 slots ≈ 8 KiB). Raise it when
+  `max_concurrent` goes above roughly a thousand — the ring is a routing table,
+  not a concurrency quota.
 - `max_clients` — server-side connection quota. `0` or less selects the 1024
   default; there is no unlimited mode.
 

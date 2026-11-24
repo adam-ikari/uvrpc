@@ -25,7 +25,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+          sudo apt-get install -y cmake build-essential \
+            libgrpc++-dev protobuf-compiler-grpc protobuf-compiler libprotobuf-dev
 
       - name: Build vendored dependencies
         run: ./scripts/setup_deps.sh
@@ -35,8 +36,9 @@ jobs:
           cmake -S . -B build \
             -DUVRPC_ALLOCATOR_DEFAULT=system \
             -DCMAKE_BUILD_TYPE=Release \
-            -DUVRPC_DEBUG_LOGGING=OFF
-          make -C build -j$(nproc) perf_benchmark
+            -DUVRPC_DEBUG_LOGGING=OFF \
+            -DUVRPC_GRPC_BENCHMARK=ON
+          make -C build -j$(nproc) perf_benchmark uvrpc_sync_ping_pong grpc_ping_pong
 
       # One sample is not a measurement. A single 50k run on a shared runner
       # varied by 2-3x between consecutive runs, which is larger than any cost
@@ -101,6 +103,17 @@ jobs:
       # reference transport plus a loose ceiling for a global collapse.
       - name: Check benchmark gates
         run: python3 benchmark/check_baseline.py --results benchmark_results.md --baseline benchmark/baseline.json
+
+      # Same loopback TCP ping-pong methodology on both sides. The gate rejects
+      # unusable data (spread > 2.0x) and any loss of the latency/RSS advantage;
+      # it does not publish absolute numbers as a specification.
+      - name: Run gRPC comparison
+        run: |
+          ./benchmark/compare_grpc.sh 100000 5 \
+            | tee -a "$GITHUB_STEP_SUMMARY" | tee grpc_comparison.md
+
+      - name: Check gRPC comparison gates
+        run: python3 benchmark/check_grpc_comparison.py --results grpc_comparison.md
 
       - name: Stress run (1M requests, same-loop)
         run: |

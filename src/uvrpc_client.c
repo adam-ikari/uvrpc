@@ -16,6 +16,7 @@
 #include "uvbus_internal.h"
 #include "uvrpc_flatbuffers.h"
 #include "uvrpc_msgid.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -62,6 +63,14 @@ struct uvrpc_client {
     int max_concurrent;         /* Max concurrent requests */
     int current_concurrent;     /* Current pending request count */
     int timeout_ms;             /* Request deadline in ms; 0 = disabled */
+
+    /* Deadline sweep index. The ring defaults to 65536 slots, and scanning all
+     * of them on every call is far more expensive than the RPC itself. Keep the
+     * number of live deadlines and the earliest one, so a sweep is a constant
+     * time check unless a deadline has actually passed. UINT64_MAX means no
+     * live deadline; 0 means "unknown, run a validating scan". */
+    int sweep_active_deadlines;
+    uint64_t sweep_min_deadline_ms;
     /* Release count, not a free count. A connect attempt is asynchronous and
      * its callback carries this pointer, so the struct has to outlive a
      * uvrpc_client_free() issued while the attempt is still in flight -- which
@@ -80,6 +89,37 @@ struct uvrpc_client {
 static void cleanup_pending_callback(pending_callback_t* pending) {
     if (!pending) return;
     uvrpc_free(pending);
+}
+
+/* Slot bookkeeping for the deadline sweep index. Every path that takes or
+ * releases a pending slot goes through one of these, so the index cannot drift
+ * from the ring. A release of the earliest deadline leaves the minimum stale;
+ * 0 marks it unknown and the next sweep recomputes it. */
+static void pending_slot_take(uvrpc_client_t* client, uint32_t idx,
+                              pending_callback_t* pending) {
+    client->pending_callbacks[idx] = pending;
+    client->current_concurrent++;
+    if (pending->deadline_ms != 0) {
+        client->sweep_active_deadlines++;
+        if (pending->deadline_ms < client->sweep_min_deadline_ms) {
+            client->sweep_min_deadline_ms = pending->deadline_ms;
+        }
+    }
+}
+
+static void pending_slot_release(uvrpc_client_t* client, uint32_t idx,
+                                 pending_callback_t* pending) {
+    client->pending_callbacks[idx] = NULL;
+    if (client->current_concurrent > 0) client->current_concurrent--;
+    if (pending->deadline_ms != 0) {
+        if (client->sweep_active_deadlines > 0) client->sweep_active_deadlines--;
+        if (client->sweep_active_deadlines == 0) {
+            client->sweep_min_deadline_ms = UINT64_MAX;
+        } else if (pending->deadline_ms == client->sweep_min_deadline_ms) {
+            client->sweep_min_deadline_ms = 0;
+        }
+    }
+    cleanup_pending_callback(pending);
 }
 
 /* Monotonic milliseconds, same clock the async layer and uvasync use. Only
@@ -116,32 +156,52 @@ typedef struct expired_slot {
  */
 static void sweep_expired_pending(uvrpc_client_t* client) {
     if (client->timeout_ms <= 0) return;
+    if (client->sweep_active_deadlines == 0) return;
+
+    /* The ring is 65536 slots by default; scanning it without an expired
+     * deadline is the common case and was costing more than the RPC. The index
+     * is a lower bound: a stale entry can only cause an extra scan, never a
+     * missed timeout. */
+    uint64_t first_now = monotonic_ms();
+    if (client->sweep_min_deadline_ms != 0 &&
+        client->sweep_min_deadline_ms > first_now) {
+        return;
+    }
 
     expired_slot_t batch[UVRPC_SWEEP_BATCH];
 
     for (;;) {
         uint64_t now = monotonic_ms();
         int found = 0;
+        uint64_t next_min = UINT64_MAX;
+        int scan_complete = 1;
 
         for (int i = 0; i < client->max_pending_callbacks; i++) {
             pending_callback_t* pending = client->pending_callbacks[i];
-            if (!pending || pending->deadline_ms == 0 ||
-                pending->deadline_ms > now) {
+            if (!pending) continue;
+            if (pending->deadline_ms == 0) continue;
+            if (pending->deadline_ms > now) {
+                if (pending->deadline_ms < next_min) {
+                    next_min = pending->deadline_ms;
+                }
                 continue;
             }
 
-            client->pending_callbacks[i] = NULL;
-            if (client->current_concurrent > 0) {
-                client->current_concurrent--;
-            }
             batch[found].callback = pending->callback;
             batch[found].ctx = pending->ctx;
             batch[found].msgid = pending->msgid;
             found++;
-            cleanup_pending_callback(pending);
+            pending_slot_release(client, (uint32_t)i, pending);
 
-            if (found == UVRPC_SWEEP_BATCH) break;
+            if (found == UVRPC_SWEEP_BATCH) {
+                scan_complete = 0; /* rest of the ring was not examined */
+                break;
+            }
         }
+
+        /* An incomplete scan cannot claim a minimum; 0 forces a validating
+         * scan next time, which is still far cheaper than sweeping per call. */
+        client->sweep_min_deadline_ms = scan_complete ? next_min : 0;
 
         if (found == 0) return;
 
@@ -371,9 +431,7 @@ static void client_recv_callback(const uint8_t* data, size_t size, void* client_
          */
         if (frame_type == UVRPC_FRAME_TYPE_RESPONSE ||
             frame_type == UVRPC_FRAME_TYPE_RESPONSE_ERROR) {
-            client->pending_callbacks[idx] = NULL;
-            cleanup_pending_callback(pending);
-            client->current_concurrent--;
+            pending_slot_release(client, idx, pending);
         }    }
 
     /* NOTE: data is freed by the transport layer (uvbus_transport_tcp.c:181)
@@ -401,6 +459,8 @@ uvrpc_client_t* uvrpc_client_create(uvrpc_config_t* config) {
     client->max_concurrent = config->max_concurrent;
     client->current_concurrent = 0;
     client->timeout_ms = config->timeout_ms;
+    client->sweep_active_deadlines = 0;
+    client->sweep_min_deadline_ms = UINT64_MAX;
     client->ref_count = 1;
 
     /* Initialize ring buffer with runtime size */
@@ -723,8 +783,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
             uvrpc_free_encoded(req_data);
             return UVRPC_ERROR_CALLBACK_LIMIT;
         }
-        client->pending_callbacks[idx] = pending;
-        client->current_concurrent++;
+        pending_slot_take(client, idx, pending);
         slot_taken = 1;
     }
 
@@ -742,9 +801,7 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
              * already released the slot. */
             if (slot_taken && client->pending_callbacks[idx] &&
                 client->pending_callbacks[idx]->msgid == msgid) {
-                cleanup_pending_callback(client->pending_callbacks[idx]);
-                client->pending_callbacks[idx] = NULL;
-                client->current_concurrent--;
+                pending_slot_release(client, idx, client->pending_callbacks[idx]);
             }
             uvrpc_free_encoded(req_data);
 
@@ -929,8 +986,7 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
                                      : 0;
             pending->callback = callbacks[i];
             pending->ctx = contexts[i];
-            client->pending_callbacks[idx] = pending;
-            client->current_concurrent++;
+            pending_slot_take(client, idx, pending);
         }
 
         /* Send request */
@@ -942,9 +998,8 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
                 uint32_t idx = msgid & (client->max_pending_callbacks - 1);
                 if (callbacks[i] && client->pending_callbacks[idx] &&
                     client->pending_callbacks[idx]->msgid == msgid) {
-                    cleanup_pending_callback(client->pending_callbacks[idx]);
-                    client->pending_callbacks[idx] = NULL;
-                    client->current_concurrent--;
+                    pending_slot_release(client, idx,
+                                         client->pending_callbacks[idx]);
                 }
                 uvrpc_free_encoded(req_data);
                 return (send_err == UVBUS_ERROR_BUFFER_FULL) ? UVRPC_ERROR_TRANSPORT_BUSY

@@ -137,6 +137,47 @@ run summary 和 job log 里。没有硬件信息的数字应视为未经验证�
 延迟同时存在）。程序现在会在打印 UDP 数字之前先往 stderr 输出这段提示；除 loopback 外，
 这一行与 TCP 那一行不可比。
 
+## 与 gRPC 的性能对比
+
+两侧用同一套方法论：loopback TCP 上的顺序 ping-pong（一次只有一个请求在途）、8 字节 echo、1000 次预热不计入计时、每种采样 5 次 × 100k 取中位数。UVRPC 有两条路径：`perf_benchmark tcp`（回调泵，端口 16555）和 `uvrpc_sync_ping_pong`（阻塞 await，端口 16558）；gRPC 侧是 C++ `grpc_ping_pong`（同步 unary，端口 16557）。结构差异写进结论：gRPC core 自带线程池，UVRPC 是单线程单 loop；gRPC 多背一层 protobuf 与 gRPC/HTTP2 帧。不比进程内传输、流水线吞吐、TLS 或跨机调用。
+
+### 初测结论为什么被推翻
+
+最初两次会话（load 3.4–4.0）两侧都在 65–75 µs，差距 13%→2% 且样本区间重叠，当时结论是"同量级、无稳定顺序"。instruction profile 推翻了它：`sweep_expired_pending()` 占 96.9% 的指令——每次调用都全扫默认 65,536 个 pending 槽 reclaim 到期回调。改成常数时间的活期限索引后，同机交错 A/B 的中位延迟从 75.03 µs 降到 27.76 µs（-63%），超时语义不变（`call_timeout_test` 的负控在关掉 sweep 时报 4 项失败，修复后 ctest 206/206 通过）。
+
+### 用 gRPC 的调用方式测 UVRPC
+
+`uvrpc_client_call_async()` 阻塞调用线程、在调用方栈帧里内联驱动共享 loop，是 gRPC 同步 unary 的对等物。它单独成一个二进制，避免改掉 `perf_benchmark` 的基线与 CI 门禁。async block 的 deadline 覆盖整段而非单次调用，固定 5 秒会在 10 万次运行中途到期（返回 -5），因此按预热实测速率推导。
+
+一次干净会话（load 3.9，三行 spread ≤1.1x，5×100k）：
+
+| 方式 | 中位延迟 | 峰值 RSS | 对 gRPC |
+|---|---|---|---|
+| UVRPC 回调泵 | 24.68 µs | 2,676 KiB | 快 2.99x |
+| UVRPC 阻塞 await（gRPC 式） | 25.53 µs | 2,972 KiB | 快 2.89x |
+| gRPC 同步 unary | 73.74 µs | 11,684 KiB | — |
+
+内存侧还把默认 pending ring 从 65,536 槽（512 KiB）降到 1,024 槽（8 KiB）：交错 A/B 延迟 25.57 vs 26.21 µs（在主机噪声内），峰值 RSS 少约 508 KiB。提高 `max_concurrent` 超过约一千时要同步提高 ring，否则撞槽返回 `UVRPC_ERROR_CALLBACK_LIMIT`。
+
+### 构建与复现
+
+```bash
+sudo apt-get install -y libgrpc++-dev protobuf-compiler-grpc protobuf-compiler libprotobuf-dev
+cmake -S . -B build-grpc -DCMAKE_BUILD_TYPE=Release \
+  -DUVRPC_ALLOCATOR_DEFAULT=system -DUVRPC_DEBUG_LOGGING=OFF \
+  -DUVRPC_GRPC_BENCHMARK=ON
+cmake --build build-grpc -j$(nproc) --target perf_benchmark uvrpc_sync_ping_pong grpc_ping_pong
+./benchmark/compare_grpc.sh 100000 5
+```
+
+`UVRPC_GRPC_BENCHMARK` 默认 OFF，普通构建不需要 gRPC 工具链；pb 代码在 configure 时用 protoc + grpc_cpp_plugin 生成，不入库。
+
+### CI 门禁
+
+`Benchmark` 工作流装好工具链、用同一组 Release / system allocator / debug-OFF 标志构建三个二进制，跑 `compare_grpc.sh 100000 5` 并把表格写进 step summary。`benchmark/check_grpc_comparison.py` 在三行缺行、任一 spread > 2.0x、任一 UVRPC 中位延迟高于 gRPC、或任一 UVRPC 峰值 RSS 高于 gRPC 时失败。负控已验：缺 sync 行、把 sync 延迟改成 999 µs 都被拒。spread 超 2.0x 表示主机争用，要重跑而不是判回归。
+
+证据等级：本机实测，非 CI 基线；load 16、gRPC spread 3.6x 的那次不引用。详见 [英文页](/guide/benchmark#uvrpc-vs-grpc) 的原始样本。
+
 ## 故障排查
 
 ```bash

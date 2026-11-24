@@ -70,6 +70,8 @@ cd uvrpc
 > 必须连同主机一起读，否则视为未经验证。可用
 > `./dist/bin/perf_benchmark [requests] [transport]` 复现。
 
+**与 gRPC 的对比。** 同一台 5800H 主机上，UVRPC 的 loopback TCP 调用路径为 24.68 µs，gRPC 同步 unary 为 73.74 µs；峰值 RSS 分别为 2,676 KiB 与 11,684 KiB。用 gRPC 自己的阻塞调用方式测 UVRPC（`uvrpc_client_call_async`）得到 25.53 µs / 2,972 KiB —— 优势并非来自回调泵。Benchmark 工作流每次 push 都跑这组三方对比，并对样本质量与两项优势设门禁。主机、原始样本和构建步骤见 [gRPC 对比章节](/zh/guide/benchmark)。
+
 ::: warning 关于"吞吐量"
 上表"吞吐量"为顺序往返延迟的倒数（单请求在途），**非**流水线吞吐。
 运行 `./dist/bin/perf_benchmark [请求数] [传输]` 复现。

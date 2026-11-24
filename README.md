@@ -85,6 +85,17 @@ The ordering is stable across hosts; the absolute numbers are not.
 
 See [benchmark/](benchmark/) for the benchmark source and methodology.
 
+**gRPC comparison.** A C++ harness measures gRPC synchronous unary calls over
+loopback TCP with the same sequential, 8-byte echo workload. Replacing the
+per-call 65,536-slot deadline sweep with a constant-time index cut UVRPC's TCP
+median from 75.03 to 27.76 µs on one host (63%); in an interleaved session it
+measured 27.98 µs against gRPC's 72.04 µs (2.6x lower latency) with 4.4x lower
+peak RSS. Testing UVRPC with gRPC's own blocking-unary call style gives 25.53 µs
+vs 73.74 µs (2.89x), so the advantage does not depend on the callback pump.
+These are one-host measurements, not a CI baseline; the Benchmark workflow runs
+the same comparison and gates on sample quality and both advantages.
+Build steps, host details and raw samples are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
+
 ## 🎯 Examples
 
 ```c

@@ -144,6 +144,14 @@ on a GitHub Actions runner. Absolute numbers vary widely by host — see
 > five 100k-request runs -- read a number together with its host, or treat it as
 > unverified. Reproduce with `./dist/bin/perf_benchmark [requests] [transport]`.
 
+**gRPC comparison.** On one 5800H host, UVRPC's loopback TCP call path measured
+24.68 µs against gRPC's synchronous unary 73.74 µs, with peak RSS 2,676 KiB vs
+11,684 KiB. Testing UVRPC with gRPC's own blocking call style
+(`uvrpc_client_call_async`) gave 25.53 µs / 2,972 KiB — the advantage does not
+come from the callback pump. The `Benchmark` workflow runs the same three-way
+comparison on every push and gates on sample quality and both advantages. Host,
+raw samples and build steps are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
+
 ::: warning Throughput definition
 "Throughput" above is the reciprocal of sequential round-trip latency (one
 request in flight), **not** pipelined throughput. Reproduce with

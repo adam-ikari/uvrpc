@@ -86,10 +86,12 @@ typedef enum {
 
 /* Configuration constants */
 #ifndef UVRPC_DEFAULT_PENDING_CALLBACKS
-/* Default ring buffer size - must be a power of 2 for efficient modulo operation
- * Recommended values: 65536 (2^16), 262144 (2^18), 1048576 (2^20), 4194304 (2^22)
- * Default: 2^16 = 65,536 (balanced memory usage for typical workloads) */
-#define UVRPC_DEFAULT_PENDING_CALLBACKS (1 << 16)  /* 65,536 - must be power of 2 */
+/* Default ring buffer size - must be a power of 2 for efficient modulo operation.
+ * 1,024 slots = 8 KiB per client, about 10x the default concurrency cap of 100.
+ * Raise it with uvrpc_config_set_max_pending_callbacks() when you raise
+ * max_concurrent above roughly a thousand; the ring is a routing table, not a
+ * quota (see max_concurrent). */
+#define UVRPC_DEFAULT_PENDING_CALLBACKS (1 << 10)  /* 1,024 - must be power of 2 */
 #endif
 
 #ifndef UVRPC_MAX_PENDING_CALLBACKS

@@ -5,56 +5,31 @@ category: decision
 status: active
 tags: [performance, data-structure, client]
 created: "2026-09-28T17:08:39"
-updated: "2026-09-29T03:57:31"
+updated: "2026-11-24T15:15:46"
 ---
 
 <!-- compiled_truth -->
 客户端在途请求的回调路由用**数组直接寻址**，不用哈希表：`idx = msgid & (max_pending_callbacks - 1)`。决定于 `bee4207`（2026-02-14），是热路径上最直白的一次"用地址算术换查表"。
 
-## 结构与容量契约
+## 当前结构与容量
 
-```c
-typedef struct pending_callback {        /* src/uvrpc_client.c:40-52 */
-    uint32_t msgid;          /* 槽位复用，必须回读校验 */
-    uint32_t generation;     /* 防回绕 —— 见下方"未完成的 half-feature" */
-    uvrpc_callback_t callback;  void* ctx;
-    uint64_t last_activity;
-    char* method;  uv_timer_t poll_timer;  int is_polling;
-    uvrpc_client_t* client;
-} pending_callback_t;
+`pending_callback_t` 现在只有 `msgid / callback / ctx / deadline_ms`（旧的 generation / method / poll_timer / is_polling / last_activity / client 全部删除，见 timeline 2026-09-29 reversal；每在途条目 208B → 24B）。client 里 `pending_callback_t**` 每槽一个指针。
 
-pending_callback_t** pending_callbacks;  /* :69 —— 指针数组，槽位各自堆分配 */
-int max_pending_callbacks;               /* :70 —— 必须是 2 的幂 */
-uint32_t generation;                     /* :74 */
-```
+2 的幂**不是优化偏好，是正确性前提**：`& (n-1)` 取模只在 n 为 2 的幂时成立。`uvrpc_config_set_max_pending_callbacks()` 校验 `max_pending >= 64 && (n & (n-1)) == 0 && n <= UVRPC_MAX_PENDING_CALLBACKS`，不满足就静默回落到默认值。当前常量（`include/uvrpc.h`）：`UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<10`（1,024 槽 ≈ 8 KiB）、`UVRPC_MAX_PENDING_CALLBACKS = 1<<22`、`UVRPC_MAX_CONCURRENT_REQUESTS = 100`。
 
-2 的幂**不是优化偏好，是正确性前提**：`& (n-1)` 取模只在 n 为 2 的幂时成立。契约在 `src/uvrpc_config.c:105-115` 强制：`max_pending >= 64 && (n & (n-1)) == 0 && n <= UVRPC_MAX_PENDING_CALLBACKS`，不满足就**静默回落**为默认值。常量（`include/uvrpc.h:88-105`）：`UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16`（65,536）、`UVRPC_MAX_PENDING_CALLBACKS = 1<<22`、`UVRPC_MAX_CONCURRENT_REQUESTS = 100`。
-
-**已发现的文档错误**：`include/uvrpc.h:237` 的字段注释写 "(default: UVRPC_MAX_PENDING_CALLBACKS)"，而真实默认是 `UVRPC_DEFAULT_PENDING_CALLBACKS`（`src/uvrpc_config.c:29`）。两者差 64 倍。
+2026-11-24 默认从 `1<<16`（512 KiB）降到 `1<<10`：同机交错 A/B 中位延迟 25.57 vs 26.21 us（噪声内无差异），峰值 RSS 3,184 → 2,676 KiB。ring 是路由表不是配额：把 `max_concurrent` 提到约一千以上时要同步提高 ring，否则撞槽返回 `UVRPC_ERROR_CALLBACK_LIMIT`。实测与门禁见 [[pending-ring-size-balance]]。
 
 ## 为什么不是 uthash
 
-数组路径只有一次地址算术 + 一次指针解引用；uthash 需要哈希函数、桶游走、以及每次 `HASH_FIND` 的字符串/整数比较。更重要的是**这里不需要"任意 key 查找"**：msgid 由本地生成、连续递增、模运算天然铺满数组，所以 key→slot 是纯函数，不需要容器。回程同理：响应帧带 msgid，同一个公式定位同一个槽。
+数组路径只有一次地址算术 + 一次指针解引用；uthash 需要哈希函数、桶游走和每次 `HASH_FIND` 的比较。这里不需要"任意 key 查找"：msgid 本地连续递增，模运算天然铺满数组，key→slot 是纯函数。回程同理：响应帧带 msgid，同一公式定位同一槽。
 
 ## 冲突即"满"，不是"扩容"
 
-槽位被占且 `existing->generation == client->generation`（即有效在途条目）时，**不阻塞、不重试、不改用别的槽**，直接 `return UVRPC_ERROR_CALLBACK_LIMIT`（`src/uvrpc_client.c:548-556`）。含义有两层：
-1. 这是有意的 fail-fast —— 阻塞 event loop 违反 [[zero-threads-locks-globals]] 的模型。
-2. 由于取模，**"满"是假的**：两个 msgid 只要差值是容量的整数倍就撞同一槽。所以实际允许在途数远小于 `max_pending_callbacks`，65,536 只是上界不是配额。想精确限流靠 `max_concurrent` 那层，见 [[pending-buffer-as-concurrency-control]]。
-
-响应侧校验 `pending && pending->msgid == msgid && pending->generation == client->generation`（`:205`）：三个条件全过才回调，否则丢弃该帧（对 oneway 的"多余响应"正是这样被静默吸收的，见 [[minimal-rpcframe-schema]]）。
-
-## 未完成的 half-feature（勿当作已实现）
-
-`generation` 设计意图是检测 msgid 回绕后的陈旧槽位，但**实测从未递增**：唯一写点 `client->generation = 0`（`:286`），之后只被读（`:205`、`:548`）和拷贝（`pending->generation = client->generation`，`:534`）。所以"陈旧槽位替换"分支（`:548`）是不可达代码，回绕保护实际不存在。roadmap 切片 6 处理。
-
-批次路径另有两处与主路径不一致（`uvrpc_client_batch_call`，`:745-752`）：
-- 索引用 `% max_pending_callbacks` 而非 `& (n-1)` —— 容量为 2 的幂时等价，但它绕过了 bitmask 契约的表达；
-- **不设置 `pending->generation`**（calloc 后保持 0）。今天 `client->generation` 恒为 0 所以恰好正确；一旦切片 6 真的开始递增 generation，批次条目会被判为陈旧。修 generation 时必须同步这里。
+槽被占时**不阻塞、不重试、不改用别的槽**，直接 `return UVRPC_ERROR_CALLBACK_LIMIT`（fail-fast 符合 [[zero-threads-locks-globals]]）。取模让"满"成为假象：两个 msgid 只要差值是容量的整数倍就撞同一槽，ring 只是上界不是配额。精确限流靠 `max_concurrent`，见 [[pending-buffer-as-concurrency-control]]。
 
 ## uthash 并未离开项目
 
-"取代 uthash"仅限**客户端在途回调**这一条路径。uthash 仍在生产代码里用：`src/uvrpc_server.c:18,32,170,376,400`（method name → handler，`HASH_FIND_STR`/`HASH_ADD_STR`，且查找前有小写化）与 `src/uvrpc_idmap.c:7,52,64,81`（网关 msgid ↔ 本地 msgid 映射，`HASH_ADD_INT`/`HASH_FIND_INT`）。这两处都是"键不在本地控制下、容量不可预知"的映射，正是哈希表该待的地方。**文档若写"UVRPC 不用 uthash"或"uthash 是必需依赖"都是片面的**（`docs/guide/design-philosophy.md:392` 与 `:152,639` 自相矛盾）。
+"取代 uthash"仅限客户端在途回调这一条路径。uthash 仍用于 `src/uvrpc_server.c`（method name → handler）和 `src/uvrpc_idmap.c`（网关 msgid ↔ 本地 msgid）。这两处键不在本地控制下、容量不可预知，正是哈希表该待的地方。文档若写"UVRPC 不用 uthash"或"uthash 是必需依赖"都片面。
 
 
 ## Timeline
@@ -82,3 +57,15 @@ uint32_t generation;                     /* :74 */
   summary: "条目字段被裁到只剩路由需要的三个：generation / method / poll_timer / is_polling / last_activity / client 全部删除（从未有读取点）。208B → 24B 每在途请求，内嵌 uv_timer_t 消失，于是'把 poll_timer 移走才能到 24B'这条建议直接实现了。附带效果：顺序 ping-pong 的 INPROC 往返从 ~23 µs 降到 ~2.5 µs（同一容器、空载），说明每请求 208B calloc 与 timer 字段触碰不是免费的"
   source: "2026-09-29 实施：sizeof 探针重测 pending_callback_t=24B；105/105 ctest + quota 单测通过"
   affects: [ring-buffer-over-uthash]
+
+- time: 2026-11-24T15:15:46
+  kind: decision
+  summary: "同步已删除的字段与 1<<10 新默认；记录内存/延迟平衡实测"
+  source: "2026-11-24 include/uvrpc.h + interleaved A/B"
+  affects: [ring-buffer-over-uthash]
+
+- time: 2026-11-24T15:15:46
+  kind: evidence
+  summary: "默认 ring 1<<16→1<<10：交错 A/B 延迟 25.57 vs 26.21 us（噪声内），峰值 RSS 3,184→2,676 KiB"
+  source: "2026-11-24 include/uvrpc.h + 5 对交错 A/B"
+  affects: [deadline-sweep-index, pending-ring-size-balance]

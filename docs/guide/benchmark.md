@@ -172,6 +172,149 @@ it says nothing about a real network, where loss and latency both apply. The
 program now prints that caveat to stderr before the UDP numbers, and the
 figure is not comparable with the TCP row on anything but loopback.
 
+## UVRPC vs gRPC
+
+A runnable C++ gRPC harness measures the same workload as `perf_benchmark` so
+the two can be compared on one host in one session.
+
+### What is compared — and what is not
+
+| | UVRPC side | gRPC side |
+|---|---|---|
+| Program | `perf_benchmark tcp` / `uvrpc_sync_ping_pong` | `grpc_ping_pong` |
+| Call shape | callback pump, or blocking `uvrpc_client_call_async()` | synchronous unary call, wait for its response, next |
+| Requests in flight | exactly one | exactly one |
+| Payload | 8 raw bytes in an RPC frame | 8 bytes in a `bytes` field, plus protobuf and gRPC/HTTP2 framing |
+| Transport | loopback TCP, port 16555 | loopback TCP, port 16557 |
+| Warmup | 1000 requests, excluded | 1000 requests, excluded |
+| Sampling | 5 runs of 100k, median | 5 runs of 100k, median |
+
+Not compared: INPROC and SAMELOOP (gRPC has no in-process transport), pipelined
+or concurrent throughput, TLS (both sides use plaintext loopback), or
+multi-process / cross-machine calls. The structural differences are part of the
+number, not hidden: gRPC core runs its own threads while UVRPC uses one libuv
+loop, and gRPC carries protobuf plus HTTP2 framing that UVRPC does not. This is
+a comparison of each library's default call path, not of pure serialization
+cost.
+
+### Running it
+
+On Ubuntu 22.04 the toolchain is packaged:
+
+```bash
+sudo apt-get install -y libgrpc++-dev protobuf-compiler-grpc protobuf-compiler libprotobuf-dev
+
+cmake -S . -B build-grpc \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DUVRPC_ALLOCATOR_DEFAULT=system \
+  -DUVRPC_DEBUG_LOGGING=OFF \
+  -DUVRPC_GRPC_BENCHMARK=ON
+cmake --build build-grpc -j$(nproc) --target perf_benchmark grpc_ping_pong
+
+./benchmark/compare_grpc.sh 100000 5
+```
+
+`UVRPC_GRPC_BENCHMARK` defaults to `OFF`, so a normal build does not need a
+gRPC toolchain. The gRPC C++ stubs are generated from
+[`benchmark/grpc_proto/echo.proto`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/grpc_proto/echo.proto)
+at build time; no generated code is committed. Source:
+[`benchmark/grpc_ping_pong.cc`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/grpc_ping_pong.cc),
+[`benchmark/compare_grpc.sh`](https://github.com/adam-ikari/uvrpc/blob/main/benchmark/compare_grpc.sh).
+
+### Why the earlier conclusion was overturned
+
+The first two sessions on this host (load 3.4–4.0) put both libraries at 65–75 µs
+with no stable ordering, and that was the published conclusion. An instruction
+profile of the same workload invalidated it: `sweep_expired_pending()` accounted
+for **96.9% of all instructions**. It scanned the whole pending-callback ring —
+65,536 slots by default — on every call to reclaim expired deadlines, even when
+nothing had expired. Disabling the sweep in a throwaway build dropped the same
+run from ~70 µs to ~24 µs.
+
+The fix keeps a count of live deadlines and the earliest one on the client. The
+full ring scan now runs only when a deadline has actually passed; inserting and
+releasing a slot update the index in constant time. Timeout reclamation is
+unchanged — see the verification note below. These are new numbers, not a
+reinterpretation of the old ones.
+
+### Measured after the fix
+
+Host for all rows below: `sandbox-001`, Linux 6.17.13-2-pve, AMD Ryzen 7 5800H
+(12 cores, 24 GiB), `performance` governor. Release `-O2`, system allocator,
+debug logging OFF, gRPC C++ 1.30.2 / protobuf 3.12.4, 8-byte payload.
+
+**Optimization A/B** — five interleaved pairs, old and new binaries from the
+same source tree, 100k requests per run, load ~13.5:
+
+| Pair | Before | After |
+|---|---|---|
+| 1 | 76.94 µs | 27.75 µs |
+| 2 | 75.03 µs | 27.76 µs |
+| 3 | 74.98 µs | 27.57 µs |
+| 4 | 73.28 µs | 26.98 µs |
+| 5 | 173.01 µs | 56.37 µs |
+
+Medians 75.03 µs → 27.76 µs, a **63% reduction**. Pair 5 was a load spike on
+both sides; the ratio still held.
+
+**UVRPC vs gRPC after the fix** — five interleaved pairs in one session, load
+~10.9:
+
+| Side | Samples (µs) | Median | gRPC ÷ UVRPC |
+|---|---|---|---|
+| UVRPC TCP | 28.41 27.98 28.31 27.37 26.86 | 27.98 µs | — |
+| gRPC sync unary | 73.92 72.84 71.48 72.04 71.94 | 72.04 µs | 2.57x |
+
+### UVRPC tested with gRPC's call style
+
+`uvrpc_sync_ping_pong` replaces the
+callback pump with `uvrpc_client_call_async()`, which blocks the calling thread
+and runs the shared loop inline. That is the UVRPC counterpart of gRPC's
+synchronous unary client, so the two sides now use the same call shape. One
+clean 5×100k session (load 3.9, all spreads ≤1.1x):
+
+| Side | Samples (µs) | Median | Peak RSS | vs gRPC latency |
+|---|---|---|---|---|
+| UVRPC callback pump | 24.80 24.76 24.32 24.68 24.50 | 24.68 µs | 2,676 KiB | 2.99x faster |
+| UVRPC blocking await | 24.84 24.45 25.53 25.88 26.30 | 25.53 µs | 2,972 KiB | 2.89x faster |
+| gRPC sync unary | 73.29 72.28 73.74 75.18 75.09 | 73.74 µs | 11,684 KiB | — |
+
+The blocking-await binary is separate on purpose: changing `perf_benchmark`'s
+pump would invalidate the transport baseline and the CI gate built on it. Its
+async block deadline is derived from the measured warmup rate — a fixed 5 s
+block expires partway through a 100k-request run, which is why the first version
+of this harness timed out. The extra ~300 KiB over the callback binary is the
+async context and copied results, still 3.9x below gRPC.
+
+**Memory**, peak RSS (`VmHWM`) of the whole process during a full run, gRPC's
+worker threads included: UVRPC callback 2,676 KiB / blocking 2,972 KiB vs gRPC
+11,684 KiB — 4.4x / 3.9x lower. This is after reducing the default pending ring
+from 65,536 to 1,024 slots; a separate A/B found no latency difference (25.57 vs
+26.21 µs median, within host noise) and 508 KiB less RSS. Reproduce with
+`benchmark/compare_grpc.sh`, which prints all three rows, spreads, raw samples
+and peak RSS, and warns when a spread exceeds 2.0x.
+
+### CI gate
+
+The `Benchmark` workflow installs the gRPC C++ toolchain, builds all three
+binaries with the same Release/system-allocator/logging-OFF flags, runs
+`benchmark/compare_grpc.sh 100000 5` and writes the table to the step summary.
+`benchmark/check_grpc_comparison.py` then fails the job when any of the three
+rows is missing, any sample spread exceeds 2.0x, either UVRPC median is above
+gRPC's, or either UVRPC peak RSS is above gRPC's. It is a relative gate on one
+runner, not a
+published specification; a red gate from a >2.0x spread means the host was
+contended and the run must be repeated, not that the library regressed.
+
+**Evidence level: measured here, one host, interleaved sessions, not a CI
+baseline.** The A/B and the UVRPC/gRPC comparison each alternated binaries
+within one session, so host drift affects both sides. A separate contended run
+(load 16, gRPC spread 3.6x) is *not* quoted here; that spread fails the same
+2.0x rule the CI gate uses. Correctness checks: `call_timeout_test` reports 4
+failures when the sweep is disabled (negative control), and 206/206 tests pass
+with the fix. Re-run on the hardware you intend to deploy on; absolute numbers
+are a property of this sandbox, which is virtualized and shared.
+
 ## Troubleshooting
 
 ```bash
