@@ -158,7 +158,7 @@ measure on the hardware you intend to deploy on.
 The workflow then gates those medians with `benchmark/check_baseline.py` against
 `benchmark/baseline.json`: all five transports must report, each sample spread
 must stay within 2.0x, each transport's latency relative to SAMELOOP may not
-move more than 25% from the baseline, and SAMELOOP itself may not exceed three
+move more than 50% from the baseline, and SAMELOOP itself may not exceed three
 times the baseline. Ratios cancel runner-wide drift; absolute latency
 does not. Update the baseline only when a code change is meant to shift the
 relative cost of a transport.

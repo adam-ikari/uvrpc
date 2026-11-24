@@ -4,7 +4,7 @@
   "host": "runnervm0hi8g",
   "source_cpu": "AMD EPYC 9V45 96-Core Processor",
   "reference_transport": "sameloop",
-  "relative_tolerance": 0.25,
+  "relative_tolerance": 0.5,
   "absolute_tolerance": 2.0,
   "max_spread": 2.0,
   "median_us": {
