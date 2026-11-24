@@ -155,6 +155,14 @@ the host it measured on — in the run summary and in the job log. A number
 quoted without that host should be treated as unverified. For capacity planning,
 measure on the hardware you intend to deploy on.
 
+The workflow then gates those medians with `benchmark/check_baseline.py` against
+`benchmark/baseline.json`: all five transports must report, each sample spread
+must stay within 2.0x, each transport's latency relative to SAMELOOP may not
+move more than 20% from the baseline, and SAMELOOP itself may not exceed the
+baseline by more than 50%. Ratios cancel runner-wide drift; absolute latency
+does not. Update the baseline only when a code change is meant to shift the
+relative cost of a transport.
+
 **The UDP row is a loopback figure and nothing more.** The benchmark is
 sequential ping-pong with exactly one request in flight, and the library does
 not retransmit: a dropped datagram means the response never arrives, the stall

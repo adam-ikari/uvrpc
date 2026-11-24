@@ -1,0 +1,16 @@
+{
+  "source_run": "44849793228",
+  "head_sha": "0d46b13",
+  "host": "runnervm0hi8g",
+  "reference_transport": "sameloop",
+  "relative_tolerance": 0.2,
+  "absolute_tolerance": 0.5,
+  "max_spread": 2.0,
+  "median_us": {
+    "sameloop": 15.84,
+    "inproc": 15.63,
+    "ipc": 24.23,
+    "udp": 31.13,
+    "tcp": 30.74
+  }
+}

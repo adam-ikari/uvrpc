@@ -95,7 +95,12 @@ jobs:
               echo "| $t | $med us | $thr req/s | $lo us | $hi us | $spread |"
               echo "    samples(us): $(tr '\n' ' ' < /tmp/lat.$t)"
             done
-          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" | tee benchmark_results.md
+
+      # Absolute latency follows the runner, so this gates on ratios to the
+      # reference transport plus a loose ceiling for a global collapse.
+      - name: Check benchmark gates
+        run: python3 benchmark/check_baseline.py --results benchmark_results.md --baseline benchmark/baseline.json
 
       - name: Stress run (1M requests, same-loop)
         run: |
