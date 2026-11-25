@@ -239,7 +239,7 @@ struct uvrpc_config {
     uvbus_loop_registry_t* registry;     /**< @brief Registry shared by INPROC/SAMELOOP peers (required for those two; see uvrpc_config_set_loop_registry) */
     int max_concurrent;                  /**< @brief Max concurrent requests (default: UVRPC_MAX_CONCURRENT_REQUESTS) */
     int timeout_ms;                      /**< @brief Deadline for a request whose response never arrives, in ms (default: UVRPC_DEFAULT_TIMEOUT_MS; 0 disables it) */
-    int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<16; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
+    int max_pending_callbacks;           /**< @brief Callback routing table slots (default: UVRPC_DEFAULT_PENDING_CALLBACKS = 1<<10; must be a power of 2 in [64, UVRPC_MAX_PENDING_CALLBACKS]) */
     uint32_t msgid_offset;               /**< @brief Message ID offset for multi-instance isolation (default: 0 = auto) */
     int max_clients;                     /**< @brief Ceiling on clients that have spoken, not on sockets (0 or less falls back to 1024; it does not mean unlimited). Every transport also caps connections by itself, at a number this does not set: see uvrpc_config_set_max_clients() */
 };

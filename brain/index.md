@@ -1,12 +1,13 @@
 # Brain Index
 
-_Auto-generated. Last updated 2026-11-25T07:51:39.696Z._
+_Auto-generated. Last updated 2026-11-25T08:36:14.578Z._
 
 - [a-client-must-be-told-its-connection-died](pages/a-client-must-be-told-its-connection-died.md) — category: decision | tags: [client, transport, uvbus, lifecycle, error-reporting] | ## 约束
 - [blocking-await-runs-the-loop-inline](pages/blocking-await-runs-the-loop-inline.md) — category: decision | tags: [async, event-loop, libuv, memory-safety, transport-invariance] | ## 契约
 - [build-distribution-breakage](pages/build-distribution-breakage.md) — category: decision | tags: [build, ci, submodules] | ## 断点根因（2026-09-28 切片1）
 - [callback-hold-refunded-on-synchronous-refusal](pages/callback-hold-refunded-on-synchronous-refusal.md) — category: decision | tags: [lifetime, refcount, async, client, uvbus] | ## 约束
 - [callback-must-not-lend-borrowed-storage](pages/callback-must-not-lend-borrowed-storage.md) — category: decision | tags: [libuv, transport, udp, lifetime, api-design, identity] | ## 约束
+- [ci-full-archive-link-gate](pages/ci-full-archive-link-gate.md) — category: decision | tags: [ci, release, quality] | ## 盲区与判据
 - [codegen-shape-matrix](pages/codegen-shape-matrix.md) — category: decision | tags: [codegen, dsl, flatcc, testing] | 生成模板是按形状分支展开的（标量数组 / 字符串向量 / 表数组 × 请求 / 响应 × _sync / _all / _any / 批量），任何一支没有 schema 实例化，它就只是"写出来但从未编译过"的文本。
 - [deadline-sweep-index](pages/deadline-sweep-index.md) — category: decision | tags: [client, timeout, performance] | ## 问题与判据
 - [embedded-handle-must-outlive-close](pages/embedded-handle-must-outlive-close.md) — category: decision | tags: [libuv, memory-safety, teardown, valgrind, transport] | ## 约束

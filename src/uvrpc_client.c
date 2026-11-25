@@ -64,7 +64,7 @@ struct uvrpc_client {
     int current_concurrent;     /* Current pending request count */
     int timeout_ms;             /* Request deadline in ms; 0 = disabled */
 
-    /* Deadline sweep index. The ring defaults to 65536 slots, and scanning all
+    /* Deadline sweep index. The ring defaults to 1024 slots, and scanning all
      * of them on every call is far more expensive than the RPC itself. Keep the
      * number of live deadlines and the earliest one, so a sweep is a constant
      * time check unless a deadline has actually passed. UINT64_MAX means no
@@ -158,10 +158,10 @@ static void sweep_expired_pending(uvrpc_client_t* client) {
     if (client->timeout_ms <= 0) return;
     if (client->sweep_active_deadlines == 0) return;
 
-    /* The ring is 65536 slots by default; scanning it without an expired
-     * deadline is the common case and was costing more than the RPC. The index
-     * is a lower bound: a stale entry can only cause an extra scan, never a
-     * missed timeout. */
+    /* The ring is 1024 slots by default (it was 65536 before 2026-11-24);
+     * scanning it without an expired deadline is the common case and was
+     * costing more than the RPC. The index is a lower bound: a stale entry
+     * can only cause an extra scan, never a missed timeout. */
     uint64_t first_now = monotonic_ms();
     if (client->sweep_min_deadline_ms != 0 &&
         client->sweep_min_deadline_ms > first_now) {
