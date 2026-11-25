@@ -58,23 +58,34 @@ def parse_results(path):
 
 
 def record_cpu(directory, cpu, host, medians):
-    """Keep a new CPU's numbers. This is a record, never a gate input."""
+    """Keep a new CPU's numbers. This is a record, never a gate input.
+
+    Deduplicate on the CPU identity, not on a filename slug: two filenames can
+    describe the same CPU (an earlier run wrote amd-epyc-7763.json with
+    source_cpu, a later one would generate amd-epyc-7763-64-core-processor.json
+    with cpu). Both field names are checked so old records still dedupe.
+    """
     if not cpu:
         return None
+    os.makedirs(directory, exist_ok=True)
+    for name in os.listdir(directory):
+        if not name.endswith(".json"):
+            continue
+        with open(os.path.join(directory, name), encoding="utf-8") as handle:
+            existing = json.load(handle)
+        if cpu in (existing.get("cpu"), existing.get("source_cpu")):
+            return None
     slug = re.sub(r"[^a-z0-9]+", "-", cpu.lower()).strip("-")
     path = os.path.join(directory, slug + ".json")
     entry = {
-        "cpu": cpu,
+        "source_cpu": cpu,
         "host": host,
         "median_us": {name: medians[name] for name in TRANSPORTS if name in medians},
     }
-    os.makedirs(directory, exist_ok=True)
-    if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump(entry, handle, indent=2)
-            handle.write("\n")
-        return path
-    return None
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(entry, handle, indent=2)
+        handle.write("\n")
+    return path
 
 
 def check(medians, spreads, baseline):

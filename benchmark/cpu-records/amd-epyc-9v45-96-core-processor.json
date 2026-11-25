@@ -1,5 +1,5 @@
 {
-  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "source_cpu": "AMD EPYC 9V45 96-Core Processor",
   "host": "runnervm0hi8g",
   "median_us": {
     "sameloop": 0.5,
