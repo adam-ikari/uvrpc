@@ -288,7 +288,8 @@ jobs:
             return 0;
           }
           EOF
-          cc -Iinclude -o /tmp/full_archive_smoke /tmp/full_archive_smoke.c \
+          cc -Iinclude -Ideps/libuv/include -Ideps/flatcc/include \
+            -o /tmp/full_archive_smoke /tmp/full_archive_smoke.c \
             dist/lib/libuvrpc_full.a -lpthread -lm -lrt -ldl
           /tmp/full_archive_smoke | grep -q 'Operation timed out|mimalloc' \
             || { echo "::error::full archive smoke output unexpected"; exit 1; }
