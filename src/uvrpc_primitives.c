@@ -56,7 +56,7 @@ int uvrpc_promise_init(uvrpc_promise_t* promise, uv_loop_t* loop) {
     
     int ret = uv_async_init(loop, &promise->async_handle, promise_async_callback);
     if (ret != 0) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     promise->async_handle.data = promise;
     uv_unref((uv_handle_t*)&promise->async_handle); /* Don't prevent loop exit */
@@ -404,7 +404,7 @@ int uvrpc_semaphore_init(uvrpc_semaphore_t* semaphore, uv_loop_t* loop, int perm
 
     int ret = uv_async_init(loop, &semaphore->async_handle, semaphore_async_callback);
     if (ret != 0) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     semaphore->async_handle.data = semaphore;
     uv_unref((uv_handle_t*)&semaphore->async_handle);
@@ -545,7 +545,7 @@ int uvrpc_waitgroup_init(uvrpc_waitgroup_t* wg, uv_loop_t* loop) {
     
     int ret = uv_async_init(loop, &wg->async_handle, waitgroup_async_callback);
     if (ret != 0) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     wg->async_handle.data = wg;
     uv_unref((uv_handle_t*)&wg->async_handle);

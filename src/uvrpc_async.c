@@ -277,7 +277,7 @@ int uvrpc_async_exec(uvrpc_async_ctx_t* ctx, uint64_t timeout_ms) {
                 uvrpc_free(ctx->timeout_timer);
                 ctx->timeout_timer = NULL;
                 ctx->is_running = 0;
-                return UVRPC_ERROR;
+                return UVRPC_ERROR_IO;
             }
             ctx->timeout_timer->data = ctx;
         } else {
@@ -298,7 +298,7 @@ int uvrpc_client_call_async(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
     }
     
     if (!ctx->is_running) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_INVALID_STATE;
     }
     
     /* Find free slot for result */
@@ -837,7 +837,7 @@ int uvrpc_async_timeout(uvrpc_async_ctx_t* ctx, uvrpc_client_t* client,
             if (uv_timer_init(ctx->loop, ctx->timeout_timer) != 0) {
                 uvrpc_free(ctx->timeout_timer);
                 ctx->timeout_timer = NULL;
-                return UVRPC_ERROR;
+                return UVRPC_ERROR_IO;
             }
             ctx->timeout_timer->data = ctx;
         } else {

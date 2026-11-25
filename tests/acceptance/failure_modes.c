@@ -43,6 +43,8 @@
 #include <uv.h>
 
 #include "uvrpc.h"
+#include "uvrpc_async.h"
+#include "uvrpc_flatbuffers.h"
 #include "../free_port.h"
 
 #define DRAIN_MS 400
@@ -241,6 +243,65 @@ static void case_failure_releases_the_slot(uv_loop_t* loop, uv_timer_t* timer) {
     tear_down(loop, timer, &p);
 }
 
+/* Local API failures must carry a code the caller can act on. A bare
+ * UVRPC_ERROR used to flatten all three of these into "something went wrong",
+ * even though the enum already has a precise value for each. */
+static void case_local_error_codes(uv_loop_t* loop) {
+    uvrpc_config_t* sconfig = uvrpc_config_new();
+    uvrpc_config_set_loop(sconfig, loop);
+    uvrpc_config_set_transport(sconfig, UVBUS_TRANSPORT_SAMELOOP);
+    uvrpc_config_set_address(sconfig, "sameloop://failure_modes");
+    uvbus_loop_registry_t* registry = uvbus_loop_registry_new();
+    uvrpc_config_set_loop_registry(sconfig, registry);
+
+    uvrpc_server_t* server = uvrpc_server_create(sconfig);
+    check(server != NULL, "server created for error-code checks");
+    if (server) {
+        check(uvrpc_server_register(server, "echo", echo_handler, NULL) == UVRPC_OK,
+              "first registration succeeds");
+        check(uvrpc_server_register(server, "echo", echo_handler, NULL) ==
+                  UVRPC_ERROR_ALREADY_EXISTS,
+              "duplicate registration reports ALREADY_EXISTS");
+        uvrpc_server_stop(server);
+        uvrpc_server_free(server);
+    }
+
+    uvrpc_async_ctx_t* ctx = uvrpc_async_ctx_new(loop);
+    check(ctx != NULL, "async context created");
+    uvrpc_config_t* cconfig = uvrpc_config_new();
+    uvrpc_config_set_loop(cconfig, loop);
+    uvrpc_config_set_transport(cconfig, UVBUS_TRANSPORT_SAMELOOP);
+    uvrpc_config_set_address(cconfig, "sameloop://failure_modes");
+    uvrpc_config_set_loop_registry(cconfig, registry);
+    uvrpc_client_t* client = uvrpc_client_create(cconfig);
+    check(client != NULL, "client created for error-code checks");
+    if (ctx && client) {
+        uint8_t payload[1] = {0};
+        uvrpc_async_result_t* result = NULL;
+        check(uvrpc_client_call_async(ctx, NULL, "echo", payload, 1, &result) ==
+                  UVRPC_ERROR_INVALID_PARAM,
+              "a NULL client is rejected as INVALID_PARAM");
+        /* The context exists but no UVRPC_ASYNC block was entered. */
+        check(uvrpc_client_call_async(ctx, client, "echo", payload, 1, &result) ==
+                  UVRPC_ERROR_INVALID_STATE,
+              "a call outside an async block reports INVALID_STATE");
+    }
+    if (client) uvrpc_client_free(client);
+    if (ctx) uvrpc_async_ctx_free(ctx);
+    uvrpc_config_free(cconfig);
+
+    uint32_t msgid = 0;
+    char* method = NULL;
+    const uint8_t* params = NULL;
+    size_t params_size = 0;
+    const uint8_t bad_frame[2] = {0, 0};
+    check(uvrpc_decode_request(bad_frame, sizeof(bad_frame), &msgid, &method,
+                               &params, &params_size) == UVRPC_ERROR_INVALID_PARAM,
+          "an undecodable frame reports INVALID_PARAM");
+    uvrpc_config_free(sconfig);
+    uvbus_loop_registry_free(registry);
+}
+
 int main(void) {
     uv_loop_t loop = {0};
     uv_loop_init(&loop);
@@ -253,6 +314,7 @@ int main(void) {
     uv_timer_start(&watchdog, watchdog_cb, WATCHDOG_MS, 0);
     uv_unref((uv_handle_t*)&watchdog);
 
+    case_local_error_codes(&loop);
     case_unknown_method(&loop, &timer);
     case_empty_method(&loop, &timer);
     case_failure_releases_the_slot(&loop, &timer);

@@ -68,7 +68,7 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
 
     if (start_frame(&builder) != 0) {
         flatcc_builder_clear(&builder);
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
@@ -103,7 +103,7 @@ static int encode_response_typed(uint32_t msgid, const uint8_t* result,
 
     if (start_frame(&builder) != 0) {
         flatcc_builder_clear(&builder);
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
@@ -166,7 +166,7 @@ int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t res
 
     if (start_frame(&builder) != 0) {
         flatcc_builder_clear(&builder);
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_IO;
     }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
@@ -219,7 +219,7 @@ int uvrpc_decode_request(const uint8_t* data, size_t size,
     uvrpc_RpcFrame_table_t frame = verified_root(data, size);
 
     if (!frame) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_INVALID_PARAM;
     }
 
     *out_msgid = uvrpc_RpcFrame_msgid(frame);
@@ -257,7 +257,7 @@ int uvrpc_decode_response(const uint8_t* data, size_t size,
     uvrpc_RpcFrame_table_t frame = verified_root(data, size);
     
     if (!frame) {
-        return UVRPC_ERROR;
+        return UVRPC_ERROR_INVALID_PARAM;
     }
     
     *out_msgid = uvrpc_RpcFrame_msgid(frame);

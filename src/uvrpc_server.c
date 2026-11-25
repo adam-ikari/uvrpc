@@ -424,7 +424,7 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
     handler_entry_t* entry = NULL;
     HASH_FIND_STR(server->handlers, method, entry);
     if (entry) {
-        return UVRPC_ERROR; /* Handler already registered */
+        return UVRPC_ERROR_ALREADY_EXISTS;
     }
     
     /* Create new entry */

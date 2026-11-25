@@ -736,10 +736,11 @@ static int uvrpc_client_call_no_retry_internal(uvrpc_client_t* client, const cha
     uint8_t* req_data = NULL;
     size_t req_size = 0;
     
-    if (uvrpc_encode_request(msgid, method, params, params_size,
-                              &req_data, &req_size) != UVRPC_OK) {
-        UVRPC_LOG("Failed to encode request");
-        return UVRPC_ERROR;
+    int encode_status = uvrpc_encode_request(msgid, method, params, params_size,
+                                              &req_data, &req_size);
+    if (encode_status != UVRPC_OK) {
+        UVRPC_LOG("Failed to encode request: %d", encode_status);
+        return encode_status;
     }
     
     UVRPC_LOG("Encoded request: %zu bytes", req_size);
@@ -872,9 +873,10 @@ int uvrpc_client_call_oneway(uvrpc_client_t* client, const char* method,
     uint8_t* req_data = NULL;
     size_t req_size = 0;
     
-    if (uvrpc_encode_request(msgid, method, params, params_size,
-                              &req_data, &req_size) != UVRPC_OK) {
-        return UVRPC_ERROR;
+    int encode_status = uvrpc_encode_request(msgid, method, params, params_size,
+                                              &req_data, &req_size);
+    if (encode_status != UVRPC_OK) {
+        return encode_status;
     }
     
     /* Send immediately */
@@ -959,9 +961,10 @@ int uvrpc_client_call_batch(uvrpc_client_t* client,
         uint8_t* req_data = NULL;
         size_t req_size = 0;
 
-        if (uvrpc_encode_request(msgid, methods[i], params_array[i], params_sizes[i],
-                                  &req_data, &req_size) != UVRPC_OK) {
-            return UVRPC_ERROR;
+        int encode_status = uvrpc_encode_request(msgid, methods[i], params_array[i],
+                                                  params_sizes[i], &req_data, &req_size);
+        if (encode_status != UVRPC_OK) {
+            return encode_status;
         }
 
         /* Register callback */
