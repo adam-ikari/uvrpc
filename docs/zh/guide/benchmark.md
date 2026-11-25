@@ -174,7 +174,13 @@ cmake --build build-grpc -j$(nproc) --target perf_benchmark uvrpc_sync_ping_pong
 
 ### CI 门禁
 
-`Benchmark` 工作流装好工具链、用同一组 Release / system allocator / debug-OFF 标志构建三个二进制，跑 `compare_grpc.sh 100000 5` 并把表格写进 step summary。`benchmark/check_grpc_comparison.py` 在三行缺行、任一 spread > 2.0x、任一 UVRPC 中位延迟高于 gRPC、或任一 UVRPC 峰值 RSS 高于 gRPC 时失败。负控已验：缺 sync 行、把 sync 延迟改成 999 µs 都被拒。spread 超 2.0x 表示主机争用，要重跑而不是判回归。
+`Benchmark` 工作流有两道门禁，都只判相对量，不发布绝对数字。
+
+**传输基线门禁**：`benchmark/check_baseline.py` 读单一 `benchmark/baseline.json`，只比**同族比值** —— INPROC/SAMELOOP（进程内族）、IPC/TCP 与 UDP/TCP（socket 族），容差 50%；五条传输都要有结果、spread ≤ 2.0x、SAMELOOP 绝对延迟低于 100 µs 的全局上界。跨族比值（SAMELOOP/TCP）**不进门禁**，只打印作参考：它是硬件属性，不是库属性。三次 CI run（EPYC 7763 / Xeon 6975P-C / EPYC 9V45）的同族比值分别落在 0.989–1.020、0.564–0.598、1.023–1.104，跨族却在 0.033–0.104。新 CPU 不阻塞 CI，medians 自动记入 `benchmark/cpu-records/` 留档，不参与判定。
+
+之前把每条传输都跟 SAMELOOP 比，runner 一换 CPU 就误报回归：所有传输同向变化、代码没动，IPC/UDP/TCP 对 SAMELOOP 的比值却偏了 53–56%。按 CPU 各存一份 baseline 能消除误报，但滚动的 `ubuntu-latest` 标签会不断冒出新 CPU，每出一种就得补一份文件。同族比值一份参考就够，仍能抓住单条传输的回归（TCP 改成 60 µs 会让 IPC/TCP 偏 66.5% 而被拒）。代价是整个 socket 族一起变慢时同族比值看不出来 —— 这是"测库而非测机器"换来的，写在这里留痕。
+
+**gRPC 对比门禁**：工作流用同一组 Release / system allocator / debug-OFF 标志构建三个二进制，跑 `compare_grpc.sh 100000 5` 并把表格写进 step summary。`benchmark/check_grpc_comparison.py` 在三行缺行、任一 spread > 2.0x、任一 UVRPC 中位延迟高于 gRPC、或任一 UVRPC 峰值 RSS 高于 gRPC 时失败。负控已验：缺 sync 行、把 sync 延迟改成 999 µs 都被拒。spread 超 2.0x 表示主机争用，要重跑而不是判回归。
 
 证据等级：本机实测，非 CI 基线；load 16、gRPC spread 3.6x 的那次不引用。详见 [英文页](/guide/benchmark#uvrpc-vs-grpc) 的原始样本。
 

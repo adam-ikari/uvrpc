@@ -92,9 +92,12 @@ median from 75.03 to 27.76 µs on one host (63%); in an interleaved session it
 measured 27.98 µs against gRPC's 72.04 µs (2.6x lower latency) with 4.4x lower
 peak RSS. Testing UVRPC with gRPC's own blocking-unary call style gives 25.53 µs
 vs 73.74 µs (2.89x), so the advantage does not depend on the callback pump.
-These are one-host measurements, not a CI baseline; the Benchmark workflow runs
-the same comparison and gates on sample quality and both advantages.
-Build steps, host details and raw samples are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
+These are one-host measurements, not a CI baseline. The Benchmark workflow runs
+the same comparison and gates on sample quality and both advantages. It also
+gates the five transports on **within-family ratios** (INPROC/SAMELOOP, IPC/TCP,
+UDP/TCP): cross-family ratios measure the runner hardware, not the library, and
+are printed but not gated. Build steps, host details, raw samples and the gate
+rationale are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
 
 ## 🎯 Examples
 

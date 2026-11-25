@@ -97,6 +97,21 @@ The `Benchmark` workflow runs this script and feeds its output to
 ./benchmark/compare_grpc.sh [requests] [samples]   # defaults: 100000, 5
 ```
 
+### CI transport gate
+
+`benchmark/check_baseline.py` checks the five `perf_benchmark` transports
+against `benchmark/baseline.json`. It gates only **within-family ratios**:
+INPROC/SAMELOOP, IPC/TCP and UDP/TCP, tolerance 50%. Cross-family ratios
+(SAMELOOP/TCP) track the runner hardware and are printed but not gated. A
+previously unseen CPU is recorded under `benchmark/cpu-records/` and never
+blocks CI on its hardware signature. Missing transports, spread above 2.0x or a
+global absolute collapse still fail the gate.
+
+```bash
+python3 benchmark/check_baseline.py --results benchmark_results.md \
+  --baseline benchmark/baseline.json --records benchmark/cpu-records
+```
+
 ## Building
 
 ```bash
