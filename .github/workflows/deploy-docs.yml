@@ -14,37 +14,48 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+# Build and deploy are separate jobs on purpose. deploy-pages@v4 looks up the
+# github-pages artifact by name through the GitHub API; when upload and deploy
+# share one job it sometimes sees 0 artifacts even though the upload succeeded
+# and the artifact is present via the API. The `needs` boundary makes the
+# artifact fully visible before deployment starts.
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install dependencies
-      working-directory: ./docs
-      run: npm ci
-    
-    - name: Build documentation
-      working-directory: ./docs
-      run: npm run docs:build
-    
-    - name: Setup Pages
-      uses: actions/configure-pages@v5
-    
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./docs/.vitepress/dist
-    
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./docs
+        run: npm ci
+
+      - name: Build documentation
+        working-directory: ./docs
+        run: npm run docs:build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
