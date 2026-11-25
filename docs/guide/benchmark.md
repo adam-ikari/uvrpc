@@ -156,24 +156,32 @@ quoted without that host should be treated as unverified. For capacity planning,
 measure on the hardware you intend to deploy on.
 
 The workflow then gates those medians with `benchmark/check_baseline.py`. It
-reads the `CPU` row from the results and selects the matching file under
-`benchmark/baselines/`: all five transports must report, each sample spread must
-stay within 2.0x, each transport's latency relative to SAMELOOP may not move more
-than 50% from that CPU's baseline, and SAMELOOP itself may not exceed three times
-it. An unknown CPU fails with a message naming where to add a baseline — the
-script never borrows another CPU's numbers.
+compares only **within-family ratios**, against `benchmark/baseline.json`:
+INPROC/SAMELOOP for the in-process family, IPC/TCP and UDP/TCP for the socket
+family. All five transports must report, each spread must stay within 2.0x, and
+SAMELOOP must stay under a loose absolute ceiling. A previously unseen CPU is
+recorded under `benchmark/cpu-records/` so the difference is kept, but it never
+blocks CI on its hardware signature.
 
-Baselines are per CPU because the *relative* cost of in-process versus socket
-transports is a property of the CPU, not of the library. One global baseline
-failed when a run moved from EPYC 7763 to Xeon 6975P-C: every transport dropped
-together (SAMELOOP 0.92→0.62 µs, TCP 20.08→5.95) but IPC/UDP/TCP ratios to
-SAMELOOP shifted 53–56%, just past the 50% gate with no code regression.
-Re-recording from the new CPU would fail in the opposite direction on the next
-EPYC run. Update a baseline only when a code change is meant to shift the
-relative cost of a transport on that CPU: the deadline-sweep fix was such a
-change, recorded in `amd-epyc-7763.json` from run `45359431694` where SAMELOOP
-fell from 15.84 to 0.92 µs. A few percent of same-CPU cross-run drift is never a
-reason to update.
+The cross-family ratio is deliberately not gated. Three CI runs on EPYC 7763,
+Xeon 6975P-C and EPYC 9V45 show what is stable and what is not:
+
+| Ratio | EPYC 7763 | Xeon 6975P-C | EPYC 9V45 |
+|---|---|---|---|
+| INPROC/SAMELOOP | 0.989 | 1.000 | 1.020 |
+| IPC/TCP | 0.569 | 0.598 | 0.564 |
+| UDP/TCP | 1.023 | 1.104 | 1.040 |
+| SAMELOOP/TCP | 0.046 | 0.104 | 0.033 |
+
+The first three rows are properties of the library; the last is a property of
+the hardware. An earlier gate compared every transport to SAMELOOP and failed
+when the runner changed CPU, with all transports moving together and no code
+regression. Per-CPU baselines fixed that but needed a new file for every CPU the
+rolling `ubuntu-latest` label happens to pick. Gating within families keeps one
+reference and still catches a single transport regressing: making TCP 60 µs
+moves IPC/TCP by 66% and fails. A regression that slows the whole socket family
+equally stays invisible to ratios; that is the accepted trade for a gate that
+measures the library rather than the runner.
 
 **The UDP row is a loopback figure and nothing more.** The benchmark is
 sequential ping-pong with exactly one request in flight, and the library does

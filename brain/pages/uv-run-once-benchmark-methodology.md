@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-25T10:11:15"
+updated: "2026-11-25T10:39:47"
 ---
 
 <!-- compiled_truth -->
@@ -65,7 +65,7 @@ cmake --build build -j$(nproc) --target perf_benchmark
 CI 的 `Benchmark` 工作流对每种传输采样 5 次（每次 100000 requests），取中位数，并把结果与全部样本写进 job 日志与 step summary
 （两个地方都写，所以 `gh run view --log` 能取到，不必去抓渲染后的运行页）。同一 runner、同一 commit 的两次 run 仍可整体漂移：2026-11-23 在 `runnervm0hi8g` 上，`b263be3` 的 run `45202631217` 报 SAMELOOP 16.57 us、UDP 33.12 us，run `45204459868` 报 15.25 us / 30.19 us，五条传输同向移动。跨 run 几个百分点不能单独归因于代码；先看所有传输是否同向，再复跑。
 
-CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 从结果的 `CPU` 行选型，读 `benchmark/baselines/<cpu>.json`（**每 CPU 一份**，旧的单一 `benchmark/baseline.json` 已删除）。要求五条传输都有结果、样本 spread ≤ 2.0x、每条传输相对 SAMELOOP 的比值偏离该 CPU 基线 ≤ 50%，并给 SAMELOOP 绝对延迟留 3 倍基线的灾难上界。未知 CPU 直接失败并提示补录，绝不借别的 CPU 数字。比值抵消同一 runner 的整体漂移，绝对上界只抓全局崩塌。2026-11-23 两次同代码 run 的比值偏移都在 2.1% 内；注入 UDP 60 us、全局 4 倍、缺 TCP、spread 2.5x 分别被对应门禁拒绝；全局 2 倍因 3 倍绝对上界放行，这是有意容忍整机变化。
+CI 门禁因此不比绝对延迟，也**不比跨族比值**：`benchmark/check_baseline.py` 读单一 `benchmark/baseline.json`，只比同族比值 —— INPROC/SAMELOOP（进程内族）、IPC/TCP 与 UDP/TCP（socket 族），容差 50%；spread ≤ 2.0x、SAMELOOP 绝对上界 100 us 只抓全局崩塌。三次 CI run（EPYC 7763 / Xeon 6975P-C / EPYC 9V45）的同族比值分别落在 0.989–1.020、0.564–0.598、1.023–1.104，跨族 SAMELOOP/TCP 却在 0.033–0.104 —— 前者是库属性，后者是硬件属性。新 CPU 不阻塞 CI，medians 自动记进 `benchmark/cpu-records/` 留档，不参与判定。负控已验：TCP 改 60 us 使 IPC/TCP 偏 66.5% 被拒，IPC 改 40 us 偏 250% 被拒，spread 2.5x、缺 TCP 均被拒。
 
 第二个真实 CI run `45334503316` 换到 Intel Xeon 6975P-C，UDP/TCP 对 SAMELOOP 的比值偏移升到 33.5% / 34.2%，说明跨 CPU 架构的相对成本漂移比同架构更大；25% 阈值过紧。现在比值容差为 50%，绝对上界仍为 3 倍。UDP 单点 84% 偏移仍会被拒。
 
@@ -219,4 +219,16 @@ CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 从结果的 `
   kind: evidence
   summary: "跨 CPU 比值漂移 53-56% 不是代码回归：所有传输同向下降（sameloop 0.92→0.62 us，tcp 20.08→5.95）；以新 CPU 重录会让下次 EPYC run 反向失败 116-127%"
   source: "2026-11-25 gh run 45527982445 + 45359431694"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-25T10:39:47
+  kind: reversal
+  summary: "反转按 CPU 多份 baseline：每 CPU 一份面对开放的 CPU 集合会无限补录；改单一 baseline 的同族比值，新 CPU 只记录不门禁"
+  source: "2026-11-25 run 45531290809 EPYC 9V45 触发第三次补录"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-25T10:39:47
+  kind: evidence
+  summary: "三次 CPU 同族比值稳定：inproc/sameloop 0.989-1.020、ipc/tcp 0.564-0.598、udp/tcp 1.023-1.104；跨族 sameloop/tcp 0.033-0.104。四个负控均被拒"
+  source: "2026-11-25 check_baseline.py + runs 45359431694/45527982445/45531290809"
   affects: [uv-run-once-benchmark-methodology]

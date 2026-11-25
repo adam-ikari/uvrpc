@@ -1,0 +1,13 @@
+{
+  "source_runs": ["45359431694", "45527982445", "45531290809"],
+  "source_note": "Reference within-family ratios from three CI runs on EPYC 7763, Xeon 6975P-C and EPYC 9V45. Cross-family ratios are deliberately absent: sameloop/tcp ranged 0.046-0.104 across those CPUs and measures hardware, not the library.",
+  "reference_transport": "sameloop",
+  "relative_tolerance": 0.5,
+  "max_spread": 2.0,
+  "absolute_ceiling_us": 100.0,
+  "reference_ratios": {
+    "inproc/sameloop": 1.0,
+    "ipc/tcp": 0.569,
+    "udp/tcp": 1.04
+  }
+}

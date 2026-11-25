@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Check benchmark medians against a baseline for the SAME CPU.
+"""Gate benchmark results on CPU-independent, performance-reflecting ratios.
 
-Absolute latency and the relative cost of in-process vs socket transports both
-move with the CPU, so one global baseline cannot serve multiple runner types:
-an AMD EPYC baseline compared against an Intel Xeon run produced 53-56% ratio
-drift and failed the gate without any code regression. Baselines are therefore
-kept per CPU under benchmark/baselines/ and selected from the CPU row the
-workflow writes into the results file.
+Absolute latency and the ratio between in-process and socket transports both
+move with the CPU. Three CI runs on EPYC 7763, Xeon 6975P-C and EPYC 9V45 showed
+stable *within-family* ratios and a wildly varying cross-family ratio:
 
-An unknown CPU fails closed with a message naming where to add a baseline:
-guessing a nearby CPU's numbers is worse than a loud, actionable failure.
+    inproc/sameloop   0.989  1.000  1.020
+    ipc/tcp           0.569  0.598  0.564
+    udp/tcp           1.023  1.104  1.040
+    sameloop/tcp      0.046  0.104  0.033   <- hardware, not the library
+
+The gate therefore compares only within-family ratios. A new CPU never blocks
+CI on its hardware signature; instead its medians are recorded under --records
+so the difference is kept, and the decision uses the ratios that reflect the
+library. Guards remain for missing transports, sample spread, and a global
+absolute collapse.
 """
 
 import argparse
-import glob
 import json
 import os
 import re
@@ -26,16 +30,14 @@ ROW = re.compile(
     r"\s*([0-9.]+)\s*us\s*\|\s*([0-9.]+)x\s*\|$"
 )
 CPU_ROW = re.compile(r"^\|\s*CPU\s*\|\s*(.+?)\s*\|$")
-
-
-class GateError(Exception):
-    """An actionable reason the gate cannot run."""
+HOST_ROW = re.compile(r"^\|\s*Host\s*\|\s*(.+?)\s*\|$")
 
 
 def parse_results(path):
     medians = {}
     spreads = {}
     cpu = None
+    host = None
     with open(path, encoding="utf-8") as handle:
         for line in handle:
             stripped = line.strip()
@@ -48,87 +50,84 @@ def parse_results(path):
             match = CPU_ROW.match(stripped)
             if match:
                 cpu = match.group(1)
-    return medians, spreads, cpu
+                continue
+            match = HOST_ROW.match(stripped)
+            if match:
+                host = match.group(1)
+    return medians, spreads, cpu, host
 
 
-def select_baseline(directory, cpu):
+def record_cpu(directory, cpu, host, medians):
+    """Keep a new CPU's numbers. This is a record, never a gate input."""
     if not cpu:
-        raise GateError(
-            "results have no CPU row; the workflow must record the runner CPU"
-        )
-    needle = cpu.lower()
-    matches = []
-    for path in sorted(glob.glob(os.path.join(directory, "*.json"))):
-        with open(path, encoding="utf-8") as handle:
-            baseline = json.load(handle)
-        patterns = baseline.get("cpu_patterns", [])
-        if any(pattern.lower() in needle for pattern in patterns):
-            matches.append((path, baseline))
-    if not matches:
-        raise GateError(
-            f"no baseline for CPU {cpu!r}; add a JSON file to {directory} "
-            "from a clean run of this code on that CPU"
-        )
-    if len(matches) > 1:
-        names = ", ".join(os.path.basename(p) for p, _ in matches)
-        raise GateError(f"multiple baselines match CPU {cpu!r}: {names}")
-    return matches[0]
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "-", cpu.lower()).strip("-")
+    path = os.path.join(directory, slug + ".json")
+    entry = {
+        "cpu": cpu,
+        "host": host,
+        "median_us": {name: medians[name] for name in TRANSPORTS if name in medians},
+    }
+    os.makedirs(directory, exist_ok=True)
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(entry, handle, indent=2)
+            handle.write("\n")
+        return path
+    return None
 
 
-def check(medians, spreads, baseline, name):
+def check(medians, spreads, baseline):
     errors = []
-    base = baseline["median_us"]
-    ref = baseline["reference_transport"]
-
-    missing = [n for n in TRANSPORTS if n not in medians]
+    missing = [name for name in TRANSPORTS if name not in medians]
     if missing:
         errors.append("missing benchmark results: " + ", ".join(missing))
-
-    max_spread = float(baseline["max_spread"])
-    for n in TRANSPORTS:
-        if n in spreads and spreads[n] > max_spread:
-            errors.append(f"{n}: sample spread {spreads[n]:.1f}x exceeds {max_spread:.1f}x")
-
-    if missing:
         return errors
 
-    base_ref = base[ref]
-    cur_ref = medians[ref]
-    abs_limit = base_ref * (1.0 + float(baseline["absolute_tolerance"]))
-    if cur_ref > abs_limit:
-        errors.append(f"{ref}: {cur_ref:.2f} us exceeds absolute ceiling {abs_limit:.2f} us")
+    max_spread = float(baseline["max_spread"])
+    for name in TRANSPORTS:
+        if name in spreads and spreads[name] > max_spread:
+            errors.append(f"{name}: sample spread {spreads[name]:.1f}x exceeds {max_spread:.1f}x")
+
+    ceiling = float(baseline["absolute_ceiling_us"])
+    if medians["sameloop"] > ceiling:
+        errors.append(f"sameloop: {medians['sameloop']:.2f} us exceeds global ceiling {ceiling:.1f} us")
 
     rel_tol = float(baseline["relative_tolerance"])
-    for n in TRANSPORTS:
-        if n == ref:
-            continue
-        base_ratio = base[n] / base_ref
-        cur_ratio = medians[n] / cur_ref
-        delta = abs(cur_ratio / base_ratio - 1.0)
-        print(
-            f"{n}: ratio {cur_ratio:.3f} vs baseline {base_ratio:.3f} "
-            f"({delta * 100:.1f}% delta)"
-        )
+    for label, (a, b) in (
+        ("inproc/sameloop", ("inproc", "sameloop")),
+        ("ipc/tcp", ("ipc", "tcp")),
+        ("udp/tcp", ("udp", "tcp")),
+    ):
+        reference = float(baseline["reference_ratios"][label])
+        current = medians[a] / medians[b]
+        delta = abs(current / reference - 1.0)
+        print(f"{label}: {current:.3f} vs reference {reference:.3f} ({delta * 100:.1f}% delta)")
         if delta > rel_tol:
-            errors.append(
-                f"{n}: ratio delta {delta * 100:.1f}% exceeds {rel_tol * 100:.0f}%"
-            )
+            errors.append(f"{label}: delta {delta * 100:.1f}% exceeds {rel_tol * 100:.0f}%")
 
-    print(f"baseline: {name} (CPU: {baseline.get('source_cpu', 'unknown')})")
+    cross = medians["sameloop"] / medians["tcp"]
+    print(f"(informational, not gated) sameloop/tcp: {cross:.3f} — hardware-dependent")
     return errors
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", required=True)
-    parser.add_argument("--baselines", required=True, help="directory of per-CPU baselines")
+    parser.add_argument("--baseline", required=True, help="single baseline of within-family ratios")
+    parser.add_argument("--records", help="directory to record previously unseen CPUs")
     args = parser.parse_args()
 
     try:
-        medians, spreads, cpu = parse_results(args.results)
-        path, baseline = select_baseline(args.baselines, cpu)
-        errors = check(medians, spreads, baseline, os.path.basename(path))
-    except (GateError, OSError, ValueError, KeyError) as exc:
+        with open(args.baseline, encoding="utf-8") as handle:
+            baseline = json.load(handle)
+        medians, spreads, cpu, host = parse_results(args.results)
+        if args.records:
+            path = record_cpu(args.records, cpu, host, medians)
+            if path:
+                print(f"recorded new CPU {cpu!r} in {path} (not used for gating)")
+        errors = check(medians, spreads, baseline)
+    except (OSError, ValueError, KeyError) as exc:
         print("FAIL: " + str(exc))
         return 1
 

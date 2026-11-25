@@ -1,0 +1,11 @@
+{
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "host": "runnervm0hi8g",
+  "median_us": {
+    "sameloop": 0.5,
+    "inproc": 0.51,
+    "ipc": 8.51,
+    "udp": 15.69,
+    "tcp": 15.09
+  }
+}
