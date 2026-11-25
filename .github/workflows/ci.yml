@@ -262,15 +262,37 @@ jobs:
       # directly, so a -Wpedantic regression there is invisible to a build that
       # selects -DUVRPC_ALLOCATOR_DEFAULT=system. -Werror is what makes it a
       # failure; grepping a second make's (empty) log never was.
-      - name: Verify merged archive keeps every dependency object
+      - name: Verify merged archive links and runs
         run: |
-          # uvrpc_merged folds libuv + mimalloc, which both ship src/random.c.
-          # Historically the fold dropped one, leaving -l:libuvrpc_full.a with an
-          # undefined uv_random.
+          # uvrpc_merged folds libuv, flatcc and mimalloc; libuv and mimalloc
+          # both ship src/random.c. Historically the fold dropped one, leaving
+          # -l:libuvrpc_full.a with an undefined uv_random.
+          #
+          # Checking two symbol names was not enough: no target in this repo
+          # actually links the full archive (the DSL demos add uvrpc_merged as a
+          # build-order dependency and link uvrpc). A negative control with
+          # uvrpc_strerror.c.o removed passed the two-symbol check and then
+          # failed to link. Link and run a program through the archive with no
+          # -luv/-lflatcc/-lmimalloc on the line.
           for sym in uv_random _mi_random_init; do
             nm --defined-only dist/lib/libuvrpc_full.a | grep -qw "$sym" \
               || { echo "::error::$sym missing from libuvrpc_full.a"; exit 1; }
           done
+          cat > /tmp/full_archive_smoke.c <<'EOF'
+          #include <stdio.h>
+          #include "uvrpc.h"
+          #include "uvrpc_allocator.h"
+          int main(void) {
+            printf("%s|%s\n", uvrpc_strerror(UVRPC_ERROR_TIMEOUT),
+                             uvrpc_allocator_get_name());
+            return 0;
+          }
+          EOF
+          cc -Iinclude -o /tmp/full_archive_smoke /tmp/full_archive_smoke.c \
+            dist/lib/libuvrpc_full.a -lpthread -lm -lrt -ldl
+          /tmp/full_archive_smoke | grep -q 'Operation timed out|mimalloc' \
+            || { echo "::error::full archive smoke output unexpected"; exit 1; }
+          echo "full archive links, runs and is self-contained"
       - name: Run ctest
         run: |
           cd build
