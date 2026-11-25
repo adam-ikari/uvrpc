@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [benchmark, grpc, methodology]
 created: "2026-11-24T14:10:50"
-updated: "2026-11-25T14:27:53"
+updated: "2026-11-25T21:13:02"
 ---
 
 <!-- compiled_truth -->
@@ -66,4 +66,10 @@ updated: "2026-11-25T14:27:53"
   kind: decision
   summary: "新建 v0.1.1 release（保留 v0.1.0 历史）；版本号同步 CMakeLists 与 README 徽章，资产布局不变、SONAME 不变"
   source: 2026-11-25 gh release create v0.1.1
+  affects: [grpc-comparison-benchmark]
+
+- time: 2026-11-25T21:13:02
+  kind: decision
+  summary: "v0.1.2 发布：tag bc9a20d，sha256 da304e25…；含诊断语义、full archive 链接门禁与注释修正"
+  source: "2026-11-25 gh release v0.1.2 + 207/207 ctest"
   affects: [grpc-comparison-benchmark]

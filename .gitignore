@@ -3,6 +3,7 @@ build/
 build-grpc/
 build-ubsan/
 build-verify/
+build-rel*/
 dist/
 cmake-build-*/
 
