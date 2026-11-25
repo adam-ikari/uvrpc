@@ -883,6 +883,21 @@ uvrpc_config_set_max_pending_callbacks(config, 1 << 10);  // 默认，1,024 槽
 uvrpc_config_set_max_pending_callbacks(config, 1 << 20);  // 高并发，上限 1 << 22
 ```
 
+#### 嵌套 payload 的对齐
+
+业务 payload 是装进帧 `[ubyte]` 向量的完整 FlatBuffers buffer。handler 直接读里面的
+int64/double，所以 payload 指针在**最终 buffer** 里必须 8 字节对齐。这由两件事共同保证：
+
+1. `create_payload_vec()` 把向量数据按 8 对齐（`src/uvrpc_flatbuffers.c`）；
+2. `start_frame()` 用 `flatcc_builder_start_buffer(..., block_align=8)` 起帧。生成的
+   `start_as_root()` 用 block_align=0，那会让 4 字节 root offset 把向量挪到 4-mod-8
+   的偏移，int64/double 就成了未对齐读取——x86 静默，UBSan 会报。
+
+三种帧编码器（request / response / response-more）都必须走 `start_frame()`。新增编码器
+或改帧格式时要重新核对这条不变量。`tests/acceptance/frame_payload_alignment.c`
+对三种编码器 × 40 种 payload 长度断言对齐，`udp_payload_alignment.c` 检查传输侧交付的
+帧起点同样 8 对齐。
+
 ## 扩展性
 
 ### 自定义传输

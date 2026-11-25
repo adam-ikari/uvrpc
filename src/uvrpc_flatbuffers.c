@@ -18,11 +18,28 @@ struct uvrpc_server;
  * alignment, so the payload landed at an arbitrary offset and every int64 or
  * double it contains was read through a misaligned pointer -- undefined
  * behaviour that x86 tolerates and UBSan flags. FlatBuffers alignment is
- * relative to the buffer start, so aligning this vector's data to 8 makes the
- * nested buffer's own 8-byte fields aligned too. Costs at most 7 bytes of
- * vector padding and up to 4 additional bytes of buffer-header padding versus
- * the old byte-aligned vector. */
+ * relative to the buffer start, so two things are required:
+ *
+ *   1. create_payload_vec aligns the vector's data to 8 relative to the
+ *      builder's emission cursor;
+ *   2. start_frame gives the root a block_align of 8, so the 4-byte root
+ *      offset does not shift that vector into a 4-mod-8 offset in the
+ *      finalized buffer.
+ *
+ * The generated start_as_root() passes block_align=0; that alone left the
+ * payload at offset 36 (4-mod-8) regardless of create_payload_vec's align. */
 #define UVRPC_PAYLOAD_ALIGNMENT 8
+
+/* Start the frame buffer with block_align=8, then the root table. All three
+ * encoders use this so the alignment invariant applies to none of them by
+ * accident -- see sibling-transports-must-be-diffed. */
+static int start_frame(flatcc_builder_t* builder) {
+    if (flatcc_builder_start_buffer(builder, 0, UVRPC_PAYLOAD_ALIGNMENT, 0) != 0) {
+        return -1;
+    }
+    uvrpc_RpcFrame_start(builder);
+    return 0;
+}
 
 static flatbuffers_uint8_vec_ref_t create_payload_vec(flatcc_builder_t* builder,
                                                       const uint8_t* data,
@@ -49,7 +66,10 @@ int uvrpc_encode_request(uint32_t msgid, const char* method,
     /* type: 0 = Request, 1 = Response */
     uint8_t type = 0;
 
-    uvrpc_RpcFrame_start_as_root(&builder);
+    if (start_frame(&builder) != 0) {
+        flatcc_builder_clear(&builder);
+        return UVRPC_ERROR;
+    }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_method_add(&builder, flatbuffers_string_create_str(&builder, method));
@@ -81,7 +101,10 @@ static int encode_response_typed(uint32_t msgid, const uint8_t* result,
         data_ref = create_payload_vec(&builder, result, result_size);
     }
 
-    uvrpc_RpcFrame_start_as_root(&builder);
+    if (start_frame(&builder) != 0) {
+        flatcc_builder_clear(&builder);
+        return UVRPC_ERROR;
+    }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_data_add(&builder, data_ref);
@@ -141,7 +164,10 @@ int uvrpc_encode_response_more(uint32_t msgid, const uint8_t* result, size_t res
     /* type: 2 = ResponseMore (more to come) */
     uint8_t type = 2;
 
-    uvrpc_RpcFrame_start_as_root(&builder);
+    if (start_frame(&builder) != 0) {
+        flatcc_builder_clear(&builder);
+        return UVRPC_ERROR;
+    }
     uvrpc_RpcFrame_type_add(&builder, type);
     uvrpc_RpcFrame_msgid_add(&builder, msgid);
     uvrpc_RpcFrame_data_add(&builder, data_ref);

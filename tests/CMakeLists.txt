@@ -703,6 +703,28 @@ set_tests_properties(udp_client_identity PROPERTIES
     TIMEOUT 60
 )
 
+# Direct invariant: all three frame encoders must produce an 8-byte-aligned
+# payload pointer, so a handler can read int64/double fields through typed
+# pointers. Complements udp_payload_alignment, which pins the transport side.
+add_executable(frame_payload_alignment
+    acceptance/frame_payload_alignment.c
+)
+target_link_libraries(frame_payload_alignment
+    uvrpc
+    pthread
+    m
+    rt
+)
+target_include_directories(frame_payload_alignment
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+add_test(NAME frame_payload_alignment COMMAND frame_payload_alignment)
+set_tests_properties(frame_payload_alignment PROPERTIES
+    LABELS "acceptance"
+    TIMEOUT 30
+)
+
 # The encoder 8-byte-aligns nested payload vectors to the frame start, but a
 # raw libuv UDP receive buffer becomes only 4-byte aligned after its length
 # prefix. The transport must copy the frame into an aligned buffer before the
