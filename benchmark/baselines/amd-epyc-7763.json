@@ -3,6 +3,7 @@
   "head_sha": "4bba568",
   "host": "runnervm0hi8g",
   "source_cpu": "AMD EPYC 7763 64-Core Processor",
+  "cpu_patterns": ["epyc 7763"],
   "reference_transport": "sameloop",
   "relative_tolerance": 0.5,
   "absolute_tolerance": 2.0,

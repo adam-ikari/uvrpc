@@ -102,7 +102,7 @@ jobs:
       # Absolute latency follows the runner, so this gates on ratios to the
       # reference transport plus a loose ceiling for a global collapse.
       - name: Check benchmark gates
-        run: python3 benchmark/check_baseline.py --results benchmark_results.md --baseline benchmark/baseline.json
+        run: python3 benchmark/check_baseline.py --results benchmark_results.md --baselines benchmark/baselines
 
       # Same loopback TCP ping-pong methodology on both sides. The gate rejects
       # unusable data (spread > 2.0x) and any loss of the latency/RSS advantage;

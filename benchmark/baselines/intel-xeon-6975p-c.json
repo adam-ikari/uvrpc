@@ -1,0 +1,18 @@
+{
+  "source_run": "45527982445",
+  "head_sha": "e5c3388",
+  "host": "ip-10-0-137-68",
+  "source_cpu": "Intel(R) Xeon(R) 6975P-C",
+  "cpu_patterns": ["6975p-c"],
+  "reference_transport": "sameloop",
+  "relative_tolerance": 0.5,
+  "absolute_tolerance": 2.0,
+  "max_spread": 2.0,
+  "median_us": {
+    "sameloop": 0.62,
+    "inproc": 0.62,
+    "ipc": 3.56,
+    "udp": 6.57,
+    "tcp": 5.95
+  }
+}

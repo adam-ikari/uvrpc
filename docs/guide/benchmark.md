@@ -155,16 +155,25 @@ the host it measured on — in the run summary and in the job log. A number
 quoted without that host should be treated as unverified. For capacity planning,
 measure on the hardware you intend to deploy on.
 
-The workflow then gates those medians with `benchmark/check_baseline.py` against
-`benchmark/baseline.json`: all five transports must report, each sample spread
-must stay within 2.0x, each transport's latency relative to SAMELOOP may not
-move more than 50% from the baseline, and SAMELOOP itself may not exceed three
-times the baseline. Ratios cancel runner-wide drift; absolute latency
-does not. Update the baseline only when a code change is meant to shift the
-relative cost of a transport. The deadline-sweep fix was such a change: the
-baseline was re-recorded from run `45359431694` (EPYC 7763), where SAMELOOP fell
-from 15.84 to 0.92 µs and IPC/UDP/TCP moved from roughly 1.5–2x to 12–22x that
-reference. A few percent of cross-run drift alone is never a reason to update.
+The workflow then gates those medians with `benchmark/check_baseline.py`. It
+reads the `CPU` row from the results and selects the matching file under
+`benchmark/baselines/`: all five transports must report, each sample spread must
+stay within 2.0x, each transport's latency relative to SAMELOOP may not move more
+than 50% from that CPU's baseline, and SAMELOOP itself may not exceed three times
+it. An unknown CPU fails with a message naming where to add a baseline — the
+script never borrows another CPU's numbers.
+
+Baselines are per CPU because the *relative* cost of in-process versus socket
+transports is a property of the CPU, not of the library. One global baseline
+failed when a run moved from EPYC 7763 to Xeon 6975P-C: every transport dropped
+together (SAMELOOP 0.92→0.62 µs, TCP 20.08→5.95) but IPC/UDP/TCP ratios to
+SAMELOOP shifted 53–56%, just past the 50% gate with no code regression.
+Re-recording from the new CPU would fail in the opposite direction on the next
+EPYC run. Update a baseline only when a code change is meant to shift the
+relative cost of a transport on that CPU: the deadline-sweep fix was such a
+change, recorded in `amd-epyc-7763.json` from run `45359431694` where SAMELOOP
+fell from 15.84 to 0.92 µs. A few percent of same-CPU cross-run drift is never a
+reason to update.
 
 **The UDP row is a loopback figure and nothing more.** The benchmark is
 sequential ping-pong with exactly one request in flight, and the library does

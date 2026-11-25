@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-24T16:54:03"
+updated: "2026-11-25T10:11:15"
 ---
 
 <!-- compiled_truth -->
@@ -65,7 +65,7 @@ cmake --build build -j$(nproc) --target perf_benchmark
 CI 的 `Benchmark` 工作流对每种传输采样 5 次（每次 100000 requests），取中位数，并把结果与全部样本写进 job 日志与 step summary
 （两个地方都写，所以 `gh run view --log` 能取到，不必去抓渲染后的运行页）。同一 runner、同一 commit 的两次 run 仍可整体漂移：2026-11-23 在 `runnervm0hi8g` 上，`b263be3` 的 run `45202631217` 报 SAMELOOP 16.57 us、UDP 33.12 us，run `45204459868` 报 15.25 us / 30.19 us，五条传输同向移动。跨 run 几个百分点不能单独归因于代码；先看所有传输是否同向，再复跑。
 
-CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark/baseline.json`，要求五条传输都有结果、样本 spread ≤ 2.0x、每条传输相对 SAMELOOP 的比值偏离基线 ≤ 50%，并给 SAMELOOP 绝对延迟留 3 倍基线的灾难上界。比值抵消同一 runner 的整体漂移，绝对上界只抓全局崩塌。2026-11-23 两次同代码 run 的比值偏移都在 2.1% 内；注入 UDP 60 us、全局 4 倍、缺 TCP、spread 2.5x 分别被对应门禁拒绝；全局 2 倍因 3 倍绝对上界放行，这是有意容忍整机变化。
+CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 从结果的 `CPU` 行选型，读 `benchmark/baselines/<cpu>.json`（**每 CPU 一份**，旧的单一 `benchmark/baseline.json` 已删除）。要求五条传输都有结果、样本 spread ≤ 2.0x、每条传输相对 SAMELOOP 的比值偏离该 CPU 基线 ≤ 50%，并给 SAMELOOP 绝对延迟留 3 倍基线的灾难上界。未知 CPU 直接失败并提示补录，绝不借别的 CPU 数字。比值抵消同一 runner 的整体漂移，绝对上界只抓全局崩塌。2026-11-23 两次同代码 run 的比值偏移都在 2.1% 内；注入 UDP 60 us、全局 4 倍、缺 TCP、spread 2.5x 分别被对应门禁拒绝；全局 2 倍因 3 倍绝对上界放行，这是有意容忍整机变化。
 
 第二个真实 CI run `45334503316` 换到 Intel Xeon 6975P-C，UDP/TCP 对 SAMELOOP 的比值偏移升到 33.5% / 34.2%，说明跨 CPU 架构的相对成本漂移比同架构更大；25% 阈值过紧。现在比值容差为 50%，绝对上界仍为 3 倍。UDP 单点 84% 偏移仍会被拒。
 
@@ -207,4 +207,16 @@ CI 门禁因此不比绝对延迟：`benchmark/check_baseline.py` 读 `benchmark
   kind: evidence
   summary: "新 CI runner EPYC 7763（旧 baseline 为 EPYC 9V45）：sameloop 0.92 / inproc 0.91 / ipc 11.42 / udp 20.55 / tcp 20.08 us，spread 均 ≤1.1x；用新 baseline 复跑 check_baseline.py 全绿"
   source: "2026-11-24 gh run view 45359431694 + 本地 check_baseline.py"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-25T10:11:15
+  kind: decision
+  summary: "baseline 改为每 CPU 一份（benchmark/baselines/），checker 从 CPU 行选型，未知 CPU fail-closed；删除单一 benchmark/baseline.json"
+  source: "2026-11-25 run 45527982445 跨 CPU 比值漂移 53-56%"
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-25T10:11:15
+  kind: evidence
+  summary: "跨 CPU 比值漂移 53-56% 不是代码回归：所有传输同向下降（sameloop 0.92→0.62 us，tcp 20.08→5.95）；以新 CPU 重录会让下次 EPYC run 反向失败 116-127%"
+  source: "2026-11-25 gh run 45527982445 + 45359431694"
   affects: [uv-run-once-benchmark-methodology]
