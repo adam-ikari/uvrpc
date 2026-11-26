@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-25T10:39:47"
+updated: "2026-11-26T11:40:04"
 ---
 
 <!-- compiled_truth -->
@@ -232,3 +232,9 @@ CI 门禁因此不比绝对延迟，也**不比跨族比值**：`benchmark/check
   summary: "三次 CPU 同族比值稳定：inproc/sameloop 0.989-1.020、ipc/tcp 0.564-0.598、udp/tcp 1.023-1.104；跨族 sameloop/tcp 0.033-0.104。四个负控均被拒"
   source: "2026-11-25 check_baseline.py + runs 45359431694/45527982445/45531290809"
   affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-26T11:40:04
+  kind: evidence
+  summary: "2026-11-26 本机基线测试：load 12-16 下 TCP 稳定 54us（CI 同族比值 0.566/1.033，本机 0.314/0.399），UDP spread 2.2x 超门禁。v0.1.2 与 HEAD 交错 A/B TCP 50-57us 无差异，判为主机争用而非构帧重构回归；数据不引用、不更 baseline"
+  source: "2026-11-26 本地 5x100k + v0.1.2 A/B + CI run 45534917841"
+  affects: [sibling-transports-must-be-diffed]
