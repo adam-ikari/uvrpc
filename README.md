@@ -4,12 +4,13 @@ A minimalist, high-performance RPC framework built on libuv event loop and FlatB
 
 [![CI](https://github.com/adam-ikari/uvrpc/actions/workflows/ci.yml/badge.svg)](https://github.com/adam-ikari/uvrpc/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.2-orange.svg)](https://github.com/adam-ikari/uvrpc/releases/tag/v0.1.2)
-<!-- The badge reads the project version, 0.1.2, and links the v0.1.2 release.
+[![Version](https://img.shields.io/badge/version-0.1.3-orange.svg)](https://github.com/adam-ikari/uvrpc/releases/tag/v0.1.3)
+<!-- The badge reads the project version, 0.1.3, and links the v0.1.3 release.
      It once claimed a v1.0.0a that never existed, contradicted the version in
      CMakeLists.txt, and linked the releases index because no tag existed.
-     v0.1.1 was cut 2026-11-25; v0.1.2 follows the same day with specific error
-     codes, a real link gate for the published archive, and comment fixes. -->
+     v0.1.2 was cut 2026-11-25; v0.1.3 follows 2026-11-26 with case-insensitive
+     handler registration, shared socket framing, and a CI-only performance
+     baseline with the gRPC comparison made informational. -->
 
 ## 🚀 Quick Start
 
