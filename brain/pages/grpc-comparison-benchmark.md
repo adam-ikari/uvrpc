@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [benchmark, grpc, methodology]
 created: "2026-11-24T14:10:50"
-updated: "2026-11-25T21:13:02"
+updated: "2026-11-26T13:09:52"
 ---
 
 <!-- compiled_truth -->
@@ -73,3 +73,9 @@ updated: "2026-11-25T21:13:02"
   summary: "v0.1.2 发布：tag bc9a20d，sha256 da304e25…；含诊断语义、full archive 链接门禁与注释修正"
   source: "2026-11-25 gh release v0.1.2 + 207/207 ctest"
   affects: [grpc-comparison-benchmark]
+
+- time: 2026-11-26T13:09:52
+  kind: reversal
+  summary: "反转'gRPC 对比门禁'：改为信息性数据，删掉 Check gRPC comparison gates 步骤；外部库数字随硬件/版本/负载漂移，不该决定本项目 CI 成败"
+  source: "2026-11-26 benchmark.yml + CI run 45758849311"
+  affects: [pending-ring-size-balance]
