@@ -51,11 +51,18 @@
  * loop turns on loopback), so its table is genuinely full rather than nearly
  * so. */
 #define SETTLE_S 0.5
-/* How long a refused peer is given to be told. Far longer than the loopback
- * round trip it takes, and far shorter than the caller's deadline below, so
- * "the connection was ended" and "the caller waited out its deadline" cannot be
- * confused for one another. */
-#define PEER_BUDGET_S 2.0
+/* How long a refused peer is given to be told. Still far shorter than the
+ * caller's deadline below, so "the connection was ended" and "the caller waited
+ * out its deadline" cannot be confused. The original 2 seconds fit an idle
+ * loopback but not a loaded host: 1024 concurrent teardowns could take longer,
+ * making the test fail before the server had finished refusing. Both waits
+ * below stop as soon as their event arrives, so the larger budget only affects
+ * a genuinely wedged case. */
+#define PEER_BUDGET_S 10.0
+/* Budget for 1024 filler handshakes. A fixed turn count (the old 20000 NOWAIT
+ * turns) can elapse before the last handshake on a loaded host; a wall-clock
+ * budget with an event predicate cannot. */
+#define FILL_BUDGET_S 10.0
 /* Far longer than any budget above. */
 #define CALLER_DEADLINE_MS 60000
 
@@ -254,8 +261,14 @@ int main(void) {
         }
     }
 
-    for (int i = 0; i < 20000 && fillers_connected < FILLER_COUNT; i++) {
-        uv_run(&loop, UV_RUN_NOWAIT);
+    /* Wall-clock budget with an event predicate, not a fixed turn count:
+     * UV_RUN_NOWAIT returns whether or not anything happened, so 20000 turns
+     * could elapse before the last handshake and leave the table not full. */
+    {
+        double fill_end = now_s() + FILL_BUDGET_S;
+        while (fillers_connected < FILLER_COUNT && now_s() < fill_end) {
+            uv_run(&loop, UV_RUN_NOWAIT);
+        }
     }
     check(fillers_connected == FILLER_COUNT,
           "not every filler connection completed the handshake");

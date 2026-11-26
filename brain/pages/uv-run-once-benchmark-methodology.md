@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-26T12:28:53"
+updated: "2026-11-26T14:41:12"
 ---
 
 <!-- compiled_truth -->
@@ -244,3 +244,15 @@ CI 门禁因此不比绝对延迟，也**不比跨族比值**：`benchmark/check
   summary: "所有性能基线统一到 Benchmark 工作流：删 ci.yml 的重复无门禁 performance job；README/benchmark 文档以 CI run 45750463697 为基线表，5800H 本机数字降为历史优化证据"
   source: "2026-11-26 ci.yml + README.md + docs/guide/benchmark.md"
   affects: [grpc-comparison-benchmark]
+
+- time: 2026-11-26T14:41:12
+  kind: decision
+  summary: "修 tcp_capacity 偶发假红：filler 握手从固定 20000 轮 NOWAIT 改为墙钟预算+事件判据；PEER_BUDGET 2s→10s（仍远小于 60s caller deadline，两类超时不可混淆）"
+  source: 2026-11-26 tests/acceptance/tcp_capacity.c
+  affects: [uv-run-once-benchmark-methodology]
+
+- time: 2026-11-26T14:41:12
+  kind: evidence
+  summary: "tcp_capacity 负控未成立：load 12-16 下 v0.1.3 旧版与修复版都通过，原失败不可复现；只记录结构性风险消除与全量 207/207"
+  source: "2026-11-26 tcp-stress old/new 交错 3 轮"
+  affects: [uv-run-once-benchmark-methodology]
