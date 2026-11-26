@@ -420,34 +420,36 @@ int uvrpc_server_register(uvrpc_server_t* server, const char* method,
     if (!server || !method || !handler) return UVRPC_ERROR_INVALID_PARAM;
     
     
-    /* Check if handler already exists */
-    handler_entry_t* entry = NULL;
-    HASH_FIND_STR(server->handlers, method, entry);
-    if (entry) {
-        return UVRPC_ERROR_ALREADY_EXISTS;
-    }
-    
-    /* Create new entry */
-    entry = uvrpc_calloc(1, sizeof(handler_entry_t));
-    if (!entry) return UVRPC_ERROR_NO_MEMORY;
-
-    /* Create lowercase copy for case-insensitive lookup */
+    /* Method names are case-insensitive: server_recv_callback lowercases the
+     * incoming name before HASH_FIND_STR. The duplicate check must use the same
+     * key, otherwise registering "echo" and then "Echo" both succeed and the
+     * second entry silently takes over the route (HASH_FIND returns the first
+     * match, but HASH_ADD appends a second key that compares equal). */
     char* method_lower = uvrpc_strdup(method);
-    if (!method_lower) {
-        uvrpc_free(entry);
-        return UVRPC_ERROR_NO_MEMORY;
-    }
-    
+    if (!method_lower) return UVRPC_ERROR_NO_MEMORY;
     for (char* p = method_lower; *p; p++) {
         *p = tolower((unsigned char)*p);
     }
-    
-    entry->name = method_lower;  /* Store lowercase name in hash table */
+
+    handler_entry_t* entry = NULL;
+    HASH_FIND_STR(server->handlers, method_lower, entry);
+    if (entry) {
+        uvrpc_free(method_lower);
+        return UVRPC_ERROR_ALREADY_EXISTS;
+    }
+
+    entry = uvrpc_calloc(1, sizeof(handler_entry_t));
+    if (!entry) {
+        uvrpc_free(method_lower);
+        return UVRPC_ERROR_NO_MEMORY;
+    }
+
+    entry->name = method_lower;  /* Lowercase in the hash table, as before */
     entry->handler = handler;
     entry->ctx = ctx;
-    
+
     HASH_ADD_STR(server->handlers, name, entry);
-    
+
     return UVRPC_OK;
 }
 

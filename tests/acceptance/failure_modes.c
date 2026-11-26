@@ -261,7 +261,22 @@ static void case_local_error_codes(uv_loop_t* loop) {
               "first registration succeeds");
         check(uvrpc_server_register(server, "echo", echo_handler, NULL) ==
                   UVRPC_ERROR_ALREADY_EXISTS,
-              "duplicate registration reports ALREADY_EXISTS");
+              "exact duplicate registration reports ALREADY_EXISTS");
+        /* Method lookup is case-insensitive, so the duplicate check must be
+         * too: registering "Echo" after "echo" used to succeed silently. */
+        check(uvrpc_server_register(server, "Echo", echo_handler, NULL) ==
+                  UVRPC_ERROR_ALREADY_EXISTS,
+              "case-variant duplicate reports ALREADY_EXISTS");
+        check(uvrpc_server_register(server, "ECHO", echo_handler, NULL) ==
+                  UVRPC_ERROR_ALREADY_EXISTS,
+              "uppercase duplicate reports ALREADY_EXISTS");
+        /* The reverse order was the one that slipped through before: check
+         * against the lowercased key is now symmetric. */
+        check(uvrpc_server_register(server, "Ping", echo_handler, NULL) == UVRPC_OK,
+              "uppercase-first registration succeeds");
+        check(uvrpc_server_register(server, "ping", echo_handler, NULL) ==
+                  UVRPC_ERROR_ALREADY_EXISTS,
+              "lowercase duplicate of uppercase-first reports ALREADY_EXISTS");
         uvrpc_server_stop(server);
         uvrpc_server_free(server);
     }
