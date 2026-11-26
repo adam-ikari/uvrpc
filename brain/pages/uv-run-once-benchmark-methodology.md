@@ -5,7 +5,7 @@ category: concept
 status: active
 tags: [benchmark, measurement, methodology]
 created: "2026-09-28T17:15:24"
-updated: "2026-11-26T11:40:04"
+updated: "2026-11-26T12:28:53"
 ---
 
 <!-- compiled_truth -->
@@ -238,3 +238,9 @@ CI 门禁因此不比绝对延迟，也**不比跨族比值**：`benchmark/check
   summary: "2026-11-26 本机基线测试：load 12-16 下 TCP 稳定 54us（CI 同族比值 0.566/1.033，本机 0.314/0.399），UDP spread 2.2x 超门禁。v0.1.2 与 HEAD 交错 A/B TCP 50-57us 无差异，判为主机争用而非构帧重构回归；数据不引用、不更 baseline"
   source: "2026-11-26 本地 5x100k + v0.1.2 A/B + CI run 45534917841"
   affects: [sibling-transports-must-be-diffed]
+
+- time: 2026-11-26T12:28:53
+  kind: decision
+  summary: "所有性能基线统一到 Benchmark 工作流：删 ci.yml 的重复无门禁 performance job；README/benchmark 文档以 CI run 45750463697 为基线表，5800H 本机数字降为历史优化证据"
+  source: "2026-11-26 ci.yml + README.md + docs/guide/benchmark.md"
+  affects: [grpc-comparison-benchmark]
