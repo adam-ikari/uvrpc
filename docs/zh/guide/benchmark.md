@@ -180,7 +180,7 @@ cmake --build build-grpc -j$(nproc) --target perf_benchmark uvrpc_sync_ping_pong
 
 之前把每条传输都跟 SAMELOOP 比，runner 一换 CPU 就误报回归：所有传输同向变化、代码没动，IPC/UDP/TCP 对 SAMELOOP 的比值却偏了 53–56%。按 CPU 各存一份 baseline 能消除误报，但滚动的 `ubuntu-latest` 标签会不断冒出新 CPU，每出一种就得补一份文件。同族比值一份参考就够，仍能抓住单条传输的回归（TCP 改成 60 µs 会让 IPC/TCP 偏 66.5% 而被拒）。代价是整个 socket 族一起变慢时同族比值看不出来 —— 这是"测库而非测机器"换来的，写在这里留痕。
 
-**gRPC 对比门禁**：工作流用同一组 Release / system allocator / debug-OFF 标志构建三个二进制，跑 `compare_grpc.sh 100000 5` 并把表格写进 step summary。`benchmark/check_grpc_comparison.py` 在三行缺行、任一 spread > 2.0x、任一 UVRPC 中位延迟高于 gRPC、或任一 UVRPC 峰值 RSS 高于 gRPC 时失败。负控已验：缺 sync 行、把 sync 延迟改成 999 µs 都被拒。spread 超 2.0x 表示主机争用，要重跑而不是判回归。
+**gRPC 对比（信息性，不是门禁）**：工作流用同一组 Release / system allocator / debug-OFF 标志构建三个二进制，跑 `compare_grpc.sh 100000 5` 并把表格写进 step summary，**没有步骤会因它的结果失败**。gRPC 是外部库，数字随 runner 硬件、版本与负载漂移，输给它不该让本项目 CI 变红。`benchmark/check_grpc_comparison.py` 保留为本地诊断工具，手动运行时检查数据质量（三行齐全、spread ≤ 2.0x）。门禁只有上面那一道传输比值门禁。
 
 证据等级：上面的门禁与 CI 表为 CI 实测（run `45750463697`）；5800H 开发机的 sweep 优化数字为历史证据，load 16、gRPC spread 3.6x 的那次不引用。详见 [英文页](/guide/benchmark#uvrpc-vs-grpc) 的原始样本。
 

@@ -70,7 +70,7 @@ cd uvrpc
 > 必须连同主机一起读，否则视为未经验证。可用
 > `./dist/bin/perf_benchmark [requests] [transport]` 复现。
 
-**与 gRPC 的对比。** 所有性能数字来自 `Benchmark` 工作流在 GitHub Actions runner 上的实测（run `45750463697`，AMD EPYC 9V74，load 2.24，5 次 × 100k，spread 均 1.0x）。该 run 上 UVRPC TCP 17.39 µs / 2,740 KiB，同步式阻塞调用 17.46 µs / 2,960 KiB，gRPC 同步 unary 87.01 µs / 18,256 KiB —— 延迟快约 5 倍、峰值 RSS 低约 6 倍。工作流对样本质量与两项优势设门禁；传输基线门禁只比同族比值（INPROC/SAMELOOP、IPC/TCP、UDP/TCP），跨族比值反映 runner 硬件，不进门禁。5800H 开发机上的 24.68 vs 73.74 µs 是 sweep 优化的历史证据，不是基线。主机、原始样本和构建步骤见 [gRPC 对比章节](/zh/guide/benchmark)。
+**与 gRPC 的对比。** 所有性能数字来自 `Benchmark` 工作流在 GitHub Actions runner 上的实测（run `45750463697`，AMD EPYC 9V74，load 2.24，5 次 × 100k，spread 均 1.0x）。该 run 上 UVRPC TCP 17.39 µs / 2,740 KiB，同步式阻塞调用 17.46 µs / 2,960 KiB，gRPC 同步 unary 87.01 µs / 18,256 KiB —— 延迟快约 5 倍、峰值 RSS 低约 6 倍。gRPC 对比只是信息性数据，不设门禁；唯一的传输基线门禁只比同族比值（INPROC/SAMELOOP、IPC/TCP、UDP/TCP），跨族比值反映 runner 硬件，不进门禁。5800H 开发机上的 24.68 vs 73.74 µs 是 sweep 优化的历史证据，不是基线。主机、原始样本和构建步骤见 [gRPC 对比章节](/zh/guide/benchmark)。
 
 ::: warning 关于"吞吐量"
 上表"吞吐量"为顺序往返延迟的倒数（单请求在途），**非**流水线吞吐。

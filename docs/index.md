@@ -149,7 +149,7 @@ on a GitHub Actions runner. Absolute numbers vary widely by host — see
 11,684 KiB. Testing UVRPC with gRPC's own blocking call style
 (`uvrpc_client_call_async`) gave 25.53 µs / 2,972 KiB — the advantage does not
 come from the callback pump. The `Benchmark` workflow runs the same three-way
-comparison on every push and gates on sample quality and both advantages. Its
+comparison on every push as informational data (not a gate). Its
 transport gate uses within-family ratios (INPROC/SAMELOOP, IPC/TCP, UDP/TCP);
 cross-family ratios track the runner hardware and are not gated. Host,
 raw samples, gate rationale and build steps are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).

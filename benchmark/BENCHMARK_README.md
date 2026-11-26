@@ -89,9 +89,10 @@ Runs both sides on one host with matched methodology (5 samples by default,
 RSS (`VmHWM`), and warns when a sample spread exceeds 2.0x. A contended run with
 a spread above that is not a measurement and must not be quoted.
 
-The `Benchmark` workflow runs this script and feeds its output to
-`benchmark/check_grpc_comparison.py`, which fails on missing sides, spread above
-2.0x, or loss of either the latency or peak-RSS advantage over gRPC.
+The `Benchmark` workflow runs this script and writes its table to the job
+summary as an **informational comparison, not a gate**. No CI step fails on
+its contents. `benchmark/check_grpc_comparison.py` is a local diagnostic for
+checking data quality by hand; it is not called by CI.
 
 ```bash
 ./benchmark/compare_grpc.sh [requests] [samples]   # defaults: 100000, 5

@@ -92,8 +92,8 @@ See [benchmark/](benchmark/) for the benchmark source and methodology.
 unary calls over loopback TCP with the same sequential, 8-byte echo workload.
 On run `45750463697` (same EPYC 9V74 runner) UVRPC measured 17.39 µs / 2,740 KiB
 and the blocking-unary style 17.46 µs / 2,960 KiB, against gRPC 87.01 µs /
-18,256 KiB — about 5x lower latency and 6x lower peak RSS. The workflow gates
-on sample quality and both advantages.
+18,256 KiB — about 5x lower latency and 6x lower peak RSS. This comparison is
+informational; the workflow's only gate is on the five transports' ratios.
 
 The 63% latency cut from replacing the 65,536-slot deadline sweep was measured
 on a 5800H development host; it is retained as the optimization's historical

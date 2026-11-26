@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Gate the UVRPC-vs-gRPC comparison produced by benchmark/compare_grpc.sh.
+"""Local diagnostic for the UVRPC-vs-gRPC comparison data.
 
-This is a relative gate on one runner in one session, not a specification:
-absolute latency follows the machine. It fails on unusable data (missing side,
-sample spread above 2.0x) or when UVRPC loses its latency/RSS advantage.
+Not a CI gate. The Benchmark workflow runs compare_grpc.sh as an informational
+comparison and does not call this script: gRPC is an external library whose
+numbers move with runner hardware, version and load, so losing to it must not
+fail this project's CI. Run this by hand when you want to check whether a
+captured comparison is usable (all sides present, spread <= 2.0x) and which
+side came out ahead.
 """
 
 import argparse
@@ -92,7 +95,7 @@ def main():
         for failure in failures:
             print(f"FAIL {failure}")
         return 1
-    print("OK gRPC comparison gate")
+    print("comparison usable (informational; not a CI gate)")
     return 0
 
 

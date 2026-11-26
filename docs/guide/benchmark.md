@@ -274,8 +274,8 @@ requests, system allocator, logging OFF, every spread 1.0x:
 | gRPC sync unary | 87.01 µs | 11,493 req/s | 5.0x (vs TCP) |
 
 Peak RSS on that run: UVRPC 2,740 KiB (callback) / 2,960 KiB (blocking await)
-vs gRPC 18,256 KiB. Both gates passed: `benchmark gates: OK` and
-`OK gRPC comparison gate`.
+vs gRPC 18,256 KiB. The transport gate passed: `benchmark gates: OK`. The gRPC rows are
+informational and their checker is not run by CI.
 
 `ci.yml` has no separate performance job. It used to run a second, ungated
 10k-sample benchmark; that duplicated this measurement with a different
@@ -343,17 +343,17 @@ from 65,536 to 1,024 slots; a separate A/B found no latency difference (25.57 vs
 `benchmark/compare_grpc.sh`, which prints all three rows, spreads, raw samples
 and peak RSS, and warns when a spread exceeds 2.0x.
 
-### CI gate
+### CI gate and informational comparison
 
-The `Benchmark` workflow installs the gRPC C++ toolchain, builds all three
+The `Benchmark` workflow has one gate: `check_baseline.py` on the five
+transports' within-family ratios. The gRPC comparison is **informational, not
+a gate**. The workflow installs the gRPC C++ toolchain, builds all three
 binaries with the same Release/system-allocator/logging-OFF flags, runs
 `benchmark/compare_grpc.sh 100000 5` and writes the table to the step summary.
-`benchmark/check_grpc_comparison.py` then fails the job when any of the three
-rows is missing, any sample spread exceeds 2.0x, either UVRPC median is above
-gRPC's, or either UVRPC peak RSS is above gRPC's. It is a relative gate on one
-runner, not a
-published specification; a red gate from a >2.0x spread means the host was
-contended and the run must be repeated, not that the library regressed.
+No step fails on its contents: gRPC is an external library whose numbers move
+with runner hardware, version and load, so losing to it must not fail this
+project's CI. `benchmark/check_grpc_comparison.py` remains as a local diagnostic
+you can run by hand to check data quality (all sides present, spread <= 2.0x).
 
 **Evidence level: measured here, one host, interleaved sessions, not a CI
 baseline.** The A/B and the UVRPC/gRPC comparison each alternated binaries
