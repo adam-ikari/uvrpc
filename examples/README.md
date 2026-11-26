@@ -83,6 +83,9 @@ cmake --build build -j$(nproc)
 绑定层面由 `ctest -R generated_table_array` 守护：SAMELOOP 单进程，覆盖 `_sync` / `_all` /
 `_any` 三条复制路径与各自的释放函数。
 
+这个例子的端到端讲解（含业务拒绝 vs RPC 错误、编排放在调用方、以及刻意不做的服务发现/TLS）
+见 [Two Services, Two Processes](/guide/microservice-example)（[中文](/zh/guide/microservice-example)）。
+
 ## 传输协议
 
 每个示例把地址换成 `tcp://` / `udp://` / `ipc://` / `inproc://` / `sameloop://` 即可切换传输。
