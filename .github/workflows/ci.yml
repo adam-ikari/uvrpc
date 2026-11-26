@@ -211,32 +211,11 @@ jobs:
           UBSAN_OPTIONS=print_stacktrace=1 ./dist/bin/uvrpc_tests --gtest_brief=1
           UBSAN_OPTIONS=print_stacktrace=1 ctest --test-dir build --output-on-failure
 
-  performance:
-    name: Performance benchmark
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential
-      - name: Build vendored dependencies
-        run: ./scripts/setup_deps.sh
-      - name: Build (Release, logging OFF)
-        run: |
-          cmake -S . -B build -DUVRPC_ALLOCATOR_DEFAULT=system \
-                -DCMAKE_BUILD_TYPE=Release -DUVRPC_DEBUG_LOGGING=OFF
-          make -C build -j$(nproc) perf_benchmark
-      - name: Run perf benchmark (all transports)
-        run: |
-          for t in sameloop inproc ipc udp tcp; do
-            echo "::group::$t"
-            ./dist/bin/perf_benchmark 10000 "$t"
-            echo "::endgroup::"
-          done
-
+  # Performance lives in benchmark.yml only. This job used to run a second,
+  # ungated 10k-sample benchmark here: it duplicated the real measurement with
+  # a different methodology and could not fail on any regression. The
+  # benchmark workflow samples 5x100k, checks the transport ratios and the
+  # gRPC comparison, and records the runner it measured on.
   default-allocator:
     # Cover the default build configuration (UVRPC_ALLOCATOR_DEFAULT=mimalloc)
     # so the vendored mimalloc path stays verified in CI.

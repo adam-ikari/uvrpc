@@ -257,11 +257,40 @@ releasing a slot update the index in constant time. Timeout reclamation is
 unchanged — see the verification note below. These are new numbers, not a
 reinterpretation of the old ones.
 
-### Measured after the fix
+### CI baseline (authoritative)
 
-Host for all rows below: `sandbox-001`, Linux 6.17.13-2-pve, AMD Ryzen 7 5800H
+All performance baselines come from the `Benchmark` workflow on a GitHub
+Actions runner. Run `45750463697` on `runnervm0hi8g`, AMD EPYC 9V74 80-Core
+(4 cores online), Linux 7.0.0-1020-azure, load 2.24; five samples x 100k
+requests, system allocator, logging OFF, every spread 1.0x:
+
+| Transport | Median latency | Throughput | gRPC ÷ UVRPC |
+|---|---|---|---|
+| SAMELOOP | 0.67 µs | 1,492,537 req/s | — |
+| INPROC | 0.67 µs | 1,492,537 req/s | — |
+| IPC | 10.36 µs | 96,525 req/s | — |
+| UDP | 18.22 µs | 54,885 req/s | — |
+| TCP | 17.33 µs | 57,703 req/s | — |
+| gRPC sync unary | 87.01 µs | 11,493 req/s | 5.0x (vs TCP) |
+
+Peak RSS on that run: UVRPC 2,740 KiB (callback) / 2,960 KiB (blocking await)
+vs gRPC 18,256 KiB. Both gates passed: `benchmark gates: OK` and
+`OK gRPC comparison gate`.
+
+`ci.yml` has no separate performance job. It used to run a second, ungated
+10k-sample benchmark; that duplicated this measurement with a different
+methodology and could not fail on a regression. The `Benchmark` workflow is
+the single source for transports, ratios and the gRPC comparison.
+
+### Historical optimization evidence (not a baseline)
+
+Host for the rows below: `sandbox-001`, Linux 6.17.13-2-pve, AMD Ryzen 7 5800H
 (12 cores, 24 GiB), `performance` governor. Release `-O2`, system allocator,
-debug logging OFF, gRPC C++ 1.30.2 / protobuf 3.12.4, 8-byte payload.
+debug logging OFF, gRPC C++ 1.30.2 / protobuf 3.12.4, 8-byte payload. These
+numbers record the sweep fix's effect and are **not** comparable with the CI
+table above — a 5800H desktop under load measured TCP around 54 µs where the
+EPYC runner measures 17 µs. A 2026-11-26 A/B on that host confirmed the gap was
+the host, not the code: v0.1.2 and HEAD measured 50–57 µs interleaved.
 
 **Optimization A/B** — five interleaved pairs, old and new binaries from the
 same source tree, 100k requests per run, load ~13.5:

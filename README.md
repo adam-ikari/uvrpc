@@ -61,44 +61,45 @@ with the default allocator. For the system allocator instead of mimalloc, use
 
 ## 📊 Performance
 
-Sequential ping-pong (one request in flight), 8-byte payload, Release build, single thread, measured by the `Benchmark` workflow on a GitHub Actions runner. Absolute numbers vary widely by host.
+All published performance numbers come from the `Benchmark` workflow on a
+GitHub Actions runner (5 samples x 100k requests, Release, system allocator,
+logging OFF). The table below is run `45750463697` on an AMD EPYC 9V74 runner
+at load 2.24; every sample spread was 1.0x. Absolute numbers vary widely by
+host, so a number quoted without its run and host is not a baseline.
 
 | Transport | Round-trip latency | Throughput (1/latency) | Use Case |
 |-----------|-------------------|------------------------|----------|
-| SAMELOOP  | fastest | Same-loop, vtable bypass |
-| INPROC    | fastest | In-process zero-copy |
-| IPC       | ~1.5x slower | Local inter-process (Unix socket) |
-| UDP       | slowest | Loss-tolerant; loopback only |
-| TCP       | slowest | Reliable network RPC |
+| SAMELOOP  | 0.67 µs | 1,492,537 req/s | Same-loop, vtable bypass |
+| INPROC    | 0.67 µs | 1,492,537 req/s | In-process zero-copy |
+| IPC       | 10.36 µs | 96,525 req/s | Local inter-process (Unix socket) |
+| UDP       | 18.22 µs | 54,885 req/s | Loss-tolerant; loopback only |
+| TCP       | 17.33 µs | 57,703 req/s | Reliable network RPC |
 
-The ordering is stable across hosts; the absolute numbers are not.
+The ordering is stable across hosts; the absolute numbers are not. The workflow
+gates only **within-family ratios** (INPROC/SAMELOOP, IPC/TCP, UDP/TCP) against
+`benchmark/baseline.json`; cross-family ratios reflect runner hardware and are
+printed but not gated.
 
-> Latency figures depend on the machine as much as on the library: two
-> GitHub Actions runners of the same image differed by 2.2x on identical code.
-> So no fixed number is published here. The Benchmark workflow records the CPU,
-> memory, kernel and load of the host it measures on alongside the median of
-> five 100k-request runs -- read a number together with its host, or treat it as
-> unverified. Reproduce with `./dist/bin/perf_benchmark [requests] [transport]`.
->
 > "Throughput" here means the reciprocal of sequential round-trip latency (one
 > request in flight), not pipelined throughput. UDP is loopback only and says
-> nothing about packet loss on a real network.
+> nothing about packet loss on a real network. Reproduce locally with
+> `./dist/bin/perf_benchmark [requests] [transport]`, but treat local numbers
+> as unverified unless the host is under no load.
 
 See [benchmark/](benchmark/) for the benchmark source and methodology.
 
-**gRPC comparison.** A C++ harness measures gRPC synchronous unary calls over
-loopback TCP with the same sequential, 8-byte echo workload. Replacing the
-per-call 65,536-slot deadline sweep with a constant-time index cut UVRPC's TCP
-median from 75.03 to 27.76 µs on one host (63%); in an interleaved session it
-measured 27.98 µs against gRPC's 72.04 µs (2.6x lower latency) with 4.4x lower
-peak RSS. Testing UVRPC with gRPC's own blocking-unary call style gives 25.53 µs
-vs 73.74 µs (2.89x), so the advantage does not depend on the callback pump.
-These are one-host measurements, not a CI baseline. The Benchmark workflow runs
-the same comparison and gates on sample quality and both advantages. It also
-gates the five transports on **within-family ratios** (INPROC/SAMELOOP, IPC/TCP,
-UDP/TCP): cross-family ratios measure the runner hardware, not the library, and
-are printed but not gated. Build steps, host details, raw samples and the gate
-rationale are in the [gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
+**gRPC comparison.** The Benchmark workflow also measures gRPC synchronous
+unary calls over loopback TCP with the same sequential, 8-byte echo workload.
+On run `45750463697` (same EPYC 9V74 runner) UVRPC measured 17.39 µs / 2,740 KiB
+and the blocking-unary style 17.46 µs / 2,960 KiB, against gRPC 87.01 µs /
+18,256 KiB — about 5x lower latency and 6x lower peak RSS. The workflow gates
+on sample quality and both advantages.
+
+The 63% latency cut from replacing the 65,536-slot deadline sweep was measured
+on a 5800H development host; it is retained as the optimization's historical
+evidence, not as a baseline. Build steps, host details and raw samples for both
+the CI numbers and the historical run are in the
+[gRPC comparison section](/guide/benchmark#uvrpc-vs-grpc).
 
 ## 🎯 Examples
 

@@ -131,6 +131,13 @@ cmake --build build-grpc --target perf_benchmark grpc_ping_pong
 
 ## Reference numbers
 
-Release build, `-O2`, system allocator, single thread, 8-byte payload. See
-`docs/guide/benchmark.md` and the project README for current numbers. Run the
-benchmark on your own hardware for representative results.
+All baselines come from the `Benchmark` GitHub Actions workflow, which samples
+5 x 100k requests with the system allocator and logging OFF, checks transport
+ratios and the gRPC comparison, and records the runner. `ci.yml` has no second
+performance job. The current baseline table and its run ID are in
+`docs/guide/benchmark.md` and the project README.
+
+Local runs are for diagnosis, not for baselines. A development host under load
+can measure TCP at three times the CI runner's figure while the code is
+identical; an A/B against the released binary is needed to tell a host effect
+from a regression. Quote a number only with its run ID and host.
