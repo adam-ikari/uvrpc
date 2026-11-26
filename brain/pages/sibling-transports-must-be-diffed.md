@@ -5,7 +5,7 @@ category: decision
 status: active
 tags: [transport, uvbus, maintenance, review-process]
 created: "2026-10-12T07:25:21"
-updated: "2026-11-20T23:50:37"
+updated: "2026-11-26T11:05:17"
 ---
 
 <!-- compiled_truth -->
@@ -133,3 +133,15 @@ updated: "2026-11-20T23:50:37"
   summary: "第九个漂移案例（跨层）：payload 向量对齐到 8 后，UDP server 仍把 buf->base+4 的 4-mod-8 帧起点交给 RPC 层，64 位 payload 字段依旧未对齐；复制帧到对齐缓冲后修复，tests/acceptance/udp_payload_alignment.c 守住"
   source: "commit 502413a + src/uvbus_transport_udp.c + tests/acceptance/udp_payload_alignment.c"
   affects: [nested-payload-needs-aligned-frame-start, sibling-transports-must-be-diffed]
+
+- time: 2026-11-26T11:05:17
+  kind: decision
+  summary: "按奥卡姆原则把 socket 三传输的 9 处重复构帧提取到 uvbus_frame_write；跨传输不变量只留一份，分配仍归调用方"
+  source: "2026-11-26 src/uvbus_frame.h + design-philosophy.md"
+  affects: [case-insensitive-handler-registration]
+
+- time: 2026-11-26T11:05:17
+  kind: evidence
+  summary: "负控：前缀最高字节位移错一位后 boundary_values 变红；恢复后 207/207 ctest、CI 456 job 全绿"
+  source: "2026-11-26 ctest + CI run 45745905381"
+  affects: [sibling-transports-must-be-diffed]
