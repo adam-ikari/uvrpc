@@ -581,6 +581,19 @@ uvrpc_config_set_transport(config, UVBUS_TRANSPORT_INPROC);
 uvrpc_config_set_address(config, "inproc://my_service");
 ```
 
+#### 奥卡姆原则：重复的不变量只留一份
+
+5 个传输实现同一份 vtable，但**语义相同的东西不该因为分属不同驱动而各写一遍**。判断标准不是"代码长得像"，而是这条不变量属于谁：
+
+- **跨传输的不变量 → 提到公共层，只写一次。** 最典型的是线格式：TCP / IPC / UDP 都在帧前放 4 字节大端长度，再原样跟 payload。这曾是 9 处重复的移位加 `memcpy`（每个 socket 驱动的 send / send_to / broadcast 各一处），现在统一由 `src/uvbus_frame.h` 的 `uvbus_frame_write()` 生成。同样道理，payload 是否可读的校验放在 `uvbus.c` 三个入口各一次，而不是在 5 个驱动的 15 个槽位各写一遍。收益不只是省代码：**新增传输自动继承公共守卫**，而散落在各驱动的副本会随新传输再次漏掉（见项目记忆 `sibling-transports-must-be-diffed` 页里六次"只在一个传输里修对了"的经过）。
+- **传输特有的不变量 → 留在各自驱动。** `send_to` 的目标校验就不能合并：四条传输上 `target` 是客户端句柄，UDP 上是 `sockaddr`，INPROC 还多一层 `is_active`，判据不同。把它们硬塞进一个公共函数只会让判据变弱。
+
+"奥卡姆"在这里是可操作的删减检查：**同一条格式规则出现第二遍时，问它属于哪一层**。属于跨传输层就删到只剩一份；属于某个传输的状态机就保留。不要为了追求代码行数下降而合并语义不同的东西，那是用错误换来表面简洁。
+
+公共 helpers 的边界也要克制：`uvbus_frame_write()` 只写字节，不分配内存。分配失败要经每个槽位自己的错误码上报，那是传输特有的语义，不能一起藏进 helper。
+
+负控是这条原则的验收方式：把公共实现故意改错（例如前缀最高字节位移错一位），必须有测试变红（`boundary_values` 抓到了版本），否则这份"唯一真相"没有 guardian。
+
 ### 数据流
 
 #### 请求-响应流程

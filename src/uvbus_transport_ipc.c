@@ -4,6 +4,7 @@
 
 #include "../include/uvbus.h"
 #include "../include/uvrpc_allocator.h"
+#include "uvbus_frame.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h> /* offsetof */
@@ -652,14 +653,8 @@ static int ipc_send(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_NO_MEMORY;
     }
 
-    /* Write frame length in big-endian format */
-    frame_data[0] = (size >> 24) & 0xFF;
-    frame_data[1] = (size >> 16) & 0xFF;
-    frame_data[2] = (size >> 8) & 0xFF;
-    frame_data[3] = size & 0xFF;
-
-    /* Copy payload data */
-    memcpy(frame_data + 4, data, size);
+    /* Big-endian 4-byte prefix + payload; see uvbus_frame.h. */
+    uvbus_frame_write(frame_data, data, size);
 
     if (transport->is_server) {
         uvbus_ipc_server_t* server = (uvbus_ipc_server_t*)transport->impl.ipc_server;
@@ -745,14 +740,8 @@ static int ipc_send_to(void* impl_ptr, const uint8_t* data, size_t size, void* t
         return UVBUS_ERROR_NO_MEMORY;
     }
 
-    /* Write frame length in big-endian format */
-    frame_data[0] = (size >> 24) & 0xFF;
-    frame_data[1] = (size >> 16) & 0xFF;
-    frame_data[2] = (size >> 8) & 0xFF;
-    frame_data[3] = size & 0xFF;
-
-    /* Copy payload data */
-    memcpy(frame_data + 4, data, size);
+    /* Big-endian 4-byte prefix + payload; see uvbus_frame.h. */
+    uvbus_frame_write(frame_data, data, size);
 
     uv_write_t* req = (uv_write_t*)uvrpc_alloc(sizeof(uv_write_t));
     if (!req) {
@@ -832,11 +821,8 @@ static int ipc_broadcast(void* impl_ptr, const uint8_t* data, size_t size) {
         return UVBUS_ERROR_NO_MEMORY;
     }
 
-    frame_data[0] = (size >> 24) & 0xFF;
-    frame_data[1] = (size >> 16) & 0xFF;
-    frame_data[2] = (size >> 8) & 0xFF;
-    frame_data[3] = size & 0xFF;
-    memcpy(frame_data + 4, data, size);
+    /* Big-endian 4-byte prefix + payload; see uvbus_frame.h. */
+    uvbus_frame_write(frame_data, data, size);
 
     shared->data = frame_data;
     shared->size = total_size;
